@@ -1,0 +1,1 @@
+# AcademiAI domain apps package
