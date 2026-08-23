@@ -1,0 +1,6502 @@
+openapi: 3.0.3
+info:
+  title: AcademiAI API
+  version: 1.0.0
+  description: Multi-tenant academic AI platform API
+paths:
+  /api/v1/academic-sessions/:
+    get:
+      operationId: v1_academic_sessions_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAcademicSessionList'
+          description: ''
+    post:
+      operationId: v1_academic_sessions_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcademicSessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AcademicSessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AcademicSessionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicSession'
+          description: ''
+  /api/v1/academic-sessions/{id}/:
+    get:
+      operationId: v1_academic_sessions_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this academic session.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicSession'
+          description: ''
+    put:
+      operationId: v1_academic_sessions_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this academic session.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcademicSessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AcademicSessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AcademicSessionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicSession'
+          description: ''
+    patch:
+      operationId: v1_academic_sessions_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this academic session.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAcademicSessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAcademicSessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAcademicSessionRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademicSession'
+          description: ''
+    delete:
+      operationId: v1_academic_sessions_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this academic session.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/audit-logs/:
+    get:
+      operationId: v1_audit_logs_list
+      parameters:
+      - in: query
+        name: action
+        schema:
+          type: string
+      - in: query
+        name: entity_type
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditLogList'
+          description: ''
+  /api/v1/audit-logs/{id}/:
+    get:
+      operationId: v1_audit_logs_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this audit log.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLog'
+          description: ''
+  /api/v1/auth/login/:
+    post:
+      operationId: v1_auth_login_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/logout/:
+    post:
+      operationId: v1_auth_logout_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/me/:
+    get:
+      operationId: v1_auth_me_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: v1_auth_me_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: v1_auth_me_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/auth/password-change/:
+    post:
+      operationId: v1_auth_password_change_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/password-reset/confirm/:
+    post:
+      operationId: v1_auth_password_reset_confirm_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/password-reset/request/:
+    post:
+      operationId: v1_auth_password_reset_request_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/signup/:
+    post:
+      operationId: v1_auth_signup_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/token/refresh/:
+    post:
+      operationId: v1_auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/auth/users/:
+    get:
+      operationId: v1_auth_users_list
+      description: Tenant-scoped user management (admin).
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserList'
+          description: ''
+  /api/v1/auth/users/{id}/:
+    get:
+      operationId: v1_auth_users_retrieve
+      description: Tenant-scoped user management (admin).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: v1_auth_users_partial_update
+      description: Tenant-scoped user management (admin).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/auth/verify-email/:
+    post:
+      operationId: v1_auth_verify_email_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/bookmarks/:
+    get:
+      operationId: v1_bookmarks_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBookmarkList'
+          description: ''
+    post:
+      operationId: v1_bookmarks_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookmarkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BookmarkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BookmarkRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bookmark'
+          description: ''
+  /api/v1/bookmarks/{id}/:
+    get:
+      operationId: v1_bookmarks_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this bookmark.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bookmark'
+          description: ''
+    put:
+      operationId: v1_bookmarks_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this bookmark.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookmarkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BookmarkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BookmarkRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bookmark'
+          description: ''
+    patch:
+      operationId: v1_bookmarks_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this bookmark.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedBookmarkRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedBookmarkRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedBookmarkRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bookmark'
+          description: ''
+    delete:
+      operationId: v1_bookmarks_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this bookmark.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/chat/messages/:
+    get:
+      operationId: v1_chat_messages_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedChatMessageList'
+          description: ''
+  /api/v1/chat/messages/{id}/:
+    get:
+      operationId: v1_chat_messages_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessage'
+          description: ''
+  /api/v1/chat/sessions/:
+    get:
+      operationId: v1_chat_sessions_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: query
+        name: course_offering
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedChatSessionList'
+          description: ''
+    post:
+      operationId: v1_chat_sessions_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatSessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChatSessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChatSessionRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSession'
+          description: ''
+  /api/v1/chat/sessions/{id}/:
+    get:
+      operationId: v1_chat_sessions_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this chat session.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSession'
+          description: ''
+    put:
+      operationId: v1_chat_sessions_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this chat session.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatSessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChatSessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChatSessionRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSession'
+          description: ''
+    patch:
+      operationId: v1_chat_sessions_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this chat session.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedChatSessionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedChatSessionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedChatSessionRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSession'
+          description: ''
+    delete:
+      operationId: v1_chat_sessions_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this chat session.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/chat/sessions/{session_id}/messages/:
+    post:
+      operationId: v1_chat_sessions_messages_create
+      description: |-
+        POST /api/v1/chat/sessions/{session_id}/messages/
+        Body: { "content": "..." }
+        Runs retrieval + Gemini (sync for MVP; can be moved to Celery for long answers).
+      parameters:
+      - in: path
+        name: session_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/concept-edges/:
+    get:
+      operationId: v1_concept_edges_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: relation_type
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: source_concept
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: target_concept
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedConceptEdgeList'
+          description: ''
+    post:
+      operationId: v1_concept_edges_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConceptEdgeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConceptEdgeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConceptEdgeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConceptEdge'
+          description: ''
+  /api/v1/concept-edges/{id}/:
+    get:
+      operationId: v1_concept_edges_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this concept edge.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConceptEdge'
+          description: ''
+    put:
+      operationId: v1_concept_edges_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this concept edge.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConceptEdgeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConceptEdgeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConceptEdgeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConceptEdge'
+          description: ''
+    patch:
+      operationId: v1_concept_edges_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this concept edge.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedConceptEdgeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedConceptEdgeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedConceptEdgeRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConceptEdge'
+          description: ''
+    delete:
+      operationId: v1_concept_edges_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this concept edge.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/concepts/:
+    get:
+      operationId: v1_concepts_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedConceptList'
+          description: ''
+    post:
+      operationId: v1_concepts_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConceptRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConceptRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConceptRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Concept'
+          description: ''
+  /api/v1/concepts/{id}/:
+    get:
+      operationId: v1_concepts_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this concept.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Concept'
+          description: ''
+    put:
+      operationId: v1_concepts_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this concept.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConceptRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ConceptRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ConceptRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Concept'
+          description: ''
+    patch:
+      operationId: v1_concepts_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this concept.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedConceptRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedConceptRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedConceptRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Concept'
+          description: ''
+    delete:
+      operationId: v1_concepts_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this concept.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/course-enrollments/:
+    get:
+      operationId: v1_course_enrollments_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: query
+        name: course_offering
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - completed
+          - dropped
+          - enrolled
+        description: |-
+          * `enrolled` - Enrolled
+          * `completed` - Completed
+          * `dropped` - Dropped
+      - in: query
+        name: student
+        schema:
+          type: string
+          format: uuid
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCourseEnrollmentList'
+          description: ''
+    post:
+      operationId: v1_course_enrollments_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseEnrollmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourseEnrollmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourseEnrollmentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseEnrollment'
+          description: ''
+  /api/v1/course-enrollments/{id}/:
+    get:
+      operationId: v1_course_enrollments_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this course enrollment.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseEnrollment'
+          description: ''
+    put:
+      operationId: v1_course_enrollments_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this course enrollment.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseEnrollmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourseEnrollmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourseEnrollmentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseEnrollment'
+          description: ''
+    patch:
+      operationId: v1_course_enrollments_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this course enrollment.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseEnrollmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseEnrollmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseEnrollmentRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseEnrollment'
+          description: ''
+    delete:
+      operationId: v1_course_enrollments_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this course enrollment.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/course-offerings/:
+    get:
+      operationId: v1_course_offerings_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: query
+        name: academic_session
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: course
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: semester
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: status
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCourseOfferingList'
+          description: ''
+    post:
+      operationId: v1_course_offerings_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseOfferingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourseOfferingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourseOfferingRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseOffering'
+          description: ''
+  /api/v1/course-offerings/{id}/:
+    get:
+      operationId: v1_course_offerings_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this course offering.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseOffering'
+          description: ''
+    put:
+      operationId: v1_course_offerings_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this course offering.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseOfferingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourseOfferingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourseOfferingRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseOffering'
+          description: ''
+    patch:
+      operationId: v1_course_offerings_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this course offering.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseOfferingRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseOfferingRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseOfferingRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseOffering'
+          description: ''
+    delete:
+      operationId: v1_course_offerings_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this course offering.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/courses/:
+    get:
+      operationId: v1_courses_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: query
+        name: department
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCourseList'
+          description: ''
+    post:
+      operationId: v1_courses_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourseRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+          description: ''
+  /api/v1/courses/{id}/:
+    get:
+      operationId: v1_courses_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this course.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+          description: ''
+    put:
+      operationId: v1_courses_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this course.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CourseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CourseRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+          description: ''
+    patch:
+      operationId: v1_courses_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this course.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCourseRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+          description: ''
+    delete:
+      operationId: v1_courses_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this course.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/departments/:
+    get:
+      operationId: v1_departments_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: query
+        name: faculty
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDepartmentList'
+          description: ''
+    post:
+      operationId: v1_departments_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DepartmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DepartmentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+          description: ''
+  /api/v1/departments/{id}/:
+    get:
+      operationId: v1_departments_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this department.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+          description: ''
+    put:
+      operationId: v1_departments_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this department.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DepartmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DepartmentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+          description: ''
+    patch:
+      operationId: v1_departments_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this department.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDepartmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDepartmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDepartmentRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+          description: ''
+    delete:
+      operationId: v1_departments_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this department.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/faculties/:
+    get:
+      operationId: v1_faculties_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: query
+        name: code
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedFacultyList'
+          description: ''
+    post:
+      operationId: v1_faculties_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacultyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FacultyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FacultyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Faculty'
+          description: ''
+  /api/v1/faculties/{id}/:
+    get:
+      operationId: v1_faculties_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this faculty.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Faculty'
+          description: ''
+    put:
+      operationId: v1_faculties_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this faculty.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FacultyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/FacultyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/FacultyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Faculty'
+          description: ''
+    patch:
+      operationId: v1_faculties_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this faculty.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedFacultyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedFacultyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedFacultyRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Faculty'
+          description: ''
+    delete:
+      operationId: v1_faculties_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this faculty.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/health/:
+    get:
+      operationId: v1_health_retrieve
+      description: GET /api/v1/health/ — public liveness.
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/jobs/{job_id}/:
+    get:
+      operationId: v1_jobs_retrieve
+      description: GET /api/v1/jobs/{job_id}/ — poll Celery task status.
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/lecturer-assignments/:
+    get:
+      operationId: v1_lecturer_assignments_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: query
+        name: course_offering
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: lecturer
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLecturerAssignmentList'
+          description: ''
+    post:
+      operationId: v1_lecturer_assignments_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LecturerAssignmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LecturerAssignmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LecturerAssignmentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LecturerAssignment'
+          description: ''
+  /api/v1/lecturer-assignments/{id}/:
+    get:
+      operationId: v1_lecturer_assignments_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this lecturer course assignment.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LecturerAssignment'
+          description: ''
+    put:
+      operationId: v1_lecturer_assignments_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this lecturer course assignment.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LecturerAssignmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LecturerAssignmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LecturerAssignmentRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LecturerAssignment'
+          description: ''
+    patch:
+      operationId: v1_lecturer_assignments_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this lecturer course assignment.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedLecturerAssignmentRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedLecturerAssignmentRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedLecturerAssignmentRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LecturerAssignment'
+          description: ''
+    delete:
+      operationId: v1_lecturer_assignments_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this lecturer course assignment.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/notes/:
+    get:
+      operationId: v1_notes_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNoteList'
+          description: ''
+    post:
+      operationId: v1_notes_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NoteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NoteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+          description: ''
+  /api/v1/notes/{id}/:
+    get:
+      operationId: v1_notes_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this note.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+          description: ''
+    put:
+      operationId: v1_notes_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this note.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NoteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NoteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+          description: ''
+    patch:
+      operationId: v1_notes_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this note.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNoteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedNoteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedNoteRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+          description: ''
+    delete:
+      operationId: v1_notes_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this note.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/programmes/:
+    get:
+      operationId: v1_programmes_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: query
+        name: department
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProgrammeList'
+          description: ''
+    post:
+      operationId: v1_programmes_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgrammeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProgrammeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProgrammeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Programme'
+          description: ''
+  /api/v1/programmes/{id}/:
+    get:
+      operationId: v1_programmes_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this programme.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Programme'
+          description: ''
+    put:
+      operationId: v1_programmes_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this programme.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgrammeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProgrammeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProgrammeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Programme'
+          description: ''
+    patch:
+      operationId: v1_programmes_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this programme.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProgrammeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProgrammeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProgrammeRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Programme'
+          description: ''
+    delete:
+      operationId: v1_programmes_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this programme.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/progress/:
+    get:
+      operationId: v1_progress_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProgressRecordList'
+          description: ''
+    post:
+      operationId: v1_progress_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgressRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProgressRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProgressRecordRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressRecord'
+          description: ''
+  /api/v1/progress/{id}/:
+    get:
+      operationId: v1_progress_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this progress record.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressRecord'
+          description: ''
+    put:
+      operationId: v1_progress_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this progress record.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgressRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProgressRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProgressRecordRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressRecord'
+          description: ''
+    patch:
+      operationId: v1_progress_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this progress record.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProgressRecordRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedProgressRecordRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedProgressRecordRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressRecord'
+          description: ''
+    delete:
+      operationId: v1_progress_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this progress record.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/quiz-attempts/:
+    get:
+      operationId: v1_quiz_attempts_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQuizAttemptList'
+          description: ''
+    post:
+      operationId: v1_quiz_attempts_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizAttemptRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizAttemptRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizAttemptRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizAttempt'
+          description: ''
+  /api/v1/quiz-attempts/{id}/:
+    get:
+      operationId: v1_quiz_attempts_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this quiz attempt.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizAttempt'
+          description: ''
+  /api/v1/quiz-attempts/{id}/submit/:
+    post:
+      operationId: v1_quiz_attempts_submit_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this quiz attempt.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizAttemptRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizAttemptRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizAttemptRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizAttempt'
+          description: ''
+  /api/v1/quiz-questions/:
+    get:
+      operationId: v1_quiz_questions_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: quiz
+        schema:
+          type: string
+          format: uuid
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQuizQuestionList'
+          description: ''
+    post:
+      operationId: v1_quiz_questions_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizQuestion'
+          description: ''
+  /api/v1/quiz-questions/{id}/:
+    get:
+      operationId: v1_quiz_questions_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this quiz question.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizQuestion'
+          description: ''
+    put:
+      operationId: v1_quiz_questions_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this quiz question.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizQuestionRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizQuestion'
+          description: ''
+    patch:
+      operationId: v1_quiz_questions_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this quiz question.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedQuizQuestionRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedQuizQuestionRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedQuizQuestionRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizQuestion'
+          description: ''
+    delete:
+      operationId: v1_quiz_questions_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this quiz question.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/quizzes/:
+    get:
+      operationId: v1_quizzes_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: query
+        name: course_offering
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - archived
+          - draft
+          - published
+        description: |-
+          * `draft` - Draft
+          * `published` - Published
+          * `archived` - Archived
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedQuizList'
+          description: ''
+    post:
+      operationId: v1_quizzes_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+          description: ''
+  /api/v1/quizzes/{id}/:
+    get:
+      operationId: v1_quizzes_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this quiz.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+          description: ''
+    put:
+      operationId: v1_quizzes_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this quiz.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+          description: ''
+    patch:
+      operationId: v1_quizzes_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this quiz.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedQuizRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedQuizRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedQuizRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+          description: ''
+    delete:
+      operationId: v1_quizzes_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this quiz.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/quizzes/generate/:
+    post:
+      operationId: v1_quizzes_generate_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+          description: ''
+  /api/v1/resources/:
+    get:
+      operationId: v1_resources_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: query
+        name: course_offering
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: processing_status
+        schema:
+          type: string
+          enum:
+          - failed
+          - pending
+          - processing
+          - ready
+        description: |-
+          * `pending` - Pending
+          * `processing` - Processing
+          * `ready` - Ready
+          * `failed` - Failed
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: visibility_scope
+        schema:
+          type: string
+          enum:
+          - course
+          - department
+          - faculty
+          - institution
+          - private
+          - programme
+        description: |-
+          * `private` - Private
+          * `course` - Course
+          * `programme` - Programme
+          * `department` - Department
+          * `faculty` - Faculty
+          * `institution` - Institution
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResourceList'
+          description: ''
+    post:
+      operationId: v1_resources_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+          description: ''
+  /api/v1/resources/{id}/:
+    get:
+      operationId: v1_resources_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resource.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+          description: ''
+    put:
+      operationId: v1_resources_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resource.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+          description: ''
+    patch:
+      operationId: v1_resources_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resource.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedResourceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedResourceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedResourceRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+          description: ''
+    delete:
+      operationId: v1_resources_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resource.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/resources/{id}/complete_upload/:
+    post:
+      operationId: v1_resources_complete_upload_create
+      description: Mark version + kick off ingestion after client PUT to presigned
+        URL.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resource.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+          description: ''
+  /api/v1/resources/{id}/download_url/:
+    get:
+      operationId: v1_resources_download_url_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resource.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+          description: ''
+  /api/v1/resources/{id}/request_upload_url/:
+    post:
+      operationId: v1_resources_request_upload_url_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resource.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+          description: ''
+  /api/v1/resources/{id}/summarize/:
+    post:
+      operationId: v1_resources_summarize_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this resource.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResourceRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+          description: ''
+  /api/v1/semesters/:
+    get:
+      operationId: v1_semesters_list
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: query
+        name: academic_session
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSemesterList'
+          description: ''
+    post:
+      operationId: v1_semesters_create
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SemesterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SemesterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SemesterRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Semester'
+          description: ''
+  /api/v1/semesters/{id}/:
+    get:
+      operationId: v1_semesters_retrieve
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this semester.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Semester'
+          description: ''
+    put:
+      operationId: v1_semesters_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this semester.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SemesterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SemesterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SemesterRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Semester'
+          description: ''
+    patch:
+      operationId: v1_semesters_partial_update
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this semester.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSemesterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSemesterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSemesterRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Semester'
+          description: ''
+    delete:
+      operationId: v1_semesters_destroy
+      description: |-
+        Automatically scopes queryset to request.user.tenant
+        and enforces object-level tenant match.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this semester.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/tenants/:
+    get:
+      operationId: v1_tenants_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTenantList'
+          description: ''
+    post:
+      operationId: v1_tenants_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TenantRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TenantRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+          description: ''
+  /api/v1/tenants/{id}/:
+    get:
+      operationId: v1_tenants_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this tenant.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+          description: ''
+    put:
+      operationId: v1_tenants_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this tenant.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TenantRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TenantRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TenantRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+          description: ''
+    patch:
+      operationId: v1_tenants_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this tenant.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTenantRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTenantRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTenantRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+          description: ''
+    delete:
+      operationId: v1_tenants_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this tenant.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    AcademicSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        is_current:
+          type: boolean
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - end_date
+      - id
+      - name
+      - start_date
+      - tenant
+    AcademicSessionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        is_current:
+          type: boolean
+      required:
+      - end_date
+      - name
+      - start_date
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        actor:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        action:
+          type: string
+          readOnly: true
+        entity_type:
+          type: string
+          readOnly: true
+        entity_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        metadata:
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+      required:
+      - action
+      - actor
+      - created_at
+      - entity_id
+      - entity_type
+      - id
+      - metadata
+      - tenant
+    Bookmark:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        resource:
+          type: string
+          format: uuid
+        user:
+          type: string
+          format: uuid
+          readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - resource
+      - tenant
+      - user
+    BookmarkRequest:
+      type: object
+      properties:
+        resource:
+          type: string
+          format: uuid
+      required:
+      - resource
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        session:
+          type: string
+          format: uuid
+        role:
+          allOf:
+          - $ref: '#/components/schemas/ChatMessageRoleEnum'
+          readOnly: true
+        content:
+          type: string
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessageSource'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content
+      - created_at
+      - id
+      - role
+      - session
+      - sources
+    ChatMessageRoleEnum:
+      enum:
+      - user
+      - assistant
+      - system
+      type: string
+      description: |-
+        * `user` - User
+        * `assistant` - Assistant
+        * `system` - System
+    ChatMessageSource:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        chunk:
+          type: string
+          format: uuid
+          readOnly: true
+        rank:
+          type: integer
+          readOnly: true
+        similarity_score:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        retrieval_method:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - chunk
+      - created_at
+      - id
+      - rank
+      - retrieval_method
+      - similarity_score
+    ChatSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        course_offering:
+          type: string
+          format: uuid
+          nullable: true
+        user:
+          type: string
+          format: uuid
+          readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - tenant
+      - updated_at
+      - user
+    ChatSessionRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        course_offering:
+          type: string
+          format: uuid
+          nullable: true
+    Concept:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        canonical_name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - canonical_name
+      - created_at
+      - id
+      - tenant
+    ConceptEdge:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        source_concept:
+          type: string
+          format: uuid
+        target_concept:
+          type: string
+          format: uuid
+        relation_type:
+          type: string
+          maxLength: 50
+        weight:
+          type: number
+          format: double
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - relation_type
+      - source_concept
+      - target_concept
+      - tenant
+    ConceptEdgeRequest:
+      type: object
+      properties:
+        source_concept:
+          type: string
+          format: uuid
+        target_concept:
+          type: string
+          format: uuid
+        relation_type:
+          type: string
+          minLength: 1
+          maxLength: 50
+        weight:
+          type: number
+          format: double
+      required:
+      - relation_type
+      - source_concept
+      - target_concept
+    ConceptRequest:
+      type: object
+      properties:
+        canonical_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+      required:
+      - canonical_name
+    Course:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        department:
+          type: string
+          format: uuid
+        code:
+          type: string
+          maxLength: 50
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        credit_unit:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        status:
+          type: string
+          maxLength: 20
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - department
+      - id
+      - tenant
+      - title
+      - updated_at
+    CourseEnrollment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        course_offering:
+          type: string
+          format: uuid
+        student:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/CourseEnrollmentStatusEnum'
+        enrolled_at:
+          type: string
+          format: date-time
+          readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - course_offering
+      - created_at
+      - enrolled_at
+      - id
+      - student
+      - tenant
+    CourseEnrollmentRequest:
+      type: object
+      properties:
+        course_offering:
+          type: string
+          format: uuid
+        student:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/CourseEnrollmentStatusEnum'
+      required:
+      - course_offering
+      - student
+    CourseEnrollmentStatusEnum:
+      enum:
+      - enrolled
+      - completed
+      - dropped
+      type: string
+      description: |-
+        * `enrolled` - Enrolled
+        * `completed` - Completed
+        * `dropped` - Dropped
+    CourseOffering:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        course:
+          type: string
+          format: uuid
+        course_code:
+          type: string
+          readOnly: true
+        course_title:
+          type: string
+          readOnly: true
+        academic_session:
+          type: string
+          format: uuid
+        semester:
+          type: string
+          format: uuid
+        status:
+          type: string
+          maxLength: 20
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - academic_session
+      - course
+      - course_code
+      - course_title
+      - created_at
+      - id
+      - semester
+      - tenant
+    CourseOfferingRequest:
+      type: object
+      properties:
+        course:
+          type: string
+          format: uuid
+        academic_session:
+          type: string
+          format: uuid
+        semester:
+          type: string
+          format: uuid
+        status:
+          type: string
+          minLength: 1
+          maxLength: 20
+      required:
+      - academic_session
+      - course
+      - semester
+    CourseRequest:
+      type: object
+      properties:
+        department:
+          type: string
+          format: uuid
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        credit_unit:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        status:
+          type: string
+          minLength: 1
+          maxLength: 20
+      required:
+      - code
+      - department
+      - title
+    Department:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        faculty:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 255
+        code:
+          type: string
+          maxLength: 50
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - faculty
+      - id
+      - name
+      - tenant
+      - updated_at
+    DepartmentRequest:
+      type: object
+      properties:
+        faculty:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required:
+      - code
+      - faculty
+      - name
+    Faculty:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        code:
+          type: string
+          maxLength: 50
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - id
+      - name
+      - tenant
+      - updated_at
+    FacultyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required:
+      - code
+      - name
+    LecturerAssignment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        course_offering:
+          type: string
+          format: uuid
+        lecturer:
+          type: string
+          format: uuid
+        assignment_role:
+          type: string
+          maxLength: 50
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - course_offering
+      - created_at
+      - id
+      - lecturer
+      - tenant
+    LecturerAssignmentRequest:
+      type: object
+      properties:
+        course_offering:
+          type: string
+          format: uuid
+        lecturer:
+          type: string
+          format: uuid
+        assignment_role:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required:
+      - course_offering
+      - lecturer
+    Note:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        content:
+          type: string
+        resource:
+          type: string
+          format: uuid
+          nullable: true
+        user:
+          type: string
+          format: uuid
+          readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content
+      - created_at
+      - id
+      - tenant
+      - title
+      - updated_at
+      - user
+    NoteRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        content:
+          type: string
+          minLength: 1
+        resource:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - content
+      - title
+    PaginatedAcademicSessionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcademicSession'
+    PaginatedAuditLogList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+    PaginatedBookmarkList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bookmark'
+    PaginatedChatMessageList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+    PaginatedChatSessionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatSession'
+    PaginatedConceptEdgeList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConceptEdge'
+    PaginatedConceptList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Concept'
+    PaginatedCourseEnrollmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseEnrollment'
+    PaginatedCourseList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Course'
+    PaginatedCourseOfferingList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CourseOffering'
+    PaginatedDepartmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Department'
+    PaginatedFacultyList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Faculty'
+    PaginatedLecturerAssignmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/LecturerAssignment'
+    PaginatedNoteList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Note'
+    PaginatedProgrammeList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Programme'
+    PaginatedProgressRecordList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProgressRecord'
+    PaginatedQuizAttemptList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuizAttempt'
+    PaginatedQuizList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Quiz'
+    PaginatedQuizQuestionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuizQuestion'
+    PaginatedResourceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Resource'
+    PaginatedSemesterList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Semester'
+    PaginatedTenantList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tenant'
+    PaginatedUserList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    PatchedAcademicSessionRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        is_current:
+          type: boolean
+    PatchedBookmarkRequest:
+      type: object
+      properties:
+        resource:
+          type: string
+          format: uuid
+    PatchedChatSessionRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        course_offering:
+          type: string
+          format: uuid
+          nullable: true
+    PatchedConceptEdgeRequest:
+      type: object
+      properties:
+        source_concept:
+          type: string
+          format: uuid
+        target_concept:
+          type: string
+          format: uuid
+        relation_type:
+          type: string
+          minLength: 1
+          maxLength: 50
+        weight:
+          type: number
+          format: double
+    PatchedConceptRequest:
+      type: object
+      properties:
+        canonical_name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+    PatchedCourseEnrollmentRequest:
+      type: object
+      properties:
+        course_offering:
+          type: string
+          format: uuid
+        student:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/CourseEnrollmentStatusEnum'
+    PatchedCourseOfferingRequest:
+      type: object
+      properties:
+        course:
+          type: string
+          format: uuid
+        academic_session:
+          type: string
+          format: uuid
+        semester:
+          type: string
+          format: uuid
+        status:
+          type: string
+          minLength: 1
+          maxLength: 20
+    PatchedCourseRequest:
+      type: object
+      properties:
+        department:
+          type: string
+          format: uuid
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        credit_unit:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        status:
+          type: string
+          minLength: 1
+          maxLength: 20
+    PatchedDepartmentRequest:
+      type: object
+      properties:
+        faculty:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+    PatchedFacultyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+    PatchedLecturerAssignmentRequest:
+      type: object
+      properties:
+        course_offering:
+          type: string
+          format: uuid
+        lecturer:
+          type: string
+          format: uuid
+        assignment_role:
+          type: string
+          minLength: 1
+          maxLength: 50
+    PatchedNoteRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        content:
+          type: string
+          minLength: 1
+        resource:
+          type: string
+          format: uuid
+          nullable: true
+    PatchedProgrammeRequest:
+      type: object
+      properties:
+        department:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+        degree_type:
+          type: string
+          maxLength: 50
+        duration_years:
+          type: integer
+          maximum: 32767
+          minimum: 0
+    PatchedProgressRecordRequest:
+      type: object
+      properties:
+        concept:
+          type: string
+          format: uuid
+        progress_value:
+          type: number
+          format: double
+    PatchedQuizQuestionRequest:
+      type: object
+      properties:
+        quiz:
+          type: string
+          format: uuid
+        question_text:
+          type: string
+          minLength: 1
+        question_type:
+          $ref: '#/components/schemas/QuestionTypeEnum'
+        options: {}
+        correct_answer: {}
+        explanation:
+          type: string
+        order_index:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+    PatchedQuizRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/QuizStatusEnum'
+        course_offering:
+          type: string
+          format: uuid
+          nullable: true
+    PatchedResourceRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+        visibility_scope:
+          $ref: '#/components/schemas/VisibilityScopeEnum'
+        mime_type:
+          type: string
+          maxLength: 128
+        course_offering:
+          type: string
+          format: uuid
+          nullable: true
+        programme:
+          type: string
+          format: uuid
+          nullable: true
+        department:
+          type: string
+          format: uuid
+          nullable: true
+        faculty:
+          type: string
+          format: uuid
+          nullable: true
+    PatchedSemesterRequest:
+      type: object
+      properties:
+        academic_session:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+    PatchedTenantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+        domain:
+          type: string
+          nullable: true
+          maxLength: 255
+        status:
+          $ref: '#/components/schemas/TenantStatusEnum'
+        plan:
+          type: string
+          minLength: 1
+          maxLength: 50
+        storage_quota_bytes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+    PatchedUserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        role:
+          $ref: '#/components/schemas/UserRoleEnum'
+    ProcessingStatusEnum:
+      enum:
+      - pending
+      - processing
+      - ready
+      - failed
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `processing` - Processing
+        * `ready` - Ready
+        * `failed` - Failed
+    Programme:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        department:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 255
+        code:
+          type: string
+          maxLength: 50
+        degree_type:
+          type: string
+          maxLength: 50
+        duration_years:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - department
+      - id
+      - name
+      - tenant
+      - updated_at
+    ProgrammeRequest:
+      type: object
+      properties:
+        department:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+        degree_type:
+          type: string
+          maxLength: 50
+        duration_years:
+          type: integer
+          maximum: 32767
+          minimum: 0
+      required:
+      - code
+      - department
+      - name
+    ProgressRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        concept:
+          type: string
+          format: uuid
+        progress_value:
+          type: number
+          format: double
+        last_seen_at:
+          type: string
+          format: date-time
+          readOnly: true
+        user:
+          type: string
+          format: uuid
+          readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+      required:
+      - concept
+      - id
+      - last_seen_at
+      - tenant
+      - user
+    ProgressRecordRequest:
+      type: object
+      properties:
+        concept:
+          type: string
+          format: uuid
+        progress_value:
+          type: number
+          format: double
+      required:
+      - concept
+    QuestionTypeEnum:
+      enum:
+      - multiple_choice
+      - true_false
+      - short_answer
+      type: string
+      description: |-
+        * `multiple_choice` - Multiple Choice
+        * `true_false` - True/False
+        * `short_answer` - Short Answer
+    Quiz:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/QuizStatusEnum'
+        course_offering:
+          type: string
+          format: uuid
+          nullable: true
+        created_by:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        generation_job_id:
+          type: string
+          readOnly: true
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuizQuestion'
+          readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - created_by
+      - generation_job_id
+      - id
+      - questions
+      - tenant
+      - title
+    QuizAttempt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        quiz:
+          type: string
+          format: uuid
+        student:
+          type: string
+          format: uuid
+          readOnly: true
+        score:
+          type: number
+          format: double
+          readOnly: true
+          nullable: true
+        answers: {}
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+        submitted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+      required:
+      - id
+      - quiz
+      - score
+      - started_at
+      - student
+      - submitted_at
+      - tenant
+    QuizAttemptRequest:
+      type: object
+      properties:
+        quiz:
+          type: string
+          format: uuid
+        answers: {}
+      required:
+      - quiz
+    QuizQuestion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        quiz:
+          type: string
+          format: uuid
+        question_text:
+          type: string
+        question_type:
+          $ref: '#/components/schemas/QuestionTypeEnum'
+        options: {}
+        correct_answer: {}
+        explanation:
+          type: string
+        order_index:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - id
+      - question_text
+      - quiz
+    QuizQuestionRequest:
+      type: object
+      properties:
+        quiz:
+          type: string
+          format: uuid
+        question_text:
+          type: string
+          minLength: 1
+        question_type:
+          $ref: '#/components/schemas/QuestionTypeEnum'
+        options: {}
+        correct_answer: {}
+        explanation:
+          type: string
+        order_index:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+      required:
+      - question_text
+      - quiz
+    QuizRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/QuizStatusEnum'
+        course_offering:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - title
+    QuizStatusEnum:
+      enum:
+      - draft
+      - published
+      - archived
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `published` - Published
+        * `archived` - Archived
+    Resource:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 500
+        description:
+          type: string
+        visibility_scope:
+          $ref: '#/components/schemas/VisibilityScopeEnum'
+        mime_type:
+          type: string
+          maxLength: 128
+        storage_key:
+          type: string
+          readOnly: true
+        processing_status:
+          allOf:
+          - $ref: '#/components/schemas/ProcessingStatusEnum'
+          readOnly: true
+        processing_error:
+          type: string
+          readOnly: true
+        course_offering:
+          type: string
+          format: uuid
+          nullable: true
+        programme:
+          type: string
+          format: uuid
+          nullable: true
+        department:
+          type: string
+          format: uuid
+          nullable: true
+        faculty:
+          type: string
+          format: uuid
+          nullable: true
+        uploaded_by:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - processing_error
+      - processing_status
+      - storage_key
+      - tenant
+      - title
+      - updated_at
+      - uploaded_by
+    ResourceRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+        visibility_scope:
+          $ref: '#/components/schemas/VisibilityScopeEnum'
+        mime_type:
+          type: string
+          maxLength: 128
+        course_offering:
+          type: string
+          format: uuid
+          nullable: true
+        programme:
+          type: string
+          format: uuid
+          nullable: true
+        department:
+          type: string
+          format: uuid
+          nullable: true
+        faculty:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+      - title
+    Semester:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        academic_session:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 50
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - academic_session
+      - created_at
+      - end_date
+      - id
+      - name
+      - start_date
+      - tenant
+    SemesterRequest:
+      type: object
+      properties:
+        academic_session:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+      required:
+      - academic_session
+      - end_date
+      - name
+      - start_date
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+        domain:
+          type: string
+          nullable: true
+          maxLength: 255
+        status:
+          $ref: '#/components/schemas/TenantStatusEnum'
+        plan:
+          type: string
+          maxLength: 50
+        storage_quota_bytes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - name
+      - slug
+      - updated_at
+    TenantRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: ^[-a-zA-Z0-9_]+$
+        domain:
+          type: string
+          nullable: true
+          maxLength: 255
+        status:
+          $ref: '#/components/schemas/TenantStatusEnum'
+        plan:
+          type: string
+          minLength: 1
+          maxLength: 50
+        storage_quota_bytes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: -9223372036854775808
+          format: int64
+      required:
+      - name
+      - slug
+    TenantStatusEnum:
+      enum:
+      - active
+      - suspended
+      - pending
+      type: string
+      description: |-
+        * `active` - Active
+        * `suspended` - Suspended
+        * `pending` - Pending
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        full_name:
+          type: string
+          readOnly: true
+        role:
+          $ref: '#/components/schemas/UserRoleEnum'
+        is_email_verified:
+          type: boolean
+          readOnly: true
+        tenant:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - email
+      - full_name
+      - id
+      - is_email_verified
+      - tenant
+    UserRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        role:
+          $ref: '#/components/schemas/UserRoleEnum'
+      required:
+      - email
+    UserRoleEnum:
+      enum:
+      - student
+      - lecturer
+      - admin
+      type: string
+      description: |-
+        * `student` - Student
+        * `lecturer` - Lecturer
+        * `admin` - Admin
+    VisibilityScopeEnum:
+      enum:
+      - private
+      - course
+      - programme
+      - department
+      - faculty
+      - institution
+      type: string
+      description: |-
+        * `private` - Private
+        * `course` - Course
+        * `programme` - Programme
+        * `department` - Department
+        * `faculty` - Faculty
+        * `institution` - Institution
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

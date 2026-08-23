@@ -1,12 +1,12 @@
-import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 const nav = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/courses", label: "Courses" },
-  { to: "/resources", label: "Resources" },
-  { to: "/chat", label: "AI Chat" },
-  { to: "/quizzes", label: "Quizzes" },
+  { to: '/dashboard', label: 'Dashboard' },
+  { to: '/courses', label: 'Courses' },
+  { to: '/resources', label: 'Resources' },
+  { to: '/chat', label: 'AI Chat' },
+  { to: '/quizzes', label: 'Quizzes' },
 ];
 
 export default function AppShell({ title, children }) {
@@ -28,8 +28,8 @@ export default function AppShell({ title, children }) {
                   to={n.to}
                   className={`text-sm px-3 py-1.5 rounded-lg ${
                     loc.pathname.startsWith(n.to)
-                      ? "bg-indigo-50 text-indigo-700 font-medium"
-                      : "text-slate-600 hover:bg-slate-50"
+                      ? 'bg-indigo-50 text-indigo-700 font-medium'
+                      : 'text-slate-600 hover:bg-slate-50'
                   }`}
                 >
                   {n.label}
@@ -52,7 +52,11 @@ export default function AppShell({ title, children }) {
         </div>
       </header>
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
-        {title && <h1 className="text-2xl font-semibold text-slate-900 mb-4">{title}</h1>}
+        {title && (
+          <h1 className="text-2xl font-semibold text-slate-900 mb-4">
+            {title}
+          </h1>
+        )}
         {children}
       </main>
     </div>

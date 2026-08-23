@@ -1,0 +1,57 @@
+# Version Control
+
+.git
+.gitignore
+.gitattributes
+
+# Python Virtual Environments
+
+.venv
+venv
+ENV
+env
+\*.venv
+
+# Python Bytecode and Caching
+
+**pycache**/
+_.pyc
+_.pyo
+\*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Local Databases (Crucial to prevent overwriting container DBs)
+
+_.sqlite3
+_.db
+
+# Django Specific Media & Static (Optional: omit if you want to copy local assets)
+
+media/
+
+# static/
+
+# Environments and Secrets
+
+.env
+.env.\*
+\*.local
+secrets.json
+
+# Docker Configuration Logs & Files
+
+.dockerignore
+Dockerfile
+docker-compose\*.yml
+.docker
+
+# OS and IDE files
+
+.DS_Store
+.vscode/
+.idea/
+_.swp
+_.bak

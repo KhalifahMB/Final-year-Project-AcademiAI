@@ -1,4 +1,4 @@
-import { useToast } from "@/registry/new-york/hooks/use-toast"
+import { useToast } from '@/registry/new-york/hooks/use-toast';
 import {
   Toast,
   ToastClose,
@@ -6,10 +6,10 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "@/registry/new-york/ui/toast"
+} from '@/registry/new-york/ui/toast';
 
 export function Toaster() {
-  const { toasts } = useToast()
+  const { toasts } = useToast();
 
   return (
     <ToastProvider>
@@ -25,9 +25,9 @@ export function Toaster() {
             {action}
             <ToastClose />
           </Toast>
-        )
+        );
       })}
       <ToastViewport />
     </ToastProvider>
-  )
+  );
 }

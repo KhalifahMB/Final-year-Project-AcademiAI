@@ -6,11 +6,11 @@ services:
       POSTGRES_USER: academiai
       POSTGRES_PASSWORD: academiai
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U academiai -d academiai"]
+      test: ['CMD-SHELL', 'pg_isready -U academiai -d academiai']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -18,9 +18,9 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - '6379:6379'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 10
@@ -31,10 +31,10 @@ services:
       RABBITMQ_DEFAULT_USER: academiai
       RABBITMQ_DEFAULT_PASS: academiai
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - '5672:5672'
+      - '15672:15672'
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
       interval: 10s
       timeout: 5s
       retries: 10
@@ -46,12 +46,12 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - '9000:9000'
+      - '9001:9001'
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -69,32 +69,39 @@ services:
       exit 0;
       "
 
-volumes:
-  postgres_data:
-  minio_data:
-
-  # Application services (optional — use when ready to containerize the app)
+  # MOVED OUT OF THE VOLUMES BLOCK AND BACK INTO SERVICES
   backend:
     build: ./backend
-    profiles: ["app"]
+    profiles: ['app']
     env_file: .env
     ports:
-      - "8000:8000"
+      - '8000:8000'
     depends_on:
-      - postgres
-      - redis
-      - rabbitmq
-      - minio
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     command: >
       sh -c "python manage.py migrate &&
              python manage.py runserver 0.0.0.0:8000"
 
   worker:
     build: ./backend
-    profiles: ["app"]
+    profiles: ['app']
     env_file: .env
     depends_on:
-      - postgres
-      - redis
-      - rabbitmq
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     command: celery -A config worker -l info -Q ai,ingestion,email,celery
+
+volumes:
+  postgres_data:
+  minio_data:
