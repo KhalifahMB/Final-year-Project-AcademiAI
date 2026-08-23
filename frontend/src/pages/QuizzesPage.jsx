@@ -1,17 +1,19 @@
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
-import { useState } from "react";
+import { toast } from "sonner";
 
 export default function QuizzesPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [msg, setMsg] = useState("");
   const { data, isLoading, error } = useQuery({
     queryKey: ["quizzes"],
     queryFn: async () => {
@@ -19,14 +21,17 @@ export default function QuizzesPage() {
       return data.results || data;
     },
   });
+
   const gen = useMutation({
-    mutationFn: () => api.post("/quizzes/generate/", { num_questions: 5, title: "Practice quiz" }),
+    mutationFn: () =>
+      api.post("/quizzes/generate/", { num_questions: 5, title: "Practice quiz" }),
     onSuccess: (res) => {
-      setMsg(`Job queued: ${res.data.job_id}`);
+      toast.success(`Quiz job queued: ${res.data.job_id}`);
       qc.invalidateQueries({ queryKey: ["quizzes"] });
     },
-    onError: () => setMsg("Generate failed (lecturer/admin only)"),
+    onError: () => toast.error("Generate failed (lecturer/admin only)"),
   });
+
   return (
     <AppShell title="Quizzes">
       {(user?.role === "lecturer" || user?.role === "admin") && (
@@ -34,20 +39,49 @@ export default function QuizzesPage() {
           <Button type="button" onClick={() => gen.mutate()} disabled={gen.isPending}>
             {gen.isPending ? "Queuing…" : "Generate quiz (AI)"}
           </Button>
-          {msg && <p className="mt-2 text-sm text-muted-foreground">{msg}</p>}
         </div>
       )}
-      {error && <Alert variant="destructive" className="mb-4"><AlertDescription>Failed to load quizzes</AlertDescription></Alert>}
-      {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : (
-        <ul className="space-y-2">
-          {(data || []).map((q) => (
-            <Card key={q.id}><CardContent className="py-4 flex justify-between items-center">
-              <span className="font-medium">{q.title}</span>
-              <Badge variant="secondary">{q.status}</Badge>
-            </CardContent></Card>
-          ))}
-          {(data || []).length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No quizzes yet.</p>}
-        </ul>
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>Failed to load quizzes</AlertDescription>
+        </Alert>
+      )}
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : (
+        <div className="rounded-md border bg-background">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(data || []).map((q) => (
+                <TableRow key={q.id}>
+                  <TableCell className="font-medium">{q.title}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{q.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Link to={`/quizzes/${q.id}/take`} className="text-sm text-primary hover:underline">
+                      Take quiz
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {(data || []).length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">
+                    No quizzes yet.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </AppShell>
   );

@@ -1,30 +1,24 @@
-import { useQuery } from "@tanstack/react-query";
-import api from "@/services/api";
-import AppShell from "@/components/layout/AppShell";
-import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import AdminCrudPage from "@/features/admin/AdminCrudPage";
+import { sessionSchema } from "@/lib/validations";
 
 export default function AdminSessionsPage() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["admin-academic-sessions"],
-    queryFn: async () => {
-      const { data } = await api.get("/academic-sessions/");
-      return data.results || data;
-    },
-  });
   return (
-    <AppShell title="Sessions">
-      {error && <Alert variant="destructive" className="mb-4"><AlertDescription>Failed to load</AlertDescription></Alert>}
-      {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : (
-        <ul className="space-y-2">
-          {(data || []).map((item) => (
-            <Card key={item.id}><CardContent className="py-3 text-sm">
-              <pre className="whitespace-pre-wrap text-xs overflow-auto">{JSON.stringify(item, null, 2)}</pre>
-            </CardContent></Card>
-          ))}
-          {(data || []).length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No records.</p>}
-        </ul>
-      )}
-    </AppShell>
+    <AdminCrudPage
+      title="Academic sessions"
+      endpoint="/academic-sessions/"
+      queryKey="academic-sessions"
+      schema={sessionSchema}
+      fields={[
+        { name: "name", label: "Name", type: "text" },
+        { name: "start_date", label: "Start date", type: "date" },
+        { name: "end_date", label: "End date", type: "date" },
+      ]}
+      columns={[
+        { key: "name", label: "Name" },
+        { key: "start_date", label: "Start" },
+        { key: "end_date", label: "End" },
+        { key: "is_current", label: "Current" },
+      ]}
+    />
   );
 }

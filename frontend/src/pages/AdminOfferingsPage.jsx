@@ -1,29 +1,36 @@
-import { useQuery } from "@tanstack/react-query";
-import api from "@/services/api";
-import AppShell from "@/components/layout/AppShell";
-import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import AdminCrudPage from "@/features/admin/AdminCrudPage";
+import { offeringSchema } from "@/lib/validations";
 
 export default function AdminOfferingsPage() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["course-offerings"],
-    queryFn: async () => {
-      const { data } = await api.get("/course-offerings/");
-      return data.results || data;
-    },
-  });
   return (
-    <AppShell title="Course offerings">
-      {error && <Alert variant="destructive" className="mb-4"><AlertDescription>Failed to load</AlertDescription></Alert>}
-      {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : (
-        <ul className="space-y-2">
-          {(data || []).map((o) => (
-            <Card key={o.id}><CardContent className="py-3 text-sm">
-              Offering {o.id?.slice?.(0, 8)}… · course {o.course} · status {o.status}
-            </CardContent></Card>
-          ))}
-        </ul>
-      )}
-    </AppShell>
+    <AdminCrudPage
+      title="Course offerings"
+      endpoint="/course-offerings/"
+      queryKey="course-offerings"
+      schema={offeringSchema}
+      fields={[
+        { name: "course", label: "Course", type: "select", optionsPath: "/courses/" },
+        { name: "academic_session", label: "Session", type: "select", optionsPath: "/academic-sessions/" },
+        { name: "semester", label: "Semester", type: "select", optionsPath: "/semesters/" },
+        {
+          name: "status",
+          label: "Status",
+          type: "select",
+          defaultValue: "active",
+          options: [
+            { value: "planned", label: "planned" },
+            { value: "active", label: "active" },
+            { value: "completed", label: "completed" },
+            { value: "cancelled", label: "cancelled" },
+          ],
+        },
+      ]}
+      columns={[
+        { key: "course", label: "Course" },
+        { key: "academic_session", label: "Session" },
+        { key: "semester", label: "Semester" },
+        { key: "status", label: "Status" },
+      ]}
+    />
   );
 }

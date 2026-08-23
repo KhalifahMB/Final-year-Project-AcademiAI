@@ -23,11 +23,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 
 function useSelectOptions(fields) {
-  const path = fields.find((f) => f.type === "select" && f.optionsPath)?.optionsPath;
-  // Support multiple option paths by fetching faculties/departments commonly used
   const faculties = useQuery({
     queryKey: ["opts", "/faculties/"],
-    queryFn: async () => ((await api.get("/faculties/")).data.results || (await api.get("/faculties/")).data),
+    queryFn: async () => {
+      const { data } = await api.get("/faculties/");
+      return data.results || data;
+    },
     enabled: fields.some((f) => f.optionsPath === "/faculties/"),
   });
   const departments = useQuery({
@@ -38,11 +39,87 @@ function useSelectOptions(fields) {
     },
     enabled: fields.some((f) => f.optionsPath === "/departments/"),
   });
-  const map = {
+  const courses = useQuery({
+    queryKey: ["opts", "/courses/"],
+    queryFn: async () => {
+      const { data } = await api.get("/courses/");
+      return data.results || data;
+    },
+    enabled: fields.some((f) => f.optionsPath === "/courses/"),
+  });
+  const sessions = useQuery({
+    queryKey: ["opts", "/academic-sessions/"],
+    queryFn: async () => {
+      const { data } = await api.get("/academic-sessions/");
+      return data.results || data;
+    },
+    enabled: fields.some((f) => f.optionsPath === "/academic-sessions/"),
+  });
+  const semesters = useQuery({
+    queryKey: ["opts", "/semesters/"],
+    queryFn: async () => {
+      const { data } = await api.get("/semesters/");
+      return data.results || data;
+    },
+    enabled: fields.some((f) => f.optionsPath === "/semesters/"),
+  });
+  const offerings = useQuery({
+    queryKey: ["opts", "/course-offerings/"],
+    queryFn: async () => {
+      const { data } = await api.get("/course-offerings/");
+      return data.results || data;
+    },
+    enabled: fields.some((f) => f.optionsPath === "/course-offerings/"),
+  });
+  const users = useQuery({
+    queryKey: ["opts", "/auth/users/"],
+    queryFn: async () => {
+      const { data } = await api.get("/auth/users/");
+      return data.results || data;
+    },
+    enabled: fields.some((f) => f.optionsPath === "/auth/users/"),
+  });
+  return {
     "/faculties/": faculties.data || [],
     "/departments/": departments.data || [],
+    "/courses/": courses.data || [],
+    "/academic-sessions/": sessions.data || [],
+    "/semesters/": semesters.data || [],
+    "/course-offerings/": offerings.data || [],
+    "/auth/users/": users.data || [],
   };
-  return map;
+}
+
+function FieldInput({ f, field, optionsMap }) {
+  if (f.type === "textarea") return <Textarea {...field} />;
+  if (f.type === "select") {
+    const opts = f.options || optionsMap[f.optionsPath] || [];
+    return (
+      <Select value={field.value || undefined} onValueChange={field.onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder={f.label} />
+        </SelectTrigger>
+        <SelectContent>
+          {opts.map((opt) => {
+            const val = String(opt.id || opt.value);
+            const lab =
+              opt.name ||
+              opt.code ||
+              opt.email ||
+              (opt.code && opt.title ? `${opt.code} — ${opt.title}` : null) ||
+              opt.label ||
+              val;
+            return (
+              <SelectItem key={val} value={val}>
+                {lab}
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+    );
+  }
+  return <Input type={f.type || "text"} {...field} />;
 }
 
 export default function AdminCrudPage({
@@ -55,6 +132,7 @@ export default function AdminCrudPage({
 }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [error, setError] = useState("");
   const optionsMap = useSelectOptions(fields);
 
@@ -71,18 +149,41 @@ export default function AdminCrudPage({
     defaultValues: Object.fromEntries(fields.map((f) => [f.name, f.defaultValue ?? ""])),
   });
 
-  const createMut = useMutation({
-    mutationFn: (payload) => api.post(endpoint, payload),
+  const openCreate = () => {
+    setEditing(null);
+    setError("");
+    form.reset(Object.fromEntries(fields.map((f) => [f.name, f.defaultValue ?? ""])));
+    setOpen(true);
+  };
+
+  const openEdit = (item) => {
+    setEditing(item);
+    setError("");
+    const values = {};
+    fields.forEach((f) => {
+      const v = item[f.name];
+      values[f.name] = v == null ? "" : String(v);
+    });
+    form.reset(values);
+    setOpen(true);
+  };
+
+  const saveMut = useMutation({
+    mutationFn: (payload) =>
+      editing
+        ? api.patch(`${endpoint}${editing.id}/`, payload)
+        : api.post(endpoint, payload),
     onSuccess: () => {
-      toast.success(`${title} created`);
+      toast.success(editing ? "Updated" : "Created");
       setOpen(false);
+      setEditing(null);
       form.reset();
       qc.invalidateQueries({ queryKey: [queryKey] });
     },
     onError: (err) => {
-      const d = err.response?.data?.error?.detail || err.response?.data?.detail || "Create failed";
+      const d = err.response?.data?.error?.detail || err.response?.data?.detail || "Save failed";
       setError(typeof d === "string" ? d : JSON.stringify(d));
-      toast.error("Create failed");
+      toast.error("Save failed");
     },
   });
 
@@ -101,19 +202,19 @@ export default function AdminCrudPage({
     Object.keys(payload).forEach((k) => {
       if (payload[k] === "") delete payload[k];
     });
-    createMut.mutate(payload);
+    saveMut.mutate(payload);
   };
 
   return (
     <AppShell title={title}>
       <div className="mb-4 flex justify-end">
+        <Button type="button" onClick={openCreate}>
+          Create
+        </Button>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button type="button">Create</Button>
-          </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create</DialogTitle>
+              <DialogTitle>{editing ? "Edit" : "Create"}</DialogTitle>
             </DialogHeader>
             {error && (
               <Alert variant="destructive">
@@ -131,28 +232,7 @@ export default function AdminCrudPage({
                       <FormItem>
                         <FormLabel>{f.label}</FormLabel>
                         <FormControl>
-                          {f.type === "textarea" ? (
-                            <Textarea {...field} />
-                          ) : f.type === "select" ? (
-                            <Select value={field.value || undefined} onValueChange={field.onChange}>
-                              <SelectTrigger>
-                                <SelectValue placeholder={f.label} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(f.options || optionsMap[f.optionsPath] || []).map((opt) => {
-                                  const val = String(opt.id || opt.value);
-                                  const lab = opt.name || opt.code || opt.label || val;
-                                  return (
-                                    <SelectItem key={val} value={val}>
-                                      {lab}
-                                    </SelectItem>
-                                  );
-                                })}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <Input type={f.type || "text"} {...field} />
-                          )}
+                          <FieldInput f={f} field={field} optionsMap={optionsMap} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -160,8 +240,8 @@ export default function AdminCrudPage({
                   />
                 ))}
                 <DialogFooter>
-                  <Button type="submit" disabled={createMut.isPending}>
-                    {createMut.isPending ? "Saving…" : "Save"}
+                  <Button type="submit" disabled={saveMut.isPending}>
+                    {saveMut.isPending ? "Saving…" : "Save"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -185,7 +265,7 @@ export default function AdminCrudPage({
                 {columns.map((c) => (
                   <TableHead key={c.key}>{c.label}</TableHead>
                 ))}
-                <TableHead className="w-[80px]">Actions</TableHead>
+                <TableHead className="w-[140px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -194,7 +274,10 @@ export default function AdminCrudPage({
                   {columns.map((c) => (
                     <TableCell key={c.key}>{String(item[c.key] ?? "")}</TableCell>
                   ))}
-                  <TableCell>
+                  <TableCell className="space-x-1">
+                    <Button type="button" variant="outline" size="sm" onClick={() => openEdit(item)}>
+                      Edit
+                    </Button>
                     <Button
                       type="button"
                       variant="ghost"
@@ -211,7 +294,7 @@ export default function AdminCrudPage({
               {(list.data || []).length === 0 && (
                 <TableRow>
                   <TableCell colSpan={columns.length + 1} className="text-center text-muted-foreground">
-                    No records yet. Create one.
+                    No records yet.
                   </TableCell>
                 </TableRow>
               )}

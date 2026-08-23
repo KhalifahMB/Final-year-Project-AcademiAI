@@ -29,6 +29,9 @@ import CourseDetailPage from "@/pages/CourseDetailPage";
 import MyProgrammePage from "@/pages/MyProgrammePage";
 import AssignedCoursesPage from "@/pages/AssignedCoursesPage";
 import UploadResourcePage from "@/pages/UploadResourcePage";
+import QuizTakePage from "@/pages/QuizTakePage";
+import AdminSessionsPage from "@/pages/AdminSessionsPage";
+import AdminSemestersPage from "@/pages/AdminSemestersPage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 30_000 } },
@@ -62,6 +65,9 @@ export default function App() {
           <Route path="/resources/upload" element={<ProtectedRoute roles={["lecturer","admin"]}><UploadResourcePage /></ProtectedRoute>} />
           <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
           <Route path="/quizzes" element={<ProtectedRoute><QuizzesPage /></ProtectedRoute>} />
+          <Route path="/quizzes/:id/take" element={<ProtectedRoute><QuizTakePage /></ProtectedRoute>} />
+          <Route path="/admin/sessions" element={<ProtectedRoute roles={["admin"]}><AdminSessionsPage /></ProtectedRoute>} />
+          <Route path="/admin/semesters" element={<ProtectedRoute roles={["admin"]}><AdminSemestersPage /></ProtectedRoute>} />
           <Route path="/notes" element={<ProtectedRoute><NotesPage /></ProtectedRoute>} />
           <Route path="/bookmarks" element={<ProtectedRoute><BookmarksPage /></ProtectedRoute>} />
           <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />

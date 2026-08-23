@@ -1,29 +1,33 @@
-import { useQuery } from "@tanstack/react-query";
-import api from "@/services/api";
-import AppShell from "@/components/layout/AppShell";
-import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import AdminCrudPage from "@/features/admin/AdminCrudPage";
+import { enrollmentSchema } from "@/lib/validations";
 
 export default function AdminEnrollmentsPage() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["enrollments"],
-    queryFn: async () => {
-      const { data } = await api.get("/course-enrollments/");
-      return data.results || data;
-    },
-  });
   return (
-    <AppShell title="Enrollments">
-      {error && <Alert variant="destructive" className="mb-4"><AlertDescription>Failed to load</AlertDescription></Alert>}
-      {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : (
-        <ul className="space-y-2">
-          {(data || []).map((e) => (
-            <Card key={e.id}><CardContent className="py-3 text-sm">
-              Student {e.student} · offering {e.course_offering} · {e.status}
-            </CardContent></Card>
-          ))}
-        </ul>
-      )}
-    </AppShell>
+    <AdminCrudPage
+      title="Enrollments"
+      endpoint="/course-enrollments/"
+      queryKey="course-enrollments"
+      schema={enrollmentSchema}
+      fields={[
+        { name: "course_offering", label: "Offering", type: "select", optionsPath: "/course-offerings/" },
+        { name: "student", label: "Student", type: "select", optionsPath: "/auth/users/" },
+        {
+          name: "status",
+          label: "Status",
+          type: "select",
+          defaultValue: "enrolled",
+          options: [
+            { value: "enrolled", label: "enrolled" },
+            { value: "dropped", label: "dropped" },
+            { value: "completed", label: "completed" },
+          ],
+        },
+      ]}
+      columns={[
+        { key: "student", label: "Student" },
+        { key: "course_offering", label: "Offering" },
+        { key: "status", label: "Status" },
+      ]}
+    />
   );
 }

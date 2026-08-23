@@ -36,6 +36,8 @@ export default function AppShell({ title, children }) {
     { to: "/admin/departments", label: "Departments", icon: Building2 },
     { to: "/admin/programmes", label: "Programmes", icon: BookOpen },
     { to: "/admin/courses", label: "Courses", icon: GraduationCap },
+    { to: "/admin/sessions", label: "Sessions", icon: ClipboardList },
+    { to: "/admin/semesters", label: "Semesters", icon: ClipboardList },
     { to: "/admin/offerings", label: "Offerings", icon: ClipboardList },
     { to: "/admin/enrollments", label: "Enrollments", icon: Users },
     { to: "/admin/audit", label: "Audit", icon: Shield },
