@@ -1,3 +1,4 @@
+from apps.audit.services import log_action
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -15,6 +16,16 @@ class ResourceViewSet(TenantModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(tenant=self.request.user.tenant, uploaded_by=self.request.user)
+        try:
+            log_action(
+                tenant=self.request.user.tenant,
+                actor=self.request.user,
+                action="resource.create",
+                entity_type="resource",
+                entity_id=str(serializer.instance.id),
+            )
+        except Exception:
+            pass
 
     @action(detail=True, methods=["post"])
     def request_upload_url(self, request, pk=None):
