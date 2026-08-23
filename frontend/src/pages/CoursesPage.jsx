@@ -1,44 +1,29 @@
-import { useEffect, useState } from "react";
-import api from "../services/api";
-import AppShell from "../components/AppShell";
-import Spinner from "../components/Spinner";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/services/api";
+import AppShell from "@/components/layout/AppShell";
+import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function CoursesPage() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await api.get("/courses/");
-        setItems(data.results || data);
-      } catch (err) {
-        setError(err.response?.data?.error?.detail || "Failed to load courses");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["courses"],
+    queryFn: async () => {
+      const { data } = await api.get("/courses/");
+      return data.results || data;
+    },
+  });
   return (
     <AppShell title="Courses">
-      {error && <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg">{String(error)}</div>}
-      {loading ? (
-        <Spinner />
-      ) : (
+      {error && <Alert variant="destructive" className="mb-4"><AlertDescription>Failed to load courses</AlertDescription></Alert>}
+      {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : (
         <ul className="space-y-2">
-          {items.map((c) => (
-            <li key={c.id} className="bg-white border rounded-xl px-4 py-3 text-sm">
+          {(data || []).map((c) => (
+            <Card key={c.id}><CardContent className="py-4">
               <div className="font-medium">{c.code ? `${c.code} — ${c.title}` : c.title}</div>
-              {c.description && (
-                <p className="text-slate-500 text-xs mt-1 line-clamp-2">{c.description}</p>
-              )}
-            </li>
+              {c.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{c.description}</p>}
+            </CardContent></Card>
           ))}
-          {items.length === 0 && (
-            <p className="text-slate-500 text-sm text-center py-8">No courses yet.</p>
-          )}
+          {(data || []).length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No courses yet.</p>}
         </ul>
       )}
     </AppShell>

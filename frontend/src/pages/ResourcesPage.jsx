@@ -1,136 +1,78 @@
-import { useEffect, useState } from "react";
-import api from "../services/api";
-import AppShell from "../components/AppShell";
-import Spinner from "../components/Spinner";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "@/services/api";
+import AppShell from "@/components/layout/AppShell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function ResourcesPage() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const qc = useQueryClient();
   const [title, setTitle] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [busyId, setBusyId] = useState(null);
+  const [error, setError] = useState("");
 
-  const load = async () => {
-    setLoading(true);
-    setError("");
-    try {
+  const { data, isLoading } = useQuery({
+    queryKey: ["resources"],
+    queryFn: async () => {
       const { data } = await api.get("/resources/");
-      setItems(data.results || data);
-    } catch (err) {
-      setError(err.response?.data?.error?.detail || "Failed to load resources");
-    } finally {
-      setLoading(false);
-    }
-  };
+      return data.results || data;
+    },
+  });
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  const createResource = async (e) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-    setCreating(true);
-    setError("");
-    try {
-      await api.post("/resources/", { title: title.trim(), description: "" });
+  const createMut = useMutation({
+    mutationFn: (payload) => api.post("/resources/", payload),
+    onSuccess: () => {
       setTitle("");
-      await load();
-    } catch (err) {
-      setError(err.response?.data?.error?.detail || "Create failed");
-    } finally {
-      setCreating(false);
-    }
-  };
+      qc.invalidateQueries({ queryKey: ["resources"] });
+    },
+    onError: (err) => setError(err.response?.data?.error?.detail || "Create failed"),
+  });
 
-  const requestUpload = async (id) => {
-    setBusyId(id);
-    setError("");
-    try {
-      const { data } = await api.post(`/resources/${id}/request_upload_url/`, {
-        content_type: "text/plain",
-      });
-      // Dev helper: show key; real clients PUT file to upload_url
-      alert(`Presigned upload ready.\nKey: ${data.storage_key}\nPUT to upload_url then call complete_upload.`);
-      console.info("upload", data);
-    } catch (err) {
-      setError(err.response?.data?.error?.detail || "Upload URL failed");
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const summarize = async (id) => {
-    setBusyId(id);
-    try {
-      const { data } = await api.post(`/resources/${id}/summarize/`);
-      alert(`Summary job queued: ${data.job_id}`);
-    } catch (err) {
-      setError(err.response?.data?.error?.detail || "Summarize failed");
-    } finally {
-      setBusyId(null);
-    }
-  };
+  const uploadMut = useMutation({
+    mutationFn: (id) => api.post(`/resources/${id}/request_upload_url/`, { content_type: "text/plain" }),
+    onSuccess: (res) => {
+      alert(`Upload URL ready.\nKey: ${res.data.storage_key}\nPUT the file to upload_url, then call complete_upload.`);
+    },
+    onError: (err) => setError(err.response?.data?.error?.detail || "Upload URL failed"),
+  });
 
   return (
     <AppShell title="Resources">
-      <form onSubmit={createResource} className="flex gap-2 bg-white p-4 rounded-xl border mb-4">
-        <input
-          className="flex-1 border rounded-lg px-3 py-2 text-sm"
-          placeholder="New resource title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <button
-          type="submit"
-          disabled={creating}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50"
-        >
-          {creating ? "…" : "Create"}
-        </button>
+      <form
+        className="mb-4 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setError("");
+          if (title.trim()) createMut.mutate({ title: title.trim(), description: "" });
+        }}
+      >
+        <Input placeholder="New resource title" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Resource title" />
+        <Button type="submit" disabled={createMut.isPending}>{createMut.isPending ? "…" : "Create"}</Button>
       </form>
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg">{String(error)}</div>
-      )}
-      {loading ? (
-        <Spinner />
+      {error && <Alert variant="destructive" className="mb-4"><AlertDescription>{String(error)}</AlertDescription></Alert>}
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <ul className="space-y-2">
-          {items.map((r) => (
-            <li
-              key={r.id}
-              className="bg-white border rounded-xl px-4 py-3 flex flex-wrap justify-between gap-2 text-sm"
-            >
-              <div>
-                <div className="font-medium text-slate-900">{r.title}</div>
-                <div className="text-slate-500 text-xs mt-1">
-                  {r.processing_status} · {r.visibility_scope}
+          {(data || []).map((r) => (
+            <Card key={r.id}>
+              <CardContent className="flex flex-wrap items-center justify-between gap-2 py-4">
+                <div>
+                  <div className="font-medium">{r.title}</div>
+                  <div className="mt-1 flex gap-2">
+                    <Badge variant="secondary">{r.processing_status}</Badge>
+                    <Badge variant="outline">{r.visibility_scope}</Badge>
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={busyId === r.id}
-                  onClick={() => requestUpload(r.id)}
-                  className="text-xs px-2 py-1 border rounded-lg hover:bg-slate-50"
-                >
+                <Button type="button" variant="outline" size="sm" onClick={() => uploadMut.mutate(r.id)} disabled={uploadMut.isPending}>
                   Get upload URL
-                </button>
-                <button
-                  type="button"
-                  disabled={busyId === r.id}
-                  onClick={() => summarize(r.id)}
-                  className="text-xs px-2 py-1 border rounded-lg hover:bg-slate-50"
-                >
-                  Summarize
-                </button>
-              </div>
-            </li>
+                </Button>
+              </CardContent>
+            </Card>
           ))}
-          {items.length === 0 && (
-            <p className="text-slate-500 text-sm text-center py-8">No resources yet. Create one above.</p>
-          )}
+          {(data || []).length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No resources yet.</p>}
         </ul>
       )}
     </AppShell>

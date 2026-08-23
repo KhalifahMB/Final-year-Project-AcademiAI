@@ -1,28 +1,39 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useAuth } from "./hooks/useAuth";
-import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
-import DashboardPage from "./pages/DashboardPage";
-import ChatPage from "./pages/ChatPage";
-import ResourcesPage from "./pages/ResourcesPage";
-import QuizzesPage from "./pages/QuizzesPage";
-import CoursesPage from "./pages/CoursesPage";
-import VerifyEmailPage from "./pages/VerifyEmailPage";
-import PasswordResetPage from "./pages/PasswordResetPage";
+import { useAuth } from "@/hooks/useAuth";
+import LoginPage from "@/pages/LoginPage";
+import SignupPage from "@/pages/SignupPage";
+import DashboardPage from "@/pages/DashboardPage";
+import ChatPage from "@/pages/ChatPage";
+import ResourcesPage from "@/pages/ResourcesPage";
+import QuizzesPage from "@/pages/QuizzesPage";
+import CoursesPage from "@/pages/CoursesPage";
+import VerifyEmailPage from "@/pages/VerifyEmailPage";
+import PasswordResetPage from "@/pages/PasswordResetPage";
+import NotesPage from "@/pages/NotesPage";
+import BookmarksPage from "@/pages/BookmarksPage";
+import ProgressPage from "@/pages/ProgressPage";
+import ProfilePage from "@/pages/ProfilePage";
+import AdminAuditPage from "@/pages/AdminAuditPage";
+import AdminFacultiesPage from "@/pages/AdminFacultiesPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 30_000 },
+  },
+});
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-slate-500">
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">
         Loading…
       </div>
     );
   }
   if (!user) return <Navigate to="/login" replace />;
+  if (roles && !roles.includes(user.role)) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -33,14 +44,19 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <DashboardPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/password-reset" element={<PasswordResetPage />} />
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          <Route path="/courses" element={<ProtectedRoute><CoursesPage /></ProtectedRoute>} />
+          <Route path="/resources" element={<ProtectedRoute><ResourcesPage /></ProtectedRoute>} />
+          <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+          <Route path="/quizzes" element={<ProtectedRoute><QuizzesPage /></ProtectedRoute>} />
+          <Route path="/notes" element={<ProtectedRoute><NotesPage /></ProtectedRoute>} />
+          <Route path="/bookmarks" element={<ProtectedRoute><BookmarksPage /></ProtectedRoute>} />
+          <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/admin/audit" element={<ProtectedRoute roles={["admin"]}><AdminAuditPage /></ProtectedRoute>} />
+          <Route path="/admin/faculties" element={<ProtectedRoute roles={["admin"]}><AdminFacultiesPage /></ProtectedRoute>} />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

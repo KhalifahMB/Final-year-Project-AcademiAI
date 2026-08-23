@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { authApi } from "../services/api";
+import { authApi } from "@/services/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
@@ -13,60 +18,33 @@ export default function VerifyEmailPage() {
   const submit = async (e) => {
     e.preventDefault();
     setError("");
-    setOk("");
     setLoading(true);
     try {
       await authApi.verifyEmail({ email, code });
-      setOk("Email verified. You can sign in.");
-      setTimeout(() => navigate("/login"), 1200);
+      setOk("Verified. You can sign in.");
+      setTimeout(() => navigate("/login"), 1000);
     } catch (err) {
-      const d = err.response?.data?.error?.detail;
-      setError(typeof d === "string" ? d : JSON.stringify(d || "Verification failed"));
+      setError(err.response?.data?.error?.detail || "Verification failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-xl p-8">
-        <h1 className="text-2xl font-bold mb-6">Verify email</h1>
-        {error && <div className="mb-3 p-3 bg-red-50 text-red-700 text-sm rounded-lg">{error}</div>}
-        {ok && <div className="mb-3 p-3 bg-green-50 text-green-700 text-sm rounded-lg">{ok}</div>}
-        <form onSubmit={submit} className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input
-              type="email"
-              className="w-full border rounded-lg px-3 py-2 text-sm"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Code</label>
-            <input
-              className="w-full border rounded-lg px-3 py-2 text-sm"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm disabled:opacity-50"
-          >
-            {loading ? "Verifying…" : "Verify"}
-          </button>
-        </form>
-        <p className="mt-4 text-center text-sm text-slate-600">
-          <Link to="/login" className="text-indigo-600">
-            Back to login
-          </Link>
-        </p>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader><CardTitle>Verify email</CardTitle></CardHeader>
+        <CardContent>
+          {error && <Alert variant="destructive" className="mb-3"><AlertDescription>{String(error)}</AlertDescription></Alert>}
+          {ok && <Alert variant="success" className="mb-3"><AlertDescription>{ok}</AlertDescription></Alert>}
+          <form onSubmit={submit} className="space-y-3">
+            <div className="space-y-1"><Label htmlFor="email">Email</Label><Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+            <div className="space-y-1"><Label htmlFor="code">Code</Label><Input id="code" value={code} onChange={(e) => setCode(e.target.value)} required /></div>
+            <Button type="submit" className="w-full" disabled={loading}>{loading ? "…" : "Verify"}</Button>
+          </form>
+          <p className="mt-4 text-center text-sm"><Link to="/login" className="text-primary hover:underline">Back to login</Link></p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
