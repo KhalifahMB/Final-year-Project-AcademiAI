@@ -17,3 +17,4 @@ Pillow>=10.0
 # google-generativeai>=0.8gunicorn>=22.0
 pytest>=8.0
 pytest-django>=4.8
+pypdf>=5.0

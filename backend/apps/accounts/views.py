@@ -1,7 +1,7 @@
 import logging
 
 from django.contrib.auth import authenticate
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -19,6 +19,7 @@ from .serializers import (
     CustomTokenObtainPairSerializer,
 )
 from . import services
+from apps.common.permissions import IsAdminRole
 
 logger = logging.getLogger(__name__)
 
@@ -198,3 +199,15 @@ class PasswordChangeView(APIView):
         user.set_password(ser.validated_data["new_password"])
         user.save(update_fields=["password"])
         return Response({"success": True, "message": "Password changed."})
+
+
+class UserAdminViewSet(viewsets.ModelViewSet):
+    """Tenant-scoped user management (admin)."""
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
+    search_fields = ["email", "first_name", "last_name"]
+    filterset_fields = ["role", "is_active", "is_email_verified"]
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def get_queryset(self):
+        return User.objects.filter(tenant=self.request.user.tenant).order_by("email")

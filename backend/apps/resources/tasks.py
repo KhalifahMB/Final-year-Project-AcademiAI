@@ -44,10 +44,31 @@ def process_resource_ingestion(self, resource_id: str, version_id: str):
         client = get_s3_client()
         obj = client.get_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=version.storage_key)
         raw = obj["Body"].read()
+        content_type = ""
         try:
-            text = raw.decode("utf-8", errors="ignore")
+            content_type = obj.get("ContentType") or ""
         except Exception:
-            text = ""
+            pass
+        from apps.common.security.file_validation import validate_upload_bytes, FileValidationError
+        try:
+            validate_upload_bytes(raw, content_type=content_type, filename=version.storage_key or "")
+        except FileValidationError as fv:
+            raise ValueError(str(fv))
+        text = ""
+        if raw[:4] == b"%PDF" or "pdf" in (content_type or "").lower():
+            try:
+                from io import BytesIO
+                from pypdf import PdfReader
+                reader = PdfReader(BytesIO(raw))
+                text = "\n".join((page.extract_text() or "") for page in reader.pages)
+            except Exception as pdf_exc:
+                logger.warning("PDF extract failed: %s", pdf_exc)
+                text = ""
+        if not text.strip():
+            try:
+                text = raw.decode("utf-8", errors="ignore")
+            except Exception:
+                text = ""
 
         # Malware scan hook placeholder — extend with ClamAV etc.
         if not text.strip():
