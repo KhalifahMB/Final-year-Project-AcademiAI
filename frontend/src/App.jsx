@@ -4,6 +4,8 @@ import { useAuth } from "./hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import ChatPage from "./pages/ChatPage";
+import ResourcesPage from "./pages/ResourcesPage";
+import QuizzesPage from "./pages/QuizzesPage";
 
 const queryClient = new QueryClient();
 
