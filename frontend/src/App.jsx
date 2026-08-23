@@ -7,6 +7,8 @@ import DashboardPage from "./pages/DashboardPage";
 import ChatPage from "./pages/ChatPage";
 import ResourcesPage from "./pages/ResourcesPage";
 import QuizzesPage from "./pages/QuizzesPage";
+import CoursesPage from "./pages/CoursesPage";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
 
 const queryClient = new QueryClient();
 
