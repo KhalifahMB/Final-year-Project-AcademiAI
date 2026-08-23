@@ -1,27 +1,36 @@
-import { useQuery } from "@tanstack/react-query";
-import api from "@/services/api";
-import AppShell from "@/components/layout/AppShell";
-import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import AdminCrudPage from "@/features/admin/AdminCrudPage";
+import { courseSchema } from "@/lib/validations";
 
 export default function AdminCoursesPage() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["admin-courses"],
-    queryFn: async () => {
-      const { data } = await api.get("/courses/");
-      return data.results || data;
-    },
-  });
   return (
-    <AppShell title="Courses (admin)">
-      {error && <Alert variant="destructive" className="mb-4"><AlertDescription>Failed to load</AlertDescription></Alert>}
-      {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : (
-        <ul className="space-y-2">
-          {(data || []).map((c) => (
-            <Card key={c.id}><CardContent className="py-3 text-sm font-medium">{c.code} — {c.title}</CardContent></Card>
-          ))}
-        </ul>
-      )}
-    </AppShell>
+    <AdminCrudPage
+      title="Courses"
+      endpoint="/courses/"
+      queryKey="admin-courses"
+      schema={courseSchema}
+      fields={[
+        { name: "code", label: "Code", type: "text" },
+        { name: "title", label: "Title", type: "text" },
+        { name: "description", label: "Description", type: "textarea" },
+        { name: "department", label: "Department", type: "select", optionsPath: "/departments/" },
+        { name: "credit_unit", label: "Credit units", type: "number", defaultValue: 3 },
+        {
+          name: "status",
+          label: "Status",
+          type: "select",
+          options: [
+            { value: "active", label: "active" },
+            { value: "inactive", label: "inactive" },
+            { value: "archived", label: "archived" },
+          ],
+          defaultValue: "active",
+        },
+      ]}
+      columns={[
+        { key: "code", label: "Code" },
+        { key: "title", label: "Title" },
+        { key: "status", label: "Status" },
+      ]}
+    />
   );
 }

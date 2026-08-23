@@ -1,27 +1,25 @@
-import { useQuery } from "@tanstack/react-query";
-import api from "@/services/api";
-import AppShell from "@/components/layout/AppShell";
-import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import AdminCrudPage from "@/features/admin/AdminCrudPage";
+import { programmeSchema } from "@/lib/validations";
 
 export default function AdminProgrammesPage() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["programmes"],
-    queryFn: async () => {
-      const { data } = await api.get("/programmes/");
-      return data.results || data;
-    },
-  });
   return (
-    <AppShell title="Programmes">
-      {error && <Alert variant="destructive" className="mb-4"><AlertDescription>Failed to load</AlertDescription></Alert>}
-      {isLoading ? <p className="text-sm text-muted-foreground">Loading…</p> : (
-        <ul className="space-y-2">
-          {(data || []).map((p) => (
-            <Card key={p.id}><CardContent className="py-3 text-sm font-medium">{p.name}{p.code ? ` (${p.code})` : ""}</CardContent></Card>
-          ))}
-        </ul>
-      )}
-    </AppShell>
+    <AdminCrudPage
+      title="Programmes"
+      endpoint="/programmes/"
+      queryKey="programmes"
+      schema={programmeSchema}
+      fields={[
+        { name: "name", label: "Name", type: "text" },
+        { name: "code", label: "Code", type: "text" },
+        { name: "department", label: "Department", type: "select", optionsPath: "/departments/" },
+        { name: "degree_type", label: "Degree type", type: "text" },
+        { name: "duration_years", label: "Duration (years)", type: "number", defaultValue: 4 },
+      ]}
+      columns={[
+        { key: "name", label: "Name" },
+        { key: "code", label: "Code" },
+        { key: "department", label: "Department" },
+      ]}
+    />
   );
 }
