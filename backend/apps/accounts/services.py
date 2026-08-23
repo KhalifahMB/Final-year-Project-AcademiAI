@@ -12,7 +12,8 @@ from django.utils import timezone
 
 from apps.tenants.models import Tenant
 from .models import User
-from apps.audit.services import log_action, EmailVerificationCode, PasswordResetToken
+from apps.audit.services import log_action
+from .models import EmailVerificationCode, PasswordResetToken
 
 logger = logging.getLogger(__name__)
 
