@@ -74,6 +74,35 @@ def _rrf_fuse(rank_lists, k=60):
     return sorted(scores.items(), key=lambda x: -x[1])
 
 
+
+
+def _concept_related_chunk_ids(tenant_id, query: str, resource_ids, limit=20):
+    """Lightweight concept-aware signal: match concept names in query, map to resources/chunks."""
+    from apps.knowledge.models import Concept, ResourceConcept
+    from apps.resources.models import ResourceChunk
+    terms = [w for w in (query or "").lower().split() if len(w) > 3]
+    if not terms:
+        return []
+    q = Q()
+    for term in terms[:8]:
+        q |= Q(canonical_name__icontains=term)
+    concepts = Concept.objects.filter(tenant_id=tenant_id).filter(q)[:15]
+    if not concepts:
+        return []
+    concept_ids = [c.id for c in concepts]
+    res_ids = ResourceConcept.objects.filter(concept_id__in=concept_ids).values_list(
+        "resource_id", flat=True
+    )
+    res_ids = set(res_ids) & set(resource_ids)
+    if not res_ids:
+        return []
+    return list(
+        ResourceChunk.objects.filter(
+            tenant_id=tenant_id,
+            resource_version__resource_id__in=res_ids,
+        ).values_list("id", flat=True)[:limit]
+    )
+
 def hybrid_retrieve(query: str, tenant_id, user, course_offering_id=None, top_k=8):
     """
     Returns list of dicts: id, content, score, method
@@ -117,7 +146,17 @@ def hybrid_retrieve(query: str, tenant_id, user, course_offering_id=None, top_k=
     except Exception:
         logger.exception("Semantic search failed")
 
-    fused = _rrf_fuse([lexical_ids, semantic_ids] if semantic_ids else [lexical_ids])
+    concept_ids = []
+    try:
+        concept_ids = _concept_related_chunk_ids(tenant_id, query, resource_ids)
+    except Exception:
+        logger.exception("Concept signal failed")
+    lists = [lexical_ids]
+    if semantic_ids:
+        lists.append(semantic_ids)
+    if concept_ids:
+        lists.append(concept_ids)
+    fused = _rrf_fuse(lists)
     top_ids = [cid for cid, _ in fused[:top_k]]
 
     if not top_ids and lexical_ids:
