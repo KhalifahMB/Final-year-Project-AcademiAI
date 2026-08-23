@@ -1,12 +1,21 @@
 # AcademiAI agent sync
 
-Local `dev` tip: `6d5339c` feat(ux-ops): signup page, health endpoint, Django admin
+Local `dev` tip: **0e23792** feat(ux): courses page, verify-email UI, dashboard nav, academics/resources admin
 
-Previous: 1dc66a4, b61cd76, 23f07db, f3c1ccf
+## Local commit chain
 
-`git push` from sandbox fails (no credentials). Partial sync via GitHub API.
-Full tree: push from a machine with auth:
+1. f3c1ccf foundation
+2. 23f07db api-ai-rag
+3. b61cd76 security-ops
+4. 1dc66a4 jobs-ui
+5. 6d5339c ux-ops signup/health/admin
+6. **0e23792** courses, verify-email, dashboard, domain admin
+
+## Push full tree (your machine)
 
 ```bash
+cd academiai
 git push -u origin dev
 ```
+
+Sandbox `git push` fails without GitHub credentials; partial files synced via API.
