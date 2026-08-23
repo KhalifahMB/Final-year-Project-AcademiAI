@@ -55,3 +55,12 @@ class ResourceViewSet(TenantModelViewSet):
         from .tasks import process_resource_ingestion
         task = process_resource_ingestion.delay(str(resource.id), str(version.id))
         return Response({"version_id": str(version.id), "job_id": task.id, "status": "pending"})
+
+    @action(detail=True, methods=["post"])
+    def summarize(self, request, pk=None):
+        resource = self.get_object()
+        from .summary_tasks import summarize_resource_task
+        task = summarize_resource_task.delay(
+            str(resource.id), str(request.user.tenant_id), str(request.user.id)
+        )
+        return Response({"job_id": task.id, "status": "pending"}, status=status.HTTP_202_ACCEPTED)
