@@ -9,6 +9,7 @@ import ResourcesPage from "./pages/ResourcesPage";
 import QuizzesPage from "./pages/QuizzesPage";
 import CoursesPage from "./pages/CoursesPage";
 import VerifyEmailPage from "./pages/VerifyEmailPage";
+import PasswordResetPage from "./pages/PasswordResetPage";
 
 const queryClient = new QueryClient();
 

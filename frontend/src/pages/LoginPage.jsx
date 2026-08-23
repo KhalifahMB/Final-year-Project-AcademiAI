@@ -60,6 +60,9 @@ export default function LoginPage() {
             {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
+        <p className="mt-3 text-center text-sm">
+          <a href="/password-reset" className="text-indigo-600">Forgot password?</a>
+        </p>
         <p className="mt-4 text-center text-sm text-slate-600">
           No account?{" "}
           <Link to="/signup" className="text-indigo-600 hover:underline">

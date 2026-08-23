@@ -11,7 +11,8 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.tenants.models import Tenant
-from .models import User, EmailVerificationCode, PasswordResetToken
+from .models import User
+from apps.audit.services import log_action, EmailVerificationCode, PasswordResetToken
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,10 @@ def signup_user(*, email, password, first_name="", last_name="", role="student",
     )
     code = create_verification_code(user)
     # Queue email asynchronously (caller should dispatch Celery task)
+    try:
+        log_action(tenant=user.tenant, actor=user, action="user.signup", entity_type="user", entity_id=str(user.id))
+    except Exception:
+        pass
     return user, code
 
 
