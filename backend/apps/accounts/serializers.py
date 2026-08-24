@@ -79,3 +79,29 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token["tenant_id"] = str(user.tenant_id) if user.tenant_id else None
         token["email"] = user.email
         return token
+
+
+class MessageResponseSerializer(serializers.Serializer):
+    success = serializers.BooleanField()
+    message = serializers.CharField(required=False)
+    detail = serializers.CharField(required=False, allow_null=True)
+
+
+class AuthTokenResponseSerializer(serializers.Serializer):
+    success = serializers.BooleanField()
+    access = serializers.CharField()
+    refresh = serializers.CharField()
+    user = UserSerializer()
+
+
+class LogoutRequestSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+
+class JobStatusResponseSerializer(serializers.Serializer):
+    job_id = serializers.CharField()
+    status = serializers.CharField()
+    ready = serializers.BooleanField()
+    successful = serializers.BooleanField(allow_null=True)
+    result = serializers.JSONField(required=False, allow_null=True)
+    error = serializers.CharField(required=False, allow_null=True)

@@ -1,9 +1,9 @@
 """
-Tenant-aware ModelViewSet base.
+Tenant-aware ModelViewSet bases.
 """
 from rest_framework import viewsets
 
-from apps.common.permissions import IsTenantMember, TenantObjectPermission
+from apps.common.permissions import IsAdminRole, IsTenantMember, TenantObjectPermission
 
 
 class TenantModelViewSet(viewsets.ModelViewSet):
@@ -27,3 +27,16 @@ class TenantModelViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         serializer.save(tenant=user.tenant)
+
+
+class AdminWriteViewSet(TenantModelViewSet):
+    """
+    All authenticated tenant members may read; only Admins may create,
+    update or delete. Used for institutional/academic structure endpoints.
+    """
+
+    def get_permissions(self):
+        perms = super().get_permissions()
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [IsAdminRole()] + perms
+        return perms

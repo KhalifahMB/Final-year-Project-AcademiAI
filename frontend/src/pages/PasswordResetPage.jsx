@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import AuthLayout from "@/components/layout/AuthLayout";
 import { authApi } from "@/services/api";
 import {
   passwordResetRequestSchema,
@@ -9,11 +10,17 @@ import {
 } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
+
+const CONFIRM_LABELS = {
+  email: "Email",
+  token: "Reset code",
+  password: "New password",
+  confirm: "Confirm new password",
+};
 
 export default function PasswordResetPage() {
   const [step, setStep] = useState("request");
@@ -56,84 +63,107 @@ export default function PasswordResetPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Reset password</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-3">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {ok && (
-            <Alert className="mb-3">
-              <AlertDescription>{ok}</AlertDescription>
-            </Alert>
-          )}
-          {step === "request" ? (
-            <Form {...requestForm}>
-              <form onSubmit={requestForm.handleSubmit(onRequest)} className="space-y-3">
-                <FormField
-                  control={requestForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full">
-                  Send reset code
-                </Button>
-              </form>
-            </Form>
-          ) : (
-            <Form {...confirmForm}>
-              <form onSubmit={confirmForm.handleSubmit(onConfirm)} className="space-y-3">
-                {["email", "token", "password", "confirm"].map((name) => (
-                  <FormField
-                    key={name}
-                    control={confirmForm.control}
-                    name={name}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {name === "token"
-                            ? "Code"
-                            : name === "confirm"
-                              ? "Confirm password"
-                              : name}
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type={name.includes("password") || name === "confirm" ? "password" : "text"}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ))}
-                <Button type="submit" className="w-full">
-                  Update password
-                </Button>
-              </form>
-            </Form>
-          )}
-          <p className="mt-4 text-center text-sm">
-            <Link to="/login" className="text-primary hover:underline">
-              Back to login
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthLayout
+      title={step === "request" ? "Reset your password" : "Choose a new password"}
+      subtitle={
+        step === "request"
+          ? "We'll email you a short-lived reset code. For privacy we always show the same confirmation."
+          : "Enter the reset code from your email and pick a new password."
+      }
+      footer={
+        <>
+          Back to{" "}
+          <Link
+            to="/login"
+            className="font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring rounded-sm"
+          >
+            sign in
+          </Link>
+        </>
+      }
+    >
+      {error ? (
+        <Alert variant="destructive" className="mb-5">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+      {ok ? (
+        <Alert className="mb-5 border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
+          <AlertDescription>{ok}</AlertDescription>
+        </Alert>
+      ) : null}
+
+      {step === "request" ? (
+        <Form {...requestForm}>
+          <form onSubmit={requestForm.handleSubmit(onRequest)} className="space-y-4">
+            <FormField
+              control={requestForm.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@university.edu"
+                      className="h-10"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              type="submit"
+              disabled={requestForm.formState.isSubmitting}
+              className="h-10 w-full font-medium shadow-sm"
+            >
+              Send reset code
+            </Button>
+          </form>
+        </Form>
+      ) : (
+        <Form {...confirmForm}>
+          <form onSubmit={confirmForm.handleSubmit(onConfirm)} className="space-y-4">
+            {["email", "token", "password", "confirm"].map((name) => (
+              <FormField
+                key={name}
+                control={confirmForm.control}
+                name={name}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{CONFIRM_LABELS[name]}</FormLabel>
+                    <FormControl>
+                      <Input
+                        className="h-10"
+                        type={
+                          name === "password" || name === "confirm"
+                            ? "password"
+                            : name === "token"
+                              ? "text"
+                              : "email"
+                        }
+                        autoComplete={name === "password" || name === "confirm" ? "new-password" : undefined}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ))}
+            <Button
+              type="submit"
+              disabled={confirmForm.formState.isSubmitting}
+              className="h-10 w-full font-medium shadow-sm"
+            >
+              Update password
+            </Button>
+          </form>
+        </Form>
+      )}
+    </AuthLayout>
   );
 }

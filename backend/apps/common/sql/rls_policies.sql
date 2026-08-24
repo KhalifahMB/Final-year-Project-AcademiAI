@@ -7,6 +7,7 @@ DECLARE
   tables text[] := ARRAY[
     'faculties','departments','programmes','academic_sessions','semesters',
     'courses','course_offerings','lecturer_course_assignments','course_enrollments',
+    'student_profiles','lecturer_profiles',
     'resources','resource_versions','resource_chunks','resource_permissions',
     'concepts','concept_edges',
     'chat_sessions','chat_messages','chat_message_sources',

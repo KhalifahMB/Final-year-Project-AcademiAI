@@ -3,12 +3,16 @@ AcademiAI Django settings.
 Environment-driven. Never commit real secrets.
 """
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Debug Toolbar must never load under pytest (it interferes with the test client).
+TESTING = "pytest" in sys.modules
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -30,7 +34,6 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "corsheaders",
     "django_filters",
-    "debug_toolbar",
     "storages",
     # Project apps
     "apps.common",
@@ -57,7 +60,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-if DEBUG:
+if DEBUG and not TESTING:
+    INSTALLED_APPS.append("debug_toolbar")
     MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
 ROOT_URLCONF = "config.urls"
@@ -80,12 +84,15 @@ TEMPLATES = [
 ]
 
 # Database
+# POSTGRES_USER must be a non-superuser WITHOUT BYPASSRLS so that
+# PostgreSQL Row-Level Security is genuinely enforced (see
+# infrastructure/postgres/init/01-app-role.sql).
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.getenv("POSTGRES_DB", "academiai"),
-        "USER": os.getenv("POSTGRES_USER", "academiai"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "academiai"),
+        "USER": os.getenv("POSTGRES_USER", "academiai_app"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "academiai_app"),
         "HOST": os.getenv("POSTGRES_HOST", "localhost"),
         "PORT": os.getenv("POSTGRES_PORT", "5432"),
         "OPTIONS": {"options": "-c search_path=public"},
@@ -174,6 +181,11 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_NAME_OVERRIDES": {
+        "UserRoleEnum": "apps.accounts.models.User.Role",
+        "ResourceVisibilityEnum": "apps.resources.models.Resource.Visibility",
+        "ResourceProcessingStatusEnum": "apps.resources.models.Resource.ProcessingStatus",
+    },
 }
 
 # Redis / Celery

@@ -1,3 +1,5 @@
+from django.utils.decorators import method_decorator
+from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -16,11 +18,13 @@ from . import services
 
 
 class ChatSessionViewSet(TenantModelViewSet):
-    queryset = ChatSession.objects.all()
+    queryset = ChatSession.objects.none()
     serializer_class = ChatSessionSerializer
     filterset_fields = ["course_offering"]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return ChatSession.objects.none()
         qs = super().get_queryset()
         return qs.filter(user=self.request.user)
 
@@ -31,8 +35,11 @@ class ChatSessionViewSet(TenantModelViewSet):
 class ChatMessageViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ChatMessageSerializer
     permission_classes = [IsTenantMember]
+    queryset = ChatMessage.objects.none()
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return ChatMessage.objects.none()
         return ChatMessage.objects.filter(
             tenant=self.request.user.tenant,
             session__user=self.request.user,
@@ -47,6 +54,11 @@ class ChatSendMessageView(APIView):
     """
     permission_classes = [IsTenantMember]
 
+    @extend_schema(
+        request=ChatMessageCreateSerializer,
+        responses={201: ChatMessageSerializer},
+        summary="Send a user message and receive the grounded assistant reply",
+    )
     def post(self, request, session_id):
         ser = ChatMessageCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)

@@ -64,7 +64,9 @@ class ResourceViewSet(TenantModelViewSet):
         resource.processing_status = resource.ProcessingStatus.PENDING
         resource.save(update_fields=["storage_key", "processing_status", "updated_at"])
         from .tasks import process_resource_ingestion
-        task = process_resource_ingestion.delay(str(resource.id), str(version.id))
+        task = process_resource_ingestion.delay(
+            str(resource.id), str(version.id), str(resource.tenant_id)
+        )
         return Response({"version_id": str(version.id), "job_id": task.id, "status": "pending"})
 
     @action(detail=True, methods=["post"])

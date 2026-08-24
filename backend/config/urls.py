@@ -36,7 +36,7 @@ urlpatterns = [
     ),
 ]
 
-if settings.DEBUG:
+if settings.DEBUG and not getattr(settings, "TESTING", False):
     import debug_toolbar
 
     urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns

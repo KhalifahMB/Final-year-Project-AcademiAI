@@ -1,5 +1,10 @@
-"""AI quiz generation (queue: ai)."""
+"""AI quiz generation (queue: ai).
+
+Runs under the requesting user's tenant scope so retrieval and persistence
+are both RLS-enforced. Model output is schema-validated before persisting.
+"""
 import logging
+
 from celery import shared_task
 from django.db import transaction
 
@@ -17,12 +22,15 @@ def _validate_quiz_payload(data: dict) -> list:
         options = q.get("options") or []
         if not text or not isinstance(options, list) or len(options) < 2:
             continue
+        correct_answer = q.get("correct_answer")
+        if not isinstance(correct_answer, dict):
+            correct_answer = {}
         valid.append(
             {
                 "question_text": text,
                 "question_type": q.get("question_type") or "multiple_choice",
-                "options": options,
-                "correct_answer": q.get("correct_answer") or {},
+                "options": [str(o) for o in options],
+                "correct_answer": correct_answer,
                 "explanation": q.get("explanation") or "",
                 "order_index": i,
             }
@@ -33,22 +41,28 @@ def _validate_quiz_payload(data: dict) -> list:
 @shared_task(bind=True, max_retries=2, default_retry_delay=60)
 def generate_quiz_task(self, user_id: str, tenant_id: str, params: dict):
     from apps.accounts.models import User
-    from apps.resources.models import ResourceChunk
     from apps.assessments.models import Quiz, QuizQuestion
     from apps.common.ai import generate_quiz_json
+    from apps.common.db import tenant_scope
+    from apps.resources.models import ResourceChunk
 
-    try:
-        user = User.objects.get(id=user_id, tenant_id=tenant_id)
-    except User.DoesNotExist:
-        return {"status": "failed", "error": "user not found"}
+    with tenant_scope(tenant_id):
+        try:
+            user = User.objects.get(id=user_id, tenant_id=tenant_id)
+        except User.DoesNotExist:
+            return {"status": "failed", "error": "user not found"}
 
-    resource_ids = params.get("resource_ids") or []
-    chunks = ResourceChunk.objects.filter(
-        tenant_id=tenant_id,
-        resource_version__resource_id__in=resource_ids,
-    )[:40] if resource_ids else ResourceChunk.objects.filter(tenant_id=tenant_id)[:40]
+        resource_ids = params.get("resource_ids") or []
+        if resource_ids:
+            chunks = ResourceChunk.objects.filter(
+                tenant_id=tenant_id,
+                resource_version__resource_id__in=resource_ids,
+            )[:40]
+        else:
+            chunks = ResourceChunk.objects.filter(tenant_id=tenant_id)[:40]
 
-    context = "\n\n".join(c.content[:1500] for c in chunks)
+        context = "\n\n".join(c.content[:1500] for c in chunks)
+
     if not context.strip():
         return {"status": "failed", "error": "no authorized content"}
 
@@ -57,7 +71,7 @@ def generate_quiz_task(self, user_id: str, tenant_id: str, params: dict):
     if not validated:
         return {"status": "failed", "error": "invalid model output"}
 
-    with transaction.atomic():
+    with tenant_scope(tenant_id), transaction.atomic():
         quiz = Quiz.objects.create(
             tenant_id=tenant_id,
             created_by=user,

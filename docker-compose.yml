@@ -9,6 +9,7 @@ services:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U academiai -d academiai']
       interval: 5s
@@ -87,6 +88,7 @@ services:
         condition: service_healthy
     command: >
       sh -c "python manage.py migrate &&
+             python manage.py apply_rls &&
              python manage.py runserver 0.0.0.0:8000"
 
   worker:

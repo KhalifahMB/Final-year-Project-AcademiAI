@@ -21,7 +21,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Form,
@@ -232,56 +231,59 @@ export default function AdminCrudPage({
   };
 
   return (
-    <AppShell title={title}>
-      <div className="mb-4 flex justify-end">
-        <Button type="button" onClick={openCreate}>
-          Create
+    <AppShell
+      title={title}
+      description={`Create, update and remove ${title.toLowerCase()} records for your institution.`}
+      actions={
+        <Button type="button" onClick={openCreate} className="h-9 shadow-sm">
+          New record
         </Button>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editing ? 'Edit' : 'Create'}</DialogTitle>
-            </DialogHeader>
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4"
-              >
-                {fields.map((f) => (
-                  <FormField
-                    key={f.name}
-                    control={form.control}
-                    name={f.name}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{f.label}</FormLabel>
-                        <FormControl>
-                          <FieldInput
-                            f={f}
-                            field={field}
-                            optionsMap={optionsMap}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ))}
-                <DialogFooter>
-                  <Button type="submit" disabled={saveMut.isPending}>
-                    {saveMut.isPending ? 'Saving…' : 'Save'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </div>
+      }
+    >
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editing ? 'Edit record' : 'New record'}</DialogTitle>
+          </DialogHeader>
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-4"
+            >
+              {fields.map((f) => (
+                <FormField
+                  key={f.name}
+                  control={form.control}
+                  name={f.name}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{f.label}</FormLabel>
+                      <FormControl>
+                        <FieldInput
+                          f={f}
+                          field={field}
+                          optionsMap={optionsMap}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ))}
+              <DialogFooter>
+                <Button type="submit" disabled={saveMut.isPending} className="shadow-sm">
+                  {saveMut.isPending ? 'Saving…' : 'Save'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
       {list.error && (
         <Alert variant="destructive" className="mb-4">
@@ -289,27 +291,31 @@ export default function AdminCrudPage({
         </Alert>
       )}
       {list.isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <div className="space-y-2.5" role="status" aria-label="Loading">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-12 animate-pulse rounded-lg bg-muted" style={{ animationDelay: `${i * 80}ms` }} />
+          ))}
+        </div>
       ) : (
-        <div className="rounded-md border bg-background">
+        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
                 {columns.map((c) => (
                   <TableHead key={c.key}>{c.label}</TableHead>
                 ))}
-                <TableHead className="w-[140px]">Actions</TableHead>
+                <TableHead className="w-[150px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {(list.data || []).map((item) => (
                 <TableRow key={item.id}>
                   {columns.map((c) => (
-                    <TableCell key={c.key}>
+                    <TableCell key={c.key} className="py-3.5">
                       {String(item[c.key] ?? '')}
                     </TableCell>
                   ))}
-                  <TableCell className="space-x-1">
+                  <TableCell className="space-x-1 text-right">
                     <Button
                       type="button"
                       variant="outline"
@@ -336,9 +342,9 @@ export default function AdminCrudPage({
                 <TableRow>
                   <TableCell
                     colSpan={columns.length + 1}
-                    className="text-center text-muted-foreground"
+                    className="py-10 text-center text-sm text-muted-foreground"
                   >
-                    No records yet.
+                    No records yet — create the first one.
                   </TableCell>
                 </TableRow>
               )}

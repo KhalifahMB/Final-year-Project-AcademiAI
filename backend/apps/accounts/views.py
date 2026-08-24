@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib.auth import authenticate
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,6 +18,9 @@ from .serializers import (
     PasswordChangeSerializer,
     UserSerializer,
     CustomTokenObtainPairSerializer,
+    MessageResponseSerializer,
+    AuthTokenResponseSerializer,
+    LogoutRequestSerializer,
 )
 from . import services
 from apps.common.permissions import IsAdminRole
@@ -28,6 +32,12 @@ class SignupView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = "auth"
 
+    @extend_schema(
+        request=SignupSerializer,
+        responses={201: MessageResponseSerializer, 400: MessageResponseSerializer},
+        summary="Create a user account and trigger email verification",
+        auth=[],
+    )
     def post(self, request):
         ser = SignupSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -67,6 +77,12 @@ class VerifyEmailView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = "auth"
 
+    @extend_schema(
+        request=VerifyEmailSerializer,
+        responses={200: MessageResponseSerializer, 400: MessageResponseSerializer},
+        summary="Verify a signup verification code",
+        auth=[],
+    )
     def post(self, request):
         ser = VerifyEmailSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -88,6 +104,12 @@ class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = "auth"
 
+    @extend_schema(
+        request=LoginSerializer,
+        responses={200: AuthTokenResponseSerializer, 401: MessageResponseSerializer},
+        summary="Authenticate and return access/refresh tokens",
+        auth=[],
+    )
     def post(self, request):
         ser = LoginSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -106,6 +128,11 @@ class LoginView(APIView):
                 {"success": False, "error": {"detail": "Account is inactive."}},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        if not user.is_email_verified:
+            return Response(
+                {"success": False, "error": {"detail": "Email not verified."}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         refresh = RefreshToken.for_user(user)
         # Enrich claims
         refresh["role"] = user.role
@@ -121,6 +148,11 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
+    @extend_schema(
+        request=LogoutRequestSerializer,
+        responses={200: MessageResponseSerializer},
+        summary="Blacklist the supplied refresh token",
+    )
     def post(self, request):
         try:
             refresh = request.data.get("refresh")
@@ -143,10 +175,16 @@ class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = "auth"
 
+    @extend_schema(
+        request=PasswordResetRequestSerializer,
+        responses={200: MessageResponseSerializer},
+        summary="Request a password reset email (generic response; no enumeration)",
+        auth=[],
+    )
     def post(self, request):
         ser = PasswordResetRequestSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        email = ser.validated_data["email"]
+        email = ser.validated_data.get("email")
         user = User.objects.filter(email__iexact=email).first()
         if user:
             token = services.create_password_reset_token(user)
@@ -169,6 +207,12 @@ class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = "auth"
 
+    @extend_schema(
+        request=PasswordResetConfirmSerializer,
+        responses={200: MessageResponseSerializer, 400: MessageResponseSerializer},
+        summary="Confirm password reset with a single-use token",
+        auth=[],
+    )
     def post(self, request):
         ser = PasswordResetConfirmSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -187,6 +231,11 @@ class PasswordResetConfirmView(APIView):
 
 
 class PasswordChangeView(APIView):
+    @extend_schema(
+        request=PasswordChangeSerializer,
+        responses={200: MessageResponseSerializer, 400: MessageResponseSerializer},
+        summary="Change password for the authenticated user",
+    )
     def post(self, request):
         ser = PasswordChangeSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
@@ -210,4 +259,6 @@ class UserAdminViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "patch", "head", "options"]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return User.objects.none()
         return User.objects.filter(tenant=self.request.user.tenant).order_by("email")
