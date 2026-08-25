@@ -1,0 +1,111 @@
+from rest_framework import serializers
+from .models import (
+    Faculty, Department, Programme, AcademicSession, Semester,
+    Course, CourseOffering, LecturerCourseAssignment, CourseEnrollment,
+    CurriculumCourse,
+)
+
+
+class FacultySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Faculty
+        fields = ("id", "name", "code", "tenant", "created_at", "updated_at")
+        read_only_fields = ("id", "tenant", "created_at", "updated_at")
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ("id", "faculty", "name", "code", "tenant", "created_at", "updated_at")
+        read_only_fields = ("id", "tenant", "created_at", "updated_at")
+
+
+class ProgrammeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Programme
+        fields = (
+            "id", "department", "name", "code", "degree_type", "duration_years",
+            "tenant", "created_at", "updated_at",
+        )
+        read_only_fields = ("id", "tenant", "created_at", "updated_at")
+
+
+class AcademicSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AcademicSession
+        fields = ("id", "name", "start_date", "end_date", "is_current", "tenant", "created_at")
+        read_only_fields = ("id", "tenant", "created_at")
+
+
+class SemesterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Semester
+        fields = (
+            "id", "academic_session", "name", "start_date", "end_date",
+            "tenant", "created_at",
+        )
+        read_only_fields = ("id", "tenant", "created_at")
+
+
+class CourseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Course
+        fields = (
+            "id", "department", "code", "title", "description", "credit_unit",
+            "status", "tenant", "created_at", "updated_at",
+        )
+        read_only_fields = ("id", "tenant", "created_at", "updated_at")
+
+
+class CourseOfferingSerializer(serializers.ModelSerializer):
+    course_code = serializers.CharField(source="course.code", read_only=True)
+    course_title = serializers.CharField(source="course.title", read_only=True)
+
+    class Meta:
+        model = CourseOffering
+        fields = (
+            "id", "course", "course_code", "course_title", "academic_session",
+            "semester", "status", "tenant", "created_at",
+        )
+        read_only_fields = ("id", "tenant", "created_at")
+
+
+class CourseEnrollmentSerializer(serializers.ModelSerializer):
+    student_email = serializers.EmailField(source="student.email", read_only=True)
+    student_name = serializers.CharField(source="student.full_name", read_only=True)
+
+    class Meta:
+        model = CourseEnrollment
+        fields = (
+            "id", "course_offering", "student", "student_email", "student_name",
+            "status", "enrolled_at",
+            "tenant", "created_at",
+        )
+        read_only_fields = ("id", "tenant", "enrolled_at", "created_at")
+
+
+class LecturerAssignmentSerializer(serializers.ModelSerializer):
+    lecturer_email = serializers.EmailField(source="lecturer.email", read_only=True)
+    lecturer_name = serializers.CharField(source="lecturer.full_name", read_only=True)
+
+    class Meta:
+        model = LecturerCourseAssignment
+        fields = (
+            "id", "course_offering", "lecturer", "lecturer_email", "lecturer_name",
+            "assignment_role",
+            "tenant", "created_at",
+        )
+        read_only_fields = ("id", "tenant", "created_at")
+
+
+class CurriculumCourseSerializer(serializers.ModelSerializer):
+    course_code = serializers.CharField(source="course.code", read_only=True)
+    course_title = serializers.CharField(source="course.title", read_only=True)
+
+    class Meta:
+        model = CurriculumCourse
+        fields = (
+            "id", "programme", "course", "course_code", "course_title",
+            "level", "semester", "is_core",
+        )
+        read_only_fields = ("id",)
