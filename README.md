@@ -24,6 +24,7 @@ docker compose up -d
 ```
 
 Services:
+
 - PostgreSQL + pgvector → `localhost:5432`
 - Redis → `localhost:6379`
 - RabbitMQ → `localhost:5672` (management UI `:15672`)
