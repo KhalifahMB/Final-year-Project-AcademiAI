@@ -56,3 +56,16 @@ export const authApi = {
   passwordResetConfirm: (payload) => api.post("/auth/password-reset/confirm/", payload),
   passwordChange: (payload) => api.post("/auth/password-change/", payload),
 };
+
+/** Dashboard counters — each returns the raw list (or []). */
+const toList = (res) => {
+  const data = res.data;
+  return Array.isArray(data) ? data : data?.results || [];
+};
+
+export const dashApi = {
+  courses: () => api.get("/courses/").then(toList),
+  resources: () => api.get("/resources/").then(toList),
+  quizzes: () => api.get("/quizzes/").then(toList),
+  notes: () => api.get("/notes/").then(toList),
+};

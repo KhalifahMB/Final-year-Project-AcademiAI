@@ -1,9 +1,14 @@
 """
 Object storage abstraction (MinIO / S3).
+
+Business code interacts only with these helpers; provider details
+(endpoint, credentials) come from environment-driven settings so local
+MinIO and production AWS S3 are interchangeable.
 """
-from django.conf import settings
 import boto3
 from botocore.client import Config
+
+from django.conf import settings
 
 
 def get_s3_client():
@@ -26,6 +31,28 @@ def generate_presigned_upload_url(key: str, content_type: str, expires_in: int =
             "Key": key,
             "ContentType": content_type,
         },
+        ExpiresIn=expires_in,
+    )
+
+
+def generate_presigned_upload_post(key: str, content_type: str, expires_in: int = 3600) -> dict:
+    """
+    Presigned POST with a server-enforced size cap. Unlike plain PUT
+    presigns, the client cannot upload objects larger than
+    MAX_UPLOAD_BYTES — protecting storage from oversized uploads before
+    ingestion-time validation runs.
+    """
+    from apps.common.security.file_validation import MAX_UPLOAD_BYTES
+
+    client = get_s3_client()
+    return client.generate_presigned_post(
+        Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+        Key=key,
+        Fields={"Content-Type": content_type},
+        Conditions=[
+            {"Content-Type": content_type},
+            ["content-length-range", 1, MAX_UPLOAD_BYTES],
+        ],
         ExpiresIn=expires_in,
     )
 

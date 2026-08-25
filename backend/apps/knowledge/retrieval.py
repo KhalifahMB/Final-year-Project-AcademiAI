@@ -3,8 +3,8 @@ Hybrid RAG retrieval: authorization-first, then semantic + lexical + optional co
 """
 import logging
 from collections import defaultdict
+from uuid import UUID
 
-from django.conf import settings
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.db.models import Q
 
@@ -14,9 +14,48 @@ from apps.academics.models import CourseEnrollment, LecturerCourseAssignment
 logger = logging.getLogger(__name__)
 
 
+def _viewer_academic_context(user):
+    """
+    Resolve the viewer's programme/department/faculty ids from their profile.
+
+    Students inherit scope from their programme; lecturers from their
+    department. Returns (programme_id, department_id, faculty_id) with None
+    for unknown levels.
+    """
+    from apps.accounts.models import StudentProfile, LecturerProfile
+
+    programme_id = department_id = faculty_id = None
+    if user.role == "student":
+        profile = (
+            StudentProfile.objects.filter(user=user)
+            .select_related("programme__department__faculty")
+            .first()
+        )
+        if profile and profile.programme:
+            programme_id = profile.programme_id
+            department_id = profile.programme.department_id
+            faculty_id = profile.programme.department.faculty_id
+    else:
+        profile = (
+            LecturerProfile.objects.filter(user=user)
+            .select_related("department__faculty")
+            .first()
+        )
+        if profile and profile.department:
+            department_id = profile.department_id
+            faculty_id = profile.department.faculty_id
+    return programme_id, department_id, faculty_id
+
+
 def _authorized_resource_ids(user, course_offering_id=None):
     """
     Resources the user may retrieve from. Never bypass this.
+
+    Scope semantics (PRD §8): institution-wide resources are visible to all
+    tenant members; course-scoped to enrolled students and assigned
+    lecturers; programme/department/faculty scopes follow the viewer's
+    academic profile; private resources only to the uploader. Admins see
+    everything in the tenant.
     """
     tenant_id = user.tenant_id
     qs = Resource.objects.filter(
@@ -45,23 +84,29 @@ def _authorized_resource_ids(user, course_offering_id=None):
 
     allowed_offerings = set(enrolled) | set(assigned)
     if course_offering_id:
-        if course_offering_id not in {str(x) for x in allowed_offerings} and role != "admin":
-            # Still allow if explicitly enrolled/assigned UUID match
-            from uuid import UUID
-            try:
-                oid = UUID(str(course_offering_id))
-                if oid not in allowed_offerings:
-                    allowed_offerings = set()
-                else:
-                    allowed_offerings = {oid}
-            except Exception:
-                allowed_offerings = set()
+        try:
+            oid = UUID(str(course_offering_id))
+        except ValueError:
+            allowed_offerings = set()
+        else:
+            # Restrict retrieval to the requested offering — but only when
+            # the user is actually attached to it.
+            allowed_offerings = {oid} if oid in allowed_offerings else set()
 
-    q = Q(visibility_scope=Resource.Visibility.INSTITUTION) | Q(
-        course_offering_id__in=allowed_offerings
+    q = (
+        Q(visibility_scope=Resource.Visibility.INSTITUTION)
+        | Q(visibility_scope=Resource.Visibility.COURSE, course_offering_id__in=allowed_offerings)
+        | Q(visibility_scope=Resource.Visibility.PRIVATE, uploaded_by=user)
     )
-    # Private: only uploader
-    q = q | Q(visibility_scope=Resource.Visibility.PRIVATE, uploaded_by=user)
+
+    programme_id, department_id, faculty_id = _viewer_academic_context(user)
+    if programme_id:
+        q |= Q(visibility_scope=Resource.Visibility.PROGRAMME, programme_id=programme_id)
+    if department_id:
+        q |= Q(visibility_scope=Resource.Visibility.DEPARTMENT, department_id=department_id)
+    if faculty_id:
+        q |= Q(visibility_scope=Resource.Visibility.FACULTY, faculty_id=faculty_id)
+
     return list(qs.filter(q).values_list("id", flat=True))
 
 

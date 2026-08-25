@@ -163,6 +163,29 @@ RabbitMQ is the sole Celery broker (`config/celery.py`); Redis is cache
 (Django cache backend) and Celery result transport only. Implementation matches
 the authoritative documents; libraries.md wording superseded.
 
+## Security hardening pass (post-implementation review)
+
+Recorded decisions from the backend security/quality review:
+
+1. **Signup is student-only.** The API accepts but ignores any client-supplied
+   role; accounts are always created as students. Lecturers/admins are
+   promoted by tenant admins via `/users/` (audited as `user.role_change`).
+   The frontend signup form no longer offers a role selector.
+2. **Profile self-service is name-only** (`PATCH /auth/me/` accepts
+   first_name/last_name). Role/tenant were previously writable — a privilege
+   escalation.
+3. **Upload key provenance enforced.** `complete_upload` only accepts storage
+   keys under `tenants/{tenant}/resources/{resource}/`; presigns now use
+   presigned POST with a server-enforced `content-length-range` cap (the
+   response shape is `{upload_url, form_fields, storage_key}`).
+4. **Job results are owner-only.** Dispatch points record ownership in Redis;
+   `GET /jobs/{id}/` denies unknown owners (404).
+5. **Throttling is active**: global anon/user limits plus scopes
+   `auth` 20/min, `ai` 30/min, `upload` 20/hour.
+6. **Production hardening block** in settings: SSL redirect, HSTS, secure
+   cookies, nosniff/referrer/X-Frame DENY, and a fail-fast guard against the
+   development SECRET_KEY when DEBUG=False.
+
 ## Known limitations
 
 0. **Windows dev workers use the solo pool.** billiard's prefork pool crashes

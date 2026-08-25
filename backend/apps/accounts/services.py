@@ -58,8 +58,25 @@ def verify_email_code(email: str, code: str) -> User:
 
     record.is_used = True
     record.save(update_fields=["is_used"])
+    first_verification = not user.is_email_verified
     user.is_email_verified = True
     user.save(update_fields=["is_email_verified"])
+
+    # Documented flow: welcome email after successful (first) verification.
+    if first_verification:
+        try:
+            from .tasks import send_welcome_email
+
+            send_welcome_email(str(user.id))
+        except Exception:
+            logger.exception("Failed to queue welcome email")
+    log_action(
+        tenant=user.tenant,
+        actor=user,
+        action="user.email_verified",
+        entity_type="user",
+        entity_id=str(user.id),
+    )
     return user
 
 
@@ -83,11 +100,13 @@ def signup_user(*, email, password, first_name="", last_name="", role="student",
         is_email_verified=False,
     )
     code = create_verification_code(user)
-    # Queue email asynchronously (caller should dispatch Celery task)
-    try:
-        log_action(tenant=user.tenant, actor=user, action="user.signup", entity_type="user", entity_id=str(user.id))
-    except Exception:
-        pass
+    log_action(
+        tenant=user.tenant,
+        actor=user,
+        action="user.signup",
+        entity_type="user",
+        entity_id=str(user.id),
+    )
     return user, code
 
 
@@ -121,3 +140,17 @@ def confirm_password_reset(email: str, token: str, new_password: str) -> None:
     record.save(update_fields=["is_used"])
     user.set_password(new_password)
     user.save(update_fields=["password"])
+    # Security notification per email-services.md flow 5.
+    try:
+        from .tasks import send_password_changed_email
+
+        send_password_changed_email(str(user.id))
+    except Exception:
+        logger.exception("Failed to queue password-changed notification")
+    log_action(
+        tenant=user.tenant,
+        actor=user,
+        action="user.password_reset",
+        entity_type="user",
+        entity_id=str(user.id),
+    )

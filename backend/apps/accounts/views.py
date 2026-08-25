@@ -1,7 +1,7 @@
-import logging
+﻿import logging
 
 from django.contrib.auth import authenticate
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,12 +17,14 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     PasswordChangeSerializer,
     UserSerializer,
+    ProfileUpdateSerializer,
     CustomTokenObtainPairSerializer,
     MessageResponseSerializer,
     AuthTokenResponseSerializer,
     LogoutRequestSerializer,
 )
 from . import services
+from apps.audit.services import log_action
 from apps.common.permissions import IsAdminRole
 
 logger = logging.getLogger(__name__)
@@ -33,9 +35,15 @@ class SignupView(APIView):
     throttle_scope = "auth"
 
     @extend_schema(
+        tags=["Authentication"],
         request=SignupSerializer,
         responses={201: MessageResponseSerializer, 400: MessageResponseSerializer},
         summary="Create a user account and trigger email verification",
+        description=(
+            "Registers a student within the given institution slug and "
+            "emails a single-use verification code. Accounts cannot sign in "
+            "until verified; lecturer/admin roles are granted by tenant admins."
+        ),
         auth=[],
     )
     def post(self, request):
@@ -48,7 +56,9 @@ class SignupView(APIView):
                 password=data["password"],
                 first_name=data.get("first_name", ""),
                 last_name=data.get("last_name", ""),
-                role=data.get("role", "student"),
+                # Role is always student at signup; lecturers/admins are
+                # promoted by a tenant admin (PRD: admins manage users).
+                role=User.Role.STUDENT,
                 tenant_slug=data.get("tenant_slug"),
             )
         except ValueError as e:
@@ -60,7 +70,7 @@ class SignupView(APIView):
         try:
             from .tasks import send_verification_email
 
-            send_verification_email.delay(str(user.id), code)
+            send_verification_email(str(user.id), code)
         except Exception:
             logger.exception("Failed to queue verification email")
         return Response(
@@ -78,6 +88,7 @@ class VerifyEmailView(APIView):
     throttle_scope = "auth"
 
     @extend_schema(
+        tags=["Authentication"],
         request=VerifyEmailSerializer,
         responses={200: MessageResponseSerializer, 400: MessageResponseSerializer},
         summary="Verify a signup verification code",
@@ -105,6 +116,7 @@ class LoginView(APIView):
     throttle_scope = "auth"
 
     @extend_schema(
+        tags=["Authentication"],
         request=LoginSerializer,
         responses={200: AuthTokenResponseSerializer, 401: MessageResponseSerializer},
         summary="Authenticate and return access/refresh tokens",
@@ -149,6 +161,7 @@ class LoginView(APIView):
 
 class LogoutView(APIView):
     @extend_schema(
+        tags=["Authentication"],
         request=LogoutRequestSerializer,
         responses={200: MessageResponseSerializer},
         summary="Blacklist the supplied refresh token",
@@ -165,10 +178,32 @@ class LogoutView(APIView):
 
 
 class MeView(generics.RetrieveUpdateAPIView):
+    """
+    GET  /auth/me/ — authenticated profile.
+    PATCH /auth/me/ — update own display name only (role/tenant are
+    server-controlled; see ProfileUpdateSerializer).
+    """
+
     serializer_class = UserSerializer
+
+    def get_serializer_class(self):
+        if self.request.method in ("PATCH", "PUT"):
+            return ProfileUpdateSerializer
+        return UserSerializer
 
     def get_object(self):
         return self.request.user
+
+
+MeView = extend_schema_view(
+    get=extend_schema(tags=["Authentication"], summary="Get authenticated profile"),
+    patch=extend_schema(
+        tags=["Authentication"],
+        summary="Update own display name",
+        description="Only first_name and last_name are writable; role, tenant, and verification state are server-controlled.",
+    ),
+    put=extend_schema(tags=["Authentication"], summary="Replace own display name", deprecated=True),
+)(MeView)
 
 
 class PasswordResetRequestView(APIView):
@@ -176,6 +211,7 @@ class PasswordResetRequestView(APIView):
     throttle_scope = "auth"
 
     @extend_schema(
+        tags=["Authentication"],
         request=PasswordResetRequestSerializer,
         responses={200: MessageResponseSerializer},
         summary="Request a password reset email (generic response; no enumeration)",
@@ -191,7 +227,7 @@ class PasswordResetRequestView(APIView):
             try:
                 from .tasks import send_password_reset_email
 
-                send_password_reset_email.delay(str(user.id), token)
+                send_password_reset_email(str(user.id), token)
             except Exception:
                 logger.exception("Failed to queue password reset email")
         # Always same response (no enumeration)
@@ -208,6 +244,7 @@ class PasswordResetConfirmView(APIView):
     throttle_scope = "auth"
 
     @extend_schema(
+        tags=["Authentication"],
         request=PasswordResetConfirmSerializer,
         responses={200: MessageResponseSerializer, 400: MessageResponseSerializer},
         summary="Confirm password reset with a single-use token",
@@ -232,6 +269,7 @@ class PasswordResetConfirmView(APIView):
 
 class PasswordChangeView(APIView):
     @extend_schema(
+        tags=["Authentication"],
         request=PasswordChangeSerializer,
         responses={200: MessageResponseSerializer, 400: MessageResponseSerializer},
         summary="Change password for the authenticated user",
@@ -247,11 +285,43 @@ class PasswordChangeView(APIView):
             )
         user.set_password(ser.validated_data["new_password"])
         user.save(update_fields=["password"])
+        # Security notification per email-services.md flow 5.
+        try:
+            from .tasks import send_password_changed_email
+
+            send_password_changed_email(str(user.id))
+        except Exception:
+            logger.exception("Failed to queue password-changed notification")
+        log_action(
+            tenant=user.tenant,
+            actor=user,
+            action="user.password_change",
+            entity_type="user",
+            entity_id=str(user.id),
+        )
         return Response({"success": True, "message": "Password changed."})
 
 
+@extend_schema_view(
+    post=extend_schema(
+        tags=["Authentication"],
+        summary="Refresh access token",
+        description="Exchanges a valid refresh token for a new access token (rotation enabled; used refresh tokens are blacklisted).",
+        auth=[],
+    )
+)
+class TaggedTokenRefreshView(TokenRefreshView):
+    pass
+
+
+@extend_schema(tags=["Users"])
 class UserAdminViewSet(viewsets.ModelViewSet):
-    """Tenant-scoped user management (admin)."""
+    """
+    Tenant-scoped user management (admin only). Role changes are audited.
+    Sensitive fields (verification state, tenant) are read-only here;
+    accounts are created exclusively through public signup.
+    """
+
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminRole]
     search_fields = ["email", "first_name", "last_name"]
@@ -262,3 +332,17 @@ class UserAdminViewSet(viewsets.ModelViewSet):
         if getattr(self, "swagger_fake_view", False):
             return User.objects.none()
         return User.objects.filter(tenant=self.request.user.tenant).order_by("email")
+
+    def perform_update(self, serializer):
+        old_role = serializer.instance.role
+        user = serializer.save()
+        if user.role != old_role:
+            log_action(
+                tenant=self.request.user.tenant,
+                actor=self.request.user,
+                action="user.role_change",
+                entity_type="user",
+                entity_id=str(user.id),
+                metadata={"from": old_role, "to": user.role},
+            )
+

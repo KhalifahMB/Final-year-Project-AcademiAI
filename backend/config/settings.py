@@ -20,6 +20,12 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-dev-only-change-me"
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("1", "true", "yes")
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
+# Fail fast rather than boot production with a publicly-known key.
+if not DEBUG and SECRET_KEY.startswith("django-insecure-dev-only"):
+    raise RuntimeError(
+        "DJANGO_SECRET_KEY must be set to a strong random value when DEBUG=False."
+    )
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -129,7 +135,9 @@ CORS_ALLOWED_ORIGINS = [
     ).split(",")
     if o.strip()
 ]
-CORS_ALLOW_CREDENTIALS = True
+# CORS — JWT travels in the Authorization header, not cookies, so
+# credentialed CORS is neither needed nor allowed.
+CORS_ALLOW_CREDENTIALS = False
 CSRF_TRUSTED_ORIGINS = [
     o.strip()
     for o in os.getenv(
@@ -151,14 +159,21 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ),
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "DEFAULT_PAGINATION_CLASS": "apps.common.pagination.DefaultPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "apps.common.exceptions.custom_exception_handler",
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
     "DEFAULT_THROTTLE_RATES": {
         "anon": "100/hour",
-        "user": "1000/hour",
+        "user": "2000/hour",
         "auth": "20/minute",
+        "ai": "30/minute",
+        "upload": "20/hour",
     },
 }
 
@@ -181,6 +196,34 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    "TAGS": [
+        {"name": "Authentication", "description": "Signup, verification, login, tokens, password management"},
+        {"name": "Users", "description": "Tenant user administration (admins)"},
+        {"name": "Tenants", "description": "Institution (tenant) management"},
+        {"name": "Faculties", "description": "Faculty structure"},
+        {"name": "Departments", "description": "Department structure"},
+        {"name": "Programmes", "description": "Programme structure"},
+        {"name": "Academic Sessions", "description": "Academic year definitions"},
+        {"name": "Semesters", "description": "Semester calendar within sessions"},
+        {"name": "Courses", "description": "Reusable course catalogue"},
+        {"name": "Course Offerings", "description": "Course delivery per session/semester"},
+        {"name": "Lecturer Assignments", "description": "Teaching assignments per offering"},
+        {"name": "Enrollments", "description": "Student enrollment in offerings"},
+        {"name": "Resources", "description": "Academic materials and upload lifecycle"},
+        {"name": "Resource Versions", "description": "Immutable version history per resource"},
+        {"name": "Summaries", "description": "Asynchronous AI summarization jobs"},
+        {"name": "Concepts", "description": "Knowledge-graph concept nodes"},
+        {"name": "Concept Relationships", "description": "Typed edges between concepts"},
+        {"name": "Chat", "description": "Grounded AI assistant sessions and messages"},
+        {"name": "Quizzes", "description": "Quiz CRUD and AI generation"},
+        {"name": "Quiz Questions", "description": "Questions belonging to quizzes"},
+        {"name": "Quiz Attempts", "description": "Student attempts and server-side scoring"},
+        {"name": "Notes", "description": "Personal notes"},
+        {"name": "Bookmarks", "description": "Saved resources"},
+        {"name": "Progress", "description": "Per-concept learning progress"},
+        {"name": "Administration", "description": "Audit logs and operational data (admins)"},
+        {"name": "System", "description": "Health and background-job status"},
+    ],
     "ENUM_NAME_OVERRIDES": {
         "UserRoleEnum": "apps.accounts.models.User.Role",
         "ResourceVisibilityEnum": "apps.resources.models.Resource.Visibility",
@@ -248,6 +291,22 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("1", "true", "yes
 # Debug Toolbar (dev only)
 INTERNAL_IPS = ["127.0.0.1", "localhost"]
 DEBUG_TOOLBAR_CONFIG = {"SHOW_TOOLBAR_CALLBACK": lambda request: DEBUG}
+
+# --- Production security hardening (env-driven; no-ops under DEBUG) -------
+if not DEBUG:
+    SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "True").lower() in ("1", "true", "yes")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "31536000"))  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+    X_FRAME_OPTIONS = "DENY"
+
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "same-origin"
 
 # Logging
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

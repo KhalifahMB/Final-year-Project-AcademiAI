@@ -7,6 +7,11 @@ from .models import User
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """
+    Read representation of a user. Writable only via ProfileUpdateSerializer
+    (self-service) or UserAdminViewSet (tenant admin).
+    """
+
     full_name = serializers.CharField(read_only=True)
 
     class Meta:
@@ -22,7 +27,19 @@ class UserSerializer(serializers.ModelSerializer):
             "tenant",
             "created_at",
         )
-        read_only_fields = ("id", "is_email_verified", "created_at", "tenant")
+        read_only_fields = fields
+
+
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    """
+    Self-service profile updates. Deliberately narrow: users may change only
+    their own display name. Role, tenant, and verification state are
+    server-controlled — exposing them here allowed privilege escalation.
+    """
+
+    class Meta:
+        model = User
+        fields = ("first_name", "last_name")
 
 
 class SignupSerializer(serializers.Serializer):
@@ -30,8 +47,7 @@ class SignupSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8)
     first_name = serializers.CharField(required=False, allow_blank=True)
     last_name = serializers.CharField(required=False, allow_blank=True)
-    role = serializers.ChoiceField(choices=User.Role.choices, default=User.Role.STUDENT)
-    tenant_slug = serializers.SlugField(required=False)  # optional for first admin
+    tenant_slug = serializers.SlugField(required=False)
 
     def validate_password(self, value):
         validate_password(value)

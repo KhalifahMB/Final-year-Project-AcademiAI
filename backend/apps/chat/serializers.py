@@ -32,4 +32,3 @@ class ChatSessionSerializer(serializers.ModelSerializer):
 
 class ChatMessageCreateSerializer(serializers.Serializer):
     content = serializers.CharField(max_length=10000)
-    course_offering_id = serializers.UUIDField(required=False, allow_null=True)

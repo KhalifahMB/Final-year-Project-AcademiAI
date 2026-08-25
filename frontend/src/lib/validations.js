@@ -11,7 +11,6 @@ export const signupSchema = z.object({
   first_name: z.string().optional().or(z.literal("")),
   last_name: z.string().optional().or(z.literal("")),
   tenant_slug: z.string().min(1, "Institution slug is required"),
-  role: z.enum(["student", "lecturer", "admin"]),
 });
 
 export const verifyEmailSchema = z.object({

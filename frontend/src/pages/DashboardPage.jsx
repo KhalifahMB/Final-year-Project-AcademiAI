@@ -1,10 +1,9 @@
-import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import AppShell from "@/components/layout/AppShell";
-import StatCard from "@/components/shared/StatCard";
-import EmptyState from "@/components/shared/EmptyState";
-import api from "@/services/api";
-import { useAuth } from "@/hooks/useAuth";
+﻿import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import AppShell from '@/components/layout/AppShell';
+import StatCard from '@/components/shared/StatCard';
+import EmptyState from '@/components/shared/EmptyState';
+import { useAuth } from '@/hooks/useAuth';
 import {
   BookOpen,
   ClipboardList,
@@ -16,15 +15,14 @@ import {
   Upload,
   Users,
   ScrollText,
-} from "lucide-react";
+} from 'lucide-react';
 
-function useCount(key, path) {
+function useCount(key, endpoint) {
   return useQuery({
     queryKey: [key],
     queryFn: async () => {
-      const { data } = await api.get(path);
-      const list = data.results || data;
-      return Array.isArray(list) ? list.length : null;
+      const list = await dashApi[endpoint]();
+      return Array.isArray(list) ? list.length : 0;
     },
     staleTime: 60_000,
     retry: false,
@@ -33,33 +31,58 @@ function useCount(key, path) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const isStaff = user?.role === "lecturer" || user?.role === "admin";
-  const isAdmin = user?.role === "admin";
+  const isStaff = user?.role === 'lecturer' || user?.role === 'admin';
+  const isAdmin = user?.role === 'admin';
 
-  const courses = useCount("dash-courses", "/courses/");
-  const resources = useCount("dash-resources", "/resources/");
-  const quizzes = useCount("dash-quizzes", "/quizzes/");
-  const notes = useCount("dash-notes", "/notes/");
+  const courses = useCount('dash-courses', 'courses');
+  const resources = useCount('dash-resources', 'resources');
+  const quizzes = useCount('dash-quizzes', 'quizzes');
+  const notes = useCount('dash-notes', 'notes');
 
-  const firstName = user?.first_name ? `, ${user.first_name}` : "";
+  const firstName = user?.first_name ? `, ${user.first_name}` : '';
 
   const quickActions = [
-    { to: "/chat", label: "Ask the AI", icon: MessageSquareText, desc: "Grounded Q&A with citations" },
-    { to: "/resources", label: "Browse resources", icon: FileText, desc: "Course materials & documents" },
-    { to: "/quizzes", label: "Take a quiz", icon: ClipboardList, desc: "Practice assessments" },
+    {
+      to: '/chat',
+      label: 'Ask the AI',
+      icon: MessageSquareText,
+      desc: 'Grounded Q&A with citations',
+    },
+    {
+      to: '/resources',
+      label: 'Browse resources',
+      icon: FileText,
+      desc: 'Course materials & documents',
+    },
+    {
+      to: '/quizzes',
+      label: 'Take a quiz',
+      icon: ClipboardList,
+      desc: 'Practice assessments',
+    },
   ];
   if (isStaff) {
     quickActions.push({
-      to: "/resources/upload",
-      label: "Upload resource",
+      to: '/resources/upload',
+      label: 'Upload resource',
       icon: Upload,
-      desc: "Presign, upload & auto-ingest",
+      desc: 'Presign, upload & auto-ingest',
     });
   }
   if (isAdmin) {
     quickActions.push(
-      { to: "/admin/users", label: "Manage users", icon: Users, desc: "Tenant accounts & roles" },
-      { to: "/admin/audit", label: "Audit logs", icon: ScrollText, desc: "Security-relevant events" }
+      {
+        to: '/admin/users',
+        label: 'Manage users',
+        icon: Users,
+        desc: 'Tenant accounts & roles',
+      },
+      {
+        to: '/admin/audit',
+        label: 'Audit logs',
+        icon: ScrollText,
+        desc: 'Security-relevant events',
+      },
     );
   }
 
@@ -71,10 +94,30 @@ export default function DashboardPage() {
       description="Here's what's happening across your workspace today."
     >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={GraduationCap} label="Courses" value={courses.data} hint="In your tenant" />
-        <StatCard icon={FileText} label="Resources" value={resources.data} hint="Uploaded materials" />
-        <StatCard icon={ClipboardList} label="Quizzes" value={quizzes.data} hint="Available assessments" />
-        <StatCard icon={StickyNote} label="Notes" value={notes.data} hint="Your personal notes" />
+        <StatCard
+          icon={GraduationCap}
+          label="Courses"
+          value={courses.data}
+          hint="In your tenant"
+        />
+        <StatCard
+          icon={FileText}
+          label="Resources"
+          value={resources.data}
+          hint="Uploaded materials"
+        />
+        <StatCard
+          icon={ClipboardList}
+          label="Quizzes"
+          value={quizzes.data}
+          hint="Available assessments"
+        />
+        <StatCard
+          icon={StickyNote}
+          label="Notes"
+          value={notes.data}
+          hint="Your personal notes"
+        />
       </div>
 
       <section className="mt-8">
@@ -105,9 +148,9 @@ export default function DashboardPage() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-3">
             {[
-              { to: "/my-courses", label: "My courses", icon: GraduationCap },
-              { to: "/progress", label: "Learning progress", icon: TrendingUp },
-              { to: "/bookmarks", label: "Saved materials", icon: BookOpen },
+              { to: '/my-courses', label: 'My courses', icon: GraduationCap },
+              { to: '/progress', label: 'Learning progress', icon: TrendingUp },
+              { to: '/bookmarks', label: 'Saved materials', icon: BookOpen },
             ].map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}
@@ -129,11 +172,11 @@ export default function DashboardPage() {
             title="No courses yet"
             description={
               isAdmin
-                ? "Create faculties, departments, programmes and courses from the Administration section."
+                ? 'Create faculties, departments, programmes and courses from the Administration section.'
                 : "Once your institution sets up courses, they'll appear here."
             }
-            action={isAdmin ? "Set up structure" : undefined}
-            actionTo={isAdmin ? "/admin/faculties" : undefined}
+            action={isAdmin ? 'Set up structure' : undefined}
+            actionTo={isAdmin ? '/admin/faculties' : undefined}
           />
         </div>
       )}

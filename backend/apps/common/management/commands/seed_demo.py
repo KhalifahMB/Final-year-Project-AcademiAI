@@ -8,9 +8,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         tenant, created = Tenant.objects.get_or_create(
-            slug="demo-uni",
+            slug="ATBU",
             defaults={
-                "name": "Demo University",
+                "name": "Abubakar Tafawa Balewa University",
                 "status": Tenant.Status.ACTIVE,
             },
         )

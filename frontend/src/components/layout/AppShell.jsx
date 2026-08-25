@@ -44,7 +44,7 @@ const NAV_SECTIONS = [
     roles: ["student", "lecturer", "admin"],
     items: [
       { to: "/resources", label: "Resources", icon: FileText },
-      { to: "/resources/upload", label: "Upload Resource", icon: Upload, roles: ["lecturer", "admin"] },
+      { to: "/resources/upload", label: "Upload Material", icon: Upload },
       { to: "/chat", label: "AI Assistant", icon: MessageSquareText },
       { to: "/quizzes", label: "Quizzes", icon: ClipboardList },
     ],

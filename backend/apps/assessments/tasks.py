@@ -44,6 +44,7 @@ def generate_quiz_task(self, user_id: str, tenant_id: str, params: dict):
     from apps.assessments.models import Quiz, QuizQuestion
     from apps.common.ai import generate_quiz_json
     from apps.common.db import tenant_scope
+    from apps.knowledge.retrieval import _authorized_resource_ids
     from apps.resources.models import ResourceChunk
 
     with tenant_scope(tenant_id):
@@ -52,14 +53,25 @@ def generate_quiz_task(self, user_id: str, tenant_id: str, params: dict):
         except User.DoesNotExist:
             return {"status": "failed", "error": "user not found"}
 
-        resource_ids = params.get("resource_ids") or []
-        if resource_ids:
-            chunks = ResourceChunk.objects.filter(
-                tenant_id=tenant_id,
-                resource_version__resource_id__in=resource_ids,
-            )[:40]
+        # Scope source content to materials this user is authorized to read
+        # — never the whole tenant's corpus.
+        requested_ids = [str(r) for r in (params.get("resource_ids") or [])]
+        allowed = set(_authorized_resource_ids(user, params.get("course_offering_id")))
+        if requested_ids:
+            resource_ids = [r for r in requested_ids if r in allowed]
         else:
-            chunks = ResourceChunk.objects.filter(tenant_id=tenant_id)[:40]
+            resource_ids = allowed
+
+        if not resource_ids:
+            return {
+                "status": "failed",
+                "error": "No authorized materials available yet. Upload or ask for materials first.",
+            }
+
+        chunks = ResourceChunk.objects.filter(
+            tenant_id=tenant_id,
+            resource_version__resource_id__in=resource_ids,
+        ).order_by("?")[:40]
 
         context = "\n\n".join(c.content[:1500] for c in chunks)
 

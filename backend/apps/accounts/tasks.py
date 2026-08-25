@@ -53,3 +53,50 @@ def send_password_reset_email(self, user_id: str, token: str):
     except Exception as exc:
         logger.exception("Password reset email failed user_id=%s", user_id)
         raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def send_welcome_email(self, user_id: str):
+    """Documented flow 2: sent once, after successful email verification."""
+    from .models import User
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return
+    subject = "Welcome to AcademiAI"
+    message = (
+        f"Hello {user.first_name or user.email},\n\n"
+        "Your account has been verified. You can now sign in and start using "
+        "your institution's AcademiAI workspace.\n\n"
+        "If you did not create this account, contact your administrator."
+    )
+    try:
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+        logger.info("Welcome email sent user_id=%s", user_id)
+    except Exception as exc:
+        logger.exception("Welcome email failed user_id=%s", user_id)
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def send_password_changed_email(self, user_id: str):
+    """Documented flow 5: security notification — no secret material inside."""
+    from .models import User
+
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return
+    subject = "Your AcademiAI password was changed"
+    message = (
+        f"Hello {user.first_name or user.email},\n\n"
+        "Your AcademiAI password was just changed. If this wasn't you, "
+        "contact your institution's administrator immediately."
+    )
+    try:
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+        logger.info("Password-changed notification sent user_id=%s", user_id)
+    except Exception as exc:
+        logger.exception("Password-changed notification failed user_id=%s", user_id)
+        raise self.retry(exc=exc)

@@ -5,8 +5,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.throttling import AiRateThrottle
 from apps.common.viewsets import TenantModelViewSet
 from apps.common.permissions import IsTenantMember
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import ChatSession, ChatMessage
 from .serializers import (
@@ -17,8 +19,9 @@ from .serializers import (
 from . import services
 
 
+@extend_schema(tags=["Chat"])
 class ChatSessionViewSet(TenantModelViewSet):
-    queryset = ChatSession.objects.none()
+    queryset = ChatSession.objects.all()
     serializer_class = ChatSessionSerializer
     filterset_fields = ["course_offering"]
 
@@ -32,18 +35,31 @@ class ChatSessionViewSet(TenantModelViewSet):
         serializer.save(tenant=self.request.user.tenant, user=self.request.user)
 
 
+@extend_schema(tags=["Chat"])
 class ChatMessageViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Read-only conversation history. Filter by session:
+    GET /chat/messages/?session=<uuid> — messages the caller owns.
+    """
+
     serializer_class = ChatMessageSerializer
     permission_classes = [IsTenantMember]
-    queryset = ChatMessage.objects.none()
+    queryset = ChatMessage.objects.all()
+    filterset_fields = ["session"]
+    filter_backends = [DjangoFilterBackend]
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return ChatMessage.objects.none()
-        return ChatMessage.objects.filter(
-            tenant=self.request.user.tenant,
-            session__user=self.request.user,
-        ).select_related("session").prefetch_related("sources")
+        return (
+            ChatMessage.objects.filter(
+                tenant=self.request.user.tenant,
+                session__user=self.request.user,
+            )
+            .select_related("session")
+            .prefetch_related("sources")
+            .order_by("created_at")
+        )
 
 
 class ChatSendMessageView(APIView):
@@ -53,11 +69,19 @@ class ChatSendMessageView(APIView):
     Runs retrieval + Gemini (sync for MVP; can be moved to Celery for long answers).
     """
     permission_classes = [IsTenantMember]
+    throttle_classes = [AiRateThrottle]
 
     @extend_schema(
+        tags=["Chat"],
         request=ChatMessageCreateSerializer,
         responses={201: ChatMessageSerializer},
         summary="Send a user message and receive the grounded assistant reply",
+        description=(
+            "Stores the user message, retrieves relevant passages from "
+            "authorized resources (hybrid retrieval), generates a grounded "
+            "answer via Gemini with source citations, and returns both "
+            "messages. Rate limited under the 'ai' scope."
+        ),
     )
     def post(self, request, session_id):
         ser = ChatMessageCreateSerializer(data=request.data)
@@ -76,6 +100,11 @@ class ChatSendMessageView(APIView):
             )
 
         user_msg = services.append_user_message(session, content)
+
+        # Title the session from its first message so history is scannable.
+        if session.title in ("", "New chat", "Study chat"):
+            session.title = content[:80]
+            session.save(update_fields=["title", "updated_at"])
 
         # Retrieval + AI (authorization-first)
         from apps.knowledge.retrieval import hybrid_retrieve

@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import api from "@/services/api";
+import { dashApi } from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ export default function NotesPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["notes"],
     queryFn: async () => {
-      const { data } = await api.get("/notes/");
+      const { data } = await dashApi.notes();
       return data.results || data;
     },
   });
@@ -81,7 +81,7 @@ export default function NotesPage() {
         </Alert>
       )}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">Loadingâ€¦</p>
       ) : (
         <ul className="space-y-2">
           {(data || []).map((n) => (
@@ -100,3 +100,5 @@ export default function NotesPage() {
     </AppShell>
   );
 }
+
+
