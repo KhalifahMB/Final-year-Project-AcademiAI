@@ -70,6 +70,14 @@ def verify_email_code(email: str, code: str) -> User:
             send_welcome_email(str(user.id))
         except Exception:
             logger.exception("Failed to queue welcome email")
+        # First-time onboarding: auto-enrol students into the course
+        # offerings of their programme's department.
+        try:
+            from apps.academics.services import auto_enroll_student
+
+            auto_enroll_student(user)
+        except Exception:
+            logger.exception("Auto-enrollment failed user=%s", user.id)
     log_action(
         tenant=user.tenant,
         actor=user,
@@ -80,7 +88,16 @@ def verify_email_code(email: str, code: str) -> User:
     return user
 
 
-def signup_user(*, email, password, first_name="", last_name="", role="student", tenant_slug=None):
+def signup_user(
+    *,
+    email,
+    password,
+    first_name="",
+    last_name="",
+    role="student",
+    tenant_slug=None,
+    programme_id=None,
+):
     tenant = None
     if tenant_slug:
         tenant = Tenant.objects.filter(slug=tenant_slug, status=Tenant.Status.ACTIVE).first()
@@ -90,15 +107,47 @@ def signup_user(*, email, password, first_name="", last_name="", role="student",
     if User.objects.filter(email__iexact=email, tenant=tenant).exists():
         raise ValueError("A user with this email already exists for this institution.")
 
-    user = User.objects.create_user(
-        email=email,
-        password=password,
-        first_name=first_name,
-        last_name=last_name,
-        role=role,
-        tenant=tenant,
-        is_email_verified=False,
-    )
+    # Anonymous signup requests carry no tenant context; academic tables are
+    # RLS-protected, so resolve + write inside an explicit scope.
+    programme = None
+    if tenant is not None:
+        from apps.common.db import tenant_scope
+        from django.db import transaction
+
+        with tenant_scope(str(tenant.id)), transaction.atomic():
+            if programme_id:
+                from apps.academics.models import Programme
+
+                # Cross-tenant ids simply resolve to None here (IDOR-safe).
+                programme = Programme.objects.filter(id=programme_id).first()
+
+            user = User.objects.create_user(
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                role=role,
+                tenant=tenant,
+                is_email_verified=False,
+            )
+
+            from .models import LecturerProfile, StudentProfile
+
+            if role == User.Role.STUDENT:
+                StudentProfile.objects.create(user=user, tenant=tenant, programme=programme)
+            elif role == User.Role.LECTURER:
+                LecturerProfile.objects.create(user=user, tenant=tenant)
+    else:
+        user = User.objects.create_user(
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            role=role,
+            tenant=None,
+            is_email_verified=False,
+        )
+
     code = create_verification_code(user)
     log_action(
         tenant=user.tenant,
@@ -106,8 +155,16 @@ def signup_user(*, email, password, first_name="", last_name="", role="student",
         action="user.signup",
         entity_type="user",
         entity_id=str(user.id),
+        metadata={"role": role},
     )
     return user, code
+
+
+def reactivate_tenant_users(tenant) -> int:
+    """Restore login access after a suspension is lifted."""
+    return User.objects.filter(tenant_id=tenant.id, is_active=False).exclude(
+        is_superuser=True
+    ).update(is_active=True)
 
 
 def create_password_reset_token(user: User) -> str:

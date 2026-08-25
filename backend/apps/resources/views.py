@@ -1,5 +1,6 @@
 import logging
 
+from django.db.models import Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
@@ -29,6 +30,52 @@ def _content_type_allowed(content_type: str) -> bool:
     return any(ct.startswith(p) for p in ALLOWED_MIME_PREFIXES)
 
 
+def _authorized_resources_q(user) -> Q:
+    """
+    Visibility filter for LIST endpoints — same scope semantics as the RAG
+    pipeline (apps.knowledge.retrieval): institution-wide for everyone,
+    course-scoped to enrolled students / assigned lecturers, programme /
+    department / faculty scopes via the viewer's academic profile, private
+    only for the uploader. Admins see the whole tenant.
+    """
+    from apps.academics.models import CourseEnrollment, LecturerCourseAssignment
+    from apps.knowledge.retrieval import _viewer_academic_context
+
+    base = Q(visibility_scope=Resource.Visibility.INSTITUTION)
+
+    role = getattr(user, "role", None)
+    if role == "admin":
+        return base | Q()  # whole tenant (tenant filter applied upstream)
+
+    allowed_offerings = set()
+    if role == "student":
+        allowed_offerings = set(
+            CourseEnrollment.objects.filter(
+                student=user, status=CourseEnrollment.Status.ENROLLED
+            ).values_list("course_offering_id", flat=True)
+        )
+    elif role == "lecturer":
+        allowed_offerings = set(
+            LecturerCourseAssignment.objects.filter(lecturer=user).values_list(
+                "course_offering_id", flat=True
+            )
+        )
+
+    q = (
+        base
+        | Q(visibility_scope=Resource.Visibility.COURSE, course_offering_id__in=allowed_offerings)
+        | Q(visibility_scope=Resource.Visibility.PRIVATE, uploaded_by=user)
+    )
+    programme_id, department_id, faculty_id = _viewer_academic_context(user)
+    if programme_id:
+        q |= Q(visibility_scope=Resource.Visibility.PROGRAMME, programme_id=programme_id)
+    if department_id:
+        q |= Q(visibility_scope=Resource.Visibility.DEPARTMENT, department_id=department_id)
+    if faculty_id:
+        q |= Q(visibility_scope=Resource.Visibility.FACULTY, faculty_id=faculty_id)
+    return q
+
+
 @extend_schema(tags=["Resources"])
 class ResourceViewSet(TenantModelViewSet):
     """
@@ -38,6 +85,9 @@ class ResourceViewSet(TenantModelViewSet):
     2. PUT   the file bytes to that URL (direct to MinIO/S3)
     3. POST  {id}/complete_upload/    — register the version and start async
        ingestion (validation → extraction → chunking → embedding)
+
+    List supports ?scope=authorized to restrict results to what the caller
+    may actually read (used by student/lecturer views).
     """
 
     queryset = Resource.objects.select_related(
@@ -46,6 +96,14 @@ class ResourceViewSet(TenantModelViewSet):
     serializer_class = ResourceSerializer
     search_fields = ["title", "description"]
     filterset_fields = ["processing_status", "visibility_scope", "course_offering"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.query_params.get("scope") == "authorized" and not getattr(
+            self.request.user, "is_superuser", False
+        ):
+            qs = qs.filter(_authorized_resources_q(self.request.user))
+        return qs
 
     def get_permissions(self):
         perms = super().get_permissions()

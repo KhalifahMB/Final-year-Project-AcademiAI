@@ -100,3 +100,68 @@ def send_password_changed_email(self, user_id: str):
     except Exception as exc:
         logger.exception("Password-changed notification failed user_id=%s", user_id)
         raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def send_tenant_suspension_emails(self, tenant_id: str):
+    """Notify every active user of a tenant that it has been suspended and
+    that access will be restricted after a 24-hour grace period."""
+    from apps.tenants.models import Tenant
+    from .models import User
+
+    try:
+        tenant = Tenant.objects.get(id=tenant_id)
+    except Tenant.DoesNotExist:
+        return
+
+    recipients = list(
+        User.objects.filter(tenant_id=tenant.id, is_active=True)
+        .values_list("email", flat=True)
+        .iterator()
+    )
+    subject = f"AcademiAI access — {tenant.name} suspended"
+    message = (
+        f"Hello,\n\n"
+        f"{tenant.name}'s AcademiAI workspace has been suspended by the "
+        "platform team. You can still sign in for the next 24 hours; after "
+        "that, account access will be restricted until the institution is "
+        "reactivated.\n\n"
+        "Please contact your institution's administrator for details."
+    )
+    sent = 0
+    for email in recipients:
+        try:
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
+            sent += 1
+        except Exception:
+            logger.exception("Suspension notice failed tenant=%s to=%s", tenant.id, email)
+    logger.info("Suspension notices sent tenant=%s count=%s", tenant.id, sent)
+
+
+@shared_task
+def restrict_suspended_tenant_logins():
+    """
+    Scheduled (hourly). Tenants suspended more than SUSPENSION_GRACE_HOURS
+    ago lose login access: every non-superuser account is deactivated.
+    Idempotent — deactivating an inactive user is a no-op.
+    """
+    from datetime import timedelta as _td
+
+    from django.utils import timezone
+
+    from apps.tenants.models import Tenant
+    from .models import User
+
+    grace_hours = int(getattr(settings, "SUSPENSION_GRACE_HOURS", 24))
+    cutoff = timezone.now() - _td(hours=grace_hours)
+    expired = Tenant.objects.filter(
+        status=Tenant.Status.SUSPENDED,
+        suspended_at__isnull=False,
+        suspended_at__lte=cutoff,
+    )
+    total = 0
+    for tenant in expired.iterator():
+        qs = User.objects.filter(tenant_id=tenant.id, is_active=True).exclude(is_superuser=True)
+        total += qs.update(is_active=False)
+        logger.info("Restricted logins for suspended tenant=%s users=%s", tenant.id, total)
+    return {"tenants": len(list(expired)), "deactivated": total}

@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
 import AuthLayout from '@/components/layout/AuthLayout';
-import { authApi } from '@/services/api';
+import api, { authApi } from '@/services/api';
 import { signupSchema } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,32 +17,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-
-const FIELD_META = {
-  first_name: {
-    label: 'First name',
-    placeholder: 'Ada',
-    autoComplete: 'given-name',
-  },
-  last_name: {
-    label: 'Last name',
-    placeholder: 'Lovelace',
-    autoComplete: 'family-name',
-  },
-  email: {
-    label: 'Email',
-    placeholder: 'you@university.edu',
-    type: 'email',
-    autoComplete: 'email',
-  },
-  password: {
-    label: 'Password',
-    placeholder: 'Minimum 8 characters',
-    type: 'password',
-    autoComplete: 'new-password',
-  },
-  tenant_slug: { label: 'Institution slug', placeholder: 'e.g. demo-uni' },
-};
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -53,15 +35,43 @@ export default function SignupPage() {
       password: '',
       first_name: '',
       last_name: '',
-      tenant_slug: 'demo-uni',
+      tenant_slug: '',
       role: 'student',
+      programme: '',
     },
+  });
+
+  // Public directory of active institutions — replaces typing a raw slug.
+  const directory = useQuery({
+    queryKey: ['tenant-directory'],
+    queryFn: async () => {
+      const { data } = await api.get('/tenants/directory/');
+      return data.results || [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  // Programmes of the chosen institution — drives the academic profile and
+  // auto-enrollment into departmental courses after verification.
+  const chosenSlug = form.watch('tenant_slug');
+  const programmes = useQuery({
+    queryKey: ['programme-directory', chosenSlug],
+    queryFn: async () => {
+      if (!chosenSlug) return [];
+      const { data } = await api.get('/programme-directory/', {
+        params: { tenant: chosenSlug },
+      });
+      return data.results || [];
+    },
+    enabled: !!chosenSlug,
   });
 
   const onSubmit = async (values) => {
     setError('');
     try {
-      await authApi.signup(values);
+      const payload = { ...values };
+      if (!payload.programme) delete payload.programme;
+      await authApi.signup(payload);
       navigate('/verify-email');
     } catch (err) {
       const d = err.response?.data?.error?.detail;
@@ -103,12 +113,12 @@ export default function SignupPage() {
                 name={name}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{FIELD_META[name].label}</FormLabel>
+                    <FormLabel>{name === 'first_name' ? 'First name' : 'Last name'}</FormLabel>
                     <FormControl>
                       <Input
                         className="h-10"
-                        placeholder={FIELD_META[name].placeholder}
-                        autoComplete={FIELD_META[name].autoComplete}
+                        placeholder={name === 'first_name' ? 'Ada' : 'Lovelace'}
+                        autoComplete={name === 'first_name' ? 'given-name' : 'family-name'}
                         {...field}
                       />
                     </FormControl>
@@ -119,28 +129,45 @@ export default function SignupPage() {
             ))}
           </div>
 
-          {['email', 'password'].map((name) => (
-            <FormField
-              key={name}
-              control={form.control}
-              name={name}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{FIELD_META[name].label}</FormLabel>
-                  <FormControl>
-                    <Input
-                      className="h-10"
-                      type={FIELD_META[name].type || 'text'}
-                      placeholder={FIELD_META[name].placeholder}
-                      autoComplete={FIELD_META[name].autoComplete}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          ))}
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input
+                    className="h-10"
+                    type="email"
+                    placeholder="you@university.edu"
+                    autoComplete="email"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input
+                    className="h-10"
+                    type="password"
+                    placeholder="Minimum 8 characters"
+                    autoComplete="new-password"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <div className="grid grid-cols-2 gap-3">
             <FormField
@@ -148,14 +175,31 @@ export default function SignupPage() {
               name="tenant_slug"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Institution slug</FormLabel>
-                  <FormControl>
-                    <Input
-                      className="h-10"
-                      placeholder={FIELD_META.tenant_slug.placeholder}
-                      {...field}
-                    />
-                  </FormControl>
+                  <FormLabel>Institution</FormLabel>
+                  <Select
+                    value={field.value || undefined}
+                    onValueChange={(v) => {
+                      field.onChange(v);
+                      form.setValue('programme', '');
+                    }}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue
+                          placeholder={
+                            directory.isLoading ? 'Loading…' : 'Select institution'
+                          }
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {(directory.data || []).map((t) => (
+                        <SelectItem key={t.id} value={t.slug}>
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -163,26 +207,81 @@ export default function SignupPage() {
             <FormField
               control={form.control}
               name="role"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <FormControl>
-                    <div className="flex h-10 items-center rounded-lg border border-input bg-muted/50 px-3 text-sm text-muted-foreground">
-                      Student
-                    </div>
-                  </FormControl>
+                  <FormLabel>I am a</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger className="h-10 w-full capitalize">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="student" className="capitalize">Student</SelectItem>
+                      <SelectItem value="lecturer" className="capitalize">Lecturer</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <p className="text-[11px] leading-snug text-muted-foreground">
-                    Lecturer/admin access is granted by your institution's
-                    admin.
+                    Admin access is granted by your institution's admin.
                   </p>
                 </FormItem>
               )}
             />
           </div>
 
+          {form.watch('role') === 'student' && (
+            <FormField
+              control={form.control}
+              name="programme"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Programme (optional)</FormLabel>
+                  <Select value={field.value || undefined} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue
+                          placeholder={
+                            !chosenSlug
+                              ? 'Choose an institution first'
+                              : programmes.isLoading
+                                ? 'Loading…'
+                                : (programmes.data || []).length === 0
+                                  ? 'No programmes listed'
+                                  : 'Select programme'
+                          }
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {(programmes.data || []).map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.code ? `${p.code} — ${p.name}` : p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] leading-snug text-muted-foreground">
+                    Picking your programme auto-enrolls you in your
+                    department's courses once your email is verified.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {directory.isSuccess && (directory.data || []).length === 0 && (
+            <Alert>
+              <AlertDescription>
+                Your institution hasn't joined AcademiAI yet — an administrator
+                can register it first, then you can sign up here.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Button
             type="submit"
-            disabled={form.formState.isSubmitting}
+            disabled={form.formState.isSubmitting || directory.isLoading}
             className="h-10 w-full font-medium shadow-sm"
           >
             {form.formState.isSubmitting

@@ -2,6 +2,15 @@ from rest_framework import serializers
 from .models import Quiz, QuizQuestion, QuizAttempt
 
 
+def _validate_tenant_quiz(quiz, request):
+    """Quiz must exist inside the requester's tenant (IDOR guard)."""
+    if quiz is None:
+        raise serializers.ValidationError("quiz is required.")
+    user = getattr(request, "user", None)
+    if user is not None and getattr(user, "tenant_id", None) != quiz.tenant_id:
+        raise serializers.ValidationError("Unknown quiz.")
+
+
 class QuizQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuizQuestion
@@ -10,6 +19,10 @@ class QuizQuestionSerializer(serializers.ModelSerializer):
             "correct_answer", "explanation", "order_index",
         )
         read_only_fields = ("id",)
+
+    def validate_quiz(self, quiz):
+        _validate_tenant_quiz(quiz, self.context.get("request"))
+        return quiz
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -40,7 +53,11 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
         fields = (
             "id", "quiz", "student", "score", "answers", "started_at", "submitted_at", "tenant",
         )
-        read_only_fields = ("id", "student", "score", "started_at", "submitted_at", "tenant")
+        read_only_fields = ("id", "student", "score", "answers", "started_at", "submitted_at", "tenant")
+
+    def validate_quiz(self, quiz):
+        _validate_tenant_quiz(quiz, self.context.get("request"))
+        return quiz
 
 
 class QuizGenerateSerializer(serializers.Serializer):

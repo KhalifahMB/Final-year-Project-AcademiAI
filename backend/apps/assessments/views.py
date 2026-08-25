@@ -18,13 +18,20 @@ from .serializers import (
 @extend_schema(tags=["Quizzes"])
 class QuizViewSet(TenantModelViewSet):
     """
-    Quiz CRUD plus AI generation (lecturers/admins only). Generation is
-    asynchronous: poll /jobs/{job_id}/ for the resulting quiz id.
+    Quiz CRUD plus AI generation. Authoring (create/update/delete) is
+    restricted to lecturers/admins; every tenant member may read published
+    quizzes and use the AI generator.
     """
 
     queryset = Quiz.objects.prefetch_related("questions").all()
     serializer_class = QuizSerializer
     filterset_fields = ["status", "course_offering"]
+
+    def get_permissions(self):
+        perms = super().get_permissions()
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [IsLecturerOrAdmin()] + perms
+        return perms
 
     def perform_create(self, serializer):
         serializer.save(tenant=self.request.user.tenant, created_by=self.request.user)
@@ -65,9 +72,21 @@ class QuizViewSet(TenantModelViewSet):
 
 @extend_schema(tags=["Quiz Questions"])
 class QuizQuestionViewSet(TenantModelViewSet):
+    """
+    Question bank for quizzes. Authoring is restricted to lecturers/admins;
+    students may only read the questions of quizzes they can attempt
+    (correct answers/explanations are stripped by the serializer).
+    """
+
     queryset = QuizQuestion.objects.select_related("quiz")
     serializer_class = QuizQuestionSerializer
     filterset_fields = ["quiz"]
+
+    def get_permissions(self):
+        perms = super().get_permissions()
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [IsLecturerOrAdmin()] + perms
+        return perms
 
 
 @extend_schema(tags=["Quiz Attempts"])
@@ -91,12 +110,17 @@ class QuizAttemptViewSet(TenantModelViewSet):
 
     def perform_create(self, serializer):
         # Attempts belong to the requesting student. Staff accounts do not
-        # sit quizzes; they author them.
-        if self.request.user.role != "student":
+        # sit quizzes; they author them. Drafts/archived quizzes cannot be
+        # started — only published ones.
+        user = self.request.user
+        if user.role != "student":
             raise PermissionDenied("Only students can start quiz attempts.")
+        quiz_id = serializer.validated_data.get("quiz")
+        if quiz_id is None or quiz_id.status != Quiz.Status.PUBLISHED:
+            raise PermissionDenied("This quiz is not open for attempts.")
         serializer.save(
-            tenant=self.request.user.tenant,
-            student=self.request.user,
+            tenant=user.tenant,
+            student=user,
         )
 
     @extend_schema(tags=["Quiz Attempts"], request=QuizSubmitSerializer)
@@ -111,13 +135,23 @@ class QuizAttemptViewSet(TenantModelViewSet):
         ser = QuizSubmitSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         answers = ser.validated_data["answers"]
+
+        def _norm(value):
+            # Text answers are compared case-insensitively; non-string
+            # answers (option indexes) compare as-is.
+            return value.strip().lower() if isinstance(value, str) else value
+
         questions = {str(q.id): q for q in attempt.quiz.questions.all()}
         correct = 0
         total = len(questions) or 1
         for qid, q in questions.items():
             user_ans = answers.get(qid)
             ca = q.correct_answer or {}
-            if user_ans == ca or user_ans == ca.get("index") or user_ans == ca.get("value"):
+            if (
+                user_ans == ca
+                or _norm(user_ans) == _norm(ca.get("index"))
+                or _norm(user_ans) == _norm(ca.get("value"))
+            ):
                 correct += 1
         score = round(100.0 * correct / total, 2)
         attempt.answers = answers

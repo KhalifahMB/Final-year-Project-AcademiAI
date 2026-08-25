@@ -24,6 +24,17 @@ class IsAdminRole(BasePermission):
         )
 
 
+class IsSuperuser(BasePermission):
+    """Platform-operator level: provisioning tenants, plans, quotas."""
+
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+            and request.user.is_superuser
+        )
+
+
 class IsLecturerOrAdmin(BasePermission):
     def has_permission(self, request, view):
         role = getattr(request.user, "role", None)

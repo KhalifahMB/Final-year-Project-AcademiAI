@@ -24,6 +24,7 @@ class UserSerializer(serializers.ModelSerializer):
             "full_name",
             "role",
             "is_email_verified",
+            "is_superuser",
             "tenant",
             "created_at",
         )
@@ -48,6 +49,12 @@ class SignupSerializer(serializers.Serializer):
     first_name = serializers.CharField(required=False, allow_blank=True)
     last_name = serializers.CharField(required=False, allow_blank=True)
     tenant_slug = serializers.SlugField(required=False)
+    # Accepted but never trusted: the view coerces anything other than
+    # student/lecturer down to student (privilege-escalation guard).
+    role = serializers.CharField(required=False, default="student")
+    # Optional programme (students) — drives the academic profile and
+    # auto-enrollment into departmental course offerings on verification.
+    programme = serializers.UUIDField(required=False, allow_null=True)
 
     def validate_password(self, value):
         validate_password(value)

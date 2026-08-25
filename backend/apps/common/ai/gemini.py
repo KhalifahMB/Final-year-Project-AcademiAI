@@ -136,7 +136,7 @@ def generate_grounded_answer(query: str, chunks: list, user_role: str = "student
             )
         else:
             answer = (
-                f"(Dev stub â€” set GEMINI_API_KEY for live answers.) "
+                f"(Dev stub — set GEMINI_API_KEY for live answers.) "
                 f"Based on {len(chunks)} retrieved chunk(s), a grounded response would address: {query[:200]}"
             )
         return answer, source_meta

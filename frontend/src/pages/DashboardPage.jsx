@@ -1,5 +1,9 @@
 ﻿import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import {
+  Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
+} from 'recharts';
+import api, { dashApi } from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatCard from '@/components/shared/StatCard';
 import EmptyState from '@/components/shared/EmptyState';
@@ -38,6 +42,29 @@ export default function DashboardPage() {
   const resources = useCount('dash-resources', 'resources');
   const quizzes = useCount('dash-quizzes', 'quizzes');
   const notes = useCount('dash-notes', 'notes');
+
+  // Staff-only: material pipeline snapshot for the tenant (chart below).
+  const pipeline = useQuery({
+    queryKey: ['dash-pipeline'],
+    queryFn: async () => {
+      const statuses = ['ready', 'processing', 'pending', 'failed'];
+      const counts = await Promise.all(
+        statuses.map(async (s) => {
+          try {
+            const { data } = await api.get('/resources/', {
+              params: { processing_status: s, page_size: 1 },
+            });
+            return { name: s[0].toUpperCase() + s.slice(1), value: data?.count ?? 0 };
+          } catch {
+            return { name: s, value: 0 };
+          }
+        }),
+      );
+      return counts.filter((d) => d.value > 0);
+    },
+    enabled: isStaff,
+    staleTime: 60_000,
+  });
 
   const firstName = user?.first_name ? `, ${user.first_name}` : '';
 
@@ -140,6 +167,41 @@ export default function DashboardPage() {
           ))}
         </div>
       </section>
+
+      {isStaff && pipeline.data?.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Material pipeline
+          </h2>
+          <div className="rounded-xl border bg-card p-5 shadow-sm">
+            <div className="h-[180px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={pipeline.data}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} width={28} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "0.75rem",
+                      fontSize: "12px",
+                    }}
+                    cursor={{ fill: "var(--muted)", opacity: 0.4 }}
+                  />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="oklch(0.55 0.25 293)" maxBarSize={44} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Uploaded materials by processing stage ·{" "}
+              <Link to="/admin/dashboard" className="font-medium text-primary hover:underline">
+                full institution dashboard →
+              </Link>
+            </p>
+          </div>
+        </section>
+      )}
 
       {!isAdmin && (
         <section className="mt-8">

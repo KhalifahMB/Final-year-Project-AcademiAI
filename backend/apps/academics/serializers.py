@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import (
     Faculty, Department, Programme, AcademicSession, Semester,
     Course, CourseOffering, LecturerCourseAssignment, CourseEnrollment,
+    CurriculumCourse,
 )
 
 
@@ -69,21 +70,42 @@ class CourseOfferingSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "tenant", "created_at")
 
 
+class CourseEnrollmentSerializer(serializers.ModelSerializer):
+    student_email = serializers.EmailField(source="student.email", read_only=True)
+    student_name = serializers.CharField(source="student.full_name", read_only=True)
+
+    class Meta:
+        model = CourseEnrollment
+        fields = (
+            "id", "course_offering", "student", "student_email", "student_name",
+            "status", "enrolled_at",
+            "tenant", "created_at",
+        )
+        read_only_fields = ("id", "tenant", "enrolled_at", "created_at")
+
+
 class LecturerAssignmentSerializer(serializers.ModelSerializer):
+    lecturer_email = serializers.EmailField(source="lecturer.email", read_only=True)
+    lecturer_name = serializers.CharField(source="lecturer.full_name", read_only=True)
+
     class Meta:
         model = LecturerCourseAssignment
         fields = (
-            "id", "course_offering", "lecturer", "assignment_role",
+            "id", "course_offering", "lecturer", "lecturer_email", "lecturer_name",
+            "assignment_role",
             "tenant", "created_at",
         )
         read_only_fields = ("id", "tenant", "created_at")
 
 
-class CourseEnrollmentSerializer(serializers.ModelSerializer):
+class CurriculumCourseSerializer(serializers.ModelSerializer):
+    course_code = serializers.CharField(source="course.code", read_only=True)
+    course_title = serializers.CharField(source="course.title", read_only=True)
+
     class Meta:
-        model = CourseEnrollment
+        model = CurriculumCourse
         fields = (
-            "id", "course_offering", "student", "status", "enrolled_at",
-            "tenant", "created_at",
+            "id", "programme", "course", "course_code", "course_title",
+            "level", "semester", "is_core",
         )
-        read_only_fields = ("id", "tenant", "enrolled_at", "created_at")
+        read_only_fields = ("id",)

@@ -8,6 +8,7 @@ import {
   BookOpen,
   Building2,
   ClipboardList,
+  ClipboardPlus,
   FileText,
   GraduationCap,
   LayoutDashboard,
@@ -47,6 +48,7 @@ const NAV_SECTIONS = [
       { to: "/resources/upload", label: "Upload Material", icon: Upload },
       { to: "/chat", label: "AI Assistant", icon: MessageSquareText },
       { to: "/quizzes", label: "Quizzes", icon: ClipboardList },
+      { to: "/admin/quizzes", label: "Quiz Manager", icon: ClipboardPlus, roles: ["lecturer", "admin"] },
     ],
   },
   {
@@ -63,7 +65,9 @@ const NAV_SECTIONS = [
     label: "Administration",
     roles: ["admin"],
     items: [
+      { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/admin/users", label: "Users", icon: Users },
+      { to: "/admin/approvals", label: "Approvals", icon: ClipboardPlus, badge: "soon" },
       { to: "/admin/faculties", label: "Faculties", icon: Building2 },
       { to: "/admin/departments", label: "Departments", icon: Building2 },
       { to: "/admin/programmes", label: "Programmes", icon: BookOpen },
@@ -74,6 +78,7 @@ const NAV_SECTIONS = [
       { to: "/admin/enrollments", label: "Enrollments", icon: Users },
       { to: "/admin/audit", label: "Audit Logs", icon: ScrollText },
       { to: "/admin/tenant", label: "Tenant Settings", icon: ShieldCheck },
+      { to: "/platform", label: "Platform Console", icon: ShieldCheck, superuserOnly: true },
     ],
   },
 ];
@@ -105,7 +110,9 @@ function SidebarNav({ onNavigate }) {
       {NAV_SECTIONS.map((section) => {
         if (section.roles && !section.roles.includes(role)) return null;
         const items = section.items.filter(
-          (i) => !i.roles || i.roles.includes(role)
+          (i) =>
+            (!i.roles || i.roles.includes(role)) &&
+            (!i.superuserOnly || user?.is_superuser)
         );
         if (!items.length) return null;
         return (
@@ -137,6 +144,11 @@ function SidebarNav({ onNavigate }) {
                         aria-hidden
                       />
                       <span className="truncate">{item.label}</span>
+                      {item.badge === "soon" && (
+                        <span className="ml-auto rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                          Soon
+                        </span>
+                      )}
                     </Link>
                   </li>
                 );

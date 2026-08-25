@@ -65,7 +65,7 @@ const toList = (res) => {
 
 export const dashApi = {
   courses: () => api.get("/courses/").then(toList),
-  resources: () => api.get("/resources/").then(toList),
+  resources: (config) => api.get("/resources/", config).then(toList),
   quizzes: () => api.get("/quizzes/").then(toList),
   notes: () => api.get("/notes/").then(toList),
 };

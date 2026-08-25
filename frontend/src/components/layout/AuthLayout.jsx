@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
-import { GraduationCap, ShieldCheck, Sparkles, LibraryBig } from "lucide-react";
+import { ShieldCheck, Sparkles, LibraryBig } from "lucide-react";
+import ThemeToggle from "@/components/shared/ThemeToggle";
+import BrandMark from "@/components/shared/BrandMark";
 
 const HIGHLIGHTS = [
   {
@@ -22,28 +24,42 @@ const HIGHLIGHTS = [
 export default function AuthLayout({ title, subtitle, children, footer }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
-      {/* Brand panel */}
-      <aside className="relative hidden overflow-hidden bg-sidebar lg:flex lg:flex-col lg:justify-between lg:p-12">
+      {/* Brand panel — always-dark gradient, matching the landing page CTA band */}
+      <aside className="relative hidden isolate overflow-hidden lg:flex lg:flex-col lg:justify-between lg:p-12">
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.35]"
+          className="absolute inset-0 -z-10"
+          style={{
+            backgroundImage:
+              "linear-gradient(to bottom right, oklch(0.42 0.2 293), oklch(0.4 0.18 275), oklch(0.45 0.16 255))",
+          }}
+          aria-hidden
+        />
+        <div
+          className="absolute inset-0 -z-10"
           style={{
             background:
-              "radial-gradient(600px circle at 20% 20%, oklch(0.42 0.15 272 / 0.5), transparent), radial-gradient(500px circle at 80% 90%, oklch(0.55 0.13 200 / 0.35), transparent)",
+              "radial-gradient(circle at 25% 15%, rgba(255,255,255,0.16), transparent 55%)",
           }}
           aria-hidden
         />
         <Link
           to="/"
-          className="relative flex items-center gap-3 focus-visible:outline-2 focus-visible:outline-ring rounded-md w-fit"
+          className="relative flex w-fit items-center gap-3 rounded-md focus-visible:outline-2 focus-visible:outline-ring"
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg">
-            <GraduationCap className="h-5 w-5" aria-hidden />
+          {/* Light logo asset on the always-dark panel */}
+          <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white/95 shadow-lg">
+            <img
+              src="/images/Logo/academiai_icon_light.webp"
+              alt=""
+              aria-hidden
+              className="h-full w-full object-contain"
+            />
           </span>
-          <span className="text-lg font-semibold tracking-tight text-white">AcademiAI</span>
+          <span className="text-lg font-bold tracking-tight text-white">AcademiAI</span>
         </Link>
 
         <div className="relative max-w-md">
-          <h2 className="text-3xl font-semibold leading-tight tracking-tight text-white">
+          <h2 className="text-3xl font-bold leading-[1.05] tracking-tight text-white">
             Your institutional
             <br />
             AI study companion.
@@ -51,38 +67,46 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
           <ul className="mt-8 space-y-5">
             {HIGHLIGHTS.map(({ icon: Icon, title: t, text }) => (
               <li key={t} className="flex gap-3.5">
-                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 text-white">
-                  <Icon className="h-4.5 w-4.5" aria-hidden />
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur">
+                  <Icon className="h-4 w-4" aria-hidden />
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-white">{t}</p>
-                  <p className="mt-0.5 text-sm text-white/60">{text}</p>
+                  <p className="text-sm font-semibold text-white">{t}</p>
+                  <p className="mt-0.5 text-sm leading-relaxed text-white/75">{text}</p>
                 </div>
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="relative text-xs text-white/40">
+        <p className="relative text-xs text-white/60">
           Multi-tenant academic platform · © {new Date().getFullYear()} AcademiAI
         </p>
       </aside>
 
       {/* Form panel */}
-      <main className="flex flex-col justify-center px-5 py-10 sm:px-10 lg:px-16">
-        <div className="mx-auto w-full max-w-md view-enter">
-          {/* Mobile brand */}
+      <main className="relative flex flex-col justify-center px-5 py-10 sm:px-10 lg:px-16">
+        {/* Theme toggle — available on every auth screen */}
+        <div className="absolute right-5 top-5 flex items-center gap-2 sm:right-10">
           <Link
             to="/"
-            className="mb-8 flex items-center gap-2.5 lg:hidden focus-visible:outline-2 focus-visible:outline-ring rounded-md w-fit"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap className="h-4.5 w-4.5" aria-hidden />
-            </span>
-            <span className="text-base font-semibold tracking-tight">AcademiAI</span>
+            Home
+          </Link>
+          <ThemeToggle />
+        </div>
+        <div className="mx-auto w-full max-w-md view-enter">
+          {/* Mobile brand — same assets as landing page */}
+          <Link
+            to="/"
+            className="mb-8 flex w-fit items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-ring rounded-md lg:hidden"
+          >
+            <BrandMark />
+            <span className="text-base font-bold tracking-tight">AcademiAI</span>
           </Link>
 
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
           {subtitle ? (
             <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>
           ) : null}

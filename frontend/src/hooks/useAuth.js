@@ -41,11 +41,14 @@ export function useAuth() {
     try {
       await authApi.logout(refresh);
     } catch {
-      /* ignore */
+      /* ignore — local cleanup must happen regardless */
     }
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     setUser(null);
+    // Full navigation (not react-router) so the router, query cache and all
+    // in-memory state reset before the next session lands on the landing page.
+    window.location.assign("/");
   };
 
   return { user, loading, login, logout, reload: loadUser, isAuthenticated: !!user };

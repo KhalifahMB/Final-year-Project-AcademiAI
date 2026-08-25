@@ -8,10 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function QuizTakePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isStaff = user?.role === "lecturer" || user?.role === "admin";
   const [answers, setAnswers] = useState({});
   const [attemptId, setAttemptId] = useState(null);
   const [result, setResult] = useState(null);
@@ -47,7 +50,9 @@ export default function QuizTakePage() {
       toast.success("Submitted");
     },
     onError: (err) => {
-      toast.error(err.response?.data?.detail || "Submit failed");
+      const d =
+        err.response?.data?.error?.detail || err.response?.data?.detail;
+      toast.error(typeof d === "string" ? d : "Submit failed");
     },
   });
 
@@ -70,13 +75,22 @@ export default function QuizTakePage() {
         </p>
       )}
 
-      {!attemptId && !result && (
+      {isStaff && !result && (
+        <Alert className="mb-4">
+          <AlertDescription>
+            Staff accounts author quizzes but do not sit them. Manage questions
+            from the Quiz manager.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!attemptId && !result && !isStaff && (
         <Button type="button" onClick={() => start.mutate()} disabled={start.isPending}>
           {start.isPending ? "Starting…" : "Start attempt"}
         </Button>
       )}
 
-      {attemptId && !result && (
+      {!isStaff && attemptId && !result && (
         <div className="space-y-4 max-w-2xl">
           {qs.map((q, idx) => (
             <Card key={q.id}>

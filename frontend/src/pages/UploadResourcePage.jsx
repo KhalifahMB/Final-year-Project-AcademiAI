@@ -78,6 +78,8 @@ export default function UploadResourcePage() {
       setDone(resource);
       toast.success("Upload complete — processing started");
       qc.invalidateQueries({ queryKey: ["resources"] });
+      qc.invalidateQueries({ queryKey: ["dash-resources"] });
+      qc.invalidateQueries({ queryKey: ["dash-courses"] });
     },
     onError: (e) => {
       setError(e.response?.data?.error?.detail || e.message || "Upload failed");

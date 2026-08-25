@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'react-router-dom';
-import { dashApi } from '@/services/api';
+import api, { dashApi } from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import EmptyState from '@/components/shared/EmptyState';
@@ -61,16 +61,25 @@ export default function ResourcesPage() {
   const [selected, setSelected] = useState(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['resources'],
+    queryKey: ['resources', user?.role],
     queryFn: async () => {
-      const { data } = await dashApi.resources();
+      // Students/lecturers only see what their academic scope allows
+      // (department, faculty, programme, enrolled courses); staff sees the
+      // whole tenant for management purposes.
+      const scoped =
+        user?.role === 'student' || user?.role === 'lecturer'
+          ? { params: { scope: 'authorized' } }
+          : {};
+      const { data } = await dashApi.resources(scoped);
       return data.results || data;
     },
     refetchInterval: (query) => {
       // Poll lightly while any material is still processing.
       const list = query.state.data || [];
       const busy = list.some(
-        (r) => r.processing_status === 'pending' || r.processing_status === 'processing',
+        (r) =>
+          r.processing_status === 'pending' ||
+          r.processing_status === 'processing',
       );
       return busy ? 8000 : false;
     },
@@ -100,6 +109,7 @@ export default function ResourcesPage() {
         course_offering: '',
       });
       qc.invalidateQueries({ queryKey: ['resources'] });
+      qc.invalidateQueries({ queryKey: ['dash-resources'] });
     },
     onError: (err) => {
       setError(err.response?.data?.error?.detail || 'Create failed');
@@ -133,7 +143,7 @@ export default function ResourcesPage() {
   return (
     <AppShell
       title="Resources"
-      description="Academic materials with scoped visibility â€” private, course, programme, department, faculty or institution-wide."
+      description="Academic materials with scoped visibility private, course, programme, department, faculty or institution-wide."
       actions={
         <>
           <Link
@@ -281,7 +291,7 @@ export default function ResourcesPage() {
           description={
             search || scopeFilter !== 'all'
               ? 'Try a different search term or clear the visibility filter.'
-              : 'Upload your first material â€” it will be extracted, chunked and made searchable automatically.'
+              : 'Upload your first material it will be extracted, chunked and made searchable automatically.'
           }
           action={
             !search && scopeFilter === 'all' ? 'Upload material' : undefined
@@ -299,7 +309,7 @@ export default function ResourcesPage() {
                 tabIndex={0}
                 onClick={() => setSelected(r)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
+                  if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     setSelected(r);
                   }
@@ -318,11 +328,11 @@ export default function ResourcesPage() {
                       {r.title}
                     </h2>
                     <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                      {r.description || "No description"}
+                      {r.description || 'No description'}
                     </p>
                   </div>
                 </div>
-                {r.processing_status === "failed" && r.processing_error ? (
+                {r.processing_status === 'failed' && r.processing_error ? (
                   <p className="mt-2 line-clamp-2 rounded-md bg-red-500/10 px-2.5 py-1.5 text-[11px] leading-snug text-red-700 dark:text-red-400">
                     {r.processing_error}
                   </p>
@@ -332,7 +342,7 @@ export default function ResourcesPage() {
                   <span className="rounded-full border bg-muted px-2.5 py-0.5 text-xs capitalize text-muted-foreground">
                     {r.visibility_scope}
                   </span>
-                  {r.processing_status === "ready" ? (
+                  {r.processing_status === 'ready' ? (
                     <span className="ml-auto text-[11px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
                       Open â†’
                     </span>
@@ -352,5 +362,3 @@ export default function ResourcesPage() {
     </AppShell>
   );
 }
-
-

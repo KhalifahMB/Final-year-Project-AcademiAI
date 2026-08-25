@@ -50,16 +50,20 @@ class SignupView(APIView):
         ser = SignupSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         data = ser.validated_data
+        # Self-service signup is limited to student/lecturer; admin is
+        # only ever granted by an existing tenant admin or the platform.
+        role = data.get("role", User.Role.STUDENT)
+        if role not in (User.Role.STUDENT, User.Role.LECTURER):
+            role = User.Role.STUDENT
         try:
             user, code = services.signup_user(
                 email=data["email"],
                 password=data["password"],
                 first_name=data.get("first_name", ""),
                 last_name=data.get("last_name", ""),
-                # Role is always student at signup; lecturers/admins are
-                # promoted by a tenant admin (PRD: admins manage users).
-                role=User.Role.STUDENT,
+                role=role,
                 tenant_slug=data.get("tenant_slug"),
+                programme_id=data.get("programme"),
             )
         except ValueError as e:
             return Response(

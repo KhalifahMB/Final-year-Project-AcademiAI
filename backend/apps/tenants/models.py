@@ -20,6 +20,14 @@ class Tenant(UUIDModel, TimeStampedModel):
     )
     plan = models.CharField(max_length=50, default="standard")
     storage_quota_bytes = models.BigIntegerField(default=10 * 1024 * 1024 * 1024)  # 10 GB
+    # Set when status moves to suspended; drives the 24h grace-period
+    # login-restriction scheduled task. Cleared on reactivation.
+    suspended_at = models.DateTimeField(null=True, blank=True)
+    # Future: restrict signups to institutional email domains, e.g.
+    # ["atbu.edu.ng"]. Not enforced anywhere yet (documented roadmap item).
+    allowed_email_domains = models.JSONField(default=list, blank=True)
+    # Future: per-tenant branding (logo key, primary colour, tagline).
+    branding = models.JSONField(default=dict, blank=True)
 
     class Meta:
         db_table = "tenants"

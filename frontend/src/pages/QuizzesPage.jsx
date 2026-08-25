@@ -1,4 +1,7 @@
-import { dashApi } from "@/services/api";
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api, { dashApi } from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
 import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
@@ -6,10 +9,13 @@ import SkeletonRows from "@/components/shared/SkeletonRows";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 import { ClipboardList, Sparkles } from "lucide-react";
 
 export default function QuizzesPage() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isStaff = user?.role === "lecturer" || user?.role === "admin";
   const [pollJob, setPollJob] = useState(null);
 
   const { data, isLoading, error } = useQuery({
@@ -114,12 +120,25 @@ export default function QuizzesPage() {
                     : "No questions yet"}
                 </p>
                 <div className="mt-auto pt-3.5">
-                  <Link
-                    to={`/quizzes/${q.id}/take`}
-                    className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-3.5 text-[0.8rem] font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-ring"
-                  >
-                    Take quiz
-                  </Link>
+                  {isStaff ? (
+                    <Link
+                      to="/admin/quizzes"
+                      className="inline-flex h-8 items-center justify-center rounded-lg border px-3.5 text-[0.8rem] font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                    >
+                      Manage quizzes
+                    </Link>
+                  ) : q.status === "published" ? (
+                    <Link
+                      to={`/quizzes/${q.id}/take`}
+                      className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-3.5 text-[0.8rem] font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-ring"
+                    >
+                      Take quiz
+                    </Link>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      Not published yet
+                    </span>
+                  )}
                 </div>
               </article>
             </li>

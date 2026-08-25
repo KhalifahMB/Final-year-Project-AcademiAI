@@ -10,6 +10,7 @@ import {
   Alert, AlertDescription,
 } from "@/components/ui/alert";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Bookmark, BookmarkCheck, Download, Loader2, RefreshCw, TriangleAlert,
 } from "lucide-react";
@@ -20,8 +21,17 @@ import {
  */
 export default function ResourceDetailDialog({ resource, open, onClose }) {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const [bookmarkId, setBookmarkId] = useState(null);
   const [retrying, setRetrying] = useState(false);
+
+  // Retry processing is restricted to the uploader or a tenant admin,
+  // mirroring the backend `IsOwnerOrAdminForWrite` permission. Anyone
+  // else can still preview/download but cannot restart ingestion.
+  const canRetry =
+    !!user &&
+    !!resource &&
+    (user.role === "admin" || resource.uploaded_by === user.id);
 
   const { data: preview, isLoading: previewLoading, error: previewError } = useQuery({
     queryKey: ["resource-preview", resource?.id],
@@ -177,7 +187,7 @@ export default function ResourceDetailDialog({ resource, open, onClose }) {
               </>
             )}
           </Button>
-          {resource.processing_status === "failed" ? (
+          {resource.processing_status === "failed" && canRetry ? (
             <Button
               type="button"
               size="sm"

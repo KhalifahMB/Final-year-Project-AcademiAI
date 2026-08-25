@@ -209,6 +209,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "Course Offerings", "description": "Course delivery per session/semester"},
         {"name": "Lecturer Assignments", "description": "Teaching assignments per offering"},
         {"name": "Enrollments", "description": "Student enrollment in offerings"},
+        {"name": "Curriculum", "description": "Programme curriculum course mapping"},
         {"name": "Resources", "description": "Academic materials and upload lifecycle"},
         {"name": "Resource Versions", "description": "Immutable version history per resource"},
         {"name": "Summaries", "description": "Asynchronous AI summarization jobs"},
@@ -252,8 +253,20 @@ CELERY_TASK_ROUTES = {
     "apps.knowledge.tasks.*": {"queue": "ingestion"},
     "apps.chat.tasks.*": {"queue": "ai"},
     "apps.assessments.tasks.*": {"queue": "ai"},
-    "apps.accounts.tasks.*": {"queue": "email"},
-    "apps.common.tasks.*": {"queue": "email"},
+    "apps.accounts.tasks.send_tenant_suspension_emails": {"queue": "email"},
+    "apps.accounts.tasks.restrict_suspended_tenant_logins": {"queue": "celery"},
+}
+
+# Tenant suspension grace period — users can still log in for this long
+# after suspension; the scheduled task then deactivates their accounts.
+SUSPENSION_GRACE_HOURS = int(os.getenv("SUSPENSION_GRACE_HOURS", "24"))
+
+CELERY_BEAT_SCHEDULE = {
+    "restrict-suspended-tenant-logins": {
+        # Enforces the 24h post-suspension login restriction.
+        "task": "apps.accounts.tasks.restrict_suspended_tenant_logins",
+        "schedule": 60 * 30,  # every 30 minutes
+    },
 }
 
 # Object storage

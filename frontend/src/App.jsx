@@ -34,6 +34,10 @@ import UploadResourcePage from '@/pages/UploadResourcePage';
 import QuizTakePage from '@/pages/QuizTakePage';
 import AdminSessionsPage from '@/pages/AdminSessionsPage';
 import AdminSemestersPage from '@/pages/AdminSemestersPage';
+import AdminQuizzesPage from '@/pages/AdminQuizzesPage';
+import AdminDashboardPage from '@/pages/AdminDashboardPage';
+import PlatformConsolePage from '@/pages/PlatformConsolePage';
+import AdminApprovalsPage from '@/pages/AdminApprovalsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -150,6 +154,38 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <QuizTakePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/quizzes"
+            element={
+              <ProtectedRoute roles={['lecturer', 'admin']}>
+                <AdminQuizzesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/dashboard"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <AdminDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/approvals"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <AdminApprovalsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/platform"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <PlatformConsolePage />
               </ProtectedRoute>
             }
           />

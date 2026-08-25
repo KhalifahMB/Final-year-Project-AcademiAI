@@ -10,7 +10,9 @@ export const signupSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   first_name: z.string().optional().or(z.literal("")),
   last_name: z.string().optional().or(z.literal("")),
-  tenant_slug: z.string().min(1, "Institution slug is required"),
+  tenant_slug: z.string().min(1, "Select your institution"),
+  role: z.enum(["student", "lecturer"]).optional(),
+  programme: z.string().optional().or(z.literal("")),
 });
 
 export const verifyEmailSchema = z.object({
@@ -117,4 +119,19 @@ export const resourceSchema = z.object({
 export const noteSchema = z.object({
   title: z.string().min(1, "Title is required"),
   content: z.string().min(1, "Content is required"),
+});
+
+export const quizSchema = z.object({
+  title: z.string().min(2, "Title is required"),
+  description: z.string().optional().or(z.literal("")),
+  status: z.enum(["draft", "published", "archived"]).optional(),
+  course_offering: z.string().optional().or(z.literal("")),
+});
+
+export const quizQuestionSchema = z.object({
+  question_text: z.string().min(3, "Question text is required"),
+  question_type: z.enum(["multiple_choice", "true_false", "short_answer"]),
+  options: z.string().optional().or(z.literal("")),
+  correct_answer: z.string().min(1, "Correct answer is required"),
+  explanation: z.string().optional().or(z.literal("")),
 });
