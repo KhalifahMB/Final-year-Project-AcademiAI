@@ -163,7 +163,19 @@ def process_resource_ingestion(self, resource_id: str, version_id: str, tenant_i
                 )
             resource.storage_key = version.storage_key
             resource.processing_status = Resource.ProcessingStatus.READY
-            resource.save(update_fields=["storage_key", "processing_status", "updated_at"])
+            # Persist what storage reported so preview can classify the file
+            # without re-downloading it.
+            if content_type and not resource.mime_type:
+                resource.mime_type = content_type
+                resource.save(
+                    update_fields=[
+                        "storage_key", "processing_status", "mime_type", "updated_at",
+                    ]
+                )
+            else:
+                resource.save(
+                    update_fields=["storage_key", "processing_status", "updated_at"]
+                )
 
         logger.info("Ingestion complete resource=%s chunks=%s", resource_id, len(parts))
         return {"status": "completed", "chunks": len(parts)}

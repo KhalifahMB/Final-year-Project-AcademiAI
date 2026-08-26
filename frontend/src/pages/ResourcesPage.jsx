@@ -60,7 +60,7 @@ export default function ResourcesPage() {
   const [scopeFilter, setScopeFilter] = useState('all');
   const [selected, setSelected] = useState(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, loadError, refetch } = useQuery({
     queryKey: ['resources', user?.role],
     queryFn: async () => {
       // Students/lecturers only see what their academic scope allows
@@ -70,8 +70,7 @@ export default function ResourcesPage() {
         user?.role === 'student' || user?.role === 'lecturer'
           ? { params: { scope: 'authorized' } }
           : {};
-      const { data } = await dashApi.resources(scoped);
-      return data.results || data;
+      return await dashApi.resources(scoped);
     },
     refetchInterval: (query) => {
       // Poll lightly while any material is still processing.
@@ -95,6 +94,20 @@ export default function ResourcesPage() {
       visibility_scope: 'course',
       course_offering: '',
     },
+  });
+
+  const chosenScope = form.watch('visibility_scope');
+
+  // Offerings for the course-scoped visibility selector — a course material
+  // without an offering would be undiscoverable.
+  const offerings = useQuery({
+    queryKey: ['offerings-for-resource'],
+    queryFn: async () => {
+      const { data } = await api.get('/course-offerings/?page_size=200');
+      return data.results || data;
+    },
+    enabled: chosenScope === 'course',
+    staleTime: 60_000,
   });
 
   const createMut = useMutation({
@@ -204,7 +217,11 @@ export default function ResourcesPage() {
                         <FormLabel>Visibility scope</FormLabel>
                         <Select
                           value={field.value}
-                          onValueChange={field.onChange}
+                          onValueChange={(v) => {
+                            field.onChange(v);
+                            if (v !== 'course')
+                              form.setValue('course_offering', '');
+                          }}
                         >
                           <FormControl>
                             <SelectTrigger className="w-full capitalize">
@@ -227,9 +244,52 @@ export default function ResourcesPage() {
                       </FormItem>
                     )}
                   />
+                  {chosenScope === 'course' && (
+                    <FormField
+                      control={form.control}
+                      name="course_offering"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Course offering</FormLabel>
+                          <Select
+                            value={field.value || undefined}
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="w-full">
+                                <SelectValue
+                                  placeholder={
+                                    offerings.isLoading
+                                      ? 'Loading offerings…'
+                                      : (offerings.data || []).length === 0
+                                        ? 'No offerings available'
+                                        : 'Select offering'
+                                  }
+                                />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {(offerings.data || []).map((o) => (
+                                <SelectItem key={o.id} value={o.id}>
+                                  {o.course_code
+                                    ? `${o.course_code} — ${o.course_title || ''}`
+                                    : o.id}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-[11px] leading-snug text-muted-foreground">
+                            Students enrolled in this offering will see the
+                            material.
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   <DialogFooter>
                     <Button type="submit" disabled={createMut.isPending}>
-                      {createMut.isPending ? 'Savingâ€¦' : 'Create resource'}
+                      {createMut.isPending ? 'Saving' : 'Create resource'}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -241,7 +301,7 @@ export default function ResourcesPage() {
     >
       {/* Toolbar */}
       <div className="mb-5 flex flex-wrap items-center gap-2.5">
-        <div className="relative min-w-[220px] flex-1">
+        <div className="relative min-w-55 flex-1">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
@@ -249,7 +309,7 @@ export default function ResourcesPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by title or descriptionâ€¦"
+            placeholder="Search by title or description"
             aria-label="Search resources"
             className="h-10 pl-9"
           />
@@ -278,7 +338,27 @@ export default function ResourcesPage() {
         </div>
       </div>
 
-      {isLoading ? (
+      {loadError ? (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>
+            <span className="font-medium">Could not load materials.</span>{' '}
+            {String(
+              loadError?.response?.data?.detail ||
+                loadError.message ||
+                loadError,
+            )}
+          </AlertDescription>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() => refetch()}
+          >
+            Retry
+          </Button>
+        </Alert>
+      ) : isLoading ? (
         <SkeletonRows rows={5} />
       ) : filtered.length === 0 ? (
         <EmptyState
@@ -344,7 +424,7 @@ export default function ResourcesPage() {
                   </span>
                   {r.processing_status === 'ready' ? (
                     <span className="ml-auto text-[11px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                      Open â†’
+                      Open
                     </span>
                   ) : null}
                 </div>

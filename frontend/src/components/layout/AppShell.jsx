@@ -3,6 +3,8 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/shared/ThemeToggle";
+import Avatar from "@/components/shared/Avatar";
+import OnlineStatus from "@/components/shared/OnlineStatus";
 import { cn } from "@/lib/utils";
 import {
   BookOpen,
@@ -58,7 +60,7 @@ const NAV_SECTIONS = [
       { to: "/notes", label: "Notes", icon: StickyNote },
       { to: "/bookmarks", label: "Bookmarks", icon: Bookmark },
       { to: "/progress", label: "Progress", icon: TrendingUp },
-      { to: "/profile", label: "Profile", icon: UserRound },
+      { to: "/settings", label: "Settings", icon: UserRound },
     ],
   },
   {
@@ -166,9 +168,7 @@ function UserMenu() {
   return (
     <div className="space-y-2 border-t border-sidebar-border p-3">
       <div className="flex items-center gap-3 rounded-lg bg-sidebar-hover/60 p-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/80 text-xs font-semibold uppercase text-primary-foreground">
-          {(user?.first_name?.[0] || user?.email?.[0] || "?").toUpperCase()}
-        </span>
+        <Avatar user={user} className="h-9 w-9 ring-2 ring-sidebar-border" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-medium leading-tight text-sidebar-foreground">
             {user?.first_name ? `${user.first_name} ${user.last_name || ""}` : user?.email}
@@ -258,6 +258,10 @@ export default function AppShell({ title, description, actions, children }) {
             <Menu className="h-5 w-5" aria-hidden />
           </Button>
           <p className="truncate text-sm font-medium text-muted-foreground">{title}</p>
+          <div className="ml-auto flex items-center gap-2.5">
+            <OnlineStatus />
+            <ThemeToggle className="lg:hidden" />
+          </div>
         </header>
 
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">

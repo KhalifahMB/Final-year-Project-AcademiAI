@@ -1,40 +1,44 @@
-﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { dashApi } from "@/services/api";
-import AppShell from "@/components/layout/AppShell";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { dashApi } from '@/services/api';
+import AppShell from '@/components/layout/AppShell';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from "@/components/ui/form";
-import { noteSchema } from "@/lib/validations";
-import { toast } from "sonner";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { noteSchema } from '@/lib/validations';
+import { toast } from 'sonner';
 
 export default function NotesPage() {
   const qc = useQueryClient();
   const { data, isLoading, error } = useQuery({
-    queryKey: ["notes"],
+    queryKey: ['notes'],
     queryFn: async () => {
-      const { data } = await dashApi.notes();
-      return data.results || data;
+      return await dashApi.notes();
     },
   });
   const form = useForm({
     resolver: zodResolver(noteSchema),
-    defaultValues: { title: "", content: "" },
+    defaultValues: { title: '', content: '' },
   });
   const create = useMutation({
-    mutationFn: (p) => api.post("/notes/", p),
+    mutationFn: (p) => api.post('/notes/', p),
     onSuccess: () => {
-      toast.success("Note saved");
+      toast.success('Note saved');
       form.reset();
-      qc.invalidateQueries({ queryKey: ["notes"] });
+      qc.invalidateQueries({ queryKey: ['notes'] });
     },
-    onError: () => toast.error("Failed to save note"),
+    onError: () => toast.error('Failed to save note'),
   });
 
   return (
@@ -81,24 +85,26 @@ export default function NotesPage() {
         </Alert>
       )}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loadingâ€¦</p>
+        <p className="text-sm text-muted-foreground">Loading</p>
       ) : (
         <ul className="space-y-2">
           {(data || []).map((n) => (
             <Card key={n.id}>
               <CardContent className="py-4">
                 <div className="font-medium">{n.title}</div>
-                <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{n.content}</p>
+                <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
+                  {n.content}
+                </p>
               </CardContent>
             </Card>
           ))}
           {(data || []).length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-8">No notes yet.</p>
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No notes yet.
+            </p>
           )}
         </ul>
       )}
     </AppShell>
   );
 }
-
-

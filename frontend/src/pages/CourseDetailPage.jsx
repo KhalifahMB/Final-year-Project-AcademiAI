@@ -2,6 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -11,6 +12,8 @@ import {
 
 export default function CourseDetailPage() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const role = user?.role;
 
   const offering = useQuery({
     queryKey: ["course-offering", id],
@@ -27,7 +30,10 @@ export default function CourseDetailPage() {
   const resources = useQuery({
     queryKey: ["resources", "offering", id],
     queryFn: async () => {
-      const { data } = await api.get("/resources/", { params: { course_offering: id } });
+      // Students/lecturers only see materials their academic scope allows.
+      const params = { course_offering: id };
+      if (role === "student" || role === "lecturer") params.scope = "authorized";
+      const { data } = await api.get("/resources/", { params });
       return data.results || data;
     },
     enabled: !!id,
@@ -53,12 +59,16 @@ export default function CourseDetailPage() {
               "Loading…"
             ) : offering.data ? (
               <>
-                <div>ID: <code className="text-xs">{offering.data.id}</code></div>
+                <div className="text-base font-semibold">
+                  {offering.data.course_code
+                    ? `${offering.data.course_code} — ${offering.data.course_title || ""}`
+                    : "Course offering"}
+                </div>
                 <div className="flex items-center gap-2">
                   Status: <Badge>{offering.data.status}</Badge>
                 </div>
-                <div>Session: {offering.data.academic_session || "—"}</div>
-                <div>Semester: {offering.data.semester || "—"}</div>
+                <div>Session: {offering.data.session_name || "—"}</div>
+                <div>Semester: {offering.data.semester_name || "—"}</div>
               </>
             ) : null}
           </CardContent>

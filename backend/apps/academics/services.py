@@ -52,3 +52,44 @@ def auto_enroll_student(user) -> int:
             user.id, created, department.id,
         )
     return created
+
+
+def enroll_department_students(offering) -> int:
+    """
+    Enrol every verified student whose programme belongs to the offering's
+    course department into a newly created course offering. Called when an
+    admin adds an offering so students are enrolled automatically (mirrors
+    auto_enroll_student, which covers students who verify *after* the
+    offering exists). Idempotent via get_or_create.
+    Returns the number of enrolments created.
+    """
+    from apps.accounts.models import StudentProfile
+    from apps.academics.models import CourseEnrollment
+
+    tenant_id = offering.tenant_id
+    students = (
+        StudentProfile.objects.filter(
+            tenant_id=tenant_id,
+            programme__department_id=offering.course.department_id,
+            user__role="student",
+            user__is_active=True,
+            user__is_email_verified=True,
+        )
+        .exclude(programme_id=None)
+        .values_list("user_id", flat=True)
+    )
+    created = 0
+    for student_id in students:
+        _, was_created = CourseEnrollment.objects.get_or_create(
+            tenant_id=tenant_id,
+            course_offering=offering,
+            student_id=student_id,
+            defaults={"status": CourseEnrollment.Status.ENROLLED},
+        )
+        created += 1 if was_created else 0
+    if created:
+        logger.info(
+            "Auto-enrolled %s student(s) into new offering=%s",
+            created, offering.id,
+        )
+    return created

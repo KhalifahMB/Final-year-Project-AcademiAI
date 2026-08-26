@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -35,20 +35,35 @@ export default function UploadResourcePage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [scope, setScope] = useState("private");
+  const [offering, setOffering] = useState("");
   const [file, setFile] = useState(null);
   const [step, setStep] = useState(-1);
   const [error, setError] = useState("");
   const [done, setDone] = useState(null);
 
+  // Offerings for course-scoped visibility — a course material without an
+  // offering would be undiscoverable.
+  const offerings = useQuery({
+    queryKey: ["offerings-for-upload"],
+    queryFn: async () => {
+      const { data } = await api.get("/course-offerings/?page_size=200");
+      return data.results || data;
+    },
+    enabled: scope === "course",
+    staleTime: 60_000,
+  });
+
   const upload = useMutation({
     mutationFn: async () => {
       setStep(0);
       // 1. Create the metadata record.
-      const { data: resource } = await api.post("/resources/", {
+      const payload = {
         title: title || file?.name || "Upload",
         description,
         visibility_scope: scope,
-      });
+      };
+      if (scope === "course" && offering) payload.course_offering = offering;
+      const { data: resource } = await api.post("/resources/", payload);
 
       setStep(1);
       // 2. Get a presigned POST bound to this resource's tenant partition.
@@ -96,6 +111,10 @@ export default function UploadResourcePage() {
     }
     if (file.size > 25 * 1024 * 1024) {
       setError("File exceeds the 25 MB limit.");
+      return;
+    }
+    if (scope === "course" && !offering) {
+      setError("Select the course offering this material belongs to.");
       return;
     }
     upload.mutate();
@@ -230,6 +249,37 @@ export default function UploadResourcePage() {
             “Private” means only you can find and summarize this material.
           </p>
         </div>
+
+        {scope === "course" && (
+          <div className="space-y-1.5">
+            <Label>Course offering</Label>
+            <Select value={offering || undefined} onValueChange={setOffering}>
+              <SelectTrigger className="h-10 w-full">
+                <SelectValue
+                  placeholder={
+                    offerings.isLoading
+                      ? "Loading offerings…"
+                      : (offerings.data || []).length === 0
+                        ? "No offerings available"
+                        : "Select offering"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {(offerings.data || []).map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    {o.course_code
+                      ? `${o.course_code} — ${o.course_title || ""}`
+                      : o.id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Enrolled students and the assigned lecturer will see this material.
+            </p>
+          </div>
+        )}
 
         {upload.isPending ? (
           <div className="flex items-center gap-2.5 rounded-lg border bg-accent/40 px-4 py-3 text-sm">

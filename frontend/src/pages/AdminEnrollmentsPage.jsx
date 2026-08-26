@@ -24,8 +24,21 @@ export default function AdminEnrollmentsPage() {
         },
       ]}
       columns={[
-        { key: "student", label: "Student" },
-        { key: "course_offering", label: "Offering" },
+        { key: "student_name", label: "Student" },
+        {
+          key: "course_offering",
+          label: "Offering",
+          render: (r) =>
+            r.offering_course_code
+              ? `${r.offering_course_code} — ${r.offering_course_title || ""}`
+              : r.course_offering,
+        },
+        {
+          key: "session_name",
+          label: "Session / Semester",
+          render: (r) =>
+            [r.semester_name, r.session_name].filter(Boolean).join(" · ") || "—",
+        },
         { key: "status", label: "Status" },
       ]}
     />

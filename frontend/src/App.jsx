@@ -18,26 +18,20 @@ import BookmarksPage from '@/pages/BookmarksPage';
 import ProgressPage from '@/pages/ProgressPage';
 import ProfilePage from '@/pages/ProfilePage';
 import AdminAuditPage from '@/pages/AdminAuditPage';
-import AdminFacultiesPage from '@/pages/AdminFacultiesPage';
 import AdminUsersPage from '@/pages/AdminUsersPage';
-import AdminDepartmentsPage from '@/pages/AdminDepartmentsPage';
-import AdminProgrammesPage from '@/pages/AdminProgrammesPage';
-import AdminCoursesPage from '@/pages/AdminCoursesPage';
-import AdminOfferingsPage from '@/pages/AdminOfferingsPage';
-import AdminEnrollmentsPage from '@/pages/AdminEnrollmentsPage';
-import AdminTenantPage from '@/pages/AdminTenantPage';
-import MyCoursesPage from '@/pages/MyCoursesPage';
-import CourseDetailPage from '@/pages/CourseDetailPage';
-import MyProgrammePage from '@/pages/MyProgrammePage';
-import AssignedCoursesPage from '@/pages/AssignedCoursesPage';
-import UploadResourcePage from '@/pages/UploadResourcePage';
-import QuizTakePage from '@/pages/QuizTakePage';
-import AdminSessionsPage from '@/pages/AdminSessionsPage';
-import AdminSemestersPage from '@/pages/AdminSemestersPage';
+import TenantStructurePage from '@/pages/admin/TenantStructurePage';
+import FacultyDetailPage from '@/pages/admin/FacultyDetailPage';
+import DepartmentDetailPage from '@/pages/admin/DepartmentDetailPage';
+import CourseManagePage from '@/pages/admin/CourseManagePage';
 import AdminQuizzesPage from '@/pages/AdminQuizzesPage';
 import AdminDashboardPage from '@/pages/AdminDashboardPage';
 import PlatformConsolePage from '@/pages/PlatformConsolePage';
-import AdminApprovalsPage from '@/pages/AdminApprovalsPage';
+import CourseDetailPage from '@/pages/CourseDetailPage';
+import MyProgrammePage from '@/pages/MyProgrammePage';
+import MyCoursesPage from '@/pages/MyCoursesPage';
+import AssignedCoursesPage from '@/pages/AssignedCoursesPage';
+import UploadResourcePage from '@/pages/UploadResourcePage';
+import QuizTakePage from '@/pages/QuizTakePage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -174,34 +168,10 @@ export default function App() {
             }
           />
           <Route
-            path="/admin/approvals"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminApprovalsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/platform"
             element={
               <ProtectedRoute roles={['admin']}>
                 <PlatformConsolePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/sessions"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminSessionsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/semesters"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminSemestersPage />
               </ProtectedRoute>
             }
           />
@@ -230,7 +200,7 @@ export default function App() {
             }
           />
           <Route
-            path="/profile"
+            path="/settings"
             element={
               <ProtectedRoute>
                 <ProfilePage />
@@ -238,58 +208,14 @@ export default function App() {
             }
           />
           <Route
+            path="/profile"
+            element={<Navigate to="/settings" replace />}
+          />
+          <Route
             path="/admin/users"
             element={
               <ProtectedRoute roles={['admin']}>
                 <AdminUsersPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/faculties"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminFacultiesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/departments"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminDepartmentsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/programmes"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminProgrammesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/courses"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminCoursesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/offerings"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminOfferingsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/enrollments"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminEnrollmentsPage />
               </ProtectedRoute>
             }
           />
@@ -305,7 +231,31 @@ export default function App() {
             path="/admin/tenant"
             element={
               <ProtectedRoute roles={['admin']}>
-                <AdminTenantPage />
+                <TenantStructurePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/faculties/:id"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <FacultyDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/departments/:id"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <DepartmentDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/courses/:id"
+            element={
+              <ProtectedRoute roles={['admin']}>
+                <CourseManagePage />
               </ProtectedRoute>
             }
           />

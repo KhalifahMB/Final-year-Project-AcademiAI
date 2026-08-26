@@ -13,6 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
     """
 
     full_name = serializers.CharField(read_only=True)
+    has_custom_avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -26,21 +27,45 @@ class UserSerializer(serializers.ModelSerializer):
             "is_email_verified",
             "is_superuser",
             "tenant",
+            "phone_number",
+            "gender",
+            "avatar_preset",
+            "has_custom_avatar",
             "created_at",
         )
         read_only_fields = fields
 
+    def get_has_custom_avatar(self, obj):
+        return bool(obj.avatar_key)
+
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     """
-    Self-service profile updates. Deliberately narrow: users may change only
-    their own display name. Role, tenant, and verification state are
+    Self-service profile updates. Personal data only: name, email, phone,
+    gender and avatar preset. Role, tenant, and verification state are
     server-controlled — exposing them here allowed privilege escalation.
+    Institution affiliation is immutable by design.
     """
 
     class Meta:
         model = User
-        fields = ("first_name", "last_name")
+        fields = (
+            "first_name",
+            "last_name",
+            "email",
+            "phone_number",
+            "gender",
+            "avatar_preset",
+        )
+
+    def validate_email(self, value):
+        email = value.lower().strip()
+        qs = User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(
+                "A user with this email already exists."
+            )
+        return email
 
 
 class SignupSerializer(serializers.Serializer):
@@ -55,6 +80,10 @@ class SignupSerializer(serializers.Serializer):
     # Optional programme (students) — drives the academic profile and
     # auto-enrollment into departmental course offerings on verification.
     programme = serializers.UUIDField(required=False, allow_null=True)
+    gender = serializers.ChoiceField(
+        choices=User.Gender.choices, required=False, allow_blank=True
+    )
+    avatar_preset = serializers.CharField(required=False, allow_blank=True)
 
     def validate_password(self, value):
         validate_password(value)

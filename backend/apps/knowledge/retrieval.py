@@ -7,6 +7,7 @@ from uuid import UUID
 
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.db.models import Q
+from pgvector.django import CosineDistance
 
 from apps.resources.models import Resource, ResourceChunk
 from apps.academics.models import CourseEnrollment, LecturerCourseAssignment
@@ -96,6 +97,11 @@ def _authorized_resource_ids(user, course_offering_id=None):
     q = (
         Q(visibility_scope=Resource.Visibility.INSTITUTION)
         | Q(visibility_scope=Resource.Visibility.COURSE, course_offering_id__in=allowed_offerings)
+        | Q(
+            visibility_scope=Resource.Visibility.COURSE,
+            course_offering__isnull=True,
+            uploaded_by=user,
+        )
         | Q(visibility_scope=Resource.Visibility.PRIVATE, uploaded_by=user)
     )
 
@@ -185,7 +191,7 @@ def hybrid_retrieve(query: str, tenant_id, user, course_offering_id=None, top_k=
         if emb and any(v != 0.0 for v in emb):
             semantic = (
                 base.exclude(embedding=None)
-                .order_by(ResourceChunk.embedding.cosine_distance(emb))[: top_k * 2]
+                .order_by(CosineDistance("embedding", emb))[: top_k * 2]
             )
             semantic_ids = [c.id for c in semantic]
     except Exception:

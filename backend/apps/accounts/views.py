@@ -1,6 +1,8 @@
 ﻿import logging
+import uuid
 
 from django.contrib.auth import authenticate
+from rest_framework import parsers
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.response import Response
@@ -33,6 +35,7 @@ logger = logging.getLogger(__name__)
 class SignupView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = "auth"
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     @extend_schema(
         tags=["Authentication"],
@@ -47,6 +50,8 @@ class SignupView(APIView):
         auth=[],
     )
     def post(self, request):
+        # Accept both JSON and multipart (multipart carries an optional
+        # profile picture chosen during signup).
         ser = SignupSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         data = ser.validated_data
@@ -64,12 +69,45 @@ class SignupView(APIView):
                 role=role,
                 tenant_slug=data.get("tenant_slug"),
                 programme_id=data.get("programme"),
+                gender=data.get("gender", ""),
+                avatar_preset=data.get("avatar_preset", ""),
             )
         except ValueError as e:
             return Response(
                 {"success": False, "error": {"detail": str(e)}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        # Optional profile picture uploaded at signup time.
+        avatar_file = request.FILES.get("avatar")
+        if avatar_file is not None and user.tenant_id:
+            raw = avatar_file.read(MAX_AVATAR_BYTES + 1)
+            sniffed = (
+                _sniff_image(raw)
+                if len(raw) <= MAX_AVATAR_BYTES
+                else None
+            )
+            if sniffed:
+                content_type, ext = sniffed
+                from django.conf import settings
+                from apps.common.storage import get_s3_client
+
+                key = f"tenants/{user.tenant_id}/avatars/{user.id}/{uuid.uuid4()}{ext}"
+                try:
+                    get_s3_client().put_object(
+                        Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                        Key=key,
+                        Body=raw,
+                        ContentType=content_type,
+                        ContentLength=len(raw),
+                    )
+                    user.avatar_key = key
+                    user.save(update_fields=["avatar_key", "updated_at"])
+                except Exception:
+                    logger.exception(
+                        "Signup avatar upload failed user=%s", user.id
+                    )
+            else:
+                logger.info("Signup avatar rejected (type/size) email=%s", data["email"])
         # Dispatch email task (non-blocking)
         try:
             from .tasks import send_verification_email
@@ -203,11 +241,136 @@ MeView = extend_schema_view(
     get=extend_schema(tags=["Authentication"], summary="Get authenticated profile"),
     patch=extend_schema(
         tags=["Authentication"],
-        summary="Update own display name",
-        description="Only first_name and last_name are writable; role, tenant, and verification state are server-controlled.",
+        summary="Update own personal profile",
+        description="Personal data only (name, email, phone, gender, avatar preset); role, tenant, and verification state are server-controlled.",
     ),
     put=extend_schema(tags=["Authentication"], summary="Replace own display name", deprecated=True),
 )(MeView)
+
+
+MAX_AVATAR_BYTES = 2 * 1024 * 1024  # 2 MB
+
+_AVATAR_MAGIC = (
+    (b"\xff\xd8\xff", "image/jpeg", ".jpg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png", ".png"),
+    (b"GIF87a", "image/gif", ".gif"),
+    (b"GIF89a", "image/gif", ".gif"),
+)
+
+
+def _sniff_image(raw: bytes):
+    """Return (content_type, ext) for allowed image magic bytes, else None."""
+    for magic, ctype, ext in _AVATAR_MAGIC:
+        if raw.startswith(magic):
+            return ctype, ext
+    # WebP: RIFF....WEBP
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "image/webp", ".webp"
+    return None
+
+
+class AvatarView(APIView):
+    """
+    GET    /auth/me/avatar/ — short-lived signed URL for the user's uploaded
+            picture (empty url when none).
+    POST   /auth/me/avatar/ — multipart upload (field `file`, <=2 MB,
+            png/jpeg/gif/webp). Stored under the tenant's storage partition.
+    DELETE /auth/me/avatar/ — remove the custom picture.
+    """
+
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+
+    @extend_schema(tags=["Profile"], summary="Get own avatar URL")
+    def get(self, request):
+        user = request.user
+        if not user.avatar_key:
+            return Response({"url": None})
+        from apps.common.storage import generate_presigned_download_url
+
+        try:
+            url = generate_presigned_download_url(user.avatar_key, expires_in=3600)
+        except Exception:
+            logger.exception("Avatar presign failed user=%s", user.id)
+            return Response(
+                {"success": False, "error": {"detail": "Avatar storage unavailable."}},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response({"url": url})
+
+    @extend_schema(tags=["Profile"], summary="Upload own avatar picture")
+    def post(self, request):
+        from django.core.files.uploadedfile import UploadedFile
+
+        f = request.FILES.get("file")
+        if not isinstance(f, UploadedFile):
+            return Response(
+                {"success": False, "error": {"detail": "No file provided."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        raw = f.read(MAX_AVATAR_BYTES + 1)
+        if len(raw) > MAX_AVATAR_BYTES:
+            return Response(
+                {"success": False, "error": {"detail": "Image must be 2 MB or smaller."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        sniffed = _sniff_image(raw)
+        if not sniffed:
+            return Response(
+                {"success": False, "error": {"detail": "Unsupported image type. Use PNG, JPEG, GIF or WebP."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        content_type, ext = sniffed
+        user = request.user
+        key = f"tenants/{user.tenant_id}/avatars/{user.id}/{uuid.uuid4()}{ext}"
+        from django.conf import settings
+        from apps.common.storage import get_s3_client, delete_object
+
+        try:
+            client = get_s3_client()
+            client.put_object(
+                Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                Key=key,
+                Body=raw,
+                ContentType=content_type,
+                ContentLength=len(raw),
+            )
+        except Exception:
+            logger.exception("Avatar upload failed user=%s", user.id)
+            return Response(
+                {"success": False, "error": {"detail": "Could not store the image. Try again."}},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        old_key = user.avatar_key
+        user.avatar_key = key
+        user.save(update_fields=["avatar_key", "updated_at"])
+        if old_key and old_key != key:
+            try:
+                delete_object(old_key)
+            except Exception:
+                logger.warning("Old avatar cleanup failed user=%s", user.id)
+        log_action(
+            tenant=user.tenant,
+            actor=user,
+            action="user.avatar_update",
+            entity_type="user",
+            entity_id=str(user.id),
+        )
+        return Response({"success": True, "has_custom_avatar": True})
+
+    @extend_schema(tags=["Profile"], summary="Remove own avatar picture")
+    def delete(self, request):
+        user = request.user
+        old_key = user.avatar_key
+        user.avatar_key = ""
+        user.save(update_fields=["avatar_key", "updated_at"])
+        if old_key:
+            try:
+                from apps.common.storage import delete_object
+
+                delete_object(old_key)
+            except Exception:
+                logger.warning("Avatar object cleanup failed user=%s", user.id)
+        return Response({"success": True, "has_custom_avatar": False})
 
 
 class PasswordResetRequestView(APIView):

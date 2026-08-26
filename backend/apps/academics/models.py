@@ -77,6 +77,7 @@ class Semester(TenantScopedModel):
     name = models.CharField(max_length=50)  # First Semester, Second Semester
     start_date = models.DateField()
     end_date = models.DateField()
+    is_current = models.BooleanField(default=False)
 
     class Meta:
         db_table = "semesters"

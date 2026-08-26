@@ -38,10 +38,15 @@ class AcademicSessionSerializer(serializers.ModelSerializer):
 
 
 class SemesterSerializer(serializers.ModelSerializer):
+    session_name = serializers.CharField(
+        source="academic_session.name", read_only=True
+    )
+
     class Meta:
         model = Semester
         fields = (
-            "id", "academic_session", "name", "start_date", "end_date",
+            "id", "academic_session", "session_name", "name", "start_date",
+            "end_date", "is_current",
             "tenant", "created_at",
         )
         read_only_fields = ("id", "tenant", "created_at")
@@ -60,12 +65,17 @@ class CourseSerializer(serializers.ModelSerializer):
 class CourseOfferingSerializer(serializers.ModelSerializer):
     course_code = serializers.CharField(source="course.code", read_only=True)
     course_title = serializers.CharField(source="course.title", read_only=True)
+    session_name = serializers.CharField(
+        source="academic_session.name", read_only=True
+    )
+    semester_name = serializers.CharField(source="semester.name", read_only=True)
 
     class Meta:
         model = CourseOffering
         fields = (
-            "id", "course", "course_code", "course_title", "academic_session",
-            "semester", "status", "tenant", "created_at",
+            "id", "course", "course_code", "course_title",
+            "academic_session", "session_name", "semester", "semester_name",
+            "status", "tenant", "created_at",
         )
         read_only_fields = ("id", "tenant", "created_at")
 
@@ -73,11 +83,27 @@ class CourseOfferingSerializer(serializers.ModelSerializer):
 class CourseEnrollmentSerializer(serializers.ModelSerializer):
     student_email = serializers.EmailField(source="student.email", read_only=True)
     student_name = serializers.CharField(source="student.full_name", read_only=True)
+    # Display fields so clients never have to render raw offering UUIDs.
+    offering_course_code = serializers.CharField(
+        source="course_offering.course.code", read_only=True
+    )
+    offering_course_title = serializers.CharField(
+        source="course_offering.course.title", read_only=True
+    )
+    session_name = serializers.CharField(
+        source="course_offering.academic_session.name", read_only=True
+    )
+    semester_name = serializers.CharField(
+        source="course_offering.semester.name", read_only=True
+    )
 
     class Meta:
         model = CourseEnrollment
         fields = (
-            "id", "course_offering", "student", "student_email", "student_name",
+            "id", "course_offering",
+            "offering_course_code", "offering_course_title",
+            "session_name", "semester_name",
+            "student", "student_email", "student_name",
             "status", "enrolled_at",
             "tenant", "created_at",
         )
@@ -87,11 +113,26 @@ class CourseEnrollmentSerializer(serializers.ModelSerializer):
 class LecturerAssignmentSerializer(serializers.ModelSerializer):
     lecturer_email = serializers.EmailField(source="lecturer.email", read_only=True)
     lecturer_name = serializers.CharField(source="lecturer.full_name", read_only=True)
+    offering_course_code = serializers.CharField(
+        source="course_offering.course.code", read_only=True
+    )
+    offering_course_title = serializers.CharField(
+        source="course_offering.course.title", read_only=True
+    )
+    session_name = serializers.CharField(
+        source="course_offering.academic_session.name", read_only=True
+    )
+    semester_name = serializers.CharField(
+        source="course_offering.semester.name", read_only=True
+    )
 
     class Meta:
         model = LecturerCourseAssignment
         fields = (
-            "id", "course_offering", "lecturer", "lecturer_email", "lecturer_name",
+            "id", "course_offering",
+            "offering_course_code", "offering_course_title",
+            "session_name", "semester_name",
+            "lecturer", "lecturer_email", "lecturer_name",
             "assignment_role",
             "tenant", "created_at",
         )

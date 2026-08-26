@@ -30,6 +30,7 @@ import json
 import statistics
 
 from django.core.management.base import BaseCommand, CommandError
+from pgvector.django import CosineDistance
 
 
 def _precision_at_k(ranked, relevant, k):
@@ -135,7 +136,7 @@ class Command(BaseCommand):
         emb = generate_embeddings([query])[0]
         if not emb or all(v == 0.0 for v in emb):
             return []
-        semantic = base.order_by(ResourceChunk.embedding.cosine_distance(emb))[:20]
+        semantic = base.order_by(CosineDistance("embedding", emb))[:20]
         return [c.id for c in semantic]
 
     def _run_dense(self, user, tenant_id, query, offering):

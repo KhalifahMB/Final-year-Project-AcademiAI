@@ -26,9 +26,14 @@ export default function AdminOfferingsPage() {
         },
       ]}
       columns={[
-        { key: "course", label: "Course" },
-        { key: "academic_session", label: "Session" },
-        { key: "semester", label: "Semester" },
+        {
+          key: "course",
+          label: "Course",
+          render: (r) =>
+            r.course_code ? `${r.course_code} — ${r.course_title || ""}` : r.course,
+        },
+        { key: "session_name", label: "Session" },
+        { key: "semester_name", label: "Semester" },
         { key: "status", label: "Status" },
       ]}
     />

@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import AuthLayout from '@/components/layout/AuthLayout';
+import AvatarPicker from '@/components/shared/AvatarPicker';
 import api, { authApi } from '@/services/api';
 import { signupSchema } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,9 @@ import {
 export default function SignupPage() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
+  const [avatarPreset, setAvatarPreset] = useState('');
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const form = useForm({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -38,6 +42,7 @@ export default function SignupPage() {
       tenant_slug: '',
       role: 'student',
       programme: '',
+      gender: '',
     },
   });
 
@@ -71,7 +76,18 @@ export default function SignupPage() {
     try {
       const payload = { ...values };
       if (!payload.programme) delete payload.programme;
-      await authApi.signup(payload);
+      if (avatarFile) {
+        // Multipart so the profile picture travels with the signup request.
+        const fd = new FormData();
+        Object.entries(payload).forEach(([k, v]) => {
+          if (v !== undefined && v !== null && v !== '') fd.append(k, v);
+        });
+        fd.append('avatar', avatarFile);
+        await authApi.signup(fd);
+      } else {
+        if (avatarPreset) payload.avatar_preset = avatarPreset;
+        await authApi.signup(payload);
+      }
       navigate('/verify-email');
     } catch (err) {
       const d = err.response?.data?.error?.detail;
@@ -269,6 +285,45 @@ export default function SignupPage() {
               )}
             />
           )}
+
+          <FormField
+            control={form.control}
+            name="gender"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Gender</FormLabel>
+                <Select value={field.value || 'unspecified'} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="unspecified">Prefer not to say</SelectItem>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div>
+            <p className="mb-2 text-sm font-medium">Profile picture</p>
+            <AvatarPicker
+              presetId={avatarPreset}
+              onPresetId={setAvatarPreset}
+              file={avatarFile}
+              preview={avatarPreview}
+              onFile={(f) => {
+                setAvatarFile(f);
+                setAvatarPreview(f ? URL.createObjectURL(f) : null);
+              }}
+              onError={(m) => setError(m)}
+            />
+          </div>
 
           {directory.isSuccess && (directory.data || []).length === 0 && (
             <Alert>

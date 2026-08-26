@@ -312,7 +312,7 @@ export default function AdminCrudPage({
                 <TableRow key={item.id}>
                   {columns.map((c) => (
                     <TableCell key={c.key} className="py-3.5">
-                      {String(item[c.key] ?? '')}
+                      {c.render ? c.render(item) : String(item[c.key] ?? '')}
                     </TableCell>
                   ))}
                   <TableCell className="space-x-1 text-right">

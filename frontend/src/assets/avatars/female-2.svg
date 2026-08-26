@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Female avatar">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f5f3ff"/>
+      <stop offset="1" stop-color="#ede9fe"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="64" fill="url(#bg)"/>
+  <circle cx="64" cy="51" r="21" fill="#c68642"/>
+  <path d="M37 66c-6-28 10-44 27-44s33 16 27 44c-1-16-9-24-27-24s-26 8-27 24z" fill="#0f172a"/>
+  <circle cx="55" cy="51" r="2.5" fill="#1e1b4b"/>
+  <circle cx="73" cy="51" r="2.5" fill="#1e1b4b"/>
+  <path d="M58 60c4 3 8 3 12 0" stroke="#1e1b4b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M28 112c4-22 18-32 36-32s32 10 36 32a64 64 0 0 1-72 0z" fill="#7c3aed"/>
+  <circle cx="64" cy="88" r="4" fill="#ddd6fe"/>
+</svg>
