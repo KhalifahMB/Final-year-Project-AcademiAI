@@ -268,7 +268,6 @@ class ChatQuickUploadView(APIView):
 
         # Open a tenant-scoped transaction for writes.
         import uuid as _uuid
-        from apps.common.db import tenant_scope
 
         with tenant_scope(user.tenant_id):
             resource = Resource.objects.create(
