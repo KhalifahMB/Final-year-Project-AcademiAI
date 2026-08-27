@@ -30,9 +30,18 @@ class ChatMessage(TenantScopedModel):
         ASSISTANT = "assistant", "Assistant"
         SYSTEM = "system", "System"
 
+    class ContentType(models.TextChoices):
+        TEXT = "text", "Text"
+        MARKDOWN = "markdown", "Markdown"
+        FORMULA = "formula", "Formula"
+        SYSTEM_EVENT = "system_event", "System Event"
+
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name="messages")
     role = models.CharField(max_length=20, choices=Role.choices)
     content = models.TextField()
+    content_type = models.CharField(
+        max_length=20, choices=ContentType.choices, default=ContentType.MARKDOWN
+    )
 
     class Meta:
         db_table = "chat_messages"

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import api from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
@@ -64,6 +64,8 @@ export default function AdminQuizzesPage() {
       explanation: "",
     },
   });
+
+  const watchedQuestionType = useWatch({ control: questionForm.control, name: "question_type" });
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["admin-quizzes"] });
@@ -398,7 +400,7 @@ export default function AdminQuizzesPage() {
                     )}
                   />
                 </div>
-                {questionForm.watch("question_type") === "multiple_choice" && (
+                {watchedQuestionType === "multiple_choice" && (
                   <FormField
                     control={questionForm.control}
                     name="options"

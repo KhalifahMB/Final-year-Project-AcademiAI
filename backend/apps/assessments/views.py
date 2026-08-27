@@ -27,6 +27,14 @@ class QuizViewSet(TenantModelViewSet):
     serializer_class = QuizSerializer
     filterset_fields = ["status", "course_offering"]
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        # Students see published quizzes only; draft/archived stay internal.
+        if getattr(user, "role", None) == "student":
+            qs = qs.filter(status=Quiz.Status.PUBLISHED)
+        return qs
+
     def get_permissions(self):
         perms = super().get_permissions()
         if self.action in ("create", "update", "partial_update", "destroy"):

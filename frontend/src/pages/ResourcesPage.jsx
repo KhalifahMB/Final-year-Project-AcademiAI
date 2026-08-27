@@ -1,6 +1,6 @@
-﻿import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'react-router-dom';
 import api, { dashApi } from '@/services/api';
@@ -41,6 +41,13 @@ import ResourceDetailDialog from '@/components/resources/ResourceDetailDialog';
 import { resourceSchema } from '@/lib/validations';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreVertical, Trash } from 'lucide-react';
 
 const SCOPES = [
   'private',
@@ -60,7 +67,7 @@ export default function ResourcesPage() {
   const [scopeFilter, setScopeFilter] = useState('all');
   const [selected, setSelected] = useState(null);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, loadError, refetch } = useQuery({
     queryKey: ['resources', user?.role],
     queryFn: async () => {
       // Students/lecturers only see what their academic scope allows
@@ -70,8 +77,7 @@ export default function ResourcesPage() {
         user?.role === 'student' || user?.role === 'lecturer'
           ? { params: { scope: 'authorized' } }
           : {};
-      const { data } = await dashApi.resources(scoped);
-      return data.results || data;
+      return await dashApi.resources(scoped);
     },
     refetchInterval: (query) => {
       // Poll lightly while any material is still processing.
@@ -95,6 +101,20 @@ export default function ResourcesPage() {
       visibility_scope: 'course',
       course_offering: '',
     },
+  });
+
+  const chosenScope = useWatch({ control: form.control, name: 'visibility_scope' });
+
+  // Offerings for the course-scoped visibility selector — a course material
+  // without an offering would be undiscoverable.
+  const offerings = useQuery({
+    queryKey: ['offerings-for-resource'],
+    queryFn: async () => {
+      const { data } = await api.get('/course-offerings/?page_size=200');
+      return data.results || data;
+    },
+    enabled: chosenScope === 'course',
+    staleTime: 60_000,
   });
 
   const createMut = useMutation({
@@ -124,7 +144,7 @@ export default function ResourcesPage() {
     createMut.mutate(payload);
   };
 
-  const filtered = useMemo(() => {
+  const filtered = (() => {
     let list = resources;
     if (scopeFilter !== 'all') {
       list = list.filter((r) => r.visibility_scope === scopeFilter);
@@ -138,7 +158,7 @@ export default function ResourcesPage() {
       );
     }
     return list;
-  }, [resources, search, scopeFilter]);
+  })();
 
   return (
     <AppShell
@@ -204,7 +224,11 @@ export default function ResourcesPage() {
                         <FormLabel>Visibility scope</FormLabel>
                         <Select
                           value={field.value}
-                          onValueChange={field.onChange}
+                          onValueChange={(v) => {
+                            field.onChange(v);
+                            if (v !== 'course')
+                              form.setValue('course_offering', '');
+                          }}
                         >
                           <FormControl>
                             <SelectTrigger className="w-full capitalize">
@@ -227,9 +251,52 @@ export default function ResourcesPage() {
                       </FormItem>
                     )}
                   />
+                  {chosenScope === 'course' && (
+                    <FormField
+                      control={form.control}
+                      name="course_offering"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Course offering</FormLabel>
+                          <Select
+                            value={field.value || undefined}
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="w-full">
+                                <SelectValue
+                                  placeholder={
+                                    offerings.isLoading
+                                      ? 'Loading offerings…'
+                                      : (offerings.data || []).length === 0
+                                        ? 'No offerings available'
+                                        : 'Select offering'
+                                  }
+                                />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {(offerings.data || []).map((o) => (
+                                <SelectItem key={o.id} value={o.id}>
+                                  {o.course_code
+                                    ? `${o.course_code} — ${o.course_title || ''}`
+                                    : o.id}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-[11px] leading-snug text-muted-foreground">
+                            Students enrolled in this offering will see the
+                            material.
+                          </p>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   <DialogFooter>
                     <Button type="submit" disabled={createMut.isPending}>
-                      {createMut.isPending ? 'Savingâ€¦' : 'Create resource'}
+                      {createMut.isPending ? 'Saving' : 'Create resource'}
                     </Button>
                   </DialogFooter>
                 </form>
@@ -241,7 +308,7 @@ export default function ResourcesPage() {
     >
       {/* Toolbar */}
       <div className="mb-5 flex flex-wrap items-center gap-2.5">
-        <div className="relative min-w-[220px] flex-1">
+        <div className="relative min-w-55 flex-1">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
@@ -249,7 +316,7 @@ export default function ResourcesPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by title or descriptionâ€¦"
+            placeholder="Search by title or description"
             aria-label="Search resources"
             className="h-10 pl-9"
           />
@@ -278,7 +345,27 @@ export default function ResourcesPage() {
         </div>
       </div>
 
-      {isLoading ? (
+      {loadError ? (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>
+            <span className="font-medium">Could not load materials.</span>{' '}
+            {String(
+              loadError?.response?.data?.detail ||
+                loadError.message ||
+                loadError,
+            )}
+          </AlertDescription>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() => refetch()}
+          >
+            Retry
+          </Button>
+        </Alert>
+      ) : isLoading ? (
         <SkeletonRows rows={5} />
       ) : filtered.length === 0 ? (
         <EmptyState
@@ -314,9 +401,42 @@ export default function ResourcesPage() {
                     setSelected(r);
                   }
                 }}
-                className="group flex h-full cursor-pointer flex-col rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
+                className="group relative flex h-full cursor-pointer flex-col rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
               >
-                <div className="flex items-start gap-3">
+                {/* Actions Dropdown */}
+                {(user?.role === 'admin' || user?.id === r.uploaded_by) && (
+                  <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                          onClick={async () => {
+                            if (confirm('Are you sure you want to delete this resource?')) {
+                              try {
+                                await api.delete(`/resources/${r.id}/`);
+                                toast.success('Resource deleted');
+                                qc.invalidateQueries({ queryKey: ['resources'] });
+                              } catch (err) {
+                                toast.error(err.response?.data?.error?.detail || 'Delete failed');
+                              }
+                            }
+                          }}
+                        >
+                          <Trash className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+
+                <div className="flex items-start gap-3 pr-8">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
                     <FileText className="h-5 w-5" aria-hidden />
                   </span>
@@ -344,7 +464,7 @@ export default function ResourcesPage() {
                   </span>
                   {r.processing_status === 'ready' ? (
                     <span className="ml-auto text-[11px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                      Open â†’
+                      Open
                     </span>
                   ) : null}
                 </div>

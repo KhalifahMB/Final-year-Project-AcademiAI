@@ -29,6 +29,7 @@ def append_user_message(session, content: str) -> ChatMessage:
         session=session,
         role=ChatMessage.Role.USER,
         content=content,
+        content_type=ChatMessage.ContentType.TEXT,
     )
 
 

@@ -1,5 +1,7 @@
 from django.core.exceptions import PermissionDenied
 
+import logging
+
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -7,6 +9,7 @@ from rest_framework.views import APIView
 
 from apps.common.db import tenant_scope
 from apps.common.viewsets import AdminWriteViewSet
+
 from .models import (
     Faculty, Department, Programme, AcademicSession, Semester,
     Course, CourseOffering, LecturerCourseAssignment, CourseEnrollment,
@@ -18,6 +21,8 @@ from .serializers import (
     CourseOfferingSerializer, LecturerAssignmentSerializer, CourseEnrollmentSerializer,
     CurriculumCourseSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @extend_schema(tags=["Faculties"])
@@ -95,9 +100,17 @@ class AcademicSessionViewSet(AdminWriteViewSet):
 
 @extend_schema(tags=["Semesters"])
 class SemesterViewSet(AdminWriteViewSet):
-    queryset = Semester.objects.select_related("academic_session")
+    queryset = Semester.objects.select_related("academic_session").order_by("start_date")
     serializer_class = SemesterSerializer
     filterset_fields = ["academic_session"]
+
+    def perform_update(self, serializer):
+        semester = serializer.save()
+        # Only one current semester per tenant at a time.
+        if semester.is_current:
+            Semester.objects.filter(
+                tenant_id=semester.tenant_id, is_current=True
+            ).exclude(id=semester.id).update(is_current=False)
 
 
 @extend_schema(tags=["Courses"])
@@ -110,23 +123,62 @@ class CourseViewSet(AdminWriteViewSet):
 
 @extend_schema(tags=["Course Offerings"])
 class CourseOfferingViewSet(AdminWriteViewSet):
-    queryset = CourseOffering.objects.select_related("course", "academic_session", "semester")
+    queryset = CourseOffering.objects.select_related(
+        "course", "academic_session", "semester"
+    ).order_by("-created_at")
     serializer_class = CourseOfferingSerializer
     filterset_fields = ["course", "academic_session", "semester", "status"]
+
+    def perform_create(self, serializer):
+        offering = serializer.save()
+        try:
+            from .services import enroll_department_students
+
+            enroll_department_students(offering)
+        except Exception:
+            logger.exception(
+                "Auto-enrollment failed for new offering=%s", offering.id
+            )
 
 
 @extend_schema(tags=["Lecturer Assignments"])
 class LecturerAssignmentViewSet(AdminWriteViewSet):
-    queryset = LecturerCourseAssignment.objects.select_related("course_offering", "lecturer")
+    queryset = LecturerCourseAssignment.objects.select_related(
+        "course_offering__course",
+        "course_offering__academic_session",
+        "course_offering__semester",
+        "lecturer",
+    ).order_by("-created_at")
     serializer_class = LecturerAssignmentSerializer
     filterset_fields = ["course_offering", "lecturer"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        # Lecturers only see their own assignments; admins manage all.
+        if user.role == "lecturer":
+            qs = qs.filter(lecturer=user)
+        return qs
 
 
 @extend_schema(tags=["Enrollments"])
 class CourseEnrollmentViewSet(AdminWriteViewSet):
-    queryset = CourseEnrollment.objects.select_related("course_offering", "student")
+    queryset = CourseEnrollment.objects.select_related(
+        "course_offering__course",
+        "course_offering__academic_session",
+        "course_offering__semester",
+        "student",
+    ).order_by("-created_at")
     serializer_class = CourseEnrollmentSerializer
-    filterset_fields = ["course_offering", "student", "status"]
+    filterset_fields = ["course_offering", "course_offering__course", "student", "status"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user = self.request.user
+        # Students only see their own enrollments; admins manage all.
+        if user.role == "student":
+            qs = qs.filter(student=user)
+        return qs
 
 
 @extend_schema(tags=["Curriculum"])
