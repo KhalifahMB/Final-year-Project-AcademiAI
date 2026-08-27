@@ -1,371 +1,255 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import api from "@/services/api";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import {
+  Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart,
+  ResponsiveContainer, Tooltip, XAxis, YAxis,
+} from "recharts";
+import { platformApi } from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
-import StatusBadge from "@/components/shared/StatusBadge";
+import StatCard from "@/components/shared/StatCard";
+import SkeletonRows from "@/components/shared/SkeletonRows";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from "@/components/ui/form";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { toast } from "sonner";
-import { Building2, Plus, ShieldCheck } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+  Activity, Building2, FileText, MessageSquareText,
+  Plus, Users, ClipboardList, HardDrive, Megaphone,
+  ArrowRight, TrendingUp,
+} from "lucide-react";
 
-const tenantSchema = z.object({
-  name: z.string().min(2, "Name is required"),
-  slug: z
-    .string()
-    .min(2, "Slug is required")
-    .max(100)
-    .regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers and hyphens only"),
-  plan: z.enum(["standard", "professional", "enterprise"]),
-  storage_quota_gb: z.coerce.number().min(1).max(10240),
-});
+const PIE_COLORS = [
+  "oklch(0.55 0.25 293)",
+  "oklch(0.6 0.2 255)",
+  "oklch(0.65 0.16 215)",
+  "oklch(0.7 0.14 175)",
+];
 
 function formatBytes(bytes) {
   if (!bytes && bytes !== 0) return "—";
   const gb = 1024 ** 3;
-  return bytes >= gb ? `${(bytes / gb).toFixed(0)} GB` : `${bytes} B`;
+  const mb = 1024 ** 2;
+  if (bytes >= gb) return `${(bytes / gb).toFixed(1)} GB`;
+  if (bytes >= mb) return `${(bytes / mb).toFixed(1)} MB`;
+  return `${bytes} B`;
+}
+
+const chartTooltipStyle = {
+  backgroundColor: "var(--card)",
+  border: "1px solid var(--border)",
+  borderRadius: "0.75rem",
+  fontSize: "12px",
+  color: "var(--card-foreground)",
+};
+
+function QuickActionCard({ to, icon: Icon, label, description }) {
+  return (
+    <Link
+      to={to}
+      className="group flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+        <Icon className="h-5 w-5" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold">{label}</p>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" aria-hidden />
+    </Link>
+  );
 }
 
 export default function PlatformConsolePage() {
-  const qc = useQueryClient();
-  const { user } = useAuth();
-  const isSuperuser = !!user?.is_superuser;
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [error, setError] = useState("");
-
-  const tenants = useQuery({
-    queryKey: ["platform-tenants"],
-    queryFn: async () => {
-      const { data } = await api.get("/tenants/");
-      return data.results || data;
-    },
-    enabled: isSuperuser,
+  const statsQ = useQuery({
+    queryKey: ["platform-stats"],
+    queryFn: async () => (await platformApi.stats()).data,
+    staleTime: 30_000,
   });
 
-  const form = useForm({
-    resolver: zodResolver(tenantSchema),
-    defaultValues: { name: "", slug: "", plan: "standard", storage_quota_gb: 10 },
-  });
-
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["platform-tenants"] });
-
-  const createTenant = useMutation({
-    mutationFn: (payload) => api.post("/tenants/", payload),
-    onSuccess: () => {
-      toast.success("Tenant created");
-      setDialogOpen(false);
-      setError("");
-      invalidate();
-    },
-    onError: (err) => {
-      setError(err.response?.data?.error?.detail || "Create failed");
-    },
-  });
-
-  const updateTenant = useMutation({
-    mutationFn: ({ id, payload }) => api.patch(`/tenants/${id}/`, payload),
-    onSuccess: () => {
-      toast.success("Tenant updated");
-      setDialogOpen(false);
-      setEditing(null);
-      setError("");
-      invalidate();
-    },
-    onError: (err) => {
-      setError(err.response?.data?.error?.detail || "Update failed");
-    },
-  });
-
-  const setStatus = useMutation({
-    mutationFn: ({ id, status }) => api.patch(`/tenants/${id}/`, { status }),
-    onSuccess: (_d, vars) => {
-      toast.success(
-        vars.status === "suspended"
-          ? "Suspended — users notified; logins restricted after 24h"
-          : "Tenant activated"
-      );
-      invalidate();
-    },
-    onError: () => toast.error("Status change failed"),
-  });
-
-  const deleteTenant = useMutation({
-    mutationFn: (id) => api.delete(`/tenants/${id}/`),
-    onSuccess: () => {
-      toast.success("Tenant deleted");
-      invalidate();
-    },
-    onError: () => toast.error("Delete failed — tenant may still have data"),
-  });
-
-  const openEdit = (t) => {
-    setEditing(t);
-    setError("");
-    form.reset({
-      name: t.name,
-      slug: t.slug,
-      plan: t.plan || "standard",
-      storage_quota_gb: Math.max(1, Math.round((t.storage_quota_bytes || 0) / 1024 ** 3)),
-    });
-    setDialogOpen(true);
-  };
-
-  const openCreate = () => {
-    setEditing(null);
-    setError("");
-    form.reset({ name: "", slug: "", plan: "standard", storage_quota_gb: 10 });
-    setDialogOpen(true);
-  };
-
-  const onSubmit = (values) => {
-    const payload = {
-      name: values.name,
-      plan: values.plan,
-      storage_quota_bytes: Math.round(values.storage_quota_gb * 1024 ** 3),
-    };
-    if (editing) {
-      updateTenant.mutate({ id: editing.id, payload });
-    } else {
-      createTenant.mutate({ ...payload, slug: values.slug, status: "active" });
-    }
-  };
-
-  const list = tenants.data || [];
-  const pendingCount = list.filter((t) => t.status === "pending").length;
-  const suspendedCount = list.filter((t) => t.status === "suspended").length;
-
-  if (user && !isSuperuser) {
-    return (
-      <AppShell title="Platform console">
-        <Alert variant="destructive">
-          <ShieldCheck className="h-4 w-4" />
-          <AlertDescription>
-            The platform console is restricted to platform operators.
-          </AlertDescription>
-        </Alert>
-      </AppShell>
-    );
-  }
+  const stats = statsQ.data;
 
   return (
     <AppShell
-      title="Platform console"
-      description="Provision universities, manage plans & quotas, and approve or suspend institutions. Superuser only."
+      title="Platform Dashboard"
+      description="Overview of AcademiAI — tenants, users, resources, and AI activity across the platform."
       actions={
-        <Button type="button" onClick={openCreate} className="h-9 shadow-sm">
-          <Plus className="mr-1.5 h-4 w-4" aria-hidden /> New tenant
-        </Button>
+        <div className="flex gap-2">
+          <Link to="/platform/tenants">
+            <Button type="button" className="shadow-sm">
+              <Plus className="mr-2 h-4 w-4" aria-hidden />
+              Add Tenant
+            </Button>
+          </Link>
+        </div>
       }
     >
-      <div className="mb-5 flex flex-wrap gap-3 text-xs">
-        {[
-          ["Total tenants", list.length],
-          ["Pending approval", pendingCount],
-          ["Suspended", suspendedCount],
-        ].map(([label, value]) => (
-          <span key={label} className="rounded-full border bg-card px-3 py-1.5 font-medium">
-            {label}: <span className="text-primary">{value}</span>
-          </span>
-        ))}
-        <span className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-muted-foreground">
-          <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
-          Suspension notifies users immediately; logins lock after 24h (scheduled task)
-        </span>
-      </div>
+      {statsQ.isLoading ? (
+        <SkeletonRows rows={6} />
+      ) : statsQ.error ? (
+        <p className="text-sm text-destructive">Failed to load platform stats.</p>
+      ) : stats ? (
+        <>
+          {/* ── Summary Cards ──────────────────────────────────────── */}
+          <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <StatCard icon={Building2} label="Tenants" value={stats.tenants?.total} hint={`${stats.tenants?.active} active`} />
+            <StatCard icon={Users} label="Users" value={stats.users?.total} hint={`${stats.users?.joined_this_week} new this week`} />
+            <StatCard icon={FileText} label="Resources" value={stats.resources?.total} hint={formatBytes(stats.resources?.total_storage_bytes)} />
+            <StatCard icon={MessageSquareText} label="Chat Sessions" value={stats.chat?.total_sessions} hint={`${stats.chat?.total_messages} messages`} />
+            <StatCard icon={ClipboardList} label="Quizzes" value={stats.quizzes?.total} hint={`${stats.quizzes?.total_attempts} attempts`} />
+            <StatCard icon={HardDrive} label="Vectors" value={stats.resources?.total_chunks} hint="Embedded chunks" />
+          </div>
 
-      {/* Create / edit dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editing ? `Edit ${editing.name}` : "Provision a new tenant"}</DialogTitle>
-          </DialogHeader>
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{String(error)}</AlertDescription>
-            </Alert>
-          )}
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Institution name</FormLabel>
-                    <FormControl><Input {...field} placeholder="Abubakar Tafawa Balewa University" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="slug"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Slug</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="atbu" disabled={!!editing} />
-                    </FormControl>
-                    <p className="text-[11px] text-muted-foreground">
-                      Used in signup links{editing ? " — immutable once created" : ""}.
-                    </p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <FormField
-                  control={form.control}
-                  name="plan"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Plan</FormLabel>
-                      <FormControl>
-                        <select
-                          {...field}
-                          className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
-                        >
-                          <option value="standard">Standard</option>
-                          <option value="professional">Professional</option>
-                          <option value="enterprise">Enterprise</option>
-                        </select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="storage_quota_gb"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quota (GB)</FormLabel>
-                      <FormControl><Input type="number" min={1} {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <DialogFooter>
-                <Button type="submit" disabled={createTenant.isPending || updateTenant.isPending} className="shadow-sm">
-                  {createTenant.isPending || updateTenant.isPending ? "Saving…" : editing ? "Save changes" : "Create tenant"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+          {/* ── Quick Actions ──────────────────────────────────────── */}
+          <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <QuickActionCard to="/platform/tenants" icon={Building2} label="Manage Tenants" description="View and configure all institutions" />
+            <QuickActionCard to="/platform/analytics" icon={TrendingUp} label="Analytics" description="Growth trends and usage metrics" />
+            <QuickActionCard to="/platform/health" icon={Activity} label="System Health" description="Service status and worker queues" />
+            <QuickActionCard to="/platform/announcements" icon={Megaphone} label="Announcements" description="Send messages to tenants" />
+          </div>
 
-      {tenants.error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>Failed to load tenants</AlertDescription>
-        </Alert>
-      )}
+          {/* ── Charts ─────────────────────────────────────────────── */}
+          <div className="grid gap-5 lg:grid-cols-2">
+            {/* User signups trend */}
+            {stats.trends?.user_signups?.length > 0 && (
+              <section className="rounded-xl border bg-card p-5 shadow-sm">
+                <h2 className="flex items-center gap-2 text-sm font-semibold">
+                  <Users className="h-4 w-4 text-primary" aria-hidden /> User signups (30 days)
+                </h2>
+                <div className="mt-4 h-[220px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={stats.trends.user_signups}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 10, fill: "var(--muted-foreground)" }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(v) => v?.slice(5)}
+                      />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} width={28} />
+                      <Tooltip contentStyle={chartTooltipStyle} />
+                      <Line type="monotone" dataKey="count" stroke="oklch(0.55 0.25 293)" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+            )}
 
-      {tenants.isLoading ? (
-        <div className="space-y-2.5">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-12 animate-pulse rounded-lg bg-muted" />
-          ))}
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead>Institution</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Quota</TableHead>
-                <TableHead className="w-[260px] text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {list.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="py-3.5">
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold uppercase text-primary">
-                        {(t.name?.[0] || "?").toUpperCase()}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{t.name}</p>
-                        <p className="truncate text-xs text-muted-foreground">/{t.slug}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell><StatusBadge status={t.status} /></TableCell>
-                  <TableCell className="capitalize">{t.plan}</TableCell>
-                  <TableCell>{formatBytes(t.storage_quota_bytes)}</TableCell>
-                  <TableCell className="space-x-1 text-right">
-                    {t.status === "pending" && (
-                      <Button
-                        type="button" size="sm"
-                        onClick={() => setStatus.mutate({ id: t.id, status: "active" })}
-                        disabled={setStatus.isPending}
+            {/* Tenant plan distribution */}
+            {stats.tenants?.by_plan && Object.keys(stats.tenants.by_plan).length > 0 && (
+              <section className="rounded-xl border bg-card p-5 shadow-sm">
+                <h2 className="flex items-center gap-2 text-sm font-semibold">
+                  <Building2 className="h-4 w-4 text-primary" aria-hidden /> Tenants by plan
+                </h2>
+                <div className="mt-4 h-[220px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={Object.entries(stats.tenants.by_plan).map(([name, value]) => ({ name, value }))}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius={55}
+                        outerRadius={85}
+                        paddingAngle={3}
+                        strokeWidth={0}
                       >
-                        Approve
-                      </Button>
-                    )}
-                    {t.status !== "suspended" && t.status !== "pending" && (
-                      <Button
-                        type="button" variant="outline" size="sm"
-                        onClick={() => setStatus.mutate({ id: t.id, status: "suspended" })}
-                        disabled={setStatus.isPending}
-                      >
-                        Suspend
-                      </Button>
-                    )}
-                    {t.status === "suspended" && (
-                      <Button
-                        type="button" size="sm"
-                        onClick={() => setStatus.mutate({ id: t.id, status: "active" })}
-                        disabled={setStatus.isPending}
-                      >
-                        Reactivate
-                      </Button>
-                    )}
-                    <Button type="button" variant="outline" size="sm" onClick={() => openEdit(t)}>
-                      Edit
-                    </Button>
-                    <Button
-                      type="button" variant="ghost" size="sm"
-                      onClick={() => {
-                        if (window.confirm(`Delete “${t.name}”? This is irreversible.`))
-                          deleteTenant.mutate(t.id);
-                      }}
+                        {Object.entries(stats.tenants.by_plan).map((_, i) => (
+                          <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={chartTooltipStyle} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <ul className="mt-2 flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
+                  {Object.entries(stats.tenants.by_plan).map(([plan, count], i) => (
+                    <li key={plan} className="flex items-center gap-1.5">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} aria-hidden />
+                      {plan} · <span className="font-medium text-foreground">{count}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {/* Users by role */}
+            {stats.users?.by_role && Object.keys(stats.users.by_role).length > 0 && (
+              <section className="rounded-xl border bg-card p-5 shadow-sm">
+                <h2 className="flex items-center gap-2 text-sm font-semibold">
+                  <Users className="h-4 w-4 text-primary" aria-hidden /> Users by role
+                </h2>
+                <div className="mt-4 h-[220px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={Object.entries(stats.users.by_role).map(([name, value]) => ({
+                        name: name.charAt(0).toUpperCase() + name.slice(1),
+                        value,
+                      }))}
                     >
-                      Delete
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {list.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
-                    <Building2 className="mx-auto mb-2 h-6 w-6" aria-hidden />
-                    No tenants yet — provision the first institution.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} width={28} />
+                      <Tooltip contentStyle={chartTooltipStyle} cursor={{ fill: "var(--muted)", opacity: 0.4 }} />
+                      <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="oklch(0.6 0.18 255)" maxBarSize={48} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+            )}
+
+            {/* Top tenants */}
+            {stats.top_tenants?.length > 0 && (
+              <section className="rounded-xl border bg-card p-5 shadow-sm">
+                <h2 className="flex items-center gap-2 text-sm font-semibold">
+                  <TrendingUp className="h-4 w-4 text-primary" aria-hidden /> Top tenants by users
+                </h2>
+                <div className="mt-4 space-y-2.5">
+                  {stats.top_tenants.slice(0, 6).map((t, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="w-32 truncate text-xs text-muted-foreground">{t.tenant__name}</span>
+                      <div className="flex-1">
+                        <div className="h-2 rounded-full bg-muted">
+                          <div
+                            className="h-2 rounded-full bg-primary/70"
+                            style={{ width: `${Math.min(100, (t.user_count / (stats.top_tenants[0]?.user_count || 1)) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className="w-8 text-right text-xs font-semibold tabular-nums">{t.user_count}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Resource pipeline */}
+            {stats.resources?.by_status && Object.keys(stats.resources.by_status).length > 0 && (
+              <section className="rounded-xl border bg-card p-5 shadow-sm lg:col-span-2">
+                <h2 className="flex items-center gap-2 text-sm font-semibold">
+                  <FileText className="h-4 w-4 text-primary" aria-hidden /> Resource pipeline
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {stats.resources.uploaded_this_week} uploaded this week · {formatBytes(stats.resources.total_storage_bytes)} total storage
+                </p>
+                <div className="mt-4 h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={Object.entries(stats.resources.by_status).map(([name, value]) => ({
+                        name: name.charAt(0).toUpperCase() + name.slice(1),
+                        value,
+                      }))}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} axisLine={false} tickLine={false} width={28} />
+                      <Tooltip contentStyle={chartTooltipStyle} cursor={{ fill: "var(--muted)", opacity: 0.4 }} />
+                      <Bar dataKey="value" radius={[8, 8, 0, 0]} fill="oklch(0.55 0.25 293)" maxBarSize={48} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </section>
+            )}
+          </div>
+        </>
+      ) : null}
     </AppShell>
   );
 }

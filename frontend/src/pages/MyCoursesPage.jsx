@@ -6,10 +6,13 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import EmptyState from "@/components/shared/EmptyState";
 import SkeletonRows from "@/components/shared/SkeletonRows";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { GraduationCap } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function MyCoursesPage() {
-  const { data, isLoading, error } = useQuery({
+  const { user } = useAuth();
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["my-enrollments"],
     queryFn: async () => {
       const { data } = await api.get("/course-enrollments/");
@@ -26,7 +29,19 @@ export default function MyCoursesPage() {
     >
       {error ? (
         <Alert variant="destructive" className="mb-5">
-          <AlertDescription>Failed to load enrollments</AlertDescription>
+          <AlertDescription>
+            <span className="font-medium">Failed to load enrollments.</span>{" "}
+            {String(error?.response?.data?.detail || error.message || error)}
+          </AlertDescription>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() => refetch()}
+          >
+            Retry
+          </Button>
         </Alert>
       ) : null}
 
@@ -36,7 +51,13 @@ export default function MyCoursesPage() {
         <EmptyState
           icon={GraduationCap}
           title="No enrollments yet"
-          description="When your institution enrolls you in course offerings, they'll show up here."
+          description={
+            user?.role === "student"
+              ? "Enrollments are created automatically from your programme. If you just signed up, an admin can also enroll you manually."
+              : "When your institution enrolls you in course offerings, they'll show up here."
+          }
+          actionTo={user?.role === "student" ? "/my-programme" : undefined}
+          action={user?.role === "student" ? "View my programme" : undefined}
         />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
@@ -51,7 +72,12 @@ export default function MyCoursesPage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
-                    Offering {String(e.course_offering).slice(0, 8)}…
+                    {e.offering_course_code
+                      ? `${e.offering_course_code} — ${e.offering_course_title || ""}`
+                      : "Course offering"}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {[e.semester_name, e.session_name].filter(Boolean).join(" · ") || "—"}
                   </p>
                   <div className="mt-1.5">
                     <StatusBadge status={e.status} />

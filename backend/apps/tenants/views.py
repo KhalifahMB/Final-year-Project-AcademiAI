@@ -4,7 +4,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.permissions import IsAdminRole, IsSuperuser
+from apps.common.permissions import IsAdminRoleOrSuperuser, IsSuperuser
 from .models import Tenant
 from .serializers import (
     TenantSerializer,
@@ -57,7 +57,9 @@ class TenantViewSet(viewsets.ModelViewSet):
         if self.action in ("create", "destroy"):
             return [IsSuperuser()] + perms
         if self.action in ("update", "partial_update"):
-            return [IsAdminRole()] + perms
+            # Tenant admins manage their own profile; the platform operator
+            # (superuser) may also suspend/reactivate tenants.
+            return [IsAdminRoleOrSuperuser()] + perms
         return perms
 
     def get_serializer_class(self):

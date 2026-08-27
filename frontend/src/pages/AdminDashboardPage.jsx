@@ -125,7 +125,7 @@ export default function AdminDashboardPage() {
 
       {isLoading ? (
         <p className="mt-8 text-sm text-muted-foreground">Crunching numbers…</p>
-      ) : (
+      ) : !data ? null : (
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           {/* People */}
           <section className="rounded-xl border bg-card p-5 shadow-sm">

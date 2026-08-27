@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "apps.assessments",
     "apps.learning",
     "apps.audit",
+    "apps.platform",
 ]
 
 MIDDLEWARE = [
@@ -223,6 +224,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "Bookmarks", "description": "Saved resources"},
         {"name": "Progress", "description": "Per-concept learning progress"},
         {"name": "Administration", "description": "Audit logs and operational data (admins)"},
+        {"name": "Platform", "description": "Platform-wide management for superusers (tenants, analytics, health, announcements)"},
         {"name": "System", "description": "Health and background-job status"},
     ],
     "ENUM_NAME_OVERRIDES": {

@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
-import { toast } from 'sonner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import LandingPage from '@/pages/LandingPage';
@@ -18,26 +17,26 @@ import BookmarksPage from '@/pages/BookmarksPage';
 import ProgressPage from '@/pages/ProgressPage';
 import ProfilePage from '@/pages/ProfilePage';
 import AdminAuditPage from '@/pages/AdminAuditPage';
-import AdminFacultiesPage from '@/pages/AdminFacultiesPage';
 import AdminUsersPage from '@/pages/AdminUsersPage';
-import AdminDepartmentsPage from '@/pages/AdminDepartmentsPage';
-import AdminProgrammesPage from '@/pages/AdminProgrammesPage';
-import AdminCoursesPage from '@/pages/AdminCoursesPage';
-import AdminOfferingsPage from '@/pages/AdminOfferingsPage';
-import AdminEnrollmentsPage from '@/pages/AdminEnrollmentsPage';
-import AdminTenantPage from '@/pages/AdminTenantPage';
-import MyCoursesPage from '@/pages/MyCoursesPage';
-import CourseDetailPage from '@/pages/CourseDetailPage';
-import MyProgrammePage from '@/pages/MyProgrammePage';
-import AssignedCoursesPage from '@/pages/AssignedCoursesPage';
-import UploadResourcePage from '@/pages/UploadResourcePage';
-import QuizTakePage from '@/pages/QuizTakePage';
-import AdminSessionsPage from '@/pages/AdminSessionsPage';
-import AdminSemestersPage from '@/pages/AdminSemestersPage';
+import TenantStructurePage from '@/pages/admin/TenantStructurePage';
+import FacultyDetailPage from '@/pages/admin/FacultyDetailPage';
+import DepartmentDetailPage from '@/pages/admin/DepartmentDetailPage';
+import CourseManagePage from '@/pages/admin/CourseManagePage';
 import AdminQuizzesPage from '@/pages/AdminQuizzesPage';
 import AdminDashboardPage from '@/pages/AdminDashboardPage';
 import PlatformConsolePage from '@/pages/PlatformConsolePage';
-import AdminApprovalsPage from '@/pages/AdminApprovalsPage';
+import PlatformTenantsPage from '@/pages/platform/TenantsPage';
+import PlatformTenantDetailPage from '@/pages/platform/TenantDetailPage';
+import PlatformAnalyticsPage from '@/pages/platform/AnalyticsPage';
+import PlatformSystemHealthPage from '@/pages/platform/SystemHealthPage';
+import PlatformAuditLogPage from '@/pages/platform/AuditLogPage';
+import PlatformAnnouncementsPage from '@/pages/platform/AnnouncementsPage';
+import CourseDetailPage from '@/pages/CourseDetailPage';
+import MyProgrammePage from '@/pages/MyProgrammePage';
+import MyCoursesPage from '@/pages/MyCoursesPage';
+import AssignedCoursesPage from '@/pages/AssignedCoursesPage';
+import UploadResourcePage from '@/pages/UploadResourcePage';
+import QuizTakePage from '@/pages/QuizTakePage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,7 +44,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ children, roles }) {
+function ProtectedRoute({ children, roles, requireSuperuser, blockSuperuser }) {
   const { user, loading } = useAuth();
   if (loading)
     return (
@@ -54,6 +53,10 @@ function ProtectedRoute({ children, roles }) {
       </div>
     );
   if (!user) return <Navigate to="/login" replace />;
+  if (requireSuperuser && !user.is_superuser)
+    return <Navigate to="/admin/dashboard" replace />;
+  if (blockSuperuser && user.is_superuser)
+    return <Navigate to="/platform" replace />;
   if (roles && !roles.includes(user.role))
     return <Navigate to="/dashboard" replace />;
   return children;
@@ -72,7 +75,7 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute blockSuperuser>
                 <DashboardPage />
               </ProtectedRoute>
             }
@@ -168,40 +171,64 @@ export default function App() {
           <Route
             path="/admin/dashboard"
             element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['admin']} blockSuperuser>
                 <AdminDashboardPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/approvals"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminApprovalsPage />
               </ProtectedRoute>
             }
           />
           <Route
             path="/platform"
             element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['admin']} requireSuperuser>
                 <PlatformConsolePage />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/admin/sessions"
+            path="/platform/tenants"
             element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminSessionsPage />
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformTenantsPage />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/admin/semesters"
+            path="/platform/tenants/:id"
             element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminSemestersPage />
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformTenantDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/platform/analytics"
+            element={
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformAnalyticsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/platform/health"
+            element={
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformSystemHealthPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/platform/audit"
+            element={
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformAuditLogPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/platform/announcements"
+            element={
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformAnnouncementsPage />
               </ProtectedRoute>
             }
           />
@@ -230,7 +257,7 @@ export default function App() {
             }
           />
           <Route
-            path="/profile"
+            path="/settings"
             element={
               <ProtectedRoute>
                 <ProfilePage />
@@ -238,65 +265,21 @@ export default function App() {
             }
           />
           <Route
+            path="/profile"
+            element={<Navigate to="/settings" replace />}
+          />
+          <Route
             path="/admin/users"
             element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['admin']} blockSuperuser>
                 <AdminUsersPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/faculties"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminFacultiesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/departments"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminDepartmentsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/programmes"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminProgrammesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/courses"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminCoursesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/offerings"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminOfferingsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/enrollments"
-            element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminEnrollmentsPage />
               </ProtectedRoute>
             }
           />
           <Route
             path="/admin/audit"
             element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['admin']} blockSuperuser>
                 <AdminAuditPage />
               </ProtectedRoute>
             }
@@ -304,8 +287,32 @@ export default function App() {
           <Route
             path="/admin/tenant"
             element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminTenantPage />
+              <ProtectedRoute roles={['admin']} blockSuperuser>
+                <TenantStructurePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/faculties/:id"
+            element={
+              <ProtectedRoute roles={['admin']} blockSuperuser>
+                <FacultyDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/departments/:id"
+            element={
+              <ProtectedRoute roles={['admin']} blockSuperuser>
+                <DepartmentDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/courses/:id"
+            element={
+              <ProtectedRoute roles={['admin']} blockSuperuser>
+                <CourseManagePage />
               </ProtectedRoute>
             }
           />

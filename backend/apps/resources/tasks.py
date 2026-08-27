@@ -141,13 +141,15 @@ def process_resource_ingestion(self, resource_id: str, version_id: str, tenant_i
             raise ValueError(str(fv))
 
         text = _extract_text(raw, content_type, filename=version.storage_key or "")
-        if not text.strip():
-            raise ValueError("No extractable text (binary/OCR not enabled in this phase)")
-
-        parts = _simple_chunk(text)
+        parts = []
+        has_text = bool(text.strip())
+        if has_text:
+            parts = _simple_chunk(text)
+        else:
+            logger.info("No extractable text found for resource=%s, marking as ready with 0 chunks.", resource_id)
 
         # Embeddings are an external call — do them before opening the write scope.
-        embeddings = generate_embeddings(parts)
+        embeddings = generate_embeddings(parts) if parts else []
 
         with tenant_scope(tenant_id), transaction.atomic():
             ResourceChunk.objects.filter(resource_version=version).delete()
@@ -163,7 +165,21 @@ def process_resource_ingestion(self, resource_id: str, version_id: str, tenant_i
                 )
             resource.storage_key = version.storage_key
             resource.processing_status = Resource.ProcessingStatus.READY
-            resource.save(update_fields=["storage_key", "processing_status", "updated_at"])
+            resource.has_extractable_text = has_text
+            # Persist what storage reported so preview can classify the file
+            # without re-downloading it.
+            if content_type and not resource.mime_type:
+                resource.mime_type = content_type
+                resource.save(
+                    update_fields=[
+                        "storage_key", "processing_status", "mime_type",
+                        "has_extractable_text", "updated_at",
+                    ]
+                )
+            else:
+                resource.save(
+                    update_fields=["storage_key", "processing_status", "has_extractable_text", "updated_at"]
+                )
 
         logger.info("Ingestion complete resource=%s chunks=%s", resource_id, len(parts))
         return {"status": "completed", "chunks": len(parts)}

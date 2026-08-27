@@ -35,6 +35,12 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel, TimeStampedModel):
         LECTURER = "lecturer", "Lecturer"
         ADMIN = "admin", "Admin"
 
+    class Gender(models.TextChoices):
+        MALE = "male", "Male"
+        FEMALE = "female", "Female"
+        OTHER = "other", "Other"
+        UNSPECIFIED = "unspecified", "Prefer not to say"
+
     tenant = models.ForeignKey(
         "tenants.Tenant",
         on_delete=models.CASCADE,
@@ -50,6 +56,16 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel, TimeStampedModel):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
+
+    # Personal profile data (self-service editable).
+    phone_number = models.CharField(max_length=32, blank=True)
+    gender = models.CharField(
+        max_length=20, choices=Gender.choices, blank=True, default=""
+    )
+    # Avatar: either a preset key (frontend-bundled artwork) or an uploaded
+    # image stored under the tenant's object-storage partition.
+    avatar_preset = models.CharField(max_length=32, blank=True)
+    avatar_key = models.CharField(max_length=512, blank=True)
 
     objects = UserManager()
 

@@ -97,6 +97,8 @@ def signup_user(
     role="student",
     tenant_slug=None,
     programme_id=None,
+    gender="",
+    avatar_preset="",
 ):
     tenant = None
     if tenant_slug:
@@ -129,6 +131,8 @@ def signup_user(
                 role=role,
                 tenant=tenant,
                 is_email_verified=False,
+                gender=gender or "",
+                avatar_preset=avatar_preset or "",
             )
 
             from .models import LecturerProfile, StudentProfile

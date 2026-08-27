@@ -13,6 +13,23 @@ export const signupSchema = z.object({
   tenant_slug: z.string().min(1, "Select your institution"),
   role: z.enum(["student", "lecturer"]).optional(),
   programme: z.string().optional().or(z.literal("")),
+  gender: z
+    .enum(["male", "female", "other", "unspecified"])
+    .optional()
+    .or(z.literal("")),
+});
+
+export const profileSchema = z.object({
+  first_name: z.string().min(1, "First name is required").max(150),
+  last_name: z.string().max(150).optional().or(z.literal("")),
+  email: z.string().email("Enter a valid email"),
+  phone_number: z
+    .string()
+    .max(32)
+    .regex(/^[0-9+\-\s()]*$/, "Digits, spaces and + - ( ) only")
+    .optional()
+    .or(z.literal("")),
+  gender: z.enum(["", "male", "female", "other", "unspecified"]).optional(),
 });
 
 export const verifyEmailSchema = z.object({

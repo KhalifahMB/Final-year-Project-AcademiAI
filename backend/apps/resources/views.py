@@ -30,6 +30,77 @@ def _content_type_allowed(content_type: str) -> bool:
     return any(ct.startswith(p) for p in ALLOWED_MIME_PREFIXES)
 
 
+_IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp")
+_TEXT_EXTS = (".txt", ".md", ".markdown", ".json", ".csv", ".log")
+
+_IMAGE_MIMES = ("image/",)
+
+
+def _preview_kind(resource) -> str:
+    """
+    Classify a stored file for preview: 'pdf' | 'image' | 'text' | 'other'.
+
+    Signals, in order: stored mime_type, title/filename extension, then a
+    magic-byte sniff of the object's first bytes (covers resources uploaded
+    before mime_type was persisted, where keys are extension-less UUIDs).
+    """
+    mime = (resource.mime_type or "").lower()
+    title = (resource.title or "").lower()
+    key = (resource.storage_key or "").lower()
+
+    def by_mime(m):
+        if "pdf" in m:
+            return "pdf"
+        if m.startswith(_IMAGE_MIMES):
+            return "image"
+        if m.startswith("text/") or m in ("application/json",):
+            return "text"
+        return None
+
+    def by_ext(name):
+        if name.endswith(".pdf"):
+            return "pdf"
+        if name.endswith(_IMAGE_EXTS):
+            return "image"
+        if name.endswith(_TEXT_EXTS):
+            return "text"
+        return None
+
+    kind = by_mime(mime) or by_ext(title) or by_ext(key)
+    if kind:
+        return kind
+
+    # Last resort: sniff the first bytes straight from storage.
+    try:
+        from django.conf import settings
+
+        client = get_s3_client()
+        obj = client.get_object(
+            Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+            Key=resource.storage_key,
+            Range="bytes=0-15",
+        )
+        head = obj["Body"].read(16)
+    except Exception:
+        logger.exception("Preview sniff failed resource=%s", resource.id)
+        return "other"
+
+    if head[:4] == b"%PDF" or head[:5] == b"%PDF-":
+        return "pdf"
+    if (
+        head[:8] == b"\x89PNG\r\n\x1a\n"
+        or head[:3] == b"\xff\xd8\xff"
+        or head[:3] in (b"GIF87a", b"GIF89a")
+        or (head[:4] == b"RIFF" and head[8:12] == b"WEBP")
+    ):
+        return "image"
+    try:
+        head.decode("utf-8")
+        return "text"
+    except UnicodeDecodeError:
+        return "other"
+
+
 def _authorized_resources_q(user) -> Q:
     """
     Visibility filter for LIST endpoints — same scope semantics as the RAG
@@ -64,6 +135,13 @@ def _authorized_resources_q(user) -> Q:
     q = (
         base
         | Q(visibility_scope=Resource.Visibility.COURSE, course_offering_id__in=allowed_offerings)
+        # A course-scoped material without an offering would otherwise be
+        # invisible to everyone — the uploader can always see their own.
+        | Q(
+            visibility_scope=Resource.Visibility.COURSE,
+            course_offering__isnull=True,
+            uploaded_by=user,
+        )
         | Q(visibility_scope=Resource.Visibility.PRIVATE, uploaded_by=user)
     )
     programme_id, department_id, faculty_id = _viewer_academic_context(user)
@@ -86,8 +164,11 @@ class ResourceViewSet(TenantModelViewSet):
     3. POST  {id}/complete_upload/    — register the version and start async
        ingestion (validation → extraction → chunking → embedding)
 
-    List supports ?scope=authorized to restrict results to what the caller
-    may actually read (used by student/lecturer views).
+    Authorization-first visibility: students/lecturers only ever see (list
+    AND retrieve) materials their academic scope allows — private materials
+    of other users are invisible even by direct id. Admins see the whole
+    tenant; platform superusers likewise. `?scope=authorized` is accepted
+    for backwards compatibility and is now the default behaviour.
     """
 
     queryset = Resource.objects.select_related(
@@ -99,11 +180,14 @@ class ResourceViewSet(TenantModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        if self.request.query_params.get("scope") == "authorized" and not getattr(
-            self.request.user, "is_superuser", False
-        ):
-            qs = qs.filter(_authorized_resources_q(self.request.user))
-        return qs
+        user = self.request.user
+        if getattr(user, "is_superuser", False):
+            return qs
+        if getattr(user, "role", None) == "admin":
+            return qs
+        # Defense in depth: RLS scopes the tenant, this scopes visibility
+        # within it. Applied to list AND detail (get_object) alike.
+        return qs.filter(_authorized_resources_q(user))
 
     def get_permissions(self):
         perms = super().get_permissions()
@@ -131,29 +215,48 @@ class ResourceViewSet(TenantModelViewSet):
         # Capture identity before deletion — Django clears instance.pk
         # during delete.
         resource_id = str(instance.id)
-        # Object storage cleanup is best-effort; metadata removal must succeed.
-        if instance.storage_key:
-            try:
-                from apps.common.storage import delete_object
+        tenant = self.request.user.tenant
 
-                delete_object(instance.storage_key)
-            except Exception:
-                logger.exception(
-                    "Failed to delete stored object for resource=%s", resource_id
-                )
-        super().perform_destroy(instance)
+        # If anyone else has bookmarked this, keep it available for them
+        from apps.learning.models import Bookmark
+        has_other_bookmarks = Bookmark.objects.filter(
+            resource=instance
+        ).exclude(user=self.request.user).exists()
+
+        if has_other_bookmarks and instance.visibility_scope != Resource.Visibility.PRIVATE:
+            # Detach the owner and hide it from listings by making it private.
+            # Bookmarkers will still be able to access it because it's their bookmark,
+            # though they won't find it in general search.
+            instance.uploaded_by = None
+            instance.visibility_scope = Resource.Visibility.PRIVATE
+            instance.save(update_fields=["uploaded_by", "visibility_scope", "updated_at"])
+            action = "resource.detach"
+        else:
+            # Object storage cleanup is best-effort; metadata removal must succeed.
+            if instance.storage_key:
+                try:
+                    from apps.common.storage import delete_object
+
+                    delete_object(instance.storage_key)
+                except Exception:
+                    logger.exception(
+                        "Failed to delete stored object for resource=%s", resource_id
+                    )
+            super().perform_destroy(instance)
+            action = "resource.delete"
+
         try:
             from apps.audit.services import log_action
 
             log_action(
-                tenant=self.request.user.tenant,
+                tenant=tenant,
                 actor=self.request.user,
-                action="resource.delete",
+                action=action,
                 entity_type="resource",
                 entity_id=resource_id,
             )
         except Exception:
-            logger.exception("Failed to audit resource.delete")
+            logger.exception("Failed to audit %s", action)
 
     @action(detail=True, methods=["post"], throttle_classes=[UploadRateThrottle])
     def request_upload_url(self, request, pk=None):
@@ -172,6 +275,11 @@ class ResourceViewSet(TenantModelViewSet):
             f"tenants/{resource.tenant_id}/resources/{resource.id}/"
             f"{uuid.uuid4()}"
         )
+        # Remember the declared type so preview/ingestion can classify the
+        # file later (storage keys are extension-less UUIDs).
+        if content_type and content_type != "application/octet-stream":
+            resource.mime_type = content_type
+            resource.save(update_fields=["mime_type", "updated_at"])
         presigned = generate_presigned_upload_post(key, content_type)
         return Response(
             {
@@ -211,6 +319,11 @@ class ResourceViewSet(TenantModelViewSet):
             )
         last = resource.versions.order_by("-version_number").first()
         next_ver = (last.version_number + 1) if last else 1
+        # The presign flow may have recorded the declared content type; allow
+        # the completion call to (re)state it for clients that skipped that.
+        declared_ct = request.data.get("content_type")
+        if declared_ct and declared_ct != "application/octet-stream":
+            resource.mime_type = declared_ct
         version = ResourceVersion.objects.create(
             tenant=resource.tenant,
             resource=resource,
@@ -220,7 +333,7 @@ class ResourceViewSet(TenantModelViewSet):
         )
         resource.storage_key = storage_key
         resource.processing_status = resource.ProcessingStatus.PENDING
-        resource.save(update_fields=["storage_key", "processing_status", "updated_at"])
+        resource.save(update_fields=["storage_key", "processing_status", "mime_type", "updated_at"])
         from .tasks import process_resource_ingestion
         task = process_resource_ingestion.delay(
             str(resource.id), str(version.id), str(resource.tenant_id)
@@ -266,9 +379,15 @@ class ResourceViewSet(TenantModelViewSet):
     def preview(self, request, pk=None):
         """
         Inline preview support:
+        - PDFs and images: a short-lived signed URL suitable for
+          <iframe>/<img> embedding;
         - text-like files (txt/md/json/csv): content returned directly
           (capped at 512 KB) so the browser needs no cross-origin fetch;
-        - PDFs: a short-lived signed URL suitable for <iframe> embedding.
+        - anything else: a signed download URL.
+
+        Type detection is defensive: stored mime_type first, then the
+        original filename/title extension, then magic bytes — storage keys
+        are extension-less UUIDs, so title/mime are the practical signals.
         """
         resource = self.get_object()
         if not resource.storage_key:
@@ -276,18 +395,19 @@ class ResourceViewSet(TenantModelViewSet):
                 {"detail": "No file uploaded."}, status=status.HTTP_404_NOT_FOUND
             )
 
-        mime = (resource.mime_type or "").lower()
-        name = (resource.storage_key or "").lower()
-        is_text = mime.startswith("text/") or mime == "application/json" or name.endswith(
-            (".txt", ".md", ".json", ".csv")
-        )
-        is_pdf = "pdf" in mime or name.endswith(".pdf")
+        kind = _preview_kind(resource)
 
-        if is_pdf:
+        if kind in ("pdf", "image"):
             url = generate_presigned_download_url(resource.storage_key, expires_in=600)
-            return Response({"kind": "pdf", "preview_url": url})
+            return Response(
+                {
+                    "kind": kind,
+                    "preview_url": url,
+                    "mime_type": resource.mime_type or "",
+                }
+            )
 
-        if is_text:
+        if kind == "text":
             from django.conf import settings
 
             client = get_s3_client()
@@ -322,10 +442,20 @@ class ResourceViewSet(TenantModelViewSet):
         """
         resource = self.get_object()
 
-        # Visibility authorization — same rules the RAG pipeline applies, so
-        # a user cannot summarize a private material they cannot read.
-        from apps.knowledge.retrieval import _authorized_resource_ids
+        if not resource.has_extractable_text:
+            return Response(
+                {"success": False, "error": {"detail": "This material has no extractable text and cannot be summarized. It may contain images or binary content."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        if resource.processing_status != Resource.ProcessingStatus.READY:
+            return Response(
+                {"success": False, "error": {"detail": "Material is still being processed."}},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Visibility authorization
+        from apps.knowledge.retrieval import _authorized_resource_ids
         if resource.id not in _authorized_resource_ids(request.user, None):
             return Response(
                 {"success": False, "error": {"detail": "You do not have access to this material."}},
@@ -356,15 +486,21 @@ class ResourceVersionViewSet(TenantModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return ResourceVersion.objects.none()
-        return (
-            ResourceVersion.objects.filter(
-                tenant=self.request.user.tenant,
-                # Object-level authorization: the parent resource must be in
-                # the caller's tenant (IDOR guard for guessed ids).
-                resource__id=self.kwargs.get("resource_pk"),
-            )            .select_related("created_by")
-            .order_by("-version_number")
-        )
+        user = self.request.user
+        qs = ResourceVersion.objects.filter(
+            tenant=user.tenant,
+            # Object-level authorization: the parent resource must be in
+            # the caller's tenant (IDOR guard for guessed ids).
+            resource__id=self.kwargs.get("resource_pk"),
+        ).select_related("created_by")
+        # The parent resource must also be visible to the caller — a private
+        # material's version history is not world-readable.
+        if not getattr(user, "is_superuser", False) and user.role != "admin":
+            visible = Resource.objects.filter(
+                _authorized_resources_q(user)
+            ).values("id")
+            qs = qs.filter(resource__in=visible)
+        return qs.order_by("-version_number")
 
     def perform_create(self, serializer):
         resource = Resource.objects.get(

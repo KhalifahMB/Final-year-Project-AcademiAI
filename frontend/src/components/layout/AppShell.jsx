@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/shared/ThemeToggle";
+import BrandMark from "@/components/shared/BrandMark";
+import Avatar from "@/components/shared/Avatar";
+import OnlineStatus from "@/components/shared/OnlineStatus";
 import { cn } from "@/lib/utils";
 import {
+  Activity,
+  BarChart3,
   BookOpen,
   Building2,
   ClipboardList,
@@ -13,86 +18,172 @@ import {
   GraduationCap,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Menu,
   MessageSquareText,
   Bookmark,
   ScrollText,
-  ShieldCheck,
   StickyNote,
   TrendingUp,
   Upload,
   UserRound,
   Users,
   X,
-  CalendarRange,
-  CalendarDays,
 } from "lucide-react";
 
-const NAV_SECTIONS = [
+/**
+ * Navigation sections keyed by role.
+ *
+ * Each section: { label, items }
+ * Each item:    { to, label, icon, badge? }
+ *
+ * Sidebar rendering logic:
+ *   - is_superuser=true  → SUPERUSER_SECTIONS only
+ *   - role='admin'       → ADMIN_SECTIONS
+ *   - role='lecturer'    → LECTURER_SECTIONS
+ *   - role='student'     → STUDENT_SECTIONS
+ */
+
+const SUPERUSER_SECTIONS = [
+  {
+    label: "Overview",
+    items: [
+      { to: "/platform", label: "Dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "Management",
+    items: [
+      { to: "/platform/tenants", label: "Tenants", icon: Building2 },
+      { to: "/platform/announcements", label: "Announcements", icon: Megaphone },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { to: "/platform/analytics", label: "Analytics", icon: BarChart3 },
+      { to: "/platform/health", label: "System Health", icon: Activity },
+      { to: "/platform/audit", label: "Audit Log", icon: ScrollText },
+    ],
+  },
+];
+
+const ADMIN_SECTIONS = [
   {
     label: "Learn",
-    roles: ["student", "lecturer", "admin"],
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/my-programme", label: "My Programme", icon: Building2, roles: ["student"] },
-      { to: "/my-courses", label: "My Courses", icon: GraduationCap, roles: ["student"] },
-      { to: "/assigned-courses", label: "Assigned Courses", icon: GraduationCap, roles: ["lecturer", "admin"] },
+      { to: "/assigned-courses", label: "Assigned Courses", icon: GraduationCap },
       { to: "/courses", label: "Catalogue", icon: BookOpen },
     ],
   },
   {
     label: "Resources & AI",
-    roles: ["student", "lecturer", "admin"],
     items: [
       { to: "/resources", label: "Resources", icon: FileText },
       { to: "/resources/upload", label: "Upload Material", icon: Upload },
       { to: "/chat", label: "AI Assistant", icon: MessageSquareText },
       { to: "/quizzes", label: "Quizzes", icon: ClipboardList },
-      { to: "/admin/quizzes", label: "Quiz Manager", icon: ClipboardPlus, roles: ["lecturer", "admin"] },
+      { to: "/admin/quizzes", label: "Quiz Manager", icon: ClipboardPlus },
     ],
   },
   {
     label: "Personal",
-    roles: ["student", "lecturer", "admin"],
     items: [
       { to: "/notes", label: "Notes", icon: StickyNote },
       { to: "/bookmarks", label: "Bookmarks", icon: Bookmark },
       { to: "/progress", label: "Progress", icon: TrendingUp },
-      { to: "/profile", label: "Profile", icon: UserRound },
+      { to: "/settings", label: "Settings", icon: UserRound },
     ],
   },
   {
     label: "Administration",
-    roles: ["admin"],
     items: [
-      { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/admin/dashboard", label: "Admin Dashboard", icon: LayoutDashboard },
       { to: "/admin/users", label: "Users", icon: Users },
-      { to: "/admin/approvals", label: "Approvals", icon: ClipboardPlus, badge: "soon" },
-      { to: "/admin/faculties", label: "Faculties", icon: Building2 },
-      { to: "/admin/departments", label: "Departments", icon: Building2 },
-      { to: "/admin/programmes", label: "Programmes", icon: BookOpen },
-      { to: "/admin/courses", label: "Courses", icon: GraduationCap },
-      { to: "/admin/sessions", label: "Sessions", icon: CalendarRange },
-      { to: "/admin/semesters", label: "Semesters", icon: CalendarDays },
-      { to: "/admin/offerings", label: "Offerings", icon: ClipboardList },
-      { to: "/admin/enrollments", label: "Enrollments", icon: Users },
+      { to: "/admin/tenant", label: "Institution", icon: Building2 },
       { to: "/admin/audit", label: "Audit Logs", icon: ScrollText },
-      { to: "/admin/tenant", label: "Tenant Settings", icon: ShieldCheck },
-      { to: "/platform", label: "Platform Console", icon: ShieldCheck, superuserOnly: true },
     ],
   },
 ];
 
+const LECTURER_SECTIONS = [
+  {
+    label: "Learn",
+    items: [
+      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/assigned-courses", label: "Assigned Courses", icon: GraduationCap },
+      { to: "/courses", label: "Catalogue", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Resources & AI",
+    items: [
+      { to: "/resources", label: "Resources", icon: FileText },
+      { to: "/resources/upload", label: "Upload Material", icon: Upload },
+      { to: "/chat", label: "AI Assistant", icon: MessageSquareText },
+      { to: "/quizzes", label: "Quizzes", icon: ClipboardList },
+      { to: "/admin/quizzes", label: "Quiz Manager", icon: ClipboardPlus },
+    ],
+  },
+  {
+    label: "Personal",
+    items: [
+      { to: "/notes", label: "Notes", icon: StickyNote },
+      { to: "/bookmarks", label: "Bookmarks", icon: Bookmark },
+      { to: "/progress", label: "Progress", icon: TrendingUp },
+      { to: "/settings", label: "Settings", icon: UserRound },
+    ],
+  },
+];
+
+const STUDENT_SECTIONS = [
+  {
+    label: "Learn",
+    items: [
+      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/my-programme", label: "My Programme", icon: Building2 },
+      { to: "/my-courses", label: "My Courses", icon: GraduationCap },
+      { to: "/courses", label: "Catalogue", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Resources & AI",
+    items: [
+      { to: "/resources", label: "Resources", icon: FileText },
+      { to: "/chat", label: "AI Assistant", icon: MessageSquareText },
+      { to: "/quizzes", label: "Quizzes", icon: ClipboardList },
+    ],
+  },
+  {
+    label: "Personal",
+    items: [
+      { to: "/notes", label: "Notes", icon: StickyNote },
+      { to: "/bookmarks", label: "Bookmarks", icon: Bookmark },
+      { to: "/progress", label: "Progress", icon: TrendingUp },
+      { to: "/settings", label: "Settings", icon: UserRound },
+    ],
+  },
+];
+
+function getSections(user) {
+  if (!user) return [];
+  if (user.is_superuser) return SUPERUSER_SECTIONS;
+  if (user.role === "admin") return ADMIN_SECTIONS;
+  if (user.role === "lecturer") return LECTURER_SECTIONS;
+  return STUDENT_SECTIONS;
+}
+
 function Brand({ onNavigate }) {
+  const { user } = useAuth();
+  const home = user?.is_superuser ? "/platform" : "/dashboard";
   return (
     <Link
-      to="/dashboard"
+      to={home}
       onClick={onNavigate}
       className="flex items-center gap-2.5 px-3 py-1 focus-visible:outline-2 focus-visible:outline-ring rounded-md"
     >
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
-        <GraduationCap className="h-4.5 w-4.5" aria-hidden />
-      </span>
+      <BrandMark size="h-8 w-8" />
       <span className="text-[15px] font-semibold tracking-tight text-sidebar-foreground">
         AcademiAI
       </span>
@@ -103,60 +194,54 @@ function Brand({ onNavigate }) {
 function SidebarNav({ onNavigate }) {
   const { user } = useAuth();
   const loc = useLocation();
-  const role = user?.role;
+  const sections = getSections(user);
 
   return (
     <nav aria-label="Main" className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
-      {NAV_SECTIONS.map((section) => {
-        if (section.roles && !section.roles.includes(role)) return null;
-        const items = section.items.filter(
-          (i) =>
-            (!i.roles || i.roles.includes(role)) &&
-            (!i.superuserOnly || user?.is_superuser)
-        );
-        if (!items.length) return null;
-        return (
-          <div key={section.label}>
-            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-widest text-sidebar-muted">
-              {section.label}
-            </p>
-            <ul className="space-y-0.5">
-              {items.map((item) => {
-                const Icon = item.icon;
-                const active =
-                  loc.pathname === item.to ||
-                  (item.to !== "/dashboard" && loc.pathname.startsWith(item.to));
-                return (
-                  <li key={item.to}>
-                    <Link
-                      to={item.to}
-                      onClick={onNavigate}
-                      aria-current={active ? "page" : undefined}
-                      className={cn(
-                        "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                        active
-                          ? "bg-sidebar-active font-medium text-white shadow-sm"
-                          : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground"
-                      )}
-                    >
-                      <Icon
-                        className={cn("h-4 w-4 shrink-0", active && "text-white")}
-                        aria-hidden
-                      />
-                      <span className="truncate">{item.label}</span>
-                      {item.badge === "soon" && (
-                        <span className="ml-auto rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-                          Soon
-                        </span>
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        );
-      })}
+      {sections.map((section) => (
+        <div key={section.label}>
+          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-widest text-sidebar-muted">
+            {section.label}
+          </p>
+          <ul className="space-y-0.5">
+            {section.items.map((item) => {
+              const Icon = item.icon;
+              const active =
+                loc.pathname === item.to ||
+                (item.to !== "/dashboard" &&
+                  item.to !== "/admin/dashboard" &&
+                  item.to !== "/platform" &&
+                  loc.pathname.startsWith(item.to));
+              return (
+                <li key={item.to}>
+                  <Link
+                    to={item.to}
+                    onClick={onNavigate}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                      active
+                        ? "bg-sidebar-active font-medium text-white shadow-sm"
+                        : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground"
+                    )}
+                  >
+                    <Icon
+                      className={cn("h-4 w-4 shrink-0", active && "text-white")}
+                      aria-hidden
+                    />
+                    <span className="truncate">{item.label}</span>
+                    {item.badge === "soon" && (
+                      <span className="ml-auto rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+                        Soon
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </nav>
   );
 }
@@ -166,15 +251,13 @@ function UserMenu() {
   return (
     <div className="space-y-2 border-t border-sidebar-border p-3">
       <div className="flex items-center gap-3 rounded-lg bg-sidebar-hover/60 p-2.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/80 text-xs font-semibold uppercase text-primary-foreground">
-          {(user?.first_name?.[0] || user?.email?.[0] || "?").toUpperCase()}
-        </span>
+        <Avatar user={user} className="h-9 w-9 ring-2 ring-sidebar-border" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-medium leading-tight text-sidebar-foreground">
             {user?.first_name ? `${user.first_name} ${user.last_name || ""}` : user?.email}
           </p>
           <p className="truncate text-[11px] capitalize text-sidebar-muted">
-            {user?.role}
+            {user?.is_superuser ? "Platform operator" : user?.role}
           </p>
         </div>
         <Button
@@ -210,9 +293,11 @@ export default function AppShell({ title, description, actions, children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const loc = useLocation();
 
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(loc.pathname);
+  if (loc.pathname !== prevPathname) {
+    setPrevPathname(loc.pathname);
     setMobileOpen(false);
-  }, [loc.pathname]);
+  }
 
   return (
     <div className="min-h-screen">
@@ -258,6 +343,10 @@ export default function AppShell({ title, description, actions, children }) {
             <Menu className="h-5 w-5" aria-hidden />
           </Button>
           <p className="truncate text-sm font-medium text-muted-foreground">{title}</p>
+          <div className="ml-auto flex items-center gap-2.5">
+            <OnlineStatus />
+            <ThemeToggle className="lg:hidden" />
+          </div>
         </header>
 
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
