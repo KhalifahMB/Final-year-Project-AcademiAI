@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
@@ -31,18 +30,14 @@ import PlatformAnalyticsPage from '@/pages/platform/AnalyticsPage';
 import PlatformSystemHealthPage from '@/pages/platform/SystemHealthPage';
 import PlatformAuditLogPage from '@/pages/platform/AuditLogPage';
 import PlatformAnnouncementsPage from '@/pages/platform/AnnouncementsPage';
+import PlatformRequestsPage from '@/pages/platform/RequestsPage';
+import RequestInstitutionPage from '@/pages/RequestInstitutionPage';
 import CourseDetailPage from '@/pages/CourseDetailPage';
 import MyProgrammePage from '@/pages/MyProgrammePage';
 import MyCoursesPage from '@/pages/MyCoursesPage';
 import AssignedCoursesPage from '@/pages/AssignedCoursesPage';
 import UploadResourcePage from '@/pages/UploadResourcePage';
 import QuizTakePage from '@/pages/QuizTakePage';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 30_000 },
-  },
-});
 
 function ProtectedRoute({ children, roles, requireSuperuser, blockSuperuser }) {
   const { user, loading } = useAuth();
@@ -64,7 +59,7 @@ function ProtectedRoute({ children, roles, requireSuperuser, blockSuperuser }) {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <>
       <Toaster richColors position="top-right" />
       <BrowserRouter>
         <Routes>
@@ -201,6 +196,15 @@ export default function App() {
             }
           />
           <Route
+            path="/platform/requests"
+            element={
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformRequestsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/request-institution" element={<RequestInstitutionPage />} />
+          <Route
             path="/platform/analytics"
             element={
               <ProtectedRoute roles={['admin']} requireSuperuser>
@@ -320,6 +324,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </QueryClientProvider>
+    </>
   );
 }

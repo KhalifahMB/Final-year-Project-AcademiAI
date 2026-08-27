@@ -35,3 +35,69 @@ class Tenant(UUIDModel, TimeStampedModel):
 
     def __str__(self):
         return self.name
+
+
+class TenantRequest(UUIDModel, TimeStampedModel):
+    """
+    Self-serve institution sign-up request.
+
+    Public visitors can ask for their university to be provisioned.
+    A superuser reviews in the platform console; on approval we
+    create the Tenant automatically.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending review"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    # Requester
+    requester_name = models.CharField(max_length=255)
+    requester_email = models.EmailField(db_index=True)
+    requester_role = models.CharField(max_length=80, blank=True)
+    phone_number = models.CharField(max_length=32, blank=True)
+
+    # Institution
+    institution_name = models.CharField(max_length=255)
+    institution_slug = models.SlugField(max_length=100, blank=True)
+    institution_domain = models.CharField(max_length=255, blank=True)
+    institution_type = models.CharField(
+        max_length=50,
+        blank=True,
+        choices=[
+            ("university", "University"),
+            ("polytechnic", "Polytechnic"),
+            ("college", "College"),
+            ("other", "Other"),
+        ],
+        default="university",
+    )
+    estimated_students = models.PositiveIntegerField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    # Review
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True,
+    )
+    reviewed_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="reviewed_tenant_requests",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_notes = models.TextField(blank=True)
+    provisioned_tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="signup_request",
+    )
+
+    class Meta:
+        db_table = "tenant_requests"
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["status", "created_at"])]
+
+    def __str__(self):
+        return f"{self.institution_name} — {self.status}"

@@ -1,6 +1,10 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ChatSessionViewSet, ChatMessageViewSet, ChatSendMessageView
+from .views import (
+    ChatSessionViewSet, ChatMessageViewSet,
+    ChatSendMessageView, ChatStreamMessageView,
+    ChatQuickUploadView,
+)
 
 router = DefaultRouter()
 router.register("chat/sessions", ChatSessionViewSet, basename="chat-session")
@@ -12,5 +16,11 @@ urlpatterns = [
         ChatSendMessageView.as_view(),
         name="chat-send-message",
     ),
+    path(
+        "chat/sessions/<uuid:session_id>/messages/stream/",
+        ChatStreamMessageView.as_view(),
+        name="chat-stream-message",
+    ),
+    path("chat/upload/", ChatQuickUploadView.as_view(), name="chat-quick-upload"),
     path("", include(router.urls)),
 ]

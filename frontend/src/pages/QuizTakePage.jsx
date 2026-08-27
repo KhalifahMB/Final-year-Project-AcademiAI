@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { formatRelativeTime, cn } from "@/lib/utils";
+import { CheckCircle2, RotateCcw, XCircle } from "lucide-react";
 
 export default function QuizTakePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isStaff = user?.role === "lecturer" || user?.role === "admin";
+  const qc = useQueryClient();
+  const isStaff = user?.role === "lecturer" || user?.role === "admin" || user?.is_superuser;
   const [answers, setAnswers] = useState({});
   const [attemptId, setAttemptId] = useState(null);
   const [result, setResult] = useState(null);
@@ -23,6 +26,16 @@ export default function QuizTakePage() {
     queryKey: ["quiz", id],
     queryFn: async () => (await api.get(`/quizzes/${id}/`)).data,
     enabled: !!id,
+  });
+
+  // Past attempts (for the "retake" flow and history)
+  const attempts = useQuery({
+    queryKey: ["quiz-attempts-mine", id],
+    queryFn: async () => {
+      const { data } = await api.get("/quiz-attempts/", { params: { quiz: id, page_size: 20 } });
+      return data.results || data || [];
+    },
+    enabled: !!id && !isStaff,
   });
 
   const questions = useQuery({
@@ -34,13 +47,28 @@ export default function QuizTakePage() {
     enabled: !!id,
   });
 
+  // If the user has an unsubmitted attempt in flight, we could resume it,
+  // but for simplicity always start a fresh one when they click Start.
+  useEffect(() => {
+    // Reset state when navigating to a different quiz.
+    setAnswers({});
+    setAttemptId(null);
+    setResult(null);
+  }, [id]);
+
   const start = useMutation({
     mutationFn: () => api.post("/quiz-attempts/", { quiz: id }),
     onSuccess: (res) => {
       setAttemptId(res.data.id);
+      setAnswers({});
+      setResult(null);
       toast.success("Attempt started");
+      qc.invalidateQueries({ queryKey: ["quiz-attempts-mine", id] });
     },
-    onError: () => toast.error("Could not start attempt"),
+    onError: (err) => {
+      const detail = err.response?.data?.detail || "Could not start attempt";
+      toast.error(detail);
+    },
   });
 
   const submit = useMutation({
@@ -48,31 +76,94 @@ export default function QuizTakePage() {
     onSuccess: (res) => {
       setResult(res.data);
       toast.success("Submitted");
+      qc.invalidateQueries({ queryKey: ["quiz-attempts-mine", id] });
+      qc.invalidateQueries({ queryKey: ["quizzes"] });
     },
     onError: (err) => {
-      const d =
-        err.response?.data?.error?.detail || err.response?.data?.detail;
+      const d = err.response?.data?.error?.detail || err.response?.data?.detail;
       toast.error(typeof d === "string" ? d : "Submit failed");
     },
   });
 
+  const retake = () => {
+    setResult(null);
+    setAttemptId(null);
+    setAnswers({});
+    start.mutate();
+  };
+
+  const loadAttemptReview = async (attemptId) => {
+    try {
+      const { data } = await api.get(`/quiz-attempts/${attemptId}/`);
+      setResult(data);
+      setAttemptId(attemptId);
+    } catch {
+      toast.error("Could not load that attempt");
+    }
+  };
+
   const qs = questions.data || quiz.data?.questions || [];
 
   return (
-    <AppShell title={quiz.data?.title || "Take quiz"}>
+    <AppShell title={quiz.data?.title || "Take quiz"} description={quiz.data?.description}>
       <Link to="/quizzes" className="text-sm text-primary hover:underline mb-4 inline-block">
         ← Quizzes
       </Link>
+
       {quiz.error && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>Quiz not found</AlertDescription>
         </Alert>
       )}
+
       {quiz.data && (
-        <p className="text-sm text-muted-foreground mb-4">
-          Status: <Badge variant="secondary">{quiz.data.status}</Badge>
-          {quiz.data.description ? ` — ${quiz.data.description}` : ""}
-        </p>
+        <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <Badge variant="secondary">{quiz.data.status}</Badge>
+          <span>· {qs.length} question{qs.length === 1 ? "" : "s"}</span>
+          {typeof quiz.data.best_score === "number" && (
+            <span>· Best: <strong className="text-foreground">{quiz.data.best_score}%</strong></span>
+          )}
+          {typeof quiz.data.attempt_count === "number" && quiz.data.attempt_count > 0 && (
+            <span>· {quiz.data.attempt_count} attempt{quiz.data.attempt_count === 1 ? "" : "s"}</span>
+          )}
+        </div>
+      )}
+
+      {/* Past attempts list */}
+      {!isStaff && attempts.data && attempts.data.length > 0 && !attemptId && !result && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">Past attempts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y">
+              {attempts.data.map((a) => (
+                <li key={a.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      {a.submitted_at
+                        ? `Score: ${a.score ?? "—"}%`
+                        : "In progress…"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Started {formatRelativeTime(a.started_at)}
+                      {a.submitted_at ? ` · submitted ${formatRelativeTime(a.submitted_at)}` : ""}
+                    </p>
+                  </div>
+                  {a.submitted_at ? (
+                    <Button size="sm" variant="outline" onClick={() => loadAttemptReview(a.id)}>
+                      Review
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => setAttemptId(a.id)}>
+                      Resume
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
 
       {isStaff && !result && (
@@ -86,75 +177,178 @@ export default function QuizTakePage() {
 
       {!attemptId && !result && !isStaff && (
         <Button type="button" onClick={() => start.mutate()} disabled={start.isPending}>
-          {start.isPending ? "Starting…" : "Start attempt"}
+          {start.isPending ? "Starting…" : attempts.data?.length ? "Retake quiz" : "Start attempt"}
         </Button>
       )}
 
       {!isStaff && attemptId && !result && (
         <div className="space-y-4 max-w-2xl">
-          {qs.map((q, idx) => (
-            <Card key={q.id}>
-              <CardHeader>
-                <CardTitle className="text-base">
-                  {idx + 1}. {q.question_text}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {(q.options || []).length > 0 ? (
-                  (q.options || []).map((opt, i) => {
-                    const val = typeof opt === "string" ? opt : opt.text || opt.id || String(opt);
-                    return (
-                      <label key={i} className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input
-                          type="radio"
-                          name={`q-${q.id}`}
-                          value={val}
-                          checked={answers[q.id] === val}
-                          onChange={() => setAnswers((a) => ({ ...a, [q.id]: val }))}
-                        />
-                        {val}
-                      </label>
-                    );
-                  })
-                ) : (
-                  <input
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={answers[q.id] || ""}
-                    onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
-                    placeholder="Your answer"
-                  />
-                )}
-              </CardContent>
-            </Card>
-          ))}
+          {qs.map((q, idx) => {
+            const options = q.options || [];
+            return (
+              <Card key={q.id}>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    {idx + 1}. {q.question_text}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {options.length > 0 ? (
+                    options.map((opt, i) => {
+                      const val = typeof opt === "string" ? opt : opt.text || opt.id || String(opt);
+                      return (
+                        <label key={i} className="flex items-center gap-2 text-sm cursor-pointer rounded-lg px-2 py-1.5 hover:bg-muted">
+                          <input
+                            type="radio"
+                            name={`q-${q.id}`}
+                            value={i}
+                            checked={answers[q.id] === i || answers[q.id] === val}
+                            onChange={() => setAnswers((a) => ({ ...a, [q.id]: i }))}
+                          />
+                          {val}
+                        </label>
+                      );
+                    })
+                  ) : (
+                    <input
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      value={answers[q.id] || ""}
+                      onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+                      placeholder="Your answer"
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
           {qs.length === 0 && (
             <p className="text-sm text-muted-foreground">No questions on this quiz yet.</p>
           )}
-          <Button
-            type="button"
-            onClick={() => submit.mutate()}
-            disabled={submit.isPending || qs.length === 0}
-          >
-            {submit.isPending ? "Submitting…" : "Submit answers"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              onClick={() => submit.mutate()}
+              disabled={submit.isPending || qs.length === 0}
+            >
+              {submit.isPending ? "Submitting…" : "Submit answers"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => { setAttemptId(null); setAnswers({}); }}
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
       )}
 
       {result && (
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle className="text-lg">Results</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div>
-              Score: <strong>{result.score ?? "—"}</strong>
+        <div className="space-y-6">
+          <Card className="max-w-md">
+            <CardHeader>
+              <CardTitle className="text-lg">Results</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div>
+                Score: <strong>{result.score ?? "—"}%</strong>
+                {typeof result.correct_count === "number" && typeof result.total_questions === "number" && (
+                  <span className="text-muted-foreground">
+                    {" "}({result.correct_count}/{result.total_questions} correct)
+                  </span>
+                )}
+              </div>
+              <div>
+                Submitted:{" "}
+                <span title={result.submitted_at}>
+                  {result.submitted_at ? formatRelativeTime(result.submitted_at) : "—"}
+                </span>
+              </div>
+              <div className="flex gap-2 pt-2">
+                {!isStaff && (
+                  <Button type="button" onClick={retake}>
+                    <RotateCcw className="mr-2 h-4 w-4" /> Retake quiz
+                  </Button>
+                )}
+                <Button type="button" variant="outline" onClick={() => navigate("/quizzes")}>
+                  Back to quizzes
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Review each question */}
+          {Array.isArray(result.review) && result.review.length > 0 && (
+            <div className="space-y-3 max-w-2xl">
+              <h3 className="text-base font-semibold">Review your answers</h3>
+              {result.review.map((r, i) => {
+                const correctIdx = r.correct_answer?.index;
+                const correctValue =
+                  typeof correctIdx === "number" && Array.isArray(r.options)
+                    ? r.options[correctIdx]
+                    : r.correct_answer?.value;
+                const userIdx = typeof r.user_answer === "number" ? r.user_answer : null;
+                const userValue =
+                  userIdx !== null && Array.isArray(r.options)
+                    ? r.options[userIdx]
+                    : r.user_answer;
+                return (
+                  <Card key={r.question_id} className={cn(
+                    "border-l-4",
+                    r.is_correct ? "border-l-emerald-500" : "border-l-red-500",
+                  )}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-start gap-2 text-base">
+                        {r.is_correct ? (
+                          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
+                        ) : (
+                          <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+                        )}
+                        <span>{i + 1}. {r.question_text}</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                      {Array.isArray(r.options) && r.options.length > 0 ? (
+                        <ul className="space-y-1">
+                          {r.options.map((opt, oi) => {
+                            const isUser = oi === userIdx;
+                            const isCorrect = oi === correctIdx;
+                            return (
+                              <li
+                                key={oi}
+                                className={cn(
+                                  "rounded-lg border px-3 py-1.5",
+                                  isCorrect && "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+                                  isUser && !isCorrect && "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-400",
+                                  !isUser && !isCorrect && "text-muted-foreground",
+                                )}
+                              >
+                                <span className="mr-2 font-mono text-xs">{String.fromCharCode(65 + oi)}.</span>
+                                {typeof opt === "string" ? opt : opt.text || String(opt)}
+                                {isCorrect && <span className="ml-2 text-xs font-semibold">(correct)</span>}
+                                {isUser && !isCorrect && <span className="ml-2 text-xs font-semibold">(your answer)</span>}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : (
+                        <div className="space-y-1">
+                          <p><span className="text-muted-foreground">Your answer:</span> {String(userValue ?? "—")}</p>
+                          <p><span className="text-muted-foreground">Correct answer:</span> {String(correctValue ?? "—")}</p>
+                        </div>
+                      )}
+                      {r.explanation && (
+                        <p className="rounded-md bg-muted/50 p-2 text-xs italic text-muted-foreground">
+                          {r.explanation}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
-            <div>Submitted: {result.submitted_at || "—"}</div>
-            <Button type="button" variant="outline" onClick={() => navigate("/quizzes")}>
-              Back to quizzes
-            </Button>
-          </CardContent>
-        </Card>
+          )}
+        </div>
       )}
     </AppShell>
   );
