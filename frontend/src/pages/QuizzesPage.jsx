@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import api, { dashApi } from '@/services/api';
+import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import EmptyState from '@/components/shared/EmptyState';
@@ -10,25 +10,23 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { ClipboardList, Sparkles } from 'lucide-react';
+import { formatRelativeTime } from '@/lib/utils';
+import { ClipboardList, Sparkles, Trophy } from 'lucide-react';
 
 export default function QuizzesPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const isStaff = user?.role === 'lecturer' || user?.role === 'admin';
+  const isStaff = user?.role === 'lecturer' || user?.role === 'admin' || user?.is_superuser;
   const [pollJob, setPollJob] = useState(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['quizzes'],
     queryFn: async () => {
-      const result = await dashApi.quizzes();
-      console.log('quizzes', result);
-      // return data.results || data;
-      return result || data;
+      const { data } = await api.get('/quizzes/?page_size=50');
+      return data.results || data;
     },
   });
 
-  // While a generation job runs, poll its status; refresh on completion.
   useQuery({
     queryKey: ['quiz-job', pollJob],
     queryFn: async () => {
@@ -83,10 +81,7 @@ export default function QuizzesPage() {
     >
       {generating ? (
         <div className="mb-5 flex items-center gap-2.5 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
-          <Sparkles
-            className="h-4 w-4 animate-pulse text-primary"
-            aria-hidden
-          />
+          <Sparkles className="h-4 w-4 animate-pulse text-primary" aria-hidden />
           Creating a practice quiz from your materials — the list refreshes
           automatically when it's ready.
         </div>
@@ -108,52 +103,66 @@ export default function QuizzesPage() {
         />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {quizzes.map((q) => (
-            <li key={q.id}>
-              <article className="flex h-full flex-col rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
-                <div className="flex items-start justify-between gap-2">
-                  <h2
-                    className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug"
-                    title={q.title}
-                  >
-                    {q.title}
-                  </h2>
-                  <StatusBadge status={q.status} />
-                </div>
-                {q.description ? (
-                  <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-                    {q.description}
-                  </p>
-                ) : null}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {q.questions?.length
-                    ? `${q.questions.length} question${q.questions.length === 1 ? '' : 's'}`
-                    : 'No questions yet'}
-                </p>
-                <div className="mt-auto pt-3.5">
-                  {isStaff ? (
-                    <Link
-                      to="/admin/quizzes"
-                      className="inline-flex h-8 items-center justify-center rounded-lg border px-3.5 text-[0.8rem] font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+          {quizzes.map((q) => {
+            const hasAttempts = typeof q.attempt_count === 'number' && q.attempt_count > 0;
+            const buttonLabel = hasAttempts ? 'Retake quiz' : 'Take quiz';
+            return (
+              <li key={q.id}>
+                <article className="flex h-full flex-col rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2
+                      className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug"
+                      title={q.title}
                     >
-                      Manage quizzes
-                    </Link>
-                  ) : q.status === 'published' ? (
-                    <Link
-                      to={`/quizzes/${q.id}/take`}
-                      className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-3.5 text-[0.8rem] font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-ring"
-                    >
-                      Take quiz
-                    </Link>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      Not published yet
+                      {q.title}
+                    </h2>
+                    <StatusBadge status={q.status} />
+                  </div>
+                  {q.description ? (
+                    <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                      {q.description}
+                    </p>
+                  ) : null}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span>
+                      {q.questions?.length
+                        ? `${q.questions.length} question${q.questions.length === 1 ? '' : 's'}`
+                        : 'No questions yet'}
                     </span>
-                  )}
-                </div>
-              </article>
-            </li>
-          ))}
+                    {!isStaff && typeof q.best_score === 'number' && (
+                      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                        <Trophy className="h-3 w-3" /> Best {q.best_score}%
+                      </span>
+                    )}
+                    {!isStaff && q.last_attempt_at && (
+                      <span>Last {formatRelativeTime(q.last_attempt_at)}</span>
+                    )}
+                  </div>
+                  <div className="mt-auto pt-3.5">
+                    {isStaff ? (
+                      <Link
+                        to="/admin/quizzes"
+                        className="inline-flex h-8 items-center justify-center rounded-lg border px-3.5 text-[0.8rem] font-medium transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+                      >
+                        Manage quizzes
+                      </Link>
+                    ) : q.status === 'published' ? (
+                      <Link
+                        to={`/quizzes/${q.id}/take`}
+                        className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-3.5 text-[0.8rem] font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-ring"
+                      >
+                        {buttonLabel}
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        Not published yet
+                      </span>
+                    )}
+                  </div>
+                </article>
+              </li>
+            );
+          })}
         </ul>
       )}
     </AppShell>

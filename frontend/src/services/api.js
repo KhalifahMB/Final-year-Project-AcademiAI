@@ -78,6 +78,10 @@ export const dashApi = {
 export const dashboardApi = {
   student: () => api.get('/dashboard/student/').then((r) => r.data),
   admin: () => api.get('/dashboard/admin/').then((r) => r.data),
+  studentActivity: (range = 'day') =>
+    api.get('/dashboard/student/activity/', { params: { range } }).then((r) => r.data),
+  adminAuditSummary: (days = 14) =>
+    api.get('/dashboard/admin/audit-summary/', { params: { days } }).then((r) => r.data),
 };
 
 export const notesApi = {
@@ -119,8 +123,20 @@ export const chatApi = {
   createSession: (payload = {}) => api.post('/chat/sessions/', payload),
   renameSession: (id, title) => api.patch(`/chat/sessions/${id}/rename/`, { title }),
   deleteSession: (id) => api.delete(`/chat/sessions/${id}/`),
-  send: (sessionId, content) =>
-    api.post(`/chat/sessions/${sessionId}/messages/`, { content }),
+  send: (sessionId, content, resourceIds = []) =>
+    api.post(`/chat/sessions/${sessionId}/messages/`, { content, resource_ids: resourceIds }),
+  /**
+   * Upload a file from disk for use as a chat attachment. Returns the
+   * created (private) resource.
+   */
+  uploadAttachment: (file, sessionId = null) => {
+    const form = new FormData();
+    form.append('file', file);
+    if (sessionId) form.append('session_id', sessionId);
+    return api
+      .post('/chat/upload/', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      .then((r) => r.data);
+  },
   /**
    * Stream an assistant response as SSE.
    * onToken(text) — called for every token chunk
@@ -129,7 +145,7 @@ export const chatApi = {
    * onError(err) — called on error
    * Returns an AbortController so the caller can cancel.
    */
-  stream: (sessionId, content, { onToken, onDone, onMeta, onError }) => {
+  stream: (sessionId, content, { onToken, onDone, onMeta, onError, resourceIds = [] }) => {
     const token = localStorage.getItem('access_token');
     const ctrl = new AbortController();
     (async () => {
@@ -142,7 +158,7 @@ export const chatApi = {
               'Content-Type': 'application/json',
               Authorization: token ? `Bearer ${token}` : '',
             },
-            body: JSON.stringify({ content }),
+            body: JSON.stringify({ content, resource_ids: resourceIds }),
             signal: ctrl.signal,
           },
         );

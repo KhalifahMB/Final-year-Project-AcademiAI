@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     ChatSessionViewSet, ChatMessageViewSet,
     ChatSendMessageView, ChatStreamMessageView,
+    ChatQuickUploadView,
 )
 
 router = DefaultRouter()
@@ -20,5 +21,6 @@ urlpatterns = [
         ChatStreamMessageView.as_view(),
         name="chat-stream-message",
     ),
+    path("chat/upload/", ChatQuickUploadView.as_view(), name="chat-quick-upload"),
     path("", include(router.urls)),
 ]

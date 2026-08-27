@@ -1,31 +1,59 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { authApi } from "@/services/api";
+
+// Module-level promise so concurrent mount() calls share a single /auth/me/
+// round-trip instead of firing N requests (StrictMode double-mount +
+// every AppShell + OnlineStatus + Avatar component used to multiply calls).
+let inflightMe = null;
+
+function fetchMe() {
+  if (inflightMe) return inflightMe;
+  const token = localStorage.getItem("access_token");
+  if (!token) return Promise.resolve(null);
+  inflightMe = authApi
+    .me()
+    .then((r) => r.data)
+    .catch(() => {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      return null;
+    })
+    .finally(() => {
+      inflightMe = null;
+    });
+  return inflightMe;
+}
 
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const mounted = useRef(true);
 
   const loadUser = useCallback(async () => {
-    const token = localStorage.getItem("access_token");
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
+    setLoading(true);
     try {
-      const { data } = await authApi.me();
-      setUser(data);
-    } catch {
-      setUser(null);
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
+      const data = await fetchMe();
+      if (mounted.current) setUser(data);
     } finally {
-      setLoading(false);
+      if (mounted.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    mounted.current = true;
     loadUser();
+    return () => {
+      mounted.current = false;
+    };
+  }, [loadUser]);
+
+  // Listen for token changes across tabs so we don't show stale user state.
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === "access_token") loadUser();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, [loadUser]);
 
   const login = async (email, password) => {
@@ -46,8 +74,6 @@ export function useAuth() {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     setUser(null);
-    // Full navigation (not react-router) so the router, query cache and all
-    // in-memory state reset before the next session lands on the landing page.
     window.location.assign("/");
   };
 

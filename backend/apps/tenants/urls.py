@@ -6,7 +6,10 @@ from .request_views import (
     TenantRequestCreateView, TenantRequestListView, TenantRequestReviewView,
 )
 from .stats import PlatformStatsView, PlatformTenantDetailView, PlatformAuditLogView
-from apps.common.dashboard import StudentDashboardView, AdminDashboardView
+from apps.common.dashboard import (
+    StudentDashboardView, AdminDashboardView,
+    StudentActivityView, AdminAuditSummaryView,
+)
 
 router = DefaultRouter()
 router.register("tenants", TenantViewSet, basename="tenant")
@@ -20,6 +23,8 @@ urlpatterns = [
     # Aggregate dashboards (one call per role replaces 4-15 list requests)
     path("dashboard/student/", StudentDashboardView.as_view(), name="dashboard-student"),
     path("dashboard/admin/", AdminDashboardView.as_view(), name="dashboard-admin"),
+    path("dashboard/student/activity/", StudentActivityView.as_view(), name="dashboard-student-activity"),
+    path("dashboard/admin/audit-summary/", AdminAuditSummaryView.as_view(), name="dashboard-admin-audit-summary"),
     # Superuser-only platform aggregates
     path("platform/stats/", PlatformStatsView.as_view(), name="platform-stats"),
     path("platform/tenants/<uuid:tenant_id>/", PlatformTenantDetailView.as_view(), name="platform-tenant-detail"),

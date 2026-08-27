@@ -68,6 +68,12 @@ class ChatSessionSerializer(serializers.ModelSerializer):
 
 class ChatMessageCreateSerializer(serializers.Serializer):
     content = serializers.CharField(max_length=10000)
+    # Optional list of resource IDs that the user explicitly attached to
+    # this turn (from the library or quick upload). Their chunks are folded
+    # into the RAG context alongside hybrid_retrieve results.
+    resource_ids = serializers.ListField(
+        child=serializers.UUIDField(), required=False, default=list,
+    )
 
 
 class ChatSessionRenameSerializer(serializers.Serializer):

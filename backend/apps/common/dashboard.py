@@ -8,8 +8,12 @@ firing 15 parallel list requests just to compute counts).
 Responses are cached in Redis for STALE_SECONDS per tenant/role to keep
 the dashboard snappy and avoid COUNT(*) thrash on large tenants.
 """
+from datetime import timedelta
+
 from django.core.cache import cache
 from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncDate, TruncHour, TruncWeek, TruncMonth
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -307,4 +311,213 @@ class AdminDashboardView(APIView):
             ],
             "structure": structure,
             "recent_resources": [_res(r) for r in recent_resources],
+        }
+
+
+# ----------------------------------------------------------------------
+# Student activity timeline (for the chart widget)
+# ----------------------------------------------------------------------
+@extend_schema(
+    tags=["Dashboard"],
+    summary="Student activity timeline",
+    description=(
+        "Returns time-bucketed counts of study actions (chat messages, "
+        "notes, bookmarks, quiz attempts, resource accesses) for the "
+        "calling student. ?range=hour|day|week|month controls bucket size "
+        "and window length. Defaults to 'day' (last 14 days)."
+    ),
+)
+class StudentActivityView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    RANGE_CONFIG = {
+        # range -> (trunc, window_days, label_format)
+        "hour": (TruncHour, 2, "%H:%M"),
+        "day": (TruncDate, 14, "%b %d"),
+        "week": (TruncWeek, 60, "%b %d"),
+        "month": (TruncMonth, 365, "%b %Y"),
+    }
+
+    def get(self, request):
+        rng = request.query_params.get("range", "day").lower()
+        if rng not in self.RANGE_CONFIG:
+            rng = "day"
+        trunc_fn, window_days, _label = self.RANGE_CONFIG[rng]
+        user = request.user
+        tid = user.tenant_id
+        since = timezone.now() - timedelta(days=window_days)
+
+        def _series(qs, date_field):
+            return list(
+                qs.annotate(bucket=trunc_fn(date_field))
+                .filter(bucket__gte=since)
+                .values("bucket")
+                .annotate(count=Count("id"))
+                .order_by("bucket")
+            )
+
+        from apps.chat.models import ChatMessage
+        from apps.assessments.models import QuizAttempt
+        from apps.learning.models import Note
+
+        chat_series = _series(
+            ChatMessage.objects.filter(
+                tenant_id=tid, session__user=user, role=ChatMessage.Role.USER,
+            ),
+            "created_at",
+        )
+        quiz_series = _series(
+            QuizAttempt.objects.filter(tenant_id=tid, student=user),
+            "started_at",
+        )
+        note_series = _series(
+            Note.objects.filter(tenant_id=tid, user=user),
+            "created_at",
+        )
+
+        # Build a merged sorted list of buckets
+        buckets = {}
+
+        def _merge(series, key):
+            for row in series:
+                b = row["bucket"]
+                if b is None:
+                    continue
+                # TruncHour/TruncDate/... are tz-aware datetimes or dates.
+                # Normalize to ISO for the frontend.
+                iso = b.isoformat() if hasattr(b, "isoformat") else str(b)
+                if iso not in buckets:
+                    buckets[iso] = {"bucket": iso, "chats": 0, "quizzes": 0, "notes": 0}
+                buckets[iso][key] = row["count"]
+
+        _merge(chat_series, "chats")
+        _merge(quiz_series, "quizzes")
+        _merge(note_series, "notes")
+
+        timeline = sorted(buckets.values(), key=lambda x: x["bucket"])
+        return Response(
+            {
+                "range": rng,
+                "window_days": window_days,
+                "timeline": timeline,
+                "totals": {
+                    "chats": sum(r["chats"] for r in timeline),
+                    "quizzes": sum(r["quizzes"] for r in timeline),
+                    "notes": sum(r["notes"] for r in timeline),
+                },
+            }
+        )
+
+
+# ----------------------------------------------------------------------
+# Admin audit summary (aggregate analytics over audit logs)
+# ----------------------------------------------------------------------
+@extend_schema(
+    tags=["Dashboard"],
+    summary="Tenant admin audit/activity analytics",
+    description=(
+        "Aggregate counts over audit logs for the admin/lecturer "
+        "dashboard: actions over time, top actors, top entity types, "
+        "recent events. Cached 60s."
+    ),
+)
+class AdminAuditSummaryView(APIView):
+    permission_classes = [IsLecturerOrAdmin]
+
+    def get(self, request):
+        user = request.user
+        tid = user.tenant_id
+        try:
+            days = int(request.query_params.get("days", "14"))
+        except (TypeError, ValueError):
+            days = 14
+        days = max(1, min(days, 90))
+        key = f"dashboard:{tid}:admin-audit-summary:{days}:v1"
+        data = cache.get(key)
+        if data is not None:
+            return Response(data)
+        data = self._build(tid, days)
+        cache.set(key, data, STALE_SECONDS)
+        return Response(data)
+
+    @staticmethod
+    def _build(tid, days):
+        from apps.audit.models import AuditLog
+
+        since = timezone.now() - timedelta(days=days)
+
+        base = AuditLog.objects.filter(tenant_id=tid, created_at__gte=since)
+
+        # Actions by day
+        by_day = list(
+            base.annotate(bucket=TruncDate("created_at"))
+            .values("bucket")
+            .annotate(count=Count("id"))
+            .order_by("bucket")
+        )
+        timeline = [
+            {"bucket": r["bucket"].isoformat() if r["bucket"] else None, "count": r["count"]}
+            for r in by_day if r["bucket"]
+        ]
+
+        # By action category
+        by_action = list(
+            base.values("action").annotate(count=Count("id")).order_by("-count")[:10]
+        )
+
+        # By entity type
+        by_entity = list(
+            base.values("entity_type").annotate(count=Count("id")).order_by("-count")[:8]
+        )
+
+        # Top actors
+        by_actor = list(
+            base.values("actor__first_name", "actor__last_name", "actor__email")
+            .annotate(count=Count("id"))
+            .order_by("-count")[:8]
+        )
+        actors = []
+        for a in by_actor:
+            fn = a.get("actor__first_name") or ""
+            ln = a.get("actor__last_name") or ""
+            name = f"{fn} {ln}".strip() or a.get("actor__email") or "Unknown"
+            actors.append({"name": name, "count": a["count"]})
+
+        recent = list(
+            base.select_related("actor")
+            .order_by("-created_at")[:10]
+            .values(
+                "id", "action", "entity_type", "entity_id",
+                "created_at",
+                "actor__first_name", "actor__last_name", "actor__email",
+            )
+        )
+        recent_events = []
+        for e in recent:
+            fn = e.get("actor__first_name") or ""
+            ln = e.get("actor__last_name") or ""
+            name = f"{fn} {ln}".strip() or e.get("actor__email") or "System"
+            recent_events.append(
+                {
+                    "id": e["id"],
+                    "action": e["action"],
+                    "entity_type": e["entity_type"],
+                    "entity_id": e["entity_id"],
+                    "created_at": e["created_at"].isoformat() if e["created_at"] else None,
+                    "actor": name,
+                }
+            )
+
+        return {
+            "window_days": days,
+            "total_events": base.count(),
+            "timeline": timeline,
+            "by_action": [
+                {"name": r["action"], "count": r["count"]} for r in by_action
+            ],
+            "by_entity_type": [
+                {"name": r["entity_type"] or "unknown", "count": r["count"]} for r in by_entity
+            ],
+            "top_actors": actors,
+            "recent": recent_events,
         }
