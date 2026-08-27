@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  * and fires toasts when connectivity changes. Also exposes the `online`
  * boolean for callers that need to gate behaviour.
  */
-export function useOnlineStatus() {
+function useOnlineStatus() {
   const [online, setOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine,
   );

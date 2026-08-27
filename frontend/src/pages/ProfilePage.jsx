@@ -1,34 +1,57 @@
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useQueryClient } from "@tanstack/react-query";
-import AppShell from "@/components/layout/AppShell";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
+import AppShell from '@/components/layout/AppShell';
 import {
-  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from "@/components/ui/form";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useTheme } from "@/components/shared/ThemeToggle";
-import AvatarPicker from "@/components/shared/AvatarPicker";
-import Avatar from "@/components/shared/Avatar";
-import { useAuth } from "@/hooks/useAuth";
-import { profileSchema, passwordChangeSchema } from "@/lib/validations";
-import api, { authApi } from "@/services/api";
-import { toast } from "sonner";
-import { Building2, Check, KeyRound, Moon, ShieldCheck, Sun, UserRound } from "lucide-react";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTheme } from '@/hooks/useTheme';
+import AvatarPicker from '@/components/shared/AvatarPicker';
+import Avatar from '@/components/shared/Avatar';
+import { useAuth } from '@/hooks/useAuth';
+import { profileSchema, passwordChangeSchema } from '@/lib/validations';
+import api, { authApi } from '@/services/api';
+import { toast } from 'sonner';
+import {
+  Building2,
+  Check,
+  KeyRound,
+  Moon,
+  ShieldCheck,
+  Sun,
+  UserRound,
+} from 'lucide-react';
 
 const GENDERS = [
-  { value: "unspecified", label: "Prefer not to say" },
-  { value: "male", label: "Male" },
-  { value: "female", label: "Female" },
-  { value: "other", label: "Other" },
+  { value: 'unspecified', label: 'Prefer not to say' },
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other' },
 ];
 
 function AppearanceCard() {
@@ -39,7 +62,9 @@ function AppearanceCard() {
         <CardTitle className="flex items-center gap-2 text-lg">
           <Sun className="h-4 w-4 text-primary" aria-hidden /> Appearance
         </CardTitle>
-        <CardDescription>Choose how AcademiAI looks on this device.</CardDescription>
+        <CardDescription>
+          Choose how AcademiAI looks on this device.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-3" role="group" aria-label="Theme">
@@ -49,8 +74,8 @@ function AppearanceCard() {
             aria-pressed={!dark}
             className={`flex items-center gap-2.5 rounded-xl border p-3.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ring ${
               !dark
-                ? "border-primary/50 bg-primary/10 font-medium text-primary"
-                : "bg-card hover:bg-muted"
+                ? 'border-primary/50 bg-primary/10 font-medium text-primary'
+                : 'bg-card hover:bg-muted'
             }`}
           >
             <Sun className="h-4 w-4" aria-hidden />
@@ -62,8 +87,8 @@ function AppearanceCard() {
             aria-pressed={dark}
             className={`flex items-center gap-2.5 rounded-xl border p-3.5 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ring ${
               dark
-                ? "border-primary/50 bg-primary/10 font-medium text-primary"
-                : "bg-card hover:bg-muted"
+                ? 'border-primary/50 bg-primary/10 font-medium text-primary'
+                : 'bg-card hover:bg-muted'
             }`}
           >
             <Moon className="h-4 w-4" aria-hidden />
@@ -94,8 +119,8 @@ function InstitutionCard({ user }) {
         <Separator />
         <div className="flex items-center justify-between gap-3">
           <span className="text-muted-foreground">Email verified</span>
-          <Badge variant={user?.is_email_verified ? "default" : "secondary"}>
-            {user?.is_email_verified ? "Verified" : "Not verified"}
+          <Badge variant={user?.is_email_verified ? 'default' : 'secondary'}>
+            {user?.is_email_verified ? 'Verified' : 'Not verified'}
           </Badge>
         </div>
         <Separator />
@@ -115,7 +140,10 @@ function ProfileHeader({ user }) {
         aria-hidden
         className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-white/10 blur-2xl"
       />
-      <div aria-hidden className="pointer-events-none absolute -bottom-20 right-24 h-44 w-44 rounded-full bg-white/10 blur-xl" />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-20 right-24 h-44 w-44 rounded-full bg-white/10 blur-xl"
+      />
       <div className="relative flex flex-wrap items-center gap-5">
         <Avatar
           user={user}
@@ -123,7 +151,8 @@ function ProfileHeader({ user }) {
         />
         <div className="min-w-0">
           <h2 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
-            {[user?.first_name, user?.last_name].filter(Boolean).join(" ") || user?.email}
+            {[user?.first_name, user?.last_name].filter(Boolean).join(' ') ||
+              user?.email}
           </h2>
           <p className="mt-0.5 truncate text-sm text-white/80">{user?.email}</p>
           <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -145,16 +174,19 @@ function ProfileHeader({ user }) {
 export default function ProfilePage() {
   const { user, reload } = useAuth();
   const qc = useQueryClient();
-  const [profileError, setProfileError] = useState("");
-  const [avatarError, setAvatarError] = useState("");
-  const [presetId, setPresetId] = useState(user?.avatar_preset || "");
+  const [profileError, setProfileError] = useState('');
+  const [avatarError, setAvatarError] = useState('');
+  const [presetId, setPresetId] = useState(user?.avatar_preset || '');
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [savingAvatar, setSavingAvatar] = useState(false);
 
-  useEffect(() => {
-    setPresetId(user?.avatar_preset || "");
-  }, [user?.avatar_preset]);
+  const [prevPreset, setPrevPreset] = useState(user?.avatar_preset);
+
+  if (user?.avatar_preset !== prevPreset) {
+    setPrevPreset(user?.avatar_preset);
+    setPresetId(user?.avatar_preset || '');
+  }
 
   const onPickFile = (f) => {
     setFile(f);
@@ -166,22 +198,24 @@ export default function ProfilePage() {
     try {
       if (file) {
         const fd = new FormData();
-        fd.append("file", file);
-        await api.post("/auth/me/avatar/", fd, {
-          headers: { "Content-Type": "multipart/form-data" },
+        fd.append('file', file);
+        await api.post('/auth/me/avatar/', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
         });
-        await api.patch("/auth/me/", { avatar_preset: "" });
-      } else if (presetId !== (user?.avatar_preset || "")) {
-        await api.patch("/auth/me/", { avatar_preset: presetId });
-        await api.delete("/auth/me/avatar/");
+        await api.patch('/auth/me/', { avatar_preset: '' });
+      } else if (presetId !== (user?.avatar_preset || '')) {
+        await api.patch('/auth/me/', { avatar_preset: presetId });
+        await api.delete('/auth/me/avatar/');
       }
-      toast.success("Profile picture updated");
-      qc.removeQueries({ queryKey: ["avatar-url"] });
+      toast.success('Profile picture updated');
+      qc.removeQueries({ queryKey: ['avatar-url'] });
       setFile(null);
       setPreview(null);
       if (reload) await reload();
     } catch (err) {
-      toast.error(err.response?.data?.error?.detail || "Could not update picture");
+      toast.error(
+        err.response?.data?.error?.detail || 'Could not update picture',
+      );
     } finally {
       setSavingAvatar(false);
     }
@@ -191,27 +225,27 @@ export default function ProfilePage() {
   const form = useForm({
     resolver: zodResolver(profileSchema),
     values: {
-      first_name: user?.first_name || "",
-      last_name: user?.last_name || "",
-      email: user?.email || "",
-      phone_number: user?.phone_number || "",
-      gender: user?.gender || "",
+      first_name: user?.first_name || '',
+      last_name: user?.last_name || '',
+      email: user?.email || '',
+      phone_number: user?.phone_number || '',
+      gender: user?.gender || '',
     },
   });
 
   const onSaveProfile = async (values) => {
-    setProfileError("");
+    setProfileError('');
     try {
       await authApi.updateMe(values);
-      toast.success("Profile updated");
-      qc.removeQueries({ queryKey: ["avatar-url"] });
+      toast.success('Profile updated');
+      qc.removeQueries({ queryKey: ['avatar-url'] });
       if (reload) await reload();
     } catch (err) {
       const d = err.response?.data;
       const detail =
         d?.error?.detail ||
-        (typeof d === "object" ? Object.values(d).flat().join(" ") : "") ||
-        "Update failed";
+        (typeof d === 'object' ? Object.values(d).flat().join(' ') : '') ||
+        'Update failed';
       setProfileError(String(detail));
     }
   };
@@ -219,21 +253,21 @@ export default function ProfilePage() {
   // --- Password -------------------------------------------------------
   const pwForm = useForm({
     resolver: zodResolver(passwordChangeSchema),
-    defaultValues: { old_password: "", new_password: "", confirm: "" },
+    defaultValues: { old_password: '', new_password: '', confirm: '' },
   });
-  const [pwError, setPwError] = useState("");
+  const [pwError, setPwError] = useState('');
 
   const onSubmitPassword = async (values) => {
-    setPwError("");
+    setPwError('');
     try {
       await authApi.passwordChange({
         old_password: values.old_password,
         new_password: values.new_password,
       });
-      toast.success("Password updated");
+      toast.success('Password updated');
       pwForm.reset();
     } catch (err) {
-      setPwError(err.response?.data?.error?.detail || "Password change failed");
+      setPwError(err.response?.data?.error?.detail || 'Password change failed');
     }
   };
 
@@ -272,12 +306,12 @@ export default function ProfilePage() {
               size="sm"
               disabled={
                 savingAvatar ||
-                (!file && presetId === (user?.avatar_preset || ""))
+                (!file && presetId === (user?.avatar_preset || ''))
               }
               onClick={saveAvatar}
             >
               <Check className="mr-2 h-4 w-4" aria-hidden />
-              {savingAvatar ? "Saving…" : "Save picture"}
+              {savingAvatar ? 'Saving…' : 'Save picture'}
             </Button>
           </CardContent>
         </Card>
@@ -287,7 +321,8 @@ export default function ProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <UserRound className="h-4 w-4 text-primary" aria-hidden /> Personal information
+                <UserRound className="h-4 w-4 text-primary" aria-hidden />{' '}
+                Personal information
               </CardTitle>
               <CardDescription>Your private account details.</CardDescription>
             </CardHeader>
@@ -298,7 +333,10 @@ export default function ProfilePage() {
                 </Alert>
               )}
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSaveProfile)} className="space-y-3.5">
+                <form
+                  onSubmit={form.handleSubmit(onSaveProfile)}
+                  className="space-y-3.5"
+                >
                   <div className="grid grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
@@ -306,7 +344,9 @@ export default function ProfilePage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>First name</FormLabel>
-                          <FormControl><Input {...field} /></FormControl>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -317,7 +357,9 @@ export default function ProfilePage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Last name</FormLabel>
-                          <FormControl><Input {...field} /></FormControl>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -355,13 +397,20 @@ export default function ProfilePage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Gender</FormLabel>
-                        <Select value={field.value || "unspecified"} onValueChange={field.onChange}>
+                        <Select
+                          value={field.value || 'unspecified'}
+                          onValueChange={field.onChange}
+                        >
                           <FormControl>
-                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             {GENDERS.map((g) => (
-                              <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                              <SelectItem key={g.value} value={g.value}>
+                                {g.label}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -382,7 +431,8 @@ export default function ProfilePage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <KeyRound className="h-4 w-4 text-primary" aria-hidden /> Change password
+                  <KeyRound className="h-4 w-4 text-primary" aria-hidden />{' '}
+                  Change password
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -392,8 +442,11 @@ export default function ProfilePage() {
                   </Alert>
                 )}
                 <Form {...pwForm}>
-                  <form onSubmit={pwForm.handleSubmit(onSubmitPassword)} className="space-y-3">
-                    {["old_password", "new_password", "confirm"].map((name) => (
+                  <form
+                    onSubmit={pwForm.handleSubmit(onSubmitPassword)}
+                    className="space-y-3"
+                  >
+                    {['old_password', 'new_password', 'confirm'].map((name) => (
                       <FormField
                         key={name}
                         control={pwForm.control}
@@ -401,17 +454,19 @@ export default function ProfilePage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>
-                              {name === "old_password"
-                                ? "Current password"
-                                : name === "new_password"
-                                  ? "New password"
-                                  : "Confirm new password"}
+                              {name === 'old_password'
+                                ? 'Current password'
+                                : name === 'new_password'
+                                  ? 'New password'
+                                  : 'Confirm new password'}
                             </FormLabel>
                             <FormControl>
                               <Input
                                 type="password"
                                 autoComplete={
-                                  name === "old_password" ? "current-password" : "new-password"
+                                  name === 'old_password'
+                                    ? 'current-password'
+                                    : 'new-password'
                                 }
                                 {...field}
                               />
@@ -421,7 +476,10 @@ export default function ProfilePage() {
                         )}
                       />
                     ))}
-                    <Button type="submit" disabled={pwForm.formState.isSubmitting}>
+                    <Button
+                      type="submit"
+                      disabled={pwForm.formState.isSubmitting}
+                    >
                       Update password
                     </Button>
                   </form>

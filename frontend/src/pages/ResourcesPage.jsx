@@ -1,6 +1,6 @@
-﻿import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'react-router-dom';
 import api, { dashApi } from '@/services/api';
@@ -41,6 +41,13 @@ import ResourceDetailDialog from '@/components/resources/ResourceDetailDialog';
 import { resourceSchema } from '@/lib/validations';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreVertical, Trash } from 'lucide-react';
 
 const SCOPES = [
   'private',
@@ -96,7 +103,7 @@ export default function ResourcesPage() {
     },
   });
 
-  const chosenScope = form.watch('visibility_scope');
+  const chosenScope = useWatch({ control: form.control, name: 'visibility_scope' });
 
   // Offerings for the course-scoped visibility selector — a course material
   // without an offering would be undiscoverable.
@@ -137,7 +144,7 @@ export default function ResourcesPage() {
     createMut.mutate(payload);
   };
 
-  const filtered = useMemo(() => {
+  const filtered = (() => {
     let list = resources;
     if (scopeFilter !== 'all') {
       list = list.filter((r) => r.visibility_scope === scopeFilter);
@@ -151,7 +158,7 @@ export default function ResourcesPage() {
       );
     }
     return list;
-  }, [resources, search, scopeFilter]);
+  })();
 
   return (
     <AppShell
@@ -394,9 +401,42 @@ export default function ResourcesPage() {
                     setSelected(r);
                   }
                 }}
-                className="group flex h-full cursor-pointer flex-col rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
+                className="group relative flex h-full cursor-pointer flex-col rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
               >
-                <div className="flex items-start gap-3">
+                {/* Actions Dropdown */}
+                {(user?.role === 'admin' || user?.id === r.uploaded_by) && (
+                  <div className="absolute right-3 top-3 z-10" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                          <MoreVertical className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                          onClick={async () => {
+                            if (confirm('Are you sure you want to delete this resource?')) {
+                              try {
+                                await api.delete(`/resources/${r.id}/`);
+                                toast.success('Resource deleted');
+                                qc.invalidateQueries({ queryKey: ['resources'] });
+                              } catch (err) {
+                                toast.error(err.response?.data?.error?.detail || 'Delete failed');
+                              }
+                            }
+                          }}
+                        >
+                          <Trash className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+
+                <div className="flex items-start gap-3 pr-8">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
                     <FileText className="h-5 w-5" aria-hidden />
                   </span>

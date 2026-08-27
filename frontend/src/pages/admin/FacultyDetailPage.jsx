@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
 import EntityDialog from "@/components/shared/EntityDialog";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -18,9 +19,11 @@ const toList = (d) => d?.results || d || [];
 
 export default function FacultyDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [addDept, setAddDept] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [modalError, setModalError] = useState("");
 
   const facultyQ = useQuery({
@@ -69,12 +72,11 @@ export default function FacultyDetailPage() {
     onSuccess: () => {
       toast.success("Faculty deleted");
       qc.invalidateQueries({ queryKey: ["faculties"] });
-      navigateBack();
+      // Safe navigation — always stays within the app
+      navigate("/admin/tenant", { replace: true });
     },
     onError: (e) => toast.error(errText(e, "Delete failed — it may still have departments")),
   });
-
-  const navigateBack = () => window.history.back();
 
   return (
     <AppShell
@@ -90,11 +92,7 @@ export default function FacultyDetailPage() {
             variant="outline"
             size="sm"
             className="border-red-500/40 text-red-700 hover:bg-red-500/10 dark:text-red-400"
-            onClick={() => {
-              if (window.confirm(`Delete ${faculty?.name}? Departments under it are removed too.`)) {
-                deleteFaculty.mutate();
-              }
-            }}
+            onClick={() => setConfirmDelete(true)}
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Delete
           </Button>
@@ -175,6 +173,18 @@ export default function FacultyDetailPage() {
         error={modalError}
         onClose={() => setAddDept(false)}
         onSubmit={(payload) => createDept.mutate(payload)}
+      />
+      <ConfirmDialog
+        open={confirmDelete}
+        title={`Delete ${faculty?.name || "this faculty"}?`}
+        description="All departments within this faculty will also be permanently removed. This action cannot be undone."
+        confirmLabel="Delete faculty"
+        destructive
+        onConfirm={() => {
+          setConfirmDelete(false);
+          deleteFaculty.mutate();
+        }}
+        onCancel={() => setConfirmDelete(false)}
       />
     </AppShell>
   );

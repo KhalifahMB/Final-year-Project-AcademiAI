@@ -4,10 +4,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
 import EntityDialog from "@/components/shared/EntityDialog";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import EmptyState from "@/components/shared/EmptyState";
 import SkeletonRows from "@/components/shared/SkeletonRows";
 import {
@@ -25,6 +25,8 @@ export default function CourseManagePage() {
   const [editOpen, setEditOpen] = useState(false);
   const [addOffering, setAddOffering] = useState(false);
   const [addEnrollment, setAddEnrollment] = useState(false);
+  const [confirmDeleteCourse, setConfirmDeleteCourse] = useState(false);
+  const [confirmRemoveEnrollment, setConfirmRemoveEnrollment] = useState(null); // enrollment object
   const [modalError, setModalError] = useState("");
 
   const courseQ = useQuery({
@@ -116,6 +118,7 @@ export default function CourseManagePage() {
     mutationFn: (enrollmentId) => api.delete(`/course-enrollments/${enrollmentId}/`),
     onSuccess: () => {
       toast.success("Enrollment removed");
+      setConfirmRemoveEnrollment(null);
       invalidate();
     },
     onError: () => toast.error("Could not remove enrollment"),
@@ -148,9 +151,7 @@ export default function CourseManagePage() {
             variant="outline"
             size="sm"
             className="border-red-500/40 text-red-700 hover:bg-red-500/10 dark:text-red-400"
-            onClick={() => {
-              if (window.confirm(`Delete ${course?.code}? Offerings and enrollments go with it.`)) deleteCourse.mutate();
-            }}
+            onClick={() => setConfirmDeleteCourse(true)}
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Delete
           </Button>
@@ -270,11 +271,7 @@ export default function CourseManagePage() {
                               variant="ghost"
                               size="sm"
                               className="text-red-600 hover:bg-red-500/10 hover:text-red-700"
-                              onClick={() => {
-                                if (window.confirm(`Remove ${e.student_email} from this course?`)) {
-                                  removeEnrollment.mutate(e.id);
-                                }
-                              }}
+                              onClick={() => setConfirmRemoveEnrollment(e)}
                             >
                               <Trash2 className="h-3.5 w-3.5" aria-hidden />
                             </Button>
@@ -369,6 +366,35 @@ export default function CourseManagePage() {
           if (!payload.status) delete payload.status;
           createEnrollment.mutate(payload);
         }}
+      />
+
+      {/* Delete course confirmation */}
+      <ConfirmDialog
+        open={confirmDeleteCourse}
+        title={`Delete ${course?.code || "this course"}?`}
+        description="All offerings and enrollments for this course will be permanently removed. This action cannot be undone."
+        confirmLabel="Delete course"
+        destructive
+        onConfirm={() => {
+          setConfirmDeleteCourse(false);
+          deleteCourse.mutate();
+        }}
+        onCancel={() => setConfirmDeleteCourse(false)}
+      />
+
+      {/* Remove enrollment confirmation */}
+      <ConfirmDialog
+        open={!!confirmRemoveEnrollment}
+        title="Remove enrollment?"
+        description={`Remove ${confirmRemoveEnrollment?.student_email || "this student"} from this course?`}
+        confirmLabel="Remove"
+        destructive
+        onConfirm={() => {
+          const id = confirmRemoveEnrollment?.id;
+          setConfirmRemoveEnrollment(null);
+          removeEnrollment.mutate(id);
+        }}
+        onCancel={() => setConfirmRemoveEnrollment(null)}
       />
     </AppShell>
   );

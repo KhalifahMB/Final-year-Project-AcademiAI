@@ -16,8 +16,8 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ChatMessage
-        fields = ("id", "session", "role", "content", "sources", "created_at")
-        read_only_fields = ("id", "role", "created_at")
+        fields = ("id", "session", "role", "content", "content_type", "sources", "created_at")
+        read_only_fields = ("id", "role", "content_type", "created_at")
 
 
 class ChatSessionSerializer(serializers.ModelSerializer):

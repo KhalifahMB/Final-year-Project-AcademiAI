@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import AuthLayout from '@/components/layout/AuthLayout';
@@ -58,7 +58,8 @@ export default function SignupPage() {
 
   // Programmes of the chosen institution — drives the academic profile and
   // auto-enrollment into departmental courses after verification.
-  const chosenSlug = form.watch('tenant_slug');
+  const chosenSlug = useWatch({ control: form.control, name: 'tenant_slug' });
+  const watchedRole = useWatch({ control: form.control, name: 'role' });
   const programmes = useQuery({
     queryKey: ['programme-directory', chosenSlug],
     queryFn: async () => {
@@ -245,7 +246,7 @@ export default function SignupPage() {
             />
           </div>
 
-          {form.watch('role') === 'student' && (
+          {watchedRole === 'student' && (
             <FormField
               control={form.control}
               name="programme"

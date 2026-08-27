@@ -69,6 +69,7 @@ class Resource(TenantScopedModel):
         db_index=True,
     )
     processing_error = models.TextField(blank=True)
+    has_extractable_text = models.BooleanField(default=True)
 
     class Meta:
         db_table = "resources"

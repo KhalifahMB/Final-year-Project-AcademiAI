@@ -64,13 +64,38 @@ export const authApi = {
 /** Dashboard counters — each returns the raw list (or []). */
 const toList = (res) => {
   const data = res.data;
-  console.log(data);
   return Array.isArray(data) ? data : data?.results || [];
 };
 
 export const dashApi = {
   courses: () => api.get('/courses/').then(toList),
-  resources: (config) => api.get('/resources/').then(toList),
+  resources: () => api.get('/resources/').then(toList),
   quizzes: () => api.get('/quizzes/').then(toList),
   notes: () => api.get('/notes/').then(toList),
+};
+
+export const notesApi = {
+  list: () => api.get('/notes/').then(toList),
+  create: (payload) => api.post('/notes/', payload),
+  update: (id, payload) => api.patch(`/notes/${id}/`, payload),
+  delete: (id) => api.delete(`/notes/${id}/`),
+  bulkDelete: (ids) => Promise.all(ids.map(id => api.delete(`/notes/${id}/`))),
+};
+
+export const platformApi = {
+  stats: () => api.get('/platform/stats/'),
+  tenantDetail: (id) => api.get(`/platform/tenants/${id}/`),
+  health: () => api.get('/platform/health/'),
+  auditLogs: (params) => api.get('/platform/audit-logs/', { params }),
+  tenants: {
+    list: (params) => api.get('/tenants/', { params }),
+    create: (payload) => api.post('/tenants/', payload),
+    update: (id, payload) => api.patch(`/tenants/${id}/`, payload),
+  },
+  announcements: {
+    list: () => api.get('/announcements/'),
+    create: (payload) => api.post('/announcements/', payload),
+    update: (id, payload) => api.patch(`/announcements/${id}/`, payload),
+    delete: (id) => api.delete(`/announcements/${id}/`),
+  },
 };

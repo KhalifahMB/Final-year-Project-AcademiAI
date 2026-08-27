@@ -215,29 +215,48 @@ class ResourceViewSet(TenantModelViewSet):
         # Capture identity before deletion — Django clears instance.pk
         # during delete.
         resource_id = str(instance.id)
-        # Object storage cleanup is best-effort; metadata removal must succeed.
-        if instance.storage_key:
-            try:
-                from apps.common.storage import delete_object
+        tenant = self.request.user.tenant
 
-                delete_object(instance.storage_key)
-            except Exception:
-                logger.exception(
-                    "Failed to delete stored object for resource=%s", resource_id
-                )
-        super().perform_destroy(instance)
+        # If anyone else has bookmarked this, keep it available for them
+        from apps.learning.models import Bookmark
+        has_other_bookmarks = Bookmark.objects.filter(
+            resource=instance
+        ).exclude(user=self.request.user).exists()
+
+        if has_other_bookmarks and instance.visibility_scope != Resource.Visibility.PRIVATE:
+            # Detach the owner and hide it from listings by making it private.
+            # Bookmarkers will still be able to access it because it's their bookmark,
+            # though they won't find it in general search.
+            instance.uploaded_by = None
+            instance.visibility_scope = Resource.Visibility.PRIVATE
+            instance.save(update_fields=["uploaded_by", "visibility_scope", "updated_at"])
+            action = "resource.detach"
+        else:
+            # Object storage cleanup is best-effort; metadata removal must succeed.
+            if instance.storage_key:
+                try:
+                    from apps.common.storage import delete_object
+
+                    delete_object(instance.storage_key)
+                except Exception:
+                    logger.exception(
+                        "Failed to delete stored object for resource=%s", resource_id
+                    )
+            super().perform_destroy(instance)
+            action = "resource.delete"
+
         try:
             from apps.audit.services import log_action
 
             log_action(
-                tenant=self.request.user.tenant,
+                tenant=tenant,
                 actor=self.request.user,
-                action="resource.delete",
+                action=action,
                 entity_type="resource",
                 entity_id=resource_id,
             )
         except Exception:
-            logger.exception("Failed to audit resource.delete")
+            logger.exception("Failed to audit %s", action)
 
     @action(detail=True, methods=["post"], throttle_classes=[UploadRateThrottle])
     def request_upload_url(self, request, pk=None):
@@ -423,10 +442,20 @@ class ResourceViewSet(TenantModelViewSet):
         """
         resource = self.get_object()
 
-        # Visibility authorization — same rules the RAG pipeline applies, so
-        # a user cannot summarize a private material they cannot read.
-        from apps.knowledge.retrieval import _authorized_resource_ids
+        if not resource.has_extractable_text:
+            return Response(
+                {"success": False, "error": {"detail": "This material has no extractable text and cannot be summarized. It may contain images or binary content."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        if resource.processing_status != Resource.ProcessingStatus.READY:
+            return Response(
+                {"success": False, "error": {"detail": "Material is still being processed."}},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Visibility authorization
+        from apps.knowledge.retrieval import _authorized_resource_ids
         if resource.id not in _authorized_resource_ids(request.user, None):
             return Response(
                 {"success": False, "error": {"detail": "You do not have access to this material."}},

@@ -4,9 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
 import EntityDialog from "@/components/shared/EntityDialog";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import EmptyState from "@/components/shared/EmptyState";
 import SkeletonRows from "@/components/shared/SkeletonRows";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ export default function DepartmentDetailPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [addCourse, setAddCourse] = useState(false);
   const [addProgramme, setAddProgramme] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [modalError, setModalError] = useState("");
 
   const deptQ = useQuery({
@@ -118,9 +119,7 @@ export default function DepartmentDetailPage() {
             variant="outline"
             size="sm"
             className="border-red-500/40 text-red-700 hover:bg-red-500/10 dark:text-red-400"
-            onClick={() => {
-              if (window.confirm(`Delete ${dept?.name}?`)) deleteDept.mutate();
-            }}
+            onClick={() => setConfirmDelete(true)}
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Delete
           </Button>
@@ -252,6 +251,18 @@ export default function DepartmentDetailPage() {
         error={modalError}
         onClose={() => setAddProgramme(false)}
         onSubmit={(payload) => createProgramme.mutate(payload)}
+      />
+      <ConfirmDialog
+        open={confirmDelete}
+        title={`Delete ${dept?.name || "this department"}?`}
+        description="All courses and programmes in this department will also be permanently removed. This action cannot be undone."
+        confirmLabel="Delete department"
+        destructive
+        onConfirm={() => {
+          setConfirmDelete(false);
+          deleteDept.mutate();
+        }}
+        onCancel={() => setConfirmDelete(false)}
       />
     </AppShell>
   );

@@ -23,22 +23,27 @@ class TenantSerializer(serializers.ModelSerializer):
 
 class PlatformTenantSerializer(TenantSerializer):
     """
-    Superuser-only representation: every field is manageable. Slug is
-    writable at creation (provisioning) but never updated — enforced in
-    TenantViewSet.perform_update.
+    Superuser-only representation: all fields manageable.
+
+    Slug is writable at provisioning time (POST) but stripped from
+    updates by TenantViewSet.perform_update — enforced there, not here,
+    so that the validator does not reject a missing slug on PATCH.
     """
 
     class Meta(TenantSerializer.Meta):
         fields = (
             "id", "name", "slug", "domain", "status", "plan",
             "storage_quota_bytes", "suspended_at",
-            "allowed_email_domains", "branding",
+            "allowed_email_domains",
             "created_at", "updated_at",
         )
         read_only_fields = (
-            "id", "suspended_at", "allowed_email_domains",
-            "branding", "created_at", "updated_at",
+            "id", "suspended_at",
+            "created_at", "updated_at",
         )
+        extra_kwargs = {
+            "slug": {"required": True},
+        }
 
 
 class TenantDirectorySerializer(serializers.ModelSerializer):

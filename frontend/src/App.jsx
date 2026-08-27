@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
-import { toast } from 'sonner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import LandingPage from '@/pages/LandingPage';
@@ -26,6 +25,12 @@ import CourseManagePage from '@/pages/admin/CourseManagePage';
 import AdminQuizzesPage from '@/pages/AdminQuizzesPage';
 import AdminDashboardPage from '@/pages/AdminDashboardPage';
 import PlatformConsolePage from '@/pages/PlatformConsolePage';
+import PlatformTenantsPage from '@/pages/platform/TenantsPage';
+import PlatformTenantDetailPage from '@/pages/platform/TenantDetailPage';
+import PlatformAnalyticsPage from '@/pages/platform/AnalyticsPage';
+import PlatformSystemHealthPage from '@/pages/platform/SystemHealthPage';
+import PlatformAuditLogPage from '@/pages/platform/AuditLogPage';
+import PlatformAnnouncementsPage from '@/pages/platform/AnnouncementsPage';
 import CourseDetailPage from '@/pages/CourseDetailPage';
 import MyProgrammePage from '@/pages/MyProgrammePage';
 import MyCoursesPage from '@/pages/MyCoursesPage';
@@ -39,7 +44,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function ProtectedRoute({ children, roles }) {
+function ProtectedRoute({ children, roles, requireSuperuser, blockSuperuser }) {
   const { user, loading } = useAuth();
   if (loading)
     return (
@@ -48,6 +53,10 @@ function ProtectedRoute({ children, roles }) {
       </div>
     );
   if (!user) return <Navigate to="/login" replace />;
+  if (requireSuperuser && !user.is_superuser)
+    return <Navigate to="/admin/dashboard" replace />;
+  if (blockSuperuser && user.is_superuser)
+    return <Navigate to="/platform" replace />;
   if (roles && !roles.includes(user.role))
     return <Navigate to="/dashboard" replace />;
   return children;
@@ -66,7 +75,7 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute blockSuperuser>
                 <DashboardPage />
               </ProtectedRoute>
             }
@@ -162,7 +171,7 @@ export default function App() {
           <Route
             path="/admin/dashboard"
             element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['admin']} blockSuperuser>
                 <AdminDashboardPage />
               </ProtectedRoute>
             }
@@ -170,8 +179,56 @@ export default function App() {
           <Route
             path="/platform"
             element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['admin']} requireSuperuser>
                 <PlatformConsolePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/platform/tenants"
+            element={
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformTenantsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/platform/tenants/:id"
+            element={
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformTenantDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/platform/analytics"
+            element={
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformAnalyticsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/platform/health"
+            element={
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformSystemHealthPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/platform/audit"
+            element={
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformAuditLogPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/platform/announcements"
+            element={
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformAnnouncementsPage />
               </ProtectedRoute>
             }
           />
@@ -214,7 +271,7 @@ export default function App() {
           <Route
             path="/admin/users"
             element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['admin']} blockSuperuser>
                 <AdminUsersPage />
               </ProtectedRoute>
             }
@@ -222,7 +279,7 @@ export default function App() {
           <Route
             path="/admin/audit"
             element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['admin']} blockSuperuser>
                 <AdminAuditPage />
               </ProtectedRoute>
             }
@@ -230,7 +287,7 @@ export default function App() {
           <Route
             path="/admin/tenant"
             element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['admin']} blockSuperuser>
                 <TenantStructurePage />
               </ProtectedRoute>
             }
@@ -238,7 +295,7 @@ export default function App() {
           <Route
             path="/admin/faculties/:id"
             element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['admin']} blockSuperuser>
                 <FacultyDetailPage />
               </ProtectedRoute>
             }
@@ -246,7 +303,7 @@ export default function App() {
           <Route
             path="/admin/departments/:id"
             element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['admin']} blockSuperuser>
                 <DepartmentDetailPage />
               </ProtectedRoute>
             }
@@ -254,7 +311,7 @@ export default function App() {
           <Route
             path="/admin/courses/:id"
             element={
-              <ProtectedRoute roles={['admin']}>
+              <ProtectedRoute roles={['admin']} blockSuperuser>
                 <CourseManagePage />
               </ProtectedRoute>
             }
