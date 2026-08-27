@@ -1,24 +1,27 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
+
 from .views import TenantViewSet, TenantDirectoryView
+from .request_views import (
+    TenantRequestCreateView, TenantRequestListView, TenantRequestReviewView,
+)
 from .stats import PlatformStatsView, PlatformTenantDetailView, PlatformAuditLogView
+from apps.common.dashboard import StudentDashboardView, AdminDashboardView
 
 router = DefaultRouter()
 router.register("tenants", TenantViewSet, basename="tenant")
 
 urlpatterns = [
-    # Declared before the router so "directory" is not treated as a tenant id.
     path("tenants/directory/", TenantDirectoryView.as_view(), name="tenant-directory"),
-    # Superuser-only aggregate stats for the platform console.
+    # Self-serve institution request flow
+    path("tenant-requests/", TenantRequestCreateView.as_view(), name="tenant-request-create"),
+    path("platform/tenant-requests/", TenantRequestListView.as_view(), name="platform-tenant-requests"),
+    path("platform/tenant-requests/<uuid:pk>/review/", TenantRequestReviewView.as_view(), name="platform-tenant-request-review"),
+    # Aggregate dashboards (one call per role replaces 4-15 list requests)
+    path("dashboard/student/", StudentDashboardView.as_view(), name="dashboard-student"),
+    path("dashboard/admin/", AdminDashboardView.as_view(), name="dashboard-admin"),
+    # Superuser-only platform aggregates
     path("platform/stats/", PlatformStatsView.as_view(), name="platform-stats"),
-    path(
-        "platform/tenants/<uuid:tenant_id>/",
-        PlatformTenantDetailView.as_view(),
-        name="platform-tenant-detail",
-    ),
-    path(
-        "platform/audit-logs/",
-        PlatformAuditLogView.as_view(),
-        name="platform-audit-logs",
-    ),
+    path("platform/tenants/<uuid:tenant_id>/", PlatformTenantDetailView.as_view(), name="platform-tenant-detail"),
+    path("platform/audit-logs/", PlatformAuditLogView.as_view(), name="platform-audit-logs"),
 ] + router.urls

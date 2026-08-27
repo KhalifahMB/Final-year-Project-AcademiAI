@@ -31,6 +31,8 @@ import PlatformAnalyticsPage from '@/pages/platform/AnalyticsPage';
 import PlatformSystemHealthPage from '@/pages/platform/SystemHealthPage';
 import PlatformAuditLogPage from '@/pages/platform/AuditLogPage';
 import PlatformAnnouncementsPage from '@/pages/platform/AnnouncementsPage';
+import PlatformRequestsPage from '@/pages/platform/RequestsPage';
+import RequestInstitutionPage from '@/pages/RequestInstitutionPage';
 import CourseDetailPage from '@/pages/CourseDetailPage';
 import MyProgrammePage from '@/pages/MyProgrammePage';
 import MyCoursesPage from '@/pages/MyCoursesPage';
@@ -200,6 +202,15 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/platform/requests"
+            element={
+              <ProtectedRoute roles={['admin']} requireSuperuser>
+                <PlatformRequestsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/request-institution" element={<RequestInstitutionPage />} />
           <Route
             path="/platform/analytics"
             element={

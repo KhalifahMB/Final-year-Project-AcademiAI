@@ -151,8 +151,11 @@ function InstitutionDirectory() {
               {q ? `No institutions match “${q}”` : "No institutions yet"}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Universities are onboarded by the platform team — yours could be next.
+              Universities are onboarded by the platform team &mdash; yours could be next.
             </p>
+            <Link to="/request-institution" className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+              Don&apos;t see your university? Request it <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2">

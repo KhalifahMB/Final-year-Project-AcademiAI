@@ -16,6 +16,7 @@ import {
   ClipboardPlus,
   FileText,
   GraduationCap,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -55,6 +56,7 @@ const SUPERUSER_SECTIONS = [
     label: "Management",
     items: [
       { to: "/platform/tenants", label: "Tenants", icon: Building2 },
+      { to: "/platform/requests", label: "Sign-up Requests", icon: Inbox, badge: "new" },
       { to: "/platform/announcements", label: "Announcements", icon: Megaphone },
     ],
   },
