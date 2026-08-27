@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import LandingPage from '@/pages/LandingPage';
 import LoginPage from '@/pages/LoginPage';
@@ -40,12 +39,6 @@ import AssignedCoursesPage from '@/pages/AssignedCoursesPage';
 import UploadResourcePage from '@/pages/UploadResourcePage';
 import QuizTakePage from '@/pages/QuizTakePage';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 30_000 },
-  },
-});
-
 function ProtectedRoute({ children, roles, requireSuperuser, blockSuperuser }) {
   const { user, loading } = useAuth();
   if (loading)
@@ -66,7 +59,7 @@ function ProtectedRoute({ children, roles, requireSuperuser, blockSuperuser }) {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <>
       <Toaster richColors position="top-right" />
       <BrowserRouter>
         <Routes>
@@ -331,6 +324,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </QueryClientProvider>
+    </>
   );
 }
