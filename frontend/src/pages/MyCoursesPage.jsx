@@ -1,63 +1,76 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import api from "@/services/api";
-import AppShell from "@/components/layout/AppShell";
-import StatusBadge from "@/components/shared/StatusBadge";
-import EmptyState from "@/components/shared/EmptyState";
-import SkeletonRows from "@/components/shared/SkeletonRows";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { GraduationCap } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import api from '@/services/api';
+import AppShell from '@/components/layout/AppShell';
+import StatusBadge from '@/components/shared/StatusBadge';
+import EmptyState from '@/components/shared/EmptyState';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { BookOpen, ChevronRight, GraduationCap } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function MyCoursesPage() {
   const { user } = useAuth();
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["my-enrollments"],
+    queryKey: ['my-enrollments'],
     queryFn: async () => {
-      const { data } = await api.get("/course-enrollments/");
+      const { data } = await api.get('/course-enrollments/');
       return data.results || data;
     },
   });
 
   const enrollments = data || [];
 
+  const counts = useMemo(() => {
+    const active = enrollments.filter((e) => e.status === 'enrolled' || e.status === 'active').length;
+    const completed = enrollments.filter((e) => e.status === 'completed').length;
+    return { total: enrollments.length, active, completed };
+  }, [enrollments]);
+
   return (
     <AppShell
       title="My courses"
       description="Your enrollments for the current academic sessions."
     >
+      {!isLoading && enrollments.length > 0 && (
+        <div className="mb-4 grid grid-cols-3 gap-2.5">
+          <StatTile label="Enrolled" value={counts.total} icon={BookOpen} />
+          <StatTile label="Active" value={counts.active} icon={GraduationCap} tone="emerald" />
+          <StatTile label="Completed" value={counts.completed} tone="violet" />
+        </div>
+      )}
+
       {error ? (
-        <Alert variant="destructive" className="mb-5">
-          <AlertDescription>
-            <span className="font-medium">Failed to load enrollments.</span>{" "}
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription className="text-xs">
+            <span className="font-medium">Failed to load enrollments.</span>{' '}
             {String(error?.response?.data?.detail || error.message || error)}
           </AlertDescription>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-2"
-            onClick={() => refetch()}
-          >
+          <Button type="button" variant="outline" size="sm" className="mt-2 h-7 text-xs" onClick={() => refetch()}>
             Retry
           </Button>
         </Alert>
       ) : null}
 
       {isLoading ? (
-        <SkeletonRows rows={4} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton h-[84px] rounded-xl" style={{ animationDelay: `${i * 70}ms` }} />
+          ))}
+        </div>
       ) : enrollments.length === 0 ? (
         <EmptyState
           icon={GraduationCap}
           title="No enrollments yet"
           description={
-            user?.role === "student"
-              ? "Enrollments are created automatically from your programme. If you just signed up, an admin can also enroll you manually."
+            user?.role === 'student'
+              ? 'Enrollments are created automatically from your programme. If you just signed up, an admin can also enroll you manually.'
               : "When your institution enrolls you in course offerings, they'll show up here."
           }
-          actionTo={user?.role === "student" ? "/my-programme" : undefined}
-          action={user?.role === "student" ? "View my programme" : undefined}
+          actionTo={user?.role === 'student' ? '/my-programme' : undefined}
+          action={user?.role === 'student' ? 'View my programme' : undefined}
         />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
@@ -65,32 +78,47 @@ export default function MyCoursesPage() {
             <li key={e.id}>
               <Link
                 to={`/courses/${e.course_offering}`}
-                className="group flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
+                className="group flex items-center gap-3 rounded-xl border bg-card p-3.5 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_4px_16px_-8px_color-mix(in_oklab,var(--primary)_35%,transparent)]"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                  <GraduationCap className="h-5 w-5" aria-hidden />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/10 to-violet-500/10 text-primary transition-colors group-hover:from-indigo-500 group-hover:to-violet-600 group-hover:text-white">
+                  <BookOpen className="h-[18px] w-[18px]" aria-hidden />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
                     {e.offering_course_code
-                      ? `${e.offering_course_code} — ${e.offering_course_title || ""}`
-                      : "Course offering"}
+                      ? `${e.offering_course_code} — ${e.offering_course_title || ''}`
+                      : 'Course offering'}
                   </p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {[e.semester_name, e.session_name].filter(Boolean).join(" · ") || "—"}
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    {[e.semester_name, e.session_name].filter(Boolean).join(' · ') || '—'}
                   </p>
                   <div className="mt-1.5">
                     <StatusBadge status={e.status} />
                   </div>
                 </div>
-                <span className="text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100" aria-hidden>
-                  View →
-                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" aria-hidden />
               </Link>
             </li>
           ))}
         </ul>
       )}
     </AppShell>
+  );
+}
+
+function StatTile({ label, value, icon: Icon, tone = 'indigo' }) {
+  const tones = {
+    indigo: 'text-primary bg-primary/10',
+    emerald: 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-400',
+    violet: 'text-violet-600 bg-violet-500/10 dark:text-violet-400',
+  };
+  return (
+    <div className="flex items-center gap-3 rounded-xl border bg-card/60 px-4 py-3">
+      {Icon && <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg', tones[tone])}><Icon className="h-4 w-4" aria-hidden /></span>}
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className="text-xl font-semibold tabular-nums tracking-tight">{value ?? 0}</p>
+      </div>
+    </div>
   );
 }

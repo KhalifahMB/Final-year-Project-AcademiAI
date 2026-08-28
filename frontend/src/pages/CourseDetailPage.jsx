@@ -1,38 +1,21 @@
-import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import api from "@/services/api";
-import AppShell from "@/components/layout/AppShell";
-import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useParams, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/services/api';
+import AppShell from '@/components/layout/AppShell';
+import StatusBadge from '@/components/shared/StatusBadge';
+import ResourceCard from '@/components/resources/ResourceCard';
+import EmptyState from '@/components/shared/EmptyState';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 import {
-  FileText,
-  FileIcon,
-  Video,
-  Music,
-  Image as ImageIcon,
-  Link as LinkIcon,
-  FileArchive,
-  GraduationCap,
-  ChevronLeft,
+  ArrowLeft,
+  BookOpen,
   CalendarDays,
   Clock,
-  BookOpen
-} from "lucide-react";
-import StatusBadge from "@/components/shared/StatusBadge";
-import SkeletonRows from "@/components/shared/SkeletonRows";
-
-function getFileIcon(type) {
-  const t = (type || "").toLowerCase();
-  if (t.includes("pdf")) return <FileText className="h-4 w-4" />;
-  if (t.includes("video") || t.includes("mp4")) return <Video className="h-4 w-4" />;
-  if (t.includes("audio") || t.includes("mp3")) return <Music className="h-4 w-4" />;
-  if (t.includes("image") || t.includes("png") || t.includes("jpg")) return <ImageIcon className="h-4 w-4" />;
-  if (t.includes("zip") || t.includes("rar")) return <FileArchive className="h-4 w-4" />;
-  if (t.includes("link") || t.includes("url")) return <LinkIcon className="h-4 w-4" />;
-  return <FileIcon className="h-4 w-4" />;
-}
+  FileText,
+  GraduationCap,
+} from 'lucide-react';
 
 export default function CourseDetailPage() {
   const { id } = useParams();
@@ -40,24 +23,23 @@ export default function CourseDetailPage() {
   const role = user?.role;
 
   const offering = useQuery({
-    queryKey: ["course-offering", id],
+    queryKey: ['course-offering', id],
     queryFn: async () => (await api.get(`/course-offerings/${id}/`)).data,
     enabled: !!id,
   });
 
   const course = useQuery({
-    queryKey: ["course", offering.data?.course],
+    queryKey: ['course', offering.data?.course],
     queryFn: async () => (await api.get(`/courses/${offering.data.course}/`)).data,
     enabled: !!offering.data?.course,
   });
 
   const resources = useQuery({
-    queryKey: ["resources", "offering", id],
+    queryKey: ['resources', 'offering', id],
     queryFn: async () => {
-      // Students/lecturers only see materials their academic scope allows.
       const params = { course_offering: id };
-      if (role === "student" || role === "lecturer") params.scope = "authorized";
-      const { data } = await api.get("/resources/", { params });
+      if (role === 'student' || role === 'lecturer') params.scope = 'authorized';
+      const { data } = await api.get('/resources/', { params });
       return data.results || data;
     },
     enabled: !!id,
@@ -67,156 +49,143 @@ export default function CourseDetailPage() {
     return (
       <AppShell title="Course details">
         <Alert variant="destructive" className="mb-4 mt-6">
-          <AlertDescription>Offering not found or unauthorized</AlertDescription>
+          <AlertDescription className="text-xs">Offering not found or unauthorized</AlertDescription>
         </Alert>
       </AppShell>
     );
   }
 
   const isLoading = offering.isLoading || course.isLoading;
+  const code = offering.data?.course_code || course.data?.code || '—';
+  const title = offering.data?.course_title || course.data?.title || 'Course Offering';
 
   return (
-    <AppShell title="Course details" description="Detailed information and resources for this course offering.">
+    <AppShell title={title} description="Detailed information and resources for this course offering.">
       <Link
         to="/my-courses"
-        className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring rounded-md transition-colors"
+        className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
-        <ChevronLeft className="h-4 w-4" />
+        <ArrowLeft className="h-3.5 w-3.5" />
         Back to my courses
       </Link>
 
       {isLoading ? (
-        <div className="space-y-8">
-          <SkeletonRows rows={3} />
-          <div className="grid gap-6 md:grid-cols-2">
-             <SkeletonRows rows={4} />
-             <SkeletonRows rows={4} />
+        <div className="space-y-4">
+          <div className="skeleton h-[140px] rounded-2xl" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="skeleton h-[160px] rounded-xl" />
+            <div className="skeleton h-[160px] rounded-xl" />
           </div>
-          <SkeletonRows rows={5} />
         </div>
       ) : (
-        <div className="space-y-8">
-          {/* Hero Header */}
-          <div className="relative overflow-hidden rounded-2xl bg-card border shadow-sm">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent pointer-events-none" aria-hidden />
-            <div className="relative p-6 sm:p-8">
-               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                  <div className="space-y-4 max-w-2xl">
-                     <div className="flex flex-wrap items-center gap-2.5">
-                        <span className="rounded-md bg-primary/15 px-2.5 py-1 font-mono text-xs font-semibold tracking-wide text-primary">
-                          {offering.data?.course_code || course.data?.code || "—"}
-                        </span>
-                        <StatusBadge status={offering.data?.status || "unknown"} />
-                     </div>
-                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-                        {offering.data?.course_title || course.data?.title || "Course Offering"}
-                     </h1>
-                     <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                        {offering.data?.session_name && (
-                           <div className="flex items-center gap-1.5">
-                              <CalendarDays className="h-4 w-4" />
-                              <span>{offering.data.session_name}</span>
-                           </div>
-                        )}
-                        {offering.data?.semester_name && (
-                           <div className="flex items-center gap-1.5">
-                              <Clock className="h-4 w-4" />
-                              <span>{offering.data.semester_name}</span>
-                           </div>
-                        )}
-                        {course.data?.credit_unit != null && (
-                            <div className="flex items-center gap-1.5">
-                              <BookOpen className="h-4 w-4" />
-                              <span>{course.data.credit_unit} Credits</span>
-                           </div>
-                        )}
-                     </div>
-                  </div>
-                  <div className="hidden sm:flex shrink-0 h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                     <GraduationCap className="h-8 w-8" />
-                  </div>
-               </div>
+        <div className="space-y-5">
+          {/* Hero */}
+          <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-indigo-50 via-card to-violet-50 p-6 shadow-sm dark:from-indigo-950/30 dark:via-card dark:to-violet-950/30 sm:p-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-3 max-w-2xl">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-md bg-primary/15 px-2 py-0.5 font-mono text-xs font-semibold tracking-wide text-primary">
+                    {code}
+                  </span>
+                  <StatusBadge status={offering.data?.status || 'unknown'} />
+                </div>
+                <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {offering.data?.session_name && (
+                    <span className="inline-flex items-center gap-1">
+                      <CalendarDays className="h-3 w-3" aria-hidden /> {offering.data.session_name}
+                    </span>
+                  )}
+                  {offering.data?.semester_name && (
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3 w-3" aria-hidden /> {offering.data.semester_name}
+                    </span>
+                  )}
+                  {course.data?.credit_unit != null && (
+                    <span className="inline-flex items-center gap-1">
+                      <BookOpen className="h-3 w-3" aria-hidden /> {course.data.credit_unit} credits
+                    </span>
+                  )}
+                </div>
+              </div>
+              <span className="hidden h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm sm:flex">
+                <GraduationCap className="h-8 w-8" aria-hidden />
+              </span>
             </div>
           </div>
 
-          {/* Info Grid */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Course Description</CardTitle>
-              </CardHeader>
-              <CardContent>
-                 <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
-                    {course.data?.description || "No description provided for this course."}
-                 </p>
-              </CardContent>
-            </Card>
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">Offering Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                 <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">Status</span>
-                    <span className="font-medium capitalize">{offering.data?.status || "—"}</span>
-                 </div>
-                 <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">Academic Session</span>
-                    <span className="font-medium">{offering.data?.session_name || "—"}</span>
-                 </div>
-                 <div className="flex justify-between pb-1">
-                    <span className="text-muted-foreground">Semester</span>
-                    <span className="font-medium">{offering.data?.semester_name || "—"}</span>
-                 </div>
-              </CardContent>
-            </Card>
+          {/* Info grid */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <InfoCard title="Course description" icon={BookOpen}>
+              <p className="text-[13px] leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                {course.data?.description || 'No description provided for this course.'}
+              </p>
+            </InfoCard>
+            <InfoCard title="Offering details" icon={CalendarDays}>
+              <dl className="divide-y text-[13px]">
+                <DetailRow label="Status" value={<span className="capitalize">{offering.data?.status || '—'}</span>} />
+                <DetailRow label="Session" value={offering.data?.session_name || '—'} />
+                <DetailRow label="Semester" value={offering.data?.semester_name || '—'} />
+                <DetailRow label="Code" value={<code className="font-mono text-xs">{code}</code>} />
+              </dl>
+            </InfoCard>
           </div>
 
           {/* Resources */}
           <div>
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold tracking-tight">Course Resources</h2>
-              <Badge variant="secondary" className="font-mono">
-                 {(resources.data || []).length} items
-              </Badge>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold tracking-tight">Course materials</h2>
+              <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                {(resources.data || []).length} item{(resources.data || []).length === 1 ? '' : 's'}
+              </span>
             </div>
-            
             {resources.isLoading ? (
-               <SkeletonRows rows={3} />
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="skeleton h-[140px] rounded-xl" style={{ animationDelay: `${i * 70}ms` }} />
+                ))}
+              </div>
             ) : (resources.data || []).length === 0 ? (
-               <div className="rounded-xl border border-dashed bg-card/50 p-8 text-center">
-                  <FileText className="mx-auto h-8 w-8 text-muted-foreground/50 mb-3" />
-                  <p className="text-sm font-medium">No resources available</p>
-                  <p className="text-xs text-muted-foreground mt-1">Materials added to this offering will appear here.</p>
-               </div>
+              <EmptyState
+                icon={FileText}
+                title="No materials yet"
+                description="Lecture notes, slides, and readings for this offering will appear here."
+              />
             ) : (
-               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                 {(resources.data || []).map((r) => (
-                    <article key={r.id} className="group flex flex-col rounded-xl border bg-card p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
-                       <div className="mb-3 flex items-start justify-between gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                             {getFileIcon(r.file_type || r.title)}
-                          </div>
-                          <Badge variant="outline" className="capitalize text-[10px] shrink-0">
-                             {r.visibility_scope}
-                          </Badge>
-                       </div>
-                       <h3 className="text-sm font-semibold leading-snug line-clamp-2 mb-1">{r.title}</h3>
-                       {r.description && (
-                          <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{r.description}</p>
-                       )}
-                       <div className="mt-auto pt-3 flex items-center justify-between border-t border-border/50">
-                          <span className="text-[11px] text-muted-foreground">
-                             {r.processing_status === 'completed' ? 'Processed' : r.processing_status}
-                          </span>
-                       </div>
-                    </article>
-                 ))}
-               </div>
+              <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {(resources.data || []).map((r) => (
+                  <li key={r.id}>
+                    <ResourceCard resource={r} />
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>
       )}
     </AppShell>
+  );
+}
+
+function InfoCard({ title, icon: Icon, children }) {
+  return (
+    <div className="rounded-xl border bg-card p-4 shadow-sm">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <Icon className="h-3.5 w-3.5" aria-hidden />
+        </span>
+        <h3 className="text-xs font-semibold uppercase tracking-wider">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={cn('font-medium')}>{value}</dd>
+    </div>
   );
 }
