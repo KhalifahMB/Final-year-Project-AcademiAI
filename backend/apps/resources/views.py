@@ -1,5 +1,7 @@
 import logging
 
+from django.db import models
+from django.db.models import OuterRef, Subquery
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -9,8 +11,12 @@ from rest_framework.response import Response
 from apps.common.throttling import AiRateThrottle, UploadRateThrottle
 from apps.common.viewsets import TenantModelViewSet
 from apps.resources.permissions import IsOwnerOrAdminForWrite
-from .models import Resource, ResourceVersion
-from .serializers import ResourceSerializer, ResourceVersionSerializer
+from .models import Resource, ResourceVersion, ResourceSummary
+from .serializers import (
+    ResourceSerializer,
+    ResourceVersionSerializer,
+    ResourceSummarySerializer,
+)
 from apps.common.storage import (
     get_s3_client,
     generate_presigned_upload_post,
@@ -170,9 +176,22 @@ class ResourceViewSet(TenantModelViewSet):
     tenant; platform superusers likewise. `?scope=authorized` is accepted
     for backwards compatibility and is now the default behaviour.
     """
+    # r = ResourceSummary.objects.select_related("created_by").order_by("-created_at")
 
     queryset = Resource.objects.select_related(
         "uploaded_by", "course_offering", "programme", "department", "faculty"
+    ).prefetch_related(
+        models.Prefetch(
+            "summaries",
+            queryset=ResourceSummary.objects.filter(
+                id=Subquery(
+                    ResourceSummary.objects.filter(
+                        resource=OuterRef("resource_id")
+                    ).order_by("-created_at").values("id")[:1]
+                )
+            ).select_related("created_by"),
+            to_attr="prefetched_latest_summary",
+        )
     )
     serializer_class = ResourceSerializer
     search_fields = ["title", "description"]
@@ -470,6 +489,54 @@ class ResourceViewSet(TenantModelViewSet):
 
         claim_job(task.id, request.user.id)
         return Response({"job_id": task.id, "status": "pending"}, status=status.HTTP_202_ACCEPTED)
+
+    @extend_schema(tags=["Summaries"], responses=ResourceSummarySerializer(many=True))
+    @action(detail=True, methods=["get"])
+    def summaries(self, request, pk=None):
+        """List saved AI summaries for this resource (most recent first).
+
+        Any user authorized to view the resource can read its summaries.
+        """
+        resource = self.get_object()
+        qs = (
+            ResourceSummary.objects.filter(tenant=request.user.tenant, resource=resource)
+            .select_related("created_by")
+            .order_by("-created_at")
+        )
+        page = self.paginate_queryset(qs)
+        ser = ResourceSummarySerializer(page if page is not None else qs, many=True)
+        if page is not None:
+            return self.get_paginated_response(ser.data)
+        return Response(ser.data)
+
+    @extend_schema(tags=["Summaries"])
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path="summaries/(?P<summary_id>[^/.]+)",
+    )
+    def delete_summary(self, request, pk=None, summary_id=None):
+        """Delete a saved summary. Only the creator or an admin can delete."""
+        resource = self.get_object()
+        summary = ResourceSummary.objects.filter(
+            tenant=request.user.tenant, resource=resource, id=summary_id
+        ).first()
+        if summary is None:
+            return Response(
+                {"success": False, "error": {"detail": "Summary not found."}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        is_creator = summary.created_by_id == request.user.id
+        is_admin = getattr(request.user, "is_superuser", False) or getattr(
+            request.user, "role", None
+        ) == "admin"
+        if not (is_creator or is_admin):
+            return Response(
+                {"success": False, "error": {"detail": "You cannot delete this summary."}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        summary.delete()
+        return Response({"success": True}, status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema(tags=["Resource Versions"])

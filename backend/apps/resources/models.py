@@ -143,3 +143,39 @@ class ResourcePermission(TenantScopedModel):
 
     class Meta:
         db_table = "resource_permissions"
+
+
+class ResourceSummary(TenantScopedModel):
+    """Persisted AI summary for a resource version.
+
+    Every time a user clicks "Summarize with AI" we store the result here so
+    the same (or other authorized) users can revisit past summaries without
+    re-calling Gemini. Users can regenerate; we keep history ordered by
+    recency.
+    """
+
+    resource = models.ForeignKey(
+        Resource, on_delete=models.CASCADE, related_name="summaries"
+    )
+    version_number = models.PositiveIntegerField(default=1)
+    created_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resource_summaries",
+    )
+    summary = models.TextField()
+    key_points = models.JSONField(default=list, blank=True)
+    word_count = models.PositiveIntegerField(default=0)
+    model_name = models.CharField(max_length=128, blank=True)
+
+    class Meta:
+        db_table = "resource_summaries"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["tenant", "resource", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"Summary of {self.resource_id} @ {self.created_at}"

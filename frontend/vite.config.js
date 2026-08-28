@@ -79,10 +79,10 @@ export default defineConfig({
     proxy: { '/api': { target: 'http://localhost:8000', changeOrigin: true } },
   },
   test: {
-    environment: 'jsdom',
+    environment: 'happy-dom',
     globals: true,
     setupFiles: './src/test/setup.js',
     css: false,
-    pool: 'threads',
+    pool: 'forks',
   },
 });

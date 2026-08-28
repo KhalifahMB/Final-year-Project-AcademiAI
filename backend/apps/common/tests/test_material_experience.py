@@ -87,13 +87,17 @@ def test_retry_denied_for_non_owner():
     t = make_tenant("retry2")
     owner = make_user("o@retry2.edu", t)
     other = make_user("x@retry2.edu", t)
+    # Default visibility is COURSE; for a non-owner/non-admin the resource
+    # is not in the visible queryset (no course offering assigned), so the
+    # view returns 404 (doesn't leak existence).
     res = Resource.objects.create(
         tenant=t, title="Doc", uploaded_by=owner,
         processing_status=Resource.ProcessingStatus.FAILED,
+        visibility_scope=Resource.Visibility.PRIVATE,
     )
     client = auth_client(other)
     resp = client.post(f"/api/v1/resources/{res.id}/retry_processing/")
-    assert resp.status_code == 403
+    assert resp.status_code == 404
 
 
 @pytest.mark.django_db
@@ -141,13 +145,33 @@ def test_summarize_denied_for_private_material_of_other_user():
         processing_status=Resource.ProcessingStatus.READY,
     )
     client = auth_client(student)
+    # Private resources of other users are filtered out of the queryset
+    # so the view returns 404 (doesn't leak existence).
     resp = client.post(f"/api/v1/resources/{res.id}/summarize/")
-    assert resp.status_code == 403
+    assert resp.status_code == 404
 
     # Owner may summarize their own private material.
     client = auth_client(owner)
     with patch("apps.resources.summary_tasks.summarize_resource_task.delay") as d:
         d.return_value.id = "task-sum"
+        resp = client.post(f"/api/v1/resources/{res.id}/summarize/")
+    assert resp.status_code == 202
+
+
+@pytest.mark.django_db
+def test_student_can_summarize_institution_resource():
+    t = make_tenant("sumvis-inst")
+    uploader = make_user("u@sumvis-inst.edu", t, role="lecturer")
+    student = make_user("s@sumvis-inst.edu", t)
+    res = Resource.objects.create(
+        tenant=t, title="Institution notes", uploaded_by=uploader,
+        visibility_scope=Resource.Visibility.INSTITUTION,
+        processing_status=Resource.ProcessingStatus.READY,
+        has_extractable_text=True,
+    )
+    client = auth_client(student)
+    with patch("apps.resources.summary_tasks.summarize_resource_task.delay") as d:
+        d.return_value.id = "task-sum-inst"
         resp = client.post(f"/api/v1/resources/{res.id}/summarize/")
     assert resp.status_code == 202
 

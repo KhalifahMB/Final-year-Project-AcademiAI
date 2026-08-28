@@ -5,6 +5,7 @@ from .views import (
     UserAdminViewSet,
     SignupView,
     VerifyEmailView,
+    ResendVerificationView,
     LoginView,
     LogoutView,
     MeView,
@@ -21,6 +22,7 @@ router.register("users", UserAdminViewSet, basename="user")
 urlpatterns = [
     path("signup/", SignupView.as_view(), name="auth-signup"),
     path("verify-email/", VerifyEmailView.as_view(), name="auth-verify-email"),
+    path("resend-verification/", ResendVerificationView.as_view(), name="auth-resend-verification"),
     path("login/", LoginView.as_view(), name="auth-login"),
     path("token/refresh/", TaggedTokenRefreshView.as_view(), name="auth-token-refresh"),
     path("logout/", LogoutView.as_view(), name="auth-logout"),

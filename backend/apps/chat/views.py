@@ -190,6 +190,31 @@ class ChatSendMessageView(APIView):
             chunks = attached_chunks[:24]
 
         answer, source_meta = generate_grounded_answer(content, chunks, user.role)
+
+        # Enrich source_meta with resource id/title/version for clickable chips.
+        if source_meta:
+            from apps.resources.models import ResourceChunk
+            chunk_ids = [str(s.get("chunk_id")) for s in source_meta if s.get("chunk_id")]
+            if chunk_ids:
+                metas = {
+                    str(m["id"]): {
+                        "resource_id": str(m["resource_version__resource_id"]) if m["resource_version__resource_id"] else None,
+                        "resource_title": m["resource_version__resource__title"],
+                        "version_number": m["resource_version__version_number"],
+                    }
+                    for m in ResourceChunk.objects.filter(
+                        id__in=chunk_ids, tenant_id=user.tenant_id,
+                    ).values(
+                        "id",
+                        "resource_version__version_number",
+                        "resource_version__resource_id",
+                        "resource_version__resource__title",
+                    )
+                }
+                for s in source_meta:
+                    cid = str(s.get("chunk_id"))
+                    if cid in metas:
+                        s.update(metas[cid])
         assistant_msg = services.append_assistant_message(session, answer, source_meta)
 
         return Response(
@@ -486,15 +511,35 @@ class ChatStreamMessageView(APIView):
                     answer_parts.append(w + " ")
                     import time; time.sleep(0.02)
                 answer = stub
-                sources_meta = [
-                    {
-                        "chunk_id": str(c.get("id")),
+                # Enrich dev-stub sources with resource metadata too so the
+                # UI renders clickable chips (mirrors the non-stub path).
+                from apps.resources.models import ResourceChunk as _RC
+                _chunk_ids = [str(c.get("id")) for c in chunks if c.get("id")]
+                _chunk_meta = {}
+                if _chunk_ids:
+                    for m in _RC.objects.filter(
+                        id__in=_chunk_ids, tenant_id=user.tenant_id,
+                    ).values(
+                        "id",
+                        "resource_version__version_number",
+                        "resource_version__resource_id",
+                        "resource_version__resource__title",
+                    ):
+                        _chunk_meta[str(m["id"])] = {
+                            "resource_id": str(m["resource_version__resource_id"]) if m["resource_version__resource_id"] else None,
+                            "resource_title": m["resource_version__resource__title"],
+                            "version_number": m["resource_version__version_number"],
+                        }
+                sources_meta = []
+                for i, c in enumerate(chunks):
+                    cid = str(c.get("id"))
+                    sources_meta.append({
+                        "chunk_id": cid,
                         "rank": i + 1,
                         "similarity_score": c.get("score"),
                         "retrieval_method": c.get("method", "hybrid"),
-                    }
-                    for i, c in enumerate(chunks)
-                ]
+                        **(_chunk_meta.get(cid, {})),
+                    })
             else:
                 # Build context + prompt the same way generate_grounded_answer does
                 context_parts = []
@@ -529,15 +574,42 @@ class ChatStreamMessageView(APIView):
                     answer_parts = [err]
 
                 answer = "".join(answer_parts)
-                sources_meta = [
-                    {
-                        "chunk_id": str(c.get("id")),
+                # Resolve full citation metadata (resource id/title/version) so
+                # the UI can render clickable source chips. We bulk-fetch the
+                # chunks with their resource_version->resource chain to avoid
+                # N+1 queries during streaming finalization.
+                chunk_ids = [str(c.get("id")) for c in chunks if c.get("id")]
+                chunk_meta = {}
+                if chunk_ids:
+                    from apps.resources.models import ResourceChunk
+                    metas = list(
+                        ResourceChunk.objects.filter(
+                            id__in=chunk_ids, tenant_id=user.tenant_id,
+                        ).values(
+                            "id",
+                            "resource_version__version_number",
+                            "resource_version__resource_id",
+                            "resource_version__resource__title",
+                        )
+                    )
+                    for m in metas:
+                        chunk_meta[str(m["id"])] = {
+                            "chunk_id": str(m["id"]),
+                            "resource_id": str(m["resource_version__resource_id"]) if m["resource_version__resource_id"] else None,
+                            "resource_title": m["resource_version__resource__title"],
+                            "version_number": m["resource_version__version_number"],
+                        }
+                sources_meta = []
+                for i, c in enumerate(chunks):
+                    cid = str(c.get("id"))
+                    base = chunk_meta.get(cid, {})
+                    sources_meta.append({
+                        "chunk_id": cid,
                         "rank": i + 1,
                         "similarity_score": c.get("score"),
                         "retrieval_method": c.get("method", "hybrid"),
-                    }
-                    for i, c in enumerate(chunks)
-                ]
+                        **base,
+                    })
 
             # IMPORTANT: this generator runs AFTER the middleware's atomic
             # block has exited (StreamingHttpResponse returns to the middleware

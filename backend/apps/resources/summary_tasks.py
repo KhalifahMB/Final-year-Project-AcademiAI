@@ -5,10 +5,7 @@ the requesting user's tenant (RLS scope) before any content is summarized.
 
 IMPORTANT: Celery workers (including solo-pool on Windows) run tasks OUTSIDE
 the request middleware's tenant transaction, so we wrap ALL work — chunk
-reads AND the Gemini call + result — inside tenant_scope(). Although
-generate_summary() itself does no DB work, we materialize the queryset
-inside the scope (via list()) and keep the scope open around the Gemini
-call to avoid any connection-reuse edge cases with RLS config.
+reads AND the Gemini call + result persistence — inside tenant_scope().
 """
 import logging
 
@@ -27,7 +24,7 @@ logger = logging.getLogger(__name__)
 def summarize_resource_task(self, resource_id: str, tenant_id: str, user_id: str):
     from apps.common.ai import generate_summary
     from apps.common.db import tenant_scope
-    from apps.resources.models import Resource, ResourceChunk
+    from apps.resources.models import Resource, ResourceChunk, ResourceSummary
 
     with tenant_scope(tenant_id):
         resource = Resource.objects.filter(id=resource_id).first()
@@ -48,23 +45,46 @@ def summarize_resource_task(self, resource_id: str, tenant_id: str, user_id: str
         if not text.strip():
             return {"status": "failed", "error": "no content"}
 
-        # Generate summary within the same tenant scope. The Gemini call
-        # itself doesn't touch the DB, but keeping the scope open prevents
-        # any connection-pool edge case where another bit of middleware or a
-        # signal might re-use the connection without tenant context.
-        summary = generate_summary(text)
-        if not summary:
+        result = generate_summary(text)
+    
+        summary_text = (result or {}).get("summary", "").strip()
+        key_points = (result or {}).get("key_points", []) or []
+        if not summary_text:
             return {"status": "failed", "error": "empty summary from AI"}
 
+        # Persist the summary so it's available across sessions.
+        try:
+            from apps.accounts.models import User
+
+            user = User.objects.filter(id=user_id).first()
+            obj = ResourceSummary.objects.create(
+                tenant_id=tenant_id,
+                resource=resource,
+                created_by=user,
+                version_number=(resource.versions.order_by("-version_number")
+                                .values_list("version_number", flat=True).first() or 1),
+                summary=summary_text,
+                key_points=key_points,
+                word_count=len(summary_text.split()),
+                model_name=getattr(self, "model", None) or "",
+            )
+            summary_id = str(obj.id)
+        except Exception:
+            logger.exception("Failed to persist summary resource=%s", resource_id)
+            summary_id = None
+
         logger.info(
-            "Summary complete resource=%s user=%s length=%d",
+            "Summary complete resource=%s user=%s length=%d saved=%s",
             resource_id,
             user_id,
-            len(summary),
+            len(summary_text),
+            bool(summary_id),
         )
         return {
             "status": "completed",
+            "summary_id": summary_id,
             "resource_id": resource_id,
             "resource_title": resource.title,
-            "summary": summary,
+            "summary": summary_text,
+            "key_points": key_points,
         }

@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import uuid
 
 from django.contrib.auth import authenticate
@@ -14,6 +14,7 @@ from .models import User
 from .serializers import (
     SignupSerializer,
     VerifyEmailSerializer,
+    ResendVerificationSerializer,
     LoginSerializer,
     PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer,
@@ -138,8 +139,9 @@ class VerifyEmailView(APIView):
     )
     def post(self, request):
         ser = VerifyEmailSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
+
         try:
+            ser.is_valid(raise_exception=True)
             user = services.verify_email_code(
                 ser.validated_data["email"], ser.validated_data["code"]
             )
@@ -150,6 +152,37 @@ class VerifyEmailView(APIView):
             )
         return Response(
             {"success": True, "message": "Email verified.", "user": UserSerializer(user).data}
+        )
+
+
+class ResendVerificationView(APIView):
+    """POST /auth/resend-verification/  { "email": "..." }
+
+    Issues a fresh 6-digit verification code and emails it. Always returns
+    the same success response regardless of whether the email exists, to
+    prevent account enumeration. Rate-limited via the auth throttle and
+    a 60-second server-side cooldown.
+    """
+
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth"
+
+    @extend_schema(
+        tags=["Authentication"],
+        request=ResendVerificationSerializer,
+        responses={200: MessageResponseSerializer, 400: MessageResponseSerializer},
+        summary="Resend email verification code",
+        auth=[],
+    )
+    def post(self, request):
+        ser = ResendVerificationSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        services.resend_verification_code(ser.validated_data["email"])
+        return Response(
+            {
+                "success": True,
+                "message": "If an account exists with that email and is not yet verified, a new code has been sent.",
+            }
         )
 
 

@@ -51,6 +51,7 @@ export const authApi = {
   signup: (payload) => api.post('/auth/signup/', payload),
   login: (payload) => api.post('/auth/login/', payload),
   verifyEmail: (payload) => api.post('/auth/verify-email/', payload),
+  resendVerification: (payload) => api.post('/auth/resend-verification/', payload),
   me: () => api.get('/auth/me/'),
   updateMe: (payload) => api.patch('/auth/me/', payload),
   logout: (refresh) => api.post('/auth/logout/', { refresh }),

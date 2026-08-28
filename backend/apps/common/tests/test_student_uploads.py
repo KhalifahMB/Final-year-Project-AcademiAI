@@ -75,11 +75,15 @@ def test_student_cannot_delete_other_users_resource():
     other = User.objects.create_user(
         email="x@t3.edu", password=PASSWORD, tenant=t, role="student", is_email_verified=True
     )
-    res = Resource.objects.create(tenant=t, title="Mine", uploaded_by=owner)
+    res = Resource.objects.create(
+        tenant=t, title="Mine", uploaded_by=owner, visibility_scope="private",
+    )
 
     client = APIClient()
     client.force_authenticate(other)
-    assert client.delete(f"/api/v1/resources/{res.id}/").status_code == 403
+    # Private resources of other users are filtered out of the queryset
+    # entirely (we don't leak existence), so DELETE returns 404, not 403.
+    assert client.delete(f"/api/v1/resources/{res.id}/").status_code == 404
     res.refresh_from_db()  # still exists
 
     # Owner can delete their own

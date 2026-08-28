@@ -250,6 +250,14 @@ CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
+# When CELERY_TASK_ALWAYS_EAGER=True (set in .env for dev / Windows solo),
+# tasks run synchronously inside the web process on .delay()/.apply_async().
+# CELERY_TASK_STORE_EAGER_RESULT ensures AsyncResult(task_id) can read the
+# result back; without this, eager tasks look broken / NotRegistered.
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "False").lower() in ("1", "true", "yes")
+_default_eager_propagates = "True" if CELERY_TASK_ALWAYS_EAGER else "False"
+CELERY_TASK_EAGER_PROPAGATES = os.getenv("CELERY_TASK_EAGER_PROPAGATES", _default_eager_propagates).lower() in ("1", "true", "yes")
+CELERY_TASK_STORE_EAGER_RESULT = CELERY_TASK_ALWAYS_EAGER
 CELERY_TASK_ROUTES = {
     "apps.resources.tasks.*": {"queue": "ingestion"},
     "apps.resources.summary_tasks.*": {"queue": "ai"},

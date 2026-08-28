@@ -31,14 +31,17 @@ export function formatRelativeTime(input) {
 
   for (const { unit, ms } of units) {
     if (absMs >= ms || unit === "second") {
-      const value = Math.round((absMs / ms) * sign);
+      // value should be negative for past dates ("3 seconds ago"), positive
+      // for future dates. absMs/ms gives a positive magnitude; multiply by
+      // sign (which is -1 for past).
+      const magnitude = Math.max(1, Math.round(absMs / ms));
+      const value = magnitude * sign;
       try {
         const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
         return rtf.format(value, unit);
       } catch {
-        const abs = Math.abs(value);
         const suffix = value < 0 ? "ago" : "from now";
-        return `${abs} ${unit}${abs === 1 ? "" : "s"} ${suffix}`;
+        return `${magnitude} ${unit}${magnitude === 1 ? "" : "s"} ${suffix}`;
       }
     }
   }

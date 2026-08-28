@@ -20,9 +20,11 @@ import {
   FileImage,
   FileSpreadsheet,
   FileText,
+  FileUp,
   FileVideo2,
   FolderUp,
   GraduationCap,
+  HardDriveUpload,
   Image as ImageIcon,
   Library,
   Link2,
@@ -296,20 +298,24 @@ function MultiResourcePicker({ open, onClose, selected, onToggle }) {
 }
 
 function AttachmentChip({ attachment, onRemove, uploading }) {
+  // Distinguish "from my library" vs "uploaded from device" with a small badge.
+  const fromDisk = !!attachment.pending || attachment.source === 'upload';
+  const SourceIcon = fromDisk ? HardDriveUpload : Library;
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-2 py-1 text-xs">
+    <span className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-2 py-1 text-xs" title={fromDisk ? 'Uploaded from your device' : 'From your library'}>
       {uploading ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
       ) : (
         <AttachmentIcon name={attachment.title} mime={attachment.mime_type} className="h-3.5 w-3.5 text-primary" />
       )}
       <span className="max-w-[180px] truncate">{attachment.title || 'Uploading…'}</span>
+      <SourceIcon className="h-3 w-3 shrink-0 text-muted-foreground/70" aria-hidden />
       {onRemove && (
         <button
           type="button"
           onClick={onRemove}
           aria-label={`Remove ${attachment.title}`}
-          className="ml-1 rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          className="ml-0.5 rounded p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
         >
           <X className="h-3 w-3" />
         </button>
@@ -428,12 +434,12 @@ export default function ChatPage() {
     try {
       for (const file of files) {
         // Add a temporary placeholder chip immediately for feedback.
-        const placeholder = { id: `upload-${Date.now()}-${Math.random()}`, title: file.name, mime_type: file.type, pending: true };
+        const placeholder = { id: `upload-${Date.now()}-${Math.random()}`, title: file.name, mime_type: file.type, pending: true, source: 'upload' };
         setAttachedResources((prev) => [...prev, placeholder]);
         try {
           const res = await chatApi.uploadAttachment(file, sid);
           // Replace the placeholder with the real resource returned by the API.
-          const resource = res.resource;
+          const resource = { ...res.resource, source: 'upload' };
           setAttachedResources((prev) => prev.map((p) => (p.id === placeholder.id ? resource : p)));
         } catch (err) {
           setAttachedResources((prev) => prev.filter((p) => p.id !== placeholder.id));
@@ -716,8 +722,8 @@ export default function ChatPage() {
                   type="button"
                   onClick={() => setPickerOpen((o) => !o)}
                   disabled={loading}
-                  aria-label="Attach from library"
-                  title="Attach from library"
+                  aria-label="Attach from my library"
+                  title="Attach materials from my library"
                   className={cn(
                     'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-2 focus-visible:outline-ring',
                     pickerOpen ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -729,11 +735,11 @@ export default function ChatPage() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={loading || uploadingFiles}
-                  aria-label="Upload files from device"
-                  title="Upload files"
+                  aria-label="Upload files from your device"
+                  title="Upload files from your device"
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"
                 >
-                  <FolderUp className="h-5 w-5" aria-hidden />
+                  <FileUp className="h-5 w-5" aria-hidden />
                 </button>
                 <input
                   ref={fileInputRef}

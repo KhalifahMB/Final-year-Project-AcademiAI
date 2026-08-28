@@ -37,7 +37,7 @@ def create_verification_code(user: User) -> str:
 
 def verify_email_code(email: str, code: str) -> User:
     try:
-        user = User.objects.get(email__iexact=email)
+        user = User.objects.get(email=email)
     except User.DoesNotExist:
         raise ValueError("Invalid verification code.")
 
@@ -106,7 +106,7 @@ def signup_user(
         if not tenant:
             raise ValueError("Tenant not found or inactive.")
 
-    if User.objects.filter(email__iexact=email, tenant=tenant).exists():
+    if User.objects.filter(email=email, tenant=tenant).exists():
         raise ValueError("A user with this email already exists for this institution.")
 
     # Anonymous signup requests carry no tenant context; academic tables are
@@ -164,6 +164,33 @@ def signup_user(
     return user, code
 
 
+def resend_verification_code(email: str) -> bool:
+    """Issue a fresh verification code and email it. Always returns True so we
+    don't leak account existence (same response whether or not email matches)."""
+    # Lookup case-insensitive across tenants (emails are unique per tenant but
+    # a given email address typically only has one AcademiAI account).
+    user = User.objects.filter(email__iexact=email).order_by("-date_joined").first()
+    if not user or user.is_email_verified:
+        # Still return True — do not reveal whether the account exists.
+        return True
+    # Throttle: don't issue more than one code per 60 seconds per user.
+    latest = (
+        EmailVerificationCode.objects.filter(user=user)
+        .order_by("-created_at")
+        .first()
+    )
+    if latest and (timezone.now() - latest.created_at).total_seconds() < 60:
+        return True
+    code = create_verification_code(user)
+    try:
+        from .tasks import send_verification_email
+
+        send_verification_email(str(user.id), code)
+    except Exception:
+        logger.exception("Failed to queue verification resend email=%s", email)
+    return True
+
+
 def reactivate_tenant_users(tenant) -> int:
     """Restore login access after a suspension is lifted."""
     return User.objects.filter(tenant_id=tenant.id, is_active=False).exclude(
@@ -185,7 +212,7 @@ def create_password_reset_token(user: User) -> str:
 
 def confirm_password_reset(email: str, token: str, new_password: str) -> None:
     # Do not reveal whether email exists
-    user = User.objects.filter(email__iexact=email).first()
+    user = User.objects.filter(email=email).first()
     if not user:
         return
     record = (

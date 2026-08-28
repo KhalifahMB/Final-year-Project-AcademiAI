@@ -70,6 +70,7 @@
     "@testing-library/user-event": "^14.6.6",
     "@vitejs/plugin-react": "^6.0.4",
     "autoprefixer": "^10.4.20",
+    "happy-dom": "^20.11.12",
     "jsdom": "^30.0.1",
     "oxlint": "^1.75.0",
     "postcss": "^8.4.49",
