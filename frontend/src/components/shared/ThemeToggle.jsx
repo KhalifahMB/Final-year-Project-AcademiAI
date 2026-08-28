@@ -1,25 +1,29 @@
-import { useTheme } from "@/hooks/useTheme";
+import { useTheme } from '@/hooks/useTheme';
+import { Moon, Sun } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export default function ThemeToggle({ className = "" }) {
+/**
+ * Theme toggle. When `iconOnly` is true renders a compact square button
+ * suitable for nav rails; otherwise renders a full-width labelled button
+ * (for sidebars/settings).
+ */
+export default function ThemeToggle({ className = '', iconOnly = false }) {
   const { dark, toggle } = useTheme();
   return (
     <button
       type="button"
       onClick={toggle}
-      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-      title={dark ? "Light mode" : "Dark mode"}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring ${className}`}
-    >
-      {dark ? (
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-        </svg>
-      ) : (
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-        </svg>
+      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={dark ? 'Light mode' : 'Dark mode'}
+      className={cn(
+        iconOnly
+          ? 'inline-flex h-9 w-9 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-ring'
+          : 'inline-flex h-9 w-full items-center justify-start gap-2 rounded-md border border-sidebar-border/70 bg-sidebar/50 px-2.5 text-[12px] font-medium text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-ring',
+        className,
       )}
+    >
+      {dark ? <Sun className="h-[17px] w-[17px]" aria-hidden /> : <Moon className="h-[17px] w-[17px]" aria-hidden />}
+      {!iconOnly && <span>{dark ? 'Light mode' : 'Dark mode'}</span>}
     </button>
   );
 }
