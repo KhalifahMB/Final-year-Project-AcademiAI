@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,13 +32,37 @@ import { cn } from '@/lib/utils';
 
 const SUMMARIES_QUERY_KEY = (resourceId) => ['resource-summaries', resourceId];
 
+// Ephemeral (in-memory) summaries key, so the object has a stable shape.
+const EPHEMERAL_PREFIX = 'ephemeral-';
+
 function formatDate(iso) {
-  if (!iso) return '';
+  if (!iso) return 'just now';
   try {
     return formatDistanceToNow(new Date(iso), { addSuffix: true });
   } catch {
     return '';
   }
+}
+
+// Normalize the assorted shapes a job result can have into
+// { id, summary, key_points, created_at, created_by_name, ephemeral }.
+function normalizeJobResult(r) {
+  if (!r || typeof r !== 'object') return null;
+  if (r.status === 'failed' || r.error) return null;
+  const summary =
+    (typeof r.summary === 'string' && r.summary) ||
+    (typeof r === 'string' ? r : '') ||
+    '';
+  if (!summary) return null;
+  const kp = Array.isArray(r.key_points) ? r.key_points : [];
+  return {
+    id: r.summary_id ? `${r.summary_id}` : `${EPHEMERAL_PREFIX}${Date.now()}`,
+    summary,
+    key_points: kp,
+    created_at: new Date().toISOString(),
+    created_by_name: null,
+    ephemeral: !r.summary_id,
+  };
 }
 
 export default function ResourceDetailDialog({ resource, open, onClose, onUpdate }) {
@@ -56,10 +80,13 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
   // AI Summary state
   const [summaryJobId, setSummaryJobId] = useState(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [ephemeralSummary, setEphemeralSummary] = useState(null); // for old-worker fallback
   const [activeSummaryId, setActiveSummaryId] = useState(null);
   const [summaryError, setSummaryError] = useState('');
   const [showSummary, setShowSummary] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [workerOutdatedWarned, setWorkerOutdatedWarned] = useState(false);
+  const warnOnceRef = useRef(false);
 
   useEffect(() => {
     if (open) {
@@ -69,16 +96,18 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
       setSummaryLoading(false);
       setSummaryError('');
       setShowHistory(false);
+      setEphemeralSummary(null);
+      setWorkerOutdatedWarned(false);
+      warnOnceRef.current = false;
       // Prime from the resource's latest_summary (fetched with list/detail)
       const latest = resource?.latest_summary;
-      if (latest?.id) {
+      if (latest?.id && latest?.summary) {
         setActiveSummaryId(latest.id);
         setShowSummary(true);
       } else {
         setActiveSummaryId(null);
         setShowSummary(false);
       }
-      // Prevent body scroll while the modal is open
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -109,8 +138,6 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
     return () => window.removeEventListener('keydown', onKey);
   }, [open, expanded, onClose, showHistory]);
 
-  // When entering expanded/focus mode, ask the AppShell to auto-collapse the
-  // desktop sidebar so reading space is maximised.
   useEffect(() => {
     if (!open) return;
     if (expanded && typeof window !== 'undefined') {
@@ -130,32 +157,48 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
     queryFn: async () => {
       if (!resource?.id) return [];
       const { data } = await api.get(`/resources/${resource.id}/summaries/`);
-      // DRF may return paginated {results:[...]} or a plain list.
       return Array.isArray(data) ? data : data?.results || [];
     },
     enabled: open && !!resource?.id && resource?.processing_status === 'ready',
-    staleTime: 30_000,
+    staleTime: 15_000,
   });
 
-  const activeSummary = useMemo(() => {
-    if (!Array.isArray(summaries) || !summaries.length) {
-      // Fall back to the inline latest_summary that ships with the resource
-      // until the list query returns.
-      return resource?.latest_summary || null;
+  // Merge persisted summaries with the ephemeral (in-memory) one so the user
+  // sees content immediately even if the Celery worker is running old code
+  // (where summaries aren't persisted yet).
+  const allSummaries = useMemo(() => {
+    const list = [...(summaries || [])];
+    if (ephemeralSummary) {
+      // Avoid duplicates if the worker saved it between polls.
+      if (!list.some((s) => s.summary === ephemeralSummary.summary)) {
+        list.unshift(ephemeralSummary);
+      }
     }
+    return list;
+  }, [summaries, ephemeralSummary]);
+
+  const activeSummary = useMemo(() => {
     if (activeSummaryId) {
-      const found = summaries.find((s) => s.id === activeSummaryId);
+      const found = allSummaries.find((s) => s.id === activeSummaryId);
       if (found) return found;
     }
-    return summaries[0];
-  }, [summaries, activeSummaryId, resource?.latest_summary]);
+    const latest = resource?.latest_summary;
+    if (latest?.id && latest?.summary) {
+      // Latest from resource payload may not yet be in allSummaries (just opened).
+      return latest;
+    }
+    return allSummaries[0] || null;
+  }, [allSummaries, activeSummaryId, resource?.latest_summary]);
 
   // Poll summary job
   useEffect(() => {
     if (!summaryJobId || !open) return;
     let cancelled = false;
     let timer = null;
+    const pollCount = { n: 0 };
+
     const tick = async () => {
+      pollCount.n += 1;
       try {
         const { data } = await api.get(`/jobs/${summaryJobId}/`);
         if (cancelled) return;
@@ -168,23 +211,48 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
               setSummaryError(r.error || 'Summary failed.');
               toast.error(r.error || 'Summary failed');
             } else {
-              // Refresh saved summaries from backend and display the new one.
+              // Normalize whatever the worker returned (new code returns
+              // {summary_id, summary, key_points}; old code returns just
+              // {summary: <string>}).
+              const normalized = normalizeJobResult(r);
+              if (!normalized) {
+                setSummaryError('The AI returned an empty summary.');
+                toast.error('The AI returned an empty summary.');
+                return;
+              }
+
+              // Refresh persisted summaries, then decide what to show.
               const refreshed = await refetchSummaries();
               const list = refreshed.data || [];
-              // Newest is returned by the new summary_id if present, else first.
-              const newest =
-                (r.summary_id && list.find((s) => s.id === r.summary_id)) ||
+
+              const persisted =
+                (normalized.id && !normalized.ephemeral &&
+                  list.find((s) => s.id === normalized.id)) ||
                 list[0] ||
                 null;
-              if (newest) {
-                setActiveSummaryId(newest.id);
+
+              if (persisted) {
+                setEphemeralSummary(null);
+                setActiveSummaryId(persisted.id);
                 setShowSummary(true);
                 toast.success('Summary saved');
               } else {
-                // Offline / dev fallback: show in-memory result.
-                setActiveSummaryId(null);
+                // The Celery worker didn't persist (likely running old code
+                // and needs a restart). Show the summary from the job result
+                // so the user isn't left with "No summary text returned".
+                setEphemeralSummary(normalized);
+                setActiveSummaryId(normalized.id);
                 setShowSummary(true);
-                toast.success('Summary ready');
+                if (!warnOnceRef.current) {
+                  warnOnceRef.current = true;
+                  setWorkerOutdatedWarned(true);
+                  toast.warning(
+                    'Summary generated but not saved — restart the Celery worker (Ctrl+C then re-run the celery command) and run `python manage.py migrate` to enable saving.',
+                    { duration: 8000 },
+                  );
+                } else {
+                  toast.success('Summary ready (not saved — restart Celery worker)');
+                }
               }
             }
           } else {
@@ -233,6 +301,15 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
 
   const deleteSummary = async (summaryId) => {
     if (!summaryId) return;
+    if (summaryId.startsWith(EPHEMERAL_PREFIX)) {
+      setEphemeralSummary(null);
+      if (activeSummaryId === summaryId) {
+        setActiveSummaryId(null);
+        setShowSummary(false);
+      }
+      toast.success('Unsaved summary dismissed');
+      return;
+    }
     setDeletingId(summaryId);
     try {
       await api.delete(`/resources/${resource.id}/summaries/${summaryId}/`);
@@ -370,8 +447,8 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
     }
   };
 
-  const hasAnySummary =
-    !!activeSummary || (Array.isArray(summaries) && summaries.length > 0);
+  const savedCount = Array.isArray(summaries) ? summaries.length : 0;
+  const hasAnySummary = !!activeSummary || savedCount > 0 || !!ephemeralSummary;
 
   const content = (
     <div
@@ -401,10 +478,10 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
               <span className="rounded-full border bg-muted px-2 py-0.5 text-[10px] capitalize text-muted-foreground">
                 {resource.visibility_scope}
               </span>
-              {hasAnySummary && (
+              {savedCount > 0 && (
                 <span className="hidden items-center gap-1 rounded-full border border-indigo-300/40 bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300 sm:inline-flex">
                   <Sparkles className="h-3 w-3" aria-hidden />
-                  {summaries.length || 1} saved summar{summaries.length === 1 ? 'y' : 'ies'}
+                  {savedCount} saved summar{savedCount === 1 ? 'y' : 'ies'}
                 </span>
               )}
             </div>
@@ -449,7 +526,7 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="text-sm font-semibold">AI Summary</h3>
                     <span className="inline-flex items-center gap-1 rounded-full bg-black/5 px-2 py-0.5 text-[10px] text-muted-foreground dark:bg-white/10">
                       <Clock className="h-3 w-3" aria-hidden />
@@ -461,6 +538,11 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
                         {activeSummary.created_by_name}
                       </span>
                     )}
+                    {activeSummary.ephemeral && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                        Not saved — restart Celery worker
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     {canDeleteSummary(activeSummary) && (
@@ -469,14 +551,14 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
                         onClick={() => deleteSummary(activeSummary.id)}
                         disabled={deletingId === activeSummary.id}
                         className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
-                        title="Delete this summary"
+                        title={activeSummary.ephemeral ? 'Dismiss' : 'Delete this summary'}
                       >
                         {deletingId === activeSummary.id ? (
                           <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
                         ) : (
                           <Trash2 className="h-3 w-3" aria-hidden />
                         )}
-                        Delete
+                        {activeSummary.ephemeral ? 'Dismiss' : 'Delete'}
                       </button>
                     )}
                     <button
@@ -505,23 +587,25 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
                       </ul>
                     </div>
                   )}
-                {summaries.length > 1 && (
+                {allSummaries.length > 1 && (
                   <button
                     type="button"
                     onClick={() => setShowHistory((v) => !v)}
                     className="mt-3 inline-flex items-center gap-1 text-[12px] font-medium text-primary hover:underline"
                   >
                     <History className="h-3.5 w-3.5" aria-hidden />
-                    {showHistory ? 'Hide saved summaries' : `View all ${summaries.length} saved summaries`}
+                    {showHistory
+                      ? 'Hide summary history'
+                      : `View all ${allSummaries.length} summar${allSummaries.length === 1 ? 'y' : 'ies'}`}
                     <ChevronDown
                       className={cn('h-3.5 w-3.5 transition-transform', showHistory && 'rotate-180')}
                       aria-hidden
                     />
                   </button>
                 )}
-                {showHistory && summaries.length > 1 && (
+                {showHistory && allSummaries.length > 1 && (
                   <div className="mt-2 max-h-56 space-y-1 overflow-y-auto rounded-lg border bg-background/60 p-2">
-                    {summaries.map((s) => (
+                    {allSummaries.map((s) => (
                       <button
                         key={s.id}
                         type="button"
@@ -538,8 +622,15 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
                           <Sparkles className="h-3 w-3" aria-hidden />
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate">
-                            {(s.summary || '').split('\n')[0]?.slice(0, 120) || '(empty)'}
+                          <span className="flex items-center gap-1.5">
+                            <span className="truncate">
+                              {(s.summary || '').split('\n')[0]?.slice(0, 90) || '(empty)'}
+                            </span>
+                            {s.ephemeral && (
+                              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-medium uppercase text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                                unsaved
+                              </span>
+                            )}
                           </span>
                           <span className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
                             <Clock className="h-3 w-3" aria-hidden />
@@ -559,6 +650,14 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
                 )}
               </div>
             </div>
+          </div>
+        )}
+        {workerOutdatedWarned && (
+          <div className="shrink-0 border-b bg-amber-50 px-4 py-2 text-[12px] text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+            <strong>Heads up:</strong> Summaries are showing but not being saved.
+            Please stop the Celery worker (Ctrl+C in its terminal) and restart it
+            with: <code className="rounded bg-black/10 px-1 dark:bg-white/10">celery -A config worker -l INFO -P solo -Q ai,celery,email,ingestion</code>,
+            then run <code className="rounded bg-black/10 px-1 dark:bg-white/10">python manage.py migrate</code>.
           </div>
         )}
         {summaryLoading && (
@@ -779,24 +878,24 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
                         </Button>
                       )}
 
-                    {/* Saved summaries list (always visible so user can browse history) */}
+                    {/* Saved summaries list */}
                     {resource.processing_status === 'ready' &&
                       resource.has_extractable_text !== false &&
-                      (summariesLoading || summaries.length > 0) && (
+                      (summariesLoading || allSummaries.length > 0) && (
                         <div className="rounded-lg border bg-background/60 p-2">
                           <p className="mb-1.5 flex items-center gap-1 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            <History className="h-3 w-3" aria-hidden /> Saved summaries
+                            <History className="h-3 w-3" aria-hidden /> Summaries
                             {summariesLoading && (
                               <Loader2 className="ml-1 h-3 w-3 animate-spin" aria-hidden />
                             )}
                           </p>
-                          {summaries.length === 0 && !summariesLoading && (
+                          {allSummaries.length === 0 && !summariesLoading && (
                             <p className="px-1 py-2 text-[11px] text-muted-foreground">
-                              No saved summaries yet.
+                              No summaries yet — click the button above to generate one.
                             </p>
                           )}
                           <div className="max-h-60 space-y-1 overflow-y-auto">
-                            {(summaries || []).map((s) => (
+                            {allSummaries.map((s) => (
                               <div
                                 key={s.id}
                                 className={cn(
@@ -815,8 +914,15 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
                                   className="min-w-0 flex-1 text-left"
                                   title={(s.summary || '').slice(0, 200)}
                                 >
-                                  <span className="block truncate font-medium">
-                                    {(s.summary || '').split('\n')[0]?.slice(0, 90) || '(empty)'}
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="truncate font-medium">
+                                      {(s.summary || '').split('\n')[0]?.slice(0, 80) || '(empty)'}
+                                    </span>
+                                    {s.ephemeral && (
+                                      <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-medium uppercase text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                                        unsaved
+                                      </span>
+                                    )}
                                   </span>
                                   <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
                                     <Clock className="h-3 w-3" aria-hidden />
@@ -839,8 +945,8 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
                                     }}
                                     disabled={deletingId === s.id}
                                     className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 disabled:opacity-50"
-                                    aria-label="Delete summary"
-                                    title="Delete summary"
+                                    aria-label={s.ephemeral ? 'Dismiss' : 'Delete summary'}
+                                    title={s.ephemeral ? 'Dismiss' : 'Delete summary'}
                                   >
                                     {deletingId === s.id ? (
                                       <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
