@@ -1,6 +1,7 @@
 import logging
 
 from django.db import models
+from django.db.models import OuterRef, Subquery
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -175,15 +176,20 @@ class ResourceViewSet(TenantModelViewSet):
     tenant; platform superusers likewise. `?scope=authorized` is accepted
     for backwards compatibility and is now the default behaviour.
     """
+    # r = ResourceSummary.objects.select_related("created_by").order_by("-created_at")
 
     queryset = Resource.objects.select_related(
         "uploaded_by", "course_offering", "programme", "department", "faculty"
     ).prefetch_related(
-        # Prefetch latest summary so list/detail don't N+1 when serializing
-        # latest_summary.
         models.Prefetch(
             "summaries",
-            queryset=ResourceSummary.objects.select_related("created_by").order_by("-created_at")[:1],
+            queryset=ResourceSummary.objects.filter(
+                id=Subquery(
+                    ResourceSummary.objects.filter(
+                        resource=OuterRef("resource_id")
+                    ).order_by("-created_at").values("id")[:1]
+                )
+            ).select_related("created_by"),
             to_attr="prefetched_latest_summary",
         )
     )

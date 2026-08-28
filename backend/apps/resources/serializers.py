@@ -25,19 +25,20 @@ class ResourceSerializer(serializers.ModelSerializer):
 
     def get_latest_summary(self, obj):
         s = getattr(obj, "prefetched_latest_summary", None)
+        print(f"summary {s}")
         if s is None:
-            s = obj.summaries.order_by("-created_at").first()
-        if s is None:
+            print(f"no summary {s}")
             return None
         return {
-            "id": str(s.id),
-            "summary": s.summary,
-            "key_points": s.key_points or [],
-            "created_at": s.created_at.isoformat() if s.created_at else None,
-            "created_by_name": (
-                f"{s.created_by.first_name} {s.created_by.last_name}".strip()
-                if s.created_by else None
-            ),
+            "message": "succes"
+            # "id": str(s.id),
+            # "summary": s.summary,
+            # "key_points": s.key_points or [],
+            # "created_at": s.created_at.isoformat() if s.created_at else None,
+            # "created_by_name": (
+            #     f"{s.created_by.first_name} {s.created_by.last_name}".strip()
+            #     if s.created_by else None
+            # ),
         }
 
 
