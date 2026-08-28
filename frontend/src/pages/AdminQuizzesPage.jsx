@@ -1,186 +1,213 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import api from "@/services/api";
-import AppShell from "@/components/layout/AppShell";
-import StatusBadge from "@/components/shared/StatusBadge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import api from '@/services/api';
+import AppShell from '@/components/layout/AppShell';
+import StatusBadge from '@/components/shared/StatusBadge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+} from '@/components/ui/table';
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from "@/components/ui/form";
+} from '@/components/ui/form';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { toast } from "sonner";
-import { quizSchema, quizQuestionSchema } from "@/lib/validations";
-import { ClipboardList, ClipboardPlus, ListPlus, Sparkles } from "lucide-react";
+} from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { quizSchema, quizQuestionSchema } from '@/lib/validations';
+import { cn } from '@/lib/utils';
+import {
+  BrainCircuit,
+  ClipboardList,
+  ClipboardPlus,
+  ListPlus,
+  Pencil,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
 
-const QUESTION_TYPES = ["multiple_choice", "true_false", "short_answer"];
+const QUESTION_TYPES = ['multiple_choice', 'true_false', 'short_answer'];
 
-function toList(res) {
+const toList = (res) => {
   const d = res.data;
   return Array.isArray(d) ? d : d?.results || [];
-}
+};
 
 export default function AdminQuizzesPage() {
   const qc = useQueryClient();
   const [quizDialog, setQuizDialog] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState(null);
   const [questionsFor, setQuestionsFor] = useState(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const quizzes = useQuery({
-    queryKey: ["admin-quizzes"],
-    queryFn: async () => toList(await api.get("/quizzes/")),
+    queryKey: ['admin-quizzes'],
+    queryFn: async () => toList(await api.get('/quizzes/')),
   });
 
   const offerings = useQuery({
-    queryKey: ["opts", "/course-offerings/"],
-    queryFn: async () => toList(await api.get("/course-offerings/")),
+    queryKey: ['opts', '/course-offerings/'],
+    queryFn: async () => toList(await api.get('/course-offerings/')),
+    staleTime: 60_000,
   });
 
   const quizForm = useForm({
     resolver: zodResolver(quizSchema),
-    defaultValues: { title: "", description: "", status: "draft", course_offering: "" },
+    defaultValues: { title: '', description: '', status: 'draft', course_offering: '' },
   });
 
   const questionForm = useForm({
     resolver: zodResolver(quizQuestionSchema),
     defaultValues: {
-      question_text: "",
-      question_type: "multiple_choice",
-      options: "",
-      correct_answer: "",
-      explanation: "",
+      question_text: '',
+      question_type: 'multiple_choice',
+      options: '',
+      correct_answer: '',
+      explanation: '',
     },
   });
 
-  const watchedQuestionType = useWatch({ control: questionForm.control, name: "question_type" });
+  const watchedQuestionType = useWatch({ control: questionForm.control, name: 'question_type' });
 
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ["admin-quizzes"] });
-    qc.invalidateQueries({ queryKey: ["quizzes"] });
-    qc.invalidateQueries({ queryKey: ["dash-quizzes"] });
+    qc.invalidateQueries({ queryKey: ['admin-quizzes'] });
+    qc.invalidateQueries({ queryKey: ['quizzes'] });
+    qc.invalidateQueries({ queryKey: ['dash-quizzes'] });
   };
 
   const saveQuiz = useMutation({
     mutationFn: (payload) =>
       editingQuiz
         ? api.patch(`/quizzes/${editingQuiz.id}/`, payload)
-        : api.post("/quizzes/", payload),
+        : api.post('/quizzes/', payload),
     onSuccess: () => {
-      toast.success(editingQuiz ? "Quiz updated" : "Quiz created");
+      toast.success(editingQuiz ? 'Quiz updated' : 'Quiz created');
       setQuizDialog(false);
       setEditingQuiz(null);
       invalidate();
     },
     onError: (err) => {
-      setError(err.response?.data?.error?.detail || "Save failed");
-      toast.error("Save failed");
+      setError(err.response?.data?.error?.detail || 'Save failed');
+      toast.error('Save failed');
     },
   });
 
   const deleteQuiz = useMutation({
     mutationFn: (id) => api.delete(`/quizzes/${id}/`),
     onSuccess: () => {
-      toast.success("Quiz deleted");
+      toast.success('Quiz deleted');
       invalidate();
     },
-    onError: () => toast.error("Delete failed"),
+    onError: () => toast.error('Delete failed'),
+  });
+
+  const publishQuiz = useMutation({
+    mutationFn: (id) => api.patch(`/quizzes/${id}/`, { status: 'published' }),
+    onSuccess: () => {
+      toast.success('Quiz published');
+      invalidate();
+    },
+    onError: () => toast.error('Could not publish'),
   });
 
   const addQuestion = useMutation({
     mutationFn: ({ quizId, payload }) =>
-      api.post("/quiz-questions/", { ...payload, quiz: quizId }),
+      api.post('/quiz-questions/', { ...payload, quiz: quizId }),
     onSuccess: () => {
-      toast.success("Question added");
-      questionForm.reset();
-      qc.invalidateQueries({ queryKey: ["quiz-questions", questionsFor?.id] });
+      toast.success('Question added');
+      questionForm.reset({
+        question_text: '',
+        question_type: 'multiple_choice',
+        options: '',
+        correct_answer: '',
+        explanation: '',
+      });
+      qc.invalidateQueries({ queryKey: ['quiz-questions', questionsFor?.id] });
       invalidate();
     },
     onError: (err) => {
-      setError(err.response?.data?.error?.detail || "Could not add the question");
-      toast.error("Could not add the question");
+      setError(err.response?.data?.error?.detail || 'Could not add the question');
+      toast.error('Could not add the question');
     },
   });
 
   const deleteQuestion = useMutation({
     mutationFn: (id) => api.delete(`/quiz-questions/${id}/`),
     onSuccess: () => {
-      toast.success("Question removed");
-      qc.invalidateQueries({ queryKey: ["quiz-questions", questionsFor?.id] });
+      toast.success('Question removed');
+      qc.invalidateQueries({ queryKey: ['quiz-questions', questionsFor?.id] });
       invalidate();
     },
-    onError: () => toast.error("Could not remove the question"),
+    onError: () => toast.error('Could not remove the question'),
   });
 
-  // Questions of the quiz currently being managed.
   const questions = useQuery({
-    queryKey: ["quiz-questions", questionsFor?.id],
+    queryKey: ['quiz-questions', questionsFor?.id],
     queryFn: async () =>
-      toList(await api.get("/quiz-questions/", { params: { quiz: questionsFor.id } })),
+      toList(await api.get('/quiz-questions/', { params: { quiz: questionsFor.id } })),
     enabled: !!questionsFor,
   });
 
   const openCreate = () => {
     setEditingQuiz(null);
-    setError("");
-    quizForm.reset({ title: "", description: "", status: "draft", course_offering: "" });
+    setError('');
+    quizForm.reset({ title: '', description: '', status: 'draft', course_offering: '' });
     setQuizDialog(true);
   };
 
   const openEdit = (q) => {
     setEditingQuiz(q);
-    setError("");
+    setError('');
     quizForm.reset({
-      title: q.title || "",
-      description: q.description || "",
-      status: q.status || "draft",
-      course_offering: q.course_offering || "",
+      title: q.title || '',
+      description: q.description || '',
+      status: q.status || 'draft',
+      course_offering: q.course_offering || '',
     });
     setQuizDialog(true);
   };
 
   const submitQuiz = (values) => {
-    setError("");
+    setError('');
     const payload = { ...values };
     if (!payload.course_offering) delete payload.course_offering;
     saveQuiz.mutate(payload);
   };
 
   const submitQuestion = (values) => {
-    setError("");
+    setError('');
     let options = [];
-    if (values.question_type === "multiple_choice") {
-      options = (values.options || "")
-        .split(",")
+    if (values.question_type === 'multiple_choice') {
+      options = (values.options || '')
+        .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
       if (options.length < 2) {
-        setError("Provide at least two comma-separated options.");
+        setError('Provide at least two comma-separated options.');
         return;
       }
-    } else if (values.question_type === "true_false") {
-      options = ["True", "False"];
+    } else if (values.question_type === 'true_false') {
+      options = ['True', 'False'];
     }
     const correct = { value: values.correct_answer.trim() };
     if (
-      values.question_type !== "short_answer" &&
-      !options.some(
-        (o) => o.toLowerCase() === String(correct.value).toLowerCase(),
-      )
+      values.question_type !== 'short_answer' &&
+      !options.some((o) => o.toLowerCase() === String(correct.value).toLowerCase())
     ) {
-      setError("The correct answer must exactly match one of the options.");
+      setError('The correct answer must exactly match one of the options.');
       return;
     }
     addQuestion.mutate({
@@ -190,41 +217,53 @@ export default function AdminQuizzesPage() {
         question_type: values.question_type,
         options,
         correct_answer: correct,
-        explanation: values.explanation || "",
+        explanation: values.explanation || '',
       },
     });
   };
+
+  const filteredQuizzes = useMemo(() => {
+    const list = quizzes.data || [];
+    return list.filter((q) => {
+      if (statusFilter !== 'all' && q.status !== statusFilter) return false;
+      if (search.trim()) {
+        const s = search.toLowerCase();
+        return (q.title || '').toLowerCase().includes(s) || (q.description || '').toLowerCase().includes(s);
+      }
+      return true;
+    });
+  }, [quizzes.data, statusFilter, search]);
 
   return (
     <AppShell
       title="Quiz manager"
       description="Author practice assessments manually or alongside AI generation — publish them when they are ready for students."
       actions={
-        <Button type="button" onClick={openCreate} className="h-9 shadow-sm">
-          <ClipboardPlus className="mr-2 h-4 w-4" aria-hidden /> New quiz
+        <Button type="button" onClick={openCreate} size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm">
+          <ClipboardPlus className="h-3.5 w-3.5" aria-hidden /> New quiz
         </Button>
       }
     >
-      {/* Create / edit quiz dialog */}
+      {/* Dialog: create/edit quiz */}
       <Dialog open={quizDialog} onOpenChange={setQuizDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingQuiz ? "Edit quiz" : "New quiz"}</DialogTitle>
+            <DialogTitle className="text-sm">{editingQuiz ? 'Edit quiz' : 'New quiz'}</DialogTitle>
           </DialogHeader>
           {error && (
             <Alert variant="destructive">
-              <AlertDescription>{String(error)}</AlertDescription>
+              <AlertDescription className="text-xs">{String(error)}</AlertDescription>
             </Alert>
           )}
           <Form {...quizForm}>
-            <form onSubmit={quizForm.handleSubmit(submitQuiz)} className="space-y-4">
+            <form onSubmit={quizForm.handleSubmit(submitQuiz)} className="space-y-3.5">
               <FormField
                 control={quizForm.control}
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormLabel className="text-xs">Title</FormLabel>
+                    <FormControl><Input {...field} className="h-8 text-sm" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -234,61 +273,63 @@ export default function AdminQuizzesPage() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl><Textarea rows={2} {...field} /></FormControl>
+                    <FormLabel className="text-xs">Description</FormLabel>
+                    <FormControl><Textarea rows={2} className="text-sm" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={quizForm.control}
-                name="course_offering"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Course offering (optional)</FormLabel>
-                    <Select value={field.value || undefined} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="None" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {(offerings.data || []).map((o) => (
-                          <SelectItem key={o.id} value={o.id}>
-                            {o.course_code ? `${o.course_code} — ${o.course_title}` : o.id}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={quizForm.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger className="w-full capitalize">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {["draft", "published", "archived"].map((s) => (
-                          <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid gap-3.5 sm:grid-cols-2">
+                <FormField
+                  control={quizForm.control}
+                  name="course_offering"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Course offering</FormLabel>
+                      <Select value={field.value || undefined} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className="h-8 w-full text-sm">
+                            <SelectValue placeholder="None" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {(offerings.data || []).map((o) => (
+                            <SelectItem key={o.id} value={o.id} className="text-sm">
+                              {o.course_code ? `${o.course_code} — ${o.course_title}` : o.id}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={quizForm.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs">Status</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger className="h-8 w-full text-sm capitalize">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {['draft', 'published', 'archived'].map((s) => (
+                            <SelectItem key={s} value={s} className="text-sm capitalize">{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <DialogFooter>
-                <Button type="submit" disabled={saveQuiz.isPending} className="shadow-sm">
-                  {saveQuiz.isPending ? "Saving…" : "Save"}
+                <Button type="submit" size="sm" disabled={saveQuiz.isPending} className="h-8 text-xs">
+                  {saveQuiz.isPending ? 'Saving…' : 'Save'}
                 </Button>
               </DialogFooter>
             </form>
@@ -296,15 +337,18 @@ export default function AdminQuizzesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Questions manager dialog */}
+      {/* Dialog: question manager */}
       <Dialog open={!!questionsFor} onOpenChange={(o) => !o && setQuestionsFor(null)}>
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Questions — {questionsFor?.title}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              <BrainCircuit className="h-4 w-4 text-primary" aria-hidden />
+              Questions — {questionsFor?.title}
+            </DialogTitle>
           </DialogHeader>
           {error && (
             <Alert variant="destructive">
-              <AlertDescription>{String(error)}</AlertDescription>
+              <AlertDescription className="text-xs">{String(error)}</AlertDescription>
             </Alert>
           )}
 
@@ -314,11 +358,10 @@ export default function AdminQuizzesPage() {
                 key={q.id}
                 className="flex items-start justify-between gap-3 rounded-lg border bg-card px-3 py-2.5"
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{q.question_text}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {q.question_type.replace("_", " ")} ·{" "}
-                    {(q.options || []).length} option(s)
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {q.question_type?.replace('_', ' ')} · {(q.options || []).length} option(s)
                   </p>
                 </div>
                 <Button
@@ -326,37 +369,35 @@ export default function AdminQuizzesPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => deleteQuestion.mutate(q.id)}
+                  className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
-                  Remove
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </div>
             ))}
             {questions.isSuccess && (questions.data || []).length === 0 && (
-              <p className="rounded-lg border border-dashed px-3 py-4 text-center text-sm text-muted-foreground">
+              <div className="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
                 No questions yet — add the first one below.
-              </p>
+              </div>
             )}
             {questions.isLoading && (
-              <p className="text-sm text-muted-foreground">Loading…</p>
+              <p className="text-xs text-muted-foreground">Loading…</p>
             )}
           </div>
 
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <ListPlus className="h-3.5 w-3.5" aria-hidden /> Add a question
+          <div className="rounded-xl border bg-muted/30 p-3.5">
+            <p className="mb-3 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <ListPlus className="h-3 w-3" aria-hidden /> Add a question
             </p>
             <Form {...questionForm}>
-              <form
-                onSubmit={questionForm.handleSubmit(submitQuestion)}
-                className="space-y-3"
-              >
+              <form onSubmit={questionForm.handleSubmit(submitQuestion)} className="space-y-3">
                 <FormField
                   control={questionForm.control}
                   name="question_text"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Question</FormLabel>
-                      <FormControl><Textarea rows={2} {...field} /></FormControl>
+                      <FormLabel className="text-xs">Question</FormLabel>
+                      <FormControl><Textarea rows={2} className="text-sm" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -367,17 +408,17 @@ export default function AdminQuizzesPage() {
                     name="question_type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Type</FormLabel>
+                        <FormLabel className="text-xs">Type</FormLabel>
                         <Select value={field.value} onValueChange={field.onChange}>
                           <FormControl>
-                            <SelectTrigger className="w-full capitalize">
+                            <SelectTrigger className="h-8 w-full text-sm capitalize">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             {QUESTION_TYPES.map((t) => (
-                              <SelectItem key={t} value={t} className="capitalize">
-                                {t.replace("_", " ")}
+                              <SelectItem key={t} value={t} className="text-sm capitalize">
+                                {t.replace('_', ' ')}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -391,24 +432,24 @@ export default function AdminQuizzesPage() {
                     name="correct_answer"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Correct answer</FormLabel>
+                        <FormLabel className="text-xs">Correct answer</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Exact option text" />
+                          <Input {...field} className="h-8 text-sm" placeholder="Exact option text" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
-                {watchedQuestionType === "multiple_choice" && (
+                {watchedQuestionType === 'multiple_choice' && (
                   <FormField
                     control={questionForm.control}
                     name="options"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Options (comma-separated)</FormLabel>
+                        <FormLabel className="text-xs">Options (comma-separated)</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Photosynthesis, Respiration, Osmosis" />
+                          <Input {...field} className="h-8 text-sm" placeholder="Photosynthesis, Respiration, Osmosis" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -420,14 +461,14 @@ export default function AdminQuizzesPage() {
                   name="explanation"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Explanation (optional)</FormLabel>
-                      <FormControl><Input {...field} /></FormControl>
+                      <FormLabel className="text-xs">Explanation (optional)</FormLabel>
+                      <FormControl><Input {...field} className="h-8 text-sm" /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Button type="submit" size="sm" disabled={addQuestion.isPending} className="shadow-sm">
-                  {addQuestion.isPending ? "Adding…" : "Add question"}
+                <Button type="submit" size="sm" disabled={addQuestion.isPending} className="h-8 gap-1.5 text-xs shadow-sm">
+                  {addQuestion.isPending ? 'Adding…' : (<><Plus className="h-3.5 w-3.5" /> Add question</>)}
                 </Button>
               </form>
             </Form>
@@ -437,63 +478,113 @@ export default function AdminQuizzesPage() {
 
       {quizzes.error && (
         <Alert variant="destructive" className="mb-4">
-          <AlertDescription>Failed to load quizzes</AlertDescription>
+          <AlertDescription className="text-xs">Failed to load quizzes</AlertDescription>
         </Alert>
       )}
 
-      {quizzes.isLoading ? (
-        <div className="space-y-2.5" role="status" aria-label="Loading">
-          {[0, 1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-12 animate-pulse rounded-lg bg-muted"
-              style={{ animationDelay: `${i * 80}ms` }}
-            />
+      {/* Toolbar */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[220px] flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search quizzes…"
+            className="h-8 pl-8 text-xs"
+          />
+        </div>
+        <div className="inline-flex rounded-lg border bg-card p-0.5">
+          {['all', 'draft', 'published', 'archived'].map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStatusFilter(s)}
+              className={cn(
+                'h-7 rounded-md px-2.5 text-[11px] font-medium capitalize transition-colors',
+                statusFilter === s ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              )}
+            >
+              {s}
+            </button>
           ))}
         </div>
-      ) : (quizzes.data || []).length === 0 ? (
-        <div className="rounded-xl border border-dashed p-10 text-center">
+      </div>
+
+      {quizzes.isLoading ? (
+        <div className="space-y-2" role="status" aria-label="Loading">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="skeleton h-12 rounded-lg" style={{ animationDelay: `${i * 80}ms` }} />
+          ))}
+        </div>
+      ) : filteredQuizzes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-10 text-center">
           <ClipboardList className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden />
           <p className="mt-3 text-sm font-medium">No quizzes yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create one manually or generate practice sets with AI from the Quizzes page.
+          <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+            Create one manually or let students generate practice sets from their materials.
           </p>
-          <Sparkles className="mx-auto mt-2 h-4 w-4 text-primary" aria-hidden />
+          <Button type="button" size="sm" onClick={openCreate} className="mt-4 h-8 gap-1.5 text-xs shadow-sm">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden /> Create your first quiz
+          </Button>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead>Title</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Questions</TableHead>
-                <TableHead className="w-[230px] text-right">Actions</TableHead>
+                <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">Title</TableHead>
+                <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">Status</TableHead>
+                <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">Questions</TableHead>
+                <TableHead className="h-9 text-[11px] font-semibold uppercase tracking-wider">Attempts</TableHead>
+                <TableHead className="h-9 w-[280px] text-right text-[11px] font-semibold uppercase tracking-wider">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(quizzes.data || []).map((q) => (
-                <TableRow key={q.id}>
-                  <TableCell className="py-3.5 font-medium">{q.title}</TableCell>
-                  <TableCell><StatusBadge status={q.status} /></TableCell>
-                  <TableCell>{q.questions?.length ?? 0}</TableCell>
-                  <TableCell className="space-x-1 text-right">
-                    <Button type="button" variant="outline" size="sm" onClick={() => setQuestionsFor(q)}>
-                      Questions
+              {filteredQuizzes.map((q) => (
+                <TableRow key={q.id} className="h-12">
+                  <TableCell className="py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+                        <BrainCircuit className="h-3.5 w-3.5" aria-hidden />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{q.title}</p>
+                        {q.description && (
+                          <p className="line-clamp-1 text-[11px] text-muted-foreground">{q.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-2.5"><StatusBadge status={q.status} /></TableCell>
+                  <TableCell className="py-2.5 text-xs">
+                    <Badge variant="secondary" className="text-[10px]">{q.questions?.length ?? 0}</Badge>
+                  </TableCell>
+                  <TableCell className="py-2.5 text-xs tabular-nums text-muted-foreground">
+                    {q.attempt_count ?? 0}
+                  </TableCell>
+                  <TableCell className="space-x-1 py-2.5 text-right">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setQuestionsFor(q)} className="h-7 gap-1 px-2 text-xs">
+                      <ListPlus className="h-3 w-3" aria-hidden /> Questions
                     </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={() => openEdit(q)}>
-                      Edit
+                    {q.status !== 'published' && (
+                      <Button type="button" variant="outline" size="sm" onClick={() => publishQuiz.mutate(q.id)} disabled={publishQuiz.isPending} className="h-7 gap-1 px-2 text-xs text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400">
+                        Publish
+                      </Button>
+                    )}
+                    <Button type="button" variant="ghost" size="sm" onClick={() => openEdit(q)} className="h-7 w-7 p-0" aria-label="Edit">
+                      <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        if (window.confirm(`Delete “${q.title}”? This cannot be undone.`))
-                          deleteQuiz.mutate(q.id);
+                        if (window.confirm(`Delete “${q.title}”? This cannot be undone.`)) deleteQuiz.mutate(q.id);
                       }}
+                      className="h-7 w-7 p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      aria-label="Delete"
                     >
-                      Delete
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </TableCell>
                 </TableRow>
