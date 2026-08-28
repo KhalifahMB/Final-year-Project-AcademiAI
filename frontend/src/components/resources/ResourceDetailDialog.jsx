@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import api from '@/services/api';
 import StatusBadge from '@/components/shared/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
+import ReactMarkdown from 'react-markdown';
 import {
   Bookmark,
   BookmarkCheck,
@@ -15,6 +16,7 @@ import {
   Maximize2,
   Minimize2,
   RefreshCw,
+  Sparkles,
   Trash2,
   TriangleAlert,
   X,
@@ -32,12 +34,89 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
   const [editScope, setEditScope] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // AI Summary state
+  const [summaryJobId, setSummaryJobId] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryResult, setSummaryResult] = useState(null); // { summary, key_points }
+  const [summaryError, setSummaryError] = useState('');
+  const [showSummary, setShowSummary] = useState(false);
+
   useEffect(() => {
     if (open) {
       setExpanded(false);
       setEditing(false);
+      setSummaryJobId(null);
+      setSummaryLoading(false);
+      setSummaryResult(null);
+      setSummaryError('');
+      setShowSummary(false);
     }
   }, [open, resource?.id]);
+
+  // Poll summary job
+  useEffect(() => {
+    if (!summaryJobId || !open) return;
+    let cancelled = false;
+    let timer = null;
+    const tick = async () => {
+      try {
+        const { data } = await api.get(`/jobs/${summaryJobId}/`);
+        if (cancelled) return;
+        if (data.ready) {
+          setSummaryLoading(false);
+          setSummaryJobId(null);
+          if (data.successful) {
+            // Result shape from summary_tasks: { status: 'completed'|'failed', summary?, key_points?, error? }
+            const r = data.result || {};
+            if (r.status === 'failed' || r.error) {
+              setSummaryError(r.error || 'Summary failed.');
+              toast.error(r.error || 'Summary failed');
+            } else {
+              // Normalize — dev stub returns a simple string, prod returns an object.
+              const normalized = typeof r === 'string'
+                ? { summary: r, key_points: [] }
+                : { key_points: [], ...r };
+              setSummaryResult(normalized);
+              setShowSummary(true);
+              toast.success('Summary ready');
+            }
+          } else {
+            setSummaryError(data.error || 'Summary failed.');
+            toast.error(data.error || 'Summary failed');
+          }
+          return;
+        }
+        timer = setTimeout(tick, 1500);
+      } catch (err) {
+        if (cancelled) return;
+        setSummaryLoading(false);
+        setSummaryJobId(null);
+        const msg = err.response?.data?.error?.detail || err.message || 'Could not poll summary job';
+        setSummaryError(msg);
+        toast.error(msg);
+      }
+    };
+    timer = setTimeout(tick, 800);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [summaryJobId, open]);
+
+  const requestSummary = async () => {
+    setSummaryError('');
+    setSummaryResult(null);
+    setSummaryLoading(true);
+    try {
+      const { data } = await api.post(`/resources/${resource.id}/summarize/`, {});
+      setSummaryJobId(data.job_id);
+    } catch (err) {
+      setSummaryLoading(false);
+      const msg = err.response?.data?.error?.detail || err.message || 'Could not start summary';
+      setSummaryError(msg);
+      toast.error(msg);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -197,7 +276,47 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
       {/* Content */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* Preview area */}
-        <div className={cn('flex-1 overflow-hidden', expanded ? '' : 'border-r')}>
+        <div className={cn('flex-1 flex min-h-0 flex-col overflow-hidden', expanded ? '' : 'border-r')}>
+          {/* AI Summary panel */}
+          {showSummary && summaryResult && (
+            <div className="border-b bg-gradient-to-br from-indigo-50 to-purple-50 p-5 dark:from-indigo-950/40 dark:to-purple-950/40">
+              <div className="mx-auto max-w-3xl">
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
+                    <Sparkles className="h-4 w-4" aria-hidden />
+                  </span>
+                  <h3 className="text-sm font-semibold">AI Summary</h3>
+                </div>
+                <div className="prose prose-sm dark:prose-invert max-w-none text-[14px] leading-relaxed">
+                  <ReactMarkdown>{summaryResult.summary || 'No summary text returned.'}</ReactMarkdown>
+                </div>
+                {Array.isArray(summaryResult.key_points) && summaryResult.key_points.length > 0 && (
+                  <div className="mt-3">
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Key points</p>
+                    <ul className="list-disc space-y-1 pl-5 text-sm">
+                      {summaryResult.key_points.map((kp, i) => (
+                        <li key={i}>{kp}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {summaryLoading && (
+            <div className="border-b bg-primary/5 px-5 py-3">
+              <div className="mx-auto flex max-w-3xl items-center gap-2 text-sm text-primary">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                Generating AI summary… this takes a few seconds.
+              </div>
+            </div>
+          )}
+          {summaryError && !summaryLoading && (
+            <div className="border-b bg-red-500/10 px-5 py-2.5 text-sm text-red-700 dark:text-red-400">
+              {summaryError}
+            </div>
+          )}
+          <div className="min-h-0 flex-1 overflow-hidden">
           {resource.processing_status === 'failed' ? (
             <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
               <Alert variant="destructive" className="max-w-md">
@@ -246,6 +365,7 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
               </Button>
             </div>
           )}
+          </div>
         </div>
 
         {/* Sidebar (when not expanded) */}
@@ -288,6 +408,34 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
                   <Button type="button" size="sm" className="w-full justify-start" onClick={download}>
                     <Download className="mr-2 h-4 w-4" aria-hidden /> Download
                   </Button>
+                  {resource.processing_status === 'ready' && resource.has_extractable_text !== false && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="default"
+                      className="w-full justify-start bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-700"
+                      onClick={requestSummary}
+                      disabled={summaryLoading}
+                    >
+                      {summaryLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <Sparkles className="mr-2 h-4 w-4" aria-hidden />
+                      )}
+                      {summaryLoading ? 'Summarizing…' : summaryResult ? 'Regenerate AI summary' : 'Summarize with AI'}
+                    </Button>
+                  )}
+                  {summaryResult && !summaryLoading && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={showSummary ? 'secondary' : 'outline'}
+                      className="w-full justify-start"
+                      onClick={() => setShowSummary((v) => !v)}
+                    >
+                      {showSummary ? 'Hide summary' : 'Show summary'}
+                    </Button>
+                  )}
                   <Button type="button" size="sm" variant={bookmarkIdFromData ? 'secondary' : 'outline'} className="w-full justify-start" onClick={toggleBookmark}>
                     {bookmarkIdFromData ? <BookmarkCheck className="mr-2 h-4 w-4 text-primary" aria-hidden /> : <Bookmark className="mr-2 h-4 w-4" aria-hidden />}
                     {bookmarkIdFromData ? 'Bookmarked' : 'Bookmark'}

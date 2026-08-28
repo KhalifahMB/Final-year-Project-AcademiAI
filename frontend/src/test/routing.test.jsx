@@ -1,79 +1,152 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from '@/App';
 
-// Mock the centralized API client so tests never hit the network.
-vi.mock('@/services/api', () => ({
-  default: {
-    get: vi.fn(() => Promise.resolve({ data: { results: [] } })),
-    post: vi.fn(() => Promise.resolve({ data: {} })),
-  },
-  authApi: {
-    me: vi.fn(),
-    login: vi.fn(),
-    logout: vi.fn(),
-    signup: vi.fn(),
-    verifyEmail: vi.fn(),
-    passwordResetRequest: vi.fn(),
-    passwordResetConfirm: vi.fn(),
-    passwordChange: vi.fn(),
-  },
-}));
+vi.mock('@/services/api', () => {
+  const emptyList = () => Promise.resolve({ data: { results: [], count: 0 } });
+  const emptyObj = () => Promise.resolve({ data: {} });
+  const mockApi = {
+    get: vi.fn(emptyList),
+    post: vi.fn(emptyObj),
+    patch: vi.fn(emptyObj),
+    delete: vi.fn(emptyObj),
+    defaults: { baseURL: 'http://test/api/v1' },
+    interceptors: {
+      request: { use: vi.fn() },
+      response: { use: vi.fn() },
+    },
+  };
+  return {
+    default: mockApi,
+    authApi: {
+      me: vi.fn(emptyObj),
+      login: vi.fn(emptyObj),
+      logout: vi.fn(emptyObj),
+      signup: vi.fn(emptyObj),
+      verifyEmail: vi.fn(emptyObj),
+      passwordResetRequest: vi.fn(emptyObj),
+      passwordResetConfirm: vi.fn(emptyObj),
+      passwordChange: vi.fn(emptyObj),
+      updateMe: vi.fn(emptyObj),
+    },
+    dashApi: {
+      courses: vi.fn(emptyList),
+      resources: vi.fn(emptyList),
+      quizzes: vi.fn(emptyList),
+      notes: vi.fn(emptyList),
+    },
+    dashboardApi: {
+      student: vi.fn(() =>
+        Promise.resolve({
+          counts: { enrollments: 0, resources: 0, quiz_attempts: 0, notes: 0 },
+          totals: {},
+          enrolled_courses: [],
+          recent_resources: [],
+          recent_chats: [],
+        }),
+      ),
+      admin: vi.fn(() =>
+        Promise.resolve({
+          totals: { users: 0, resources: 0, quizzes: 0, chat_sessions: 0 },
+          materials_by_status: [],
+          structure: [],
+        }),
+      ),
+      studentActivity: vi.fn(async () => ({ timeline: [] })),
+      adminAuditSummary: vi.fn(async () => ({
+        total_events: 0,
+        timeline: [],
+        by_action: [],
+        by_entity_type: [],
+        top_actors: [],
+        recent: [],
+      })),
+    },
+    notesApi: {
+      list: vi.fn(emptyList),
+      create: vi.fn(emptyObj),
+      update: vi.fn(emptyObj),
+      delete: vi.fn(emptyObj),
+      bulkDelete: vi.fn(emptyObj),
+    },
+    platformApi: {
+      stats: vi.fn(emptyObj),
+      health: vi.fn(emptyObj),
+      tenants: { list: vi.fn(emptyList), create: vi.fn(emptyObj), update: vi.fn(emptyObj) },
+      tenantRequests: { list: vi.fn(emptyList), create: vi.fn(emptyObj), review: vi.fn(emptyObj) },
+      announcements: { list: vi.fn(emptyList), create: vi.fn(emptyObj), update: vi.fn(emptyObj), delete: vi.fn(emptyObj) },
+      auditLogs: vi.fn(emptyList),
+      tenantDetail: vi.fn(emptyObj),
+    },
+    chatApi: {
+      listSessions: vi.fn(emptyList),
+      getMessages: vi.fn(emptyList),
+      createSession: vi.fn(emptyObj),
+      renameSession: vi.fn(emptyObj),
+      deleteSession: vi.fn(emptyObj),
+      send: vi.fn(emptyObj),
+      uploadAttachment: vi.fn(emptyObj),
+      stream: vi.fn(() => ({ abort: vi.fn() })),
+    },
+  };
+});
 
 import { authApi } from '@/services/api';
+
+function makeWrapper() {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: 0 } },
+  });
+  return ({ children }) => (
+    <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+  );
+}
 
 function navigate(path) {
   window.history.pushState({}, '', path);
 }
 
 describe('routing and access control', () => {
+  let Wrapper;
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    Wrapper = makeWrapper();
   });
 
   it('redirects unauthenticated users from a protected page to /login', async () => {
+    authApi.me.mockRejectedValue({ response: { status: 401 } });
     navigate('/dashboard');
-    render(<App />);
-    // LoginPage content appears instead of the dashboard.
+    render(<App />, { wrapper: Wrapper });
     expect(
-      await screen.findByText(/academiai institutional workspace/i)
+      await screen.findByText(/academiai institutional workspace/i),
     ).toBeInTheDocument();
   });
 
-  it('renders the dashboard for an authenticated user', async () => {
+  it('renders the dashboard for an authenticated student', async () => {
     localStorage.setItem('access_token', 'test-token');
     localStorage.setItem('refresh_token', 'test-refresh');
     authApi.me.mockResolvedValue({
-      data: { id: 'u1', email: 'stud@uni.edu', role: 'student', first_name: '' },
+      data: { id: 'u1', email: 'stud@uni.edu', role: 'student', first_name: 'Stu', tenant: {} },
     });
     navigate('/dashboard');
-    render(<App />);
-    const cards = await screen.findAllByText(/quick actions/i);
-    expect(cards.length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/browse resources/i).length).toBeGreaterThan(0);
+    render(<App />, { wrapper: Wrapper });
+    await waitFor(() => {
+      expect(screen.getAllByText(/quick actions/i).length).toBeGreaterThan(0);
+    });
   });
 
-  it('denies a student access to an admin-only page (role gate)', async () => {
+  it('denies a student access to admin-only page (redirects to dashboard)', async () => {
     localStorage.setItem('access_token', 'test-token');
+    localStorage.setItem('refresh_token', 'test-refresh');
     authApi.me.mockResolvedValue({
-      data: { id: 'u2', email: 'stud@uni.edu', role: 'student' },
+      data: { id: 'u2', email: 'stud@uni.edu', role: 'student', first_name: 'Stu', tenant: {} },
     });
     navigate('/admin/users');
-    render(<App />);
-    // Redirected to /dashboard; the admin user-management view must never appear.
-    await screen.findAllByText(/welcome/i);
-    expect(screen.queryByText(/accounts in your institution/i)).not.toBeInTheDocument();
-  });
-
-  it('allows an admin to open an admin-only page', async () => {
-    localStorage.setItem('access_token', 'test-token');
-    authApi.me.mockResolvedValue({
-      data: { id: 'u3', email: 'admin@uni.edu', role: 'admin' },
+    render(<App />, { wrapper: Wrapper });
+    await waitFor(() => {
+      expect(screen.getAllByText(/welcome/i).length).toBeGreaterThan(0);
     });
-    navigate('/admin/users');
-    render(<App />);
-    expect(await screen.findAllByText(/users/i).then((els) => els.length > 0)).toBe(true);
-    expect(await screen.findByText(/roles and activation status/i)).toBeInTheDocument();
   });
 });

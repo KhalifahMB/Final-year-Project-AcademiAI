@@ -18,8 +18,14 @@ const queryClient = new QueryClient({
         if (status === 401 || status === 403) return false;
         return failureCount < 1;
       },
+      // Global defaults that the auth hook tightens further for its own
+      // key. refetchOnMount:false stops StrictMode re-mounts from
+      // re-issuing /auth/me/ (and every other query) when components
+      // mount/unmount during dev double-invoke.
       refetchOnWindowFocus: false,
-      staleTime: 30_000,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+      staleTime: 60_000,
     },
   },
 });
