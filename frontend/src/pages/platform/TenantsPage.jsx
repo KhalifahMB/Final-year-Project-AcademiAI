@@ -1,9 +1,8 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { platformApi } from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
-import EntityDialog from "@/components/shared/EntityDialog";
 import StatusBadge from "@/components/shared/StatusBadge";
 import SkeletonRows from "@/components/shared/SkeletonRows";
 import { Button } from "@/components/ui/button";
@@ -15,8 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
-import { HardDrive, Plus, Search, ChevronRight } from "lucide-react";
+import { HardDrive, Search, ChevronRight } from "lucide-react";
 
 const toList = (d) => d?.results || d || [];
 
@@ -43,14 +41,6 @@ function PlanBadge({ plan }) {
   );
 }
 
-const QUOTA_OPTIONS = [
-  { value: String(5 * 1024 ** 3), label: "5 GB" },
-  { value: String(10 * 1024 ** 3), label: "10 GB (default)" },
-  { value: String(50 * 1024 ** 3), label: "50 GB" },
-  { value: String(100 * 1024 ** 3), label: "100 GB" },
-  { value: String(500 * 1024 ** 3), label: "500 GB" },
-];
-
 const PLAN_OPTIONS = [
   { value: "standard", label: "Standard" },
   { value: "pro", label: "Pro" },
@@ -63,21 +53,10 @@ const STATUS_OPTIONS = [
   { value: "pending", label: "Pending" },
 ];
 
-const errText = (e, fallback) =>
-  e?.response?.data?.error?.detail ||
-  e?.response?.data?.detail ||
-  (typeof e?.response?.data === "object"
-    ? Object.values(e.response.data).flat().join(" ")
-    : "") ||
-  fallback;
-
 export default function TenantsPage() {
-  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPlan, setFilterPlan] = useState("all");
-  const [addOpen, setAddOpen] = useState(false);
-  const [modalError, setModalError] = useState("");
 
   const tenantsQ = useQuery({
     queryKey: ["platform-tenants"],
@@ -98,27 +77,10 @@ export default function TenantsPage() {
     return list;
   }, [tenantsQ.data, search, filterStatus, filterPlan]);
 
-  const createTenant = useMutation({
-    mutationFn: (payload) => platformApi.tenants.create(payload),
-    onSuccess: () => {
-      toast.success("Institution provisioned successfully");
-      setAddOpen(false);
-      setModalError("");
-      qc.invalidateQueries({ queryKey: ["platform-tenants"] });
-    },
-    onError: (e) => setModalError(errText(e, "Could not create institution")),
-  });
-
   return (
     <AppShell
       title="Tenants"
-      description="Manage all institutions on the platform — provision, configure, and monitor."
-      actions={
-        <Button type="button" className="shadow-sm" onClick={() => { setModalError(""); setAddOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" aria-hidden />
-          Add Institution
-        </Button>
-      }
+      description="Manage all institutions on the platform — monitor status and lifecycle."
     >
       <div className="mb-4 flex flex-wrap gap-3">
         <div className="relative min-w-[200px] flex-1">
@@ -151,7 +113,7 @@ export default function TenantsPage() {
       ) : tenantsQ.isLoading ? (
         <SkeletonRows rows={5} />
       ) : (
-        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        <div className="overflow-hidden rounded-xl card-surface">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -195,7 +157,7 @@ export default function TenantsPage() {
                   <TableCell colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
                     {search || filterStatus !== "all" || filterPlan !== "all"
                       ? "No institutions match your filters."
-                      : "No institutions yet. Add your first one above."}
+                      : "No institutions yet. Institutions are added when you approve a sign-up request."}
                   </TableCell>
                 </TableRow>
               )}
@@ -203,26 +165,6 @@ export default function TenantsPage() {
           </Table>
         </div>
       )}
-
-      <EntityDialog
-        open={addOpen}
-        title="Provision new institution"
-        fields={[
-          { name: "name", label: "Institution name", required: true, placeholder: "e.g. University of Lagos" },
-          { name: "slug", label: "Slug (subdomain key)", required: true, placeholder: "e.g. unilag — lowercase, no spaces" },
-          { name: "domain", label: "Domain", placeholder: "e.g. unilag.edu.ng (optional)" },
-          { name: "plan", label: "Plan", type: "select", options: PLAN_OPTIONS },
-          { name: "storage_quota_bytes", label: "Storage quota", type: "select", options: QUOTA_OPTIONS },
-        ]}
-        initial={{ plan: "standard", storage_quota_bytes: String(10 * 1024 ** 3) }}
-        pending={createTenant.isPending}
-        error={modalError}
-        onClose={() => { setAddOpen(false); setModalError(""); }}
-        onSubmit={(payload) => {
-          if (payload.storage_quota_bytes) payload.storage_quota_bytes = Number(payload.storage_quota_bytes);
-          createTenant.mutate(payload);
-        }}
-      />
     </AppShell>
   );
 }

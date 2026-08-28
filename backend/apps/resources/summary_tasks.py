@@ -46,6 +46,7 @@ def summarize_resource_task(self, resource_id: str, tenant_id: str, user_id: str
             return {"status": "failed", "error": "no content"}
 
         result = generate_summary(text)
+    
         summary_text = (result or {}).get("summary", "").strip()
         key_points = (result or {}).get("key_points", []) or []
         if not summary_text:

@@ -50,8 +50,5 @@ minio_data/
 *.key
 secrets/
 
+# Mailpit local database (runtime-generated, do not commit)
 mailpit/
-# Mailpit local database files
-mailpit/
-mailpit.db-wal
-mailpit.db-shm

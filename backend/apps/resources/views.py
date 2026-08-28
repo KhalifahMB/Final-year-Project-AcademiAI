@@ -175,15 +175,16 @@ class ResourceViewSet(TenantModelViewSet):
     tenant; platform superusers likewise. `?scope=authorized` is accepted
     for backwards compatibility and is now the default behaviour.
     """
-
     queryset = Resource.objects.select_related(
         "uploaded_by", "course_offering", "programme", "department", "faculty"
     ).prefetch_related(
-        # Prefetch latest summary so list/detail don't N+1 when serializing
-        # latest_summary.
+        # Prefetch only the latest summary per resource so list/detail don't
+        # N+1 when serializing `latest_summary`. A sliced Prefetch with
+        # `to_attr` returns a list (0 or 1 items); the serializer unwraps it.
         models.Prefetch(
             "summaries",
-            queryset=ResourceSummary.objects.select_related("created_by").order_by("-created_at")[:1],
+            queryset=ResourceSummary.objects.select_related("created_by")
+            .order_by("-created_at")[:1],
             to_attr="prefetched_latest_summary",
         )
     )

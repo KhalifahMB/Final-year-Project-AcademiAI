@@ -99,6 +99,12 @@ export default function AnnouncementsPage() {
         </Button>
       }
     >
+      <Alert className="mb-4">
+        <AlertDescription>
+          Announcements are delivered by email. Warning and Critical ("important") announcements are emailed to all targeted users and cannot be unsubscribed; Info announcements are emailed unless a user opts out in Settings.
+        </AlertDescription>
+      </Alert>
+
       {announcementsQ.isLoading ? (
         <SkeletonRows rows={4} />
       ) : announcementsQ.error ? (

@@ -25,10 +25,13 @@ class ResourceSerializer(serializers.ModelSerializer):
 
     def get_latest_summary(self, obj):
         s = getattr(obj, "prefetched_latest_summary", None)
+        if isinstance(s, list):
+            s = s[0] if s else None
         if s is None:
             s = obj.summaries.order_by("-created_at").first()
         if s is None:
             return None
+
         return {
             "id": str(s.id),
             "summary": s.summary,

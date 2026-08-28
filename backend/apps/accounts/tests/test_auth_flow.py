@@ -168,3 +168,59 @@ def test_password_reset_flow_single_use_and_generic_responses():
         format="json",
     )
     assert resp.status_code == 200
+
+
+@pytest.mark.django_db
+def test_signup_cannot_attach_cross_tenant_programme():
+    """A student must never be attached to (or auto-enrolled into) another
+    tenant's programme, even if they forge that programme's id at signup.
+    This assertion must hold regardless of whether database RLS is enabled."""
+    from apps.accounts.models import StudentProfile
+
+    tenant_a = Tenant.objects.create(name="New Univ", slug="new-u")
+    tenant_b = Tenant.objects.create(name="Other Univ", slug="other-u")
+
+    # Build academic structure for tenant B (the "other" institution).
+    from apps.academics.models import Department, Faculty, Programme
+
+    fac_b = Faculty.objects.create(tenant=tenant_b, name="Science", code="SCI")
+    dept_b = Department.objects.create(tenant=tenant_b, faculty=fac_b, name="CS", code="CS")
+    prog_b = Programme.objects.create(
+        tenant=tenant_b, department=dept_b, name="BSc CS", code="BSC-CS"
+    )
+
+    client = APIClient()
+    resp = client.post(
+        "/api/v1/auth/signup/",
+        {
+            "email": "stu@new-u.edu",
+            "password": PASSWORD,
+            "role": "student",
+            "tenant_slug": "new-u",
+            # Forge tenant B's programme id while signing up for tenant A.
+            "programme": str(prog_b.id),
+        },
+        format="json",
+    )
+    assert resp.status_code == 201, resp.data
+
+    user = User.objects.get(email="stu@new-u.edu")
+    profile = StudentProfile.objects.get(user=user)
+    # The cross-tenant programme MUST NOT be attached (IDOR-safe), regardless
+    # of whether RLS is actually enforced on the database.
+    assert profile.programme_id is None
+    assert profile.tenant_id == tenant_a.id
+
+    # Verify → auto-enrollment must not create enrollments in tenant A
+    # (which has no offerings) nor spill across into tenant B.
+    from apps.academics.models import CourseEnrollment
+
+    code = services.create_verification_code(user)
+    resp = client.post(
+        "/api/v1/auth/verify-email/",
+        {"email": "stu@new-u.edu", "code": code},
+        format="json",
+    )
+    assert resp.status_code == 200, resp.data
+    assert CourseEnrollment.objects.filter(tenant_id=tenant_a.id).count() == 0
+    assert CourseEnrollment.objects.filter(tenant_id=tenant_b.id).count() == 0

@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { platformApi } from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
-import EntityDialog from "@/components/shared/EntityDialog";
 import ConfirmDialog from "@/components/shared/ConfirmDialog";
 import StatusBadge from "@/components/shared/StatusBadge";
 import StatCard from "@/components/shared/StatCard";
@@ -13,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Building2, CheckCircle, Edit, FileText,
+  ArrowLeft, Building2, CheckCircle, FileText,
   GraduationCap, HardDrive, Landmark, Pause, Play,
   Users, AlertTriangle,
 } from "lucide-react";
@@ -26,26 +25,6 @@ function formatBytes(bytes) {
   if (bytes >= mb) return `${(bytes / mb).toFixed(1)} MB`;
   return `${bytes} B`;
 }
-
-const QUOTA_OPTIONS = [
-  { value: String(5 * 1024 ** 3), label: "5 GB" },
-  { value: String(10 * 1024 ** 3), label: "10 GB" },
-  { value: String(50 * 1024 ** 3), label: "50 GB" },
-  { value: String(100 * 1024 ** 3), label: "100 GB" },
-  { value: String(500 * 1024 ** 3), label: "500 GB" },
-];
-
-const PLAN_OPTIONS = [
-  { value: "standard", label: "Standard" },
-  { value: "pro", label: "Pro" },
-  { value: "enterprise", label: "Enterprise" },
-];
-
-const STATUS_OPTIONS = [
-  { value: "active", label: "Active" },
-  { value: "suspended", label: "Suspended" },
-  { value: "pending", label: "Pending" },
-];
 
 const ROLE_STYLES = {
   admin: "bg-violet-500/12 text-violet-700 dark:text-violet-300 border-violet-500/25",
@@ -73,10 +52,8 @@ export default function TenantDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [editOpen, setEditOpen] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
   const [reactivateTarget, setReactivateTarget] = useState(null);
-  const [modalError, setModalError] = useState("");
 
   const detailQ = useQuery({
     queryKey: ["platform-tenant-detail", id],
@@ -97,17 +74,6 @@ export default function TenantDetailPage() {
     qc.invalidateQueries({ queryKey: ["platform-tenant-detail", id] });
     qc.invalidateQueries({ queryKey: ["platform-tenants"] });
   };
-
-  const updateTenant = useMutation({
-    mutationFn: (payload) => platformApi.tenants.update(id, payload),
-    onSuccess: () => {
-      toast.success("Tenant updated");
-      setEditOpen(false);
-      setModalError("");
-      invalidate();
-    },
-    onError: (e) => setModalError(errText(e, "Update failed")),
-  });
 
   const setStatus = useMutation({
     mutationFn: (status) => platformApi.tenants.update(id, { status }),
@@ -137,9 +103,6 @@ export default function TenantDetailPage() {
           </Button>
           {tenantFromList && (
             <>
-              <Button type="button" variant="outline" onClick={() => { setModalError(""); setEditOpen(true); }}>
-                <Edit className="mr-2 h-4 w-4" aria-hidden /> Edit
-              </Button>
               {tenantFromList.status === "suspended" ? (
                 <Button type="button" variant="outline" onClick={() => setReactivateTarget(tenantFromList)}>
                   <Play className="mr-2 h-4 w-4" aria-hidden /> Reactivate
@@ -235,33 +198,6 @@ export default function TenantDetailPage() {
           )}
         </div>
       ) : null}
-
-      {/* ── Edit Dialog ──────────────────────────────────────────── */}
-      <EntityDialog
-        open={editOpen}
-        title={`Edit — ${tenantFromList?.name || ""}`}
-        fields={[
-          { name: "name", label: "Institution name", required: true },
-          { name: "domain", label: "Domain" },
-          { name: "plan", label: "Plan", type: "select", options: PLAN_OPTIONS },
-          { name: "storage_quota_bytes", label: "Storage quota", type: "select", options: QUOTA_OPTIONS },
-          { name: "status", label: "Status", type: "select", options: STATUS_OPTIONS },
-        ]}
-        initial={tenantFromList ? {
-          name: tenantFromList.name,
-          domain: tenantFromList.domain || "",
-          plan: tenantFromList.plan || "standard",
-          storage_quota_bytes: String(tenantFromList.storage_quota_bytes),
-          status: tenantFromList.status,
-        } : {}}
-        pending={updateTenant.isPending}
-        error={modalError}
-        onClose={() => { setEditOpen(false); setModalError(""); }}
-        onSubmit={(payload) => {
-          if (payload.storage_quota_bytes) payload.storage_quota_bytes = Number(payload.storage_quota_bytes);
-          updateTenant.mutate(payload);
-        }}
-      />
 
       <ConfirmDialog
         open={!!suspendTarget}

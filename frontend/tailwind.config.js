@@ -39,6 +39,10 @@ export default {
         },
         card: { DEFAULT: 'var(--card)', foreground: 'var(--card-foreground)' },
       },
+      boxShadow: {
+        card: 'var(--shadow-card)',
+        'card-hover': 'var(--shadow-card-hover)',
+      },
     },
   },
   plugins: [],

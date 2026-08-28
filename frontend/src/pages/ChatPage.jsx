@@ -181,7 +181,7 @@ function SourceCard({ source, active, onClick, onOpenResource }) {
         {source.rank}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-[12.5px] font-medium leading-snug">{source.resource_title || `Source ${source.rank}`}</p>
+        <p className="line-clamp-2 text-[12.5px] font-medium leading-snug">{source.resource_title || source.title || `Source ${source.rank}`}</p>
         <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
           <FileIcon className="h-3 w-3" aria-hidden />
           <span className="uppercase tracking-wide">{meta.label}</span>

@@ -81,17 +81,17 @@ export default function AdminDashboardPage() {
       ) : !data ? null : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <StatCard icon={Users} label="Total users" value={t.users} hint="All roles" />
-            <StatCard icon={FileText} label="Materials" value={t.resources} hint={formatBytes(t.storage_used_bytes)} />
-            <StatCard icon={GraduationCap} label="Enrollments" value={t.enrollments} hint="Active" />
-            <StatCard icon={ClipboardList} label="Quizzes" value={t.quizzes} hint={`${t.quiz_attempts || 0} attempts`} />
-            <StatCard icon={MessageSquareText} label="Chat sessions" value={t.chat_sessions} hint={`${t.chat_messages || 0} messages`} />
-            <StatCard icon={HardDrive} label="Storage used" value={formatBytes(t.storage_used_bytes)} hint="Across resources" />
+            <StatCard icon={Users} label="Total users" value={t.users} hint="All roles" accent="sky" />
+            <StatCard icon={FileText} label="Materials" value={t.resources} hint={formatBytes(t.storage_used_bytes)} accent="emerald" />
+            <StatCard icon={GraduationCap} label="Enrollments" value={t.enrollments} hint="Active" accent="primary" />
+            <StatCard icon={ClipboardList} label="Quizzes" value={t.quizzes} hint={`${t.quiz_attempts || 0} attempts`} accent="amber" />
+            <StatCard icon={MessageSquareText} label="Chat sessions" value={t.chat_sessions} hint={`${t.chat_messages || 0} messages`} accent="primary" />
+            <StatCard icon={HardDrive} label="Storage used" value={formatBytes(t.storage_used_bytes)} hint="Across resources" accent="rose" />
           </div>
 
           <div className="mt-6 grid gap-5 lg:grid-cols-2">
             {roleData.length > 0 && (
-              <section className="rounded-xl border bg-card p-5 shadow-sm">
+              <section className="rounded-2xl border bg-card p-5 shadow-card">
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
                   <Users className="h-4 w-4 text-primary" aria-hidden /> People by role
                 </h2>
@@ -126,7 +126,7 @@ export default function AdminDashboardPage() {
             )}
 
             {pipelineData.length > 0 && (
-              <section className="rounded-xl border bg-card p-5 shadow-sm">
+              <section className="rounded-2xl border bg-card p-5 shadow-card">
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
                   <TrendingUp className="h-4 w-4 text-primary" aria-hidden /> Material pipeline
                 </h2>
@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
               </section>
             )}
 
-            <section className="rounded-xl border bg-card p-5 shadow-sm lg:col-span-2">
+            <section className="rounded-2xl border bg-card p-5 shadow-card lg:col-span-2">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
                 <Building2 className="h-4 w-4 text-primary" aria-hidden /> Academic structure
               </h2>
@@ -164,7 +164,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Audit analytics */}
-          <section className="mt-6 rounded-xl border bg-card p-5 shadow-sm">
+          <section className="mt-6 rounded-2xl border bg-card p-5 shadow-card">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -268,7 +268,7 @@ export default function AdminDashboardPage() {
           </section>
 
           {recentResources.length > 0 && (
-            <section className="mt-6 rounded-xl border bg-card p-5 shadow-sm">
+            <section className="mt-6 rounded-2xl border bg-card p-5 shadow-card">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
                 <FileText className="h-4 w-4 text-primary" aria-hidden /> Recent uploads
               </h2>

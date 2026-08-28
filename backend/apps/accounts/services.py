@@ -120,8 +120,14 @@ def signup_user(
             if programme_id:
                 from apps.academics.models import Programme
 
-                # Cross-tenant ids simply resolve to None here (IDOR-safe).
-                programme = Programme.objects.filter(id=programme_id).first()
+                # Explicitly scope to the chosen tenant. Never rely on RLS
+                # alone for this isolation: a cross-tenant programme id must
+                # resolve to None even if RLS is not enabled on the database,
+                # otherwise a foreign programme could be attached and drive
+                # auto-enrollment into another institution's coursework.
+                programme = Programme.objects.filter(
+                    id=programme_id, tenant=tenant
+                ).first()
 
             user = User.objects.create_user(
                 email=email,

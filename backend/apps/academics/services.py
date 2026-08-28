@@ -25,7 +25,9 @@ def auto_enroll_student(user) -> int:
     # open the student's tenant scope explicitly.
     with tenant_scope(str(user.tenant_id)), transaction.atomic():
         profile = (
-            StudentProfile.objects.filter(user=user)
+            StudentProfile.objects.filter(
+                user=user, tenant_id=user.tenant_id
+            )
             .select_related("programme__department")
             .first()
         )
@@ -33,7 +35,11 @@ def auto_enroll_student(user) -> int:
             return 0
 
         department = profile.programme.department
+        # Only ever enrol in the student's own tenant's offerings. Filter
+        # tenant_id explicitly rather than relying on RLS: a misattached
+        # foreign programme must NOT pull in another institution's courses.
         offerings = CourseOffering.objects.filter(
+            tenant_id=user.tenant_id,
             status="active",
             course__department_id=department.id,
         )

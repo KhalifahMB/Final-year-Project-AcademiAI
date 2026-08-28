@@ -100,7 +100,6 @@ export const platformApi = {
   auditLogs: (params) => api.get('/platform/audit-logs/', { params }),
   tenants: {
     list: (params) => api.get('/tenants/', { params }),
-    create: (payload) => api.post('/tenants/', payload),
     update: (id, payload) => api.patch(`/tenants/${id}/`, payload),
   },
   tenantRequests: {
@@ -113,6 +112,10 @@ export const platformApi = {
     create: (payload) => api.post('/announcements/', payload),
     update: (id, payload) => api.patch(`/announcements/${id}/`, payload),
     delete: (id) => api.delete(`/announcements/${id}/`),
+  },
+  announcementSubscriptions: {
+    get: () => api.get('/announcements/subscriptions/'),
+    update: (payload) => api.put('/announcements/subscriptions/', payload),
   },
 };
 

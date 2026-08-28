@@ -230,6 +230,7 @@ def generate_summary(text: str, max_words: int = 300) -> dict[str, Any]:
             contents=prompt,
             config=_generation_config(SUMMARY_SYSTEM),
         )
+        
         raw = (resp.text or "").strip()
         raw = re.sub(r"^```json\s*|\s*```$", "", raw, flags=re.I)
         parsed = json.loads(raw) if raw else None
