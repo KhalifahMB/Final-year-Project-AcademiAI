@@ -37,8 +37,11 @@ def create_verification_code(user: User) -> str:
 
 def verify_email_code(email: str, code: str) -> User:
     try:
-        user = User.objects.get(email__iexact=email)
+        user = User.objects.get(email=email)
+        print("verifying email code")
+        print(user)
     except User.DoesNotExist:
+        print("user does not exist")
         raise ValueError("Invalid verification code.")
 
     qs = EmailVerificationCode.objects.filter(
@@ -106,7 +109,7 @@ def signup_user(
         if not tenant:
             raise ValueError("Tenant not found or inactive.")
 
-    if User.objects.filter(email__iexact=email, tenant=tenant).exists():
+    if User.objects.filter(email=email, tenant=tenant).exists():
         raise ValueError("A user with this email already exists for this institution.")
 
     # Anonymous signup requests carry no tenant context; academic tables are
@@ -185,7 +188,7 @@ def create_password_reset_token(user: User) -> str:
 
 def confirm_password_reset(email: str, token: str, new_password: str) -> None:
     # Do not reveal whether email exists
-    user = User.objects.filter(email__iexact=email).first()
+    user = User.objects.filter(email=email).first()
     if not user:
         return
     record = (

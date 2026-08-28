@@ -138,8 +138,9 @@ class VerifyEmailView(APIView):
     )
     def post(self, request):
         ser = VerifyEmailSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
+        
         try:
+            ser.is_valid(raise_exception=True)
             user = services.verify_email_code(
                 ser.validated_data["email"], ser.validated_data["code"]
             )
