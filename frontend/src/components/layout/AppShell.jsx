@@ -15,6 +15,7 @@ import ThemeToggle from '@/components/shared/ThemeToggle';
 import BrandMark from '@/components/shared/BrandMark';
 import Avatar from '@/components/shared/Avatar';
 import OnlineStatus from '@/components/shared/OnlineStatus';
+import CommandPalette from '@/components/common/CommandPalette';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
 import { cn } from '@/lib/utils';
@@ -494,6 +495,7 @@ export default function AppShell({ title, description, actions, children, fullBl
       return false;
     }
   });
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -505,6 +507,18 @@ export default function AppShell({ title, description, actions, children, fullBl
 
   // Ctrl/Cmd+B toggles the sidebar.
   useKeyboardShortcut('mod+b', () => setCollapsed((c) => !c));
+  // ⌘K opens the command palette.
+  useKeyboardShortcut('mod+k', (e) => {
+    e.preventDefault();
+    setPaletteOpen((o) => !o);
+  });
+
+  // External events can open the palette.
+  useEffect(() => {
+    const handler = () => setPaletteOpen(true);
+    window.addEventListener('academiai:open-command-palette', handler);
+    return () => window.removeEventListener('academiai:open-command-palette', handler);
+  }, []);
 
   // External components (e.g. fullscreen resource preview) can request
   // sidebar state via CustomEvent('academiai:request-sidebar', {detail:{collapsed}}).
@@ -536,10 +550,7 @@ export default function AppShell({ title, description, actions, children, fullBl
     return prefix?.to || (user?.is_superuser ? '/platform' : '/dashboard');
   }, [flat, loc.pathname, user]);
 
-  const openPalette = () => {
-    // Placeholder for ⌘K palette (wired in phase 0+).
-    window.dispatchEvent(new CustomEvent('academiai:open-command-palette'));
-  };
+  const openPalette = () => setPaletteOpen(true);
 
   const contentPadding = collapsed ? 'lg:pl-[60px]' : 'lg:pl-[232px]';
 
@@ -660,6 +671,7 @@ export default function AppShell({ title, description, actions, children, fullBl
           )}
         </div>
       </div>
+      <CommandPalette open={paletteOpen} onOpen={setPaletteOpen} />
     </TooltipProvider>
   );
 }
