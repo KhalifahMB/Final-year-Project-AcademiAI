@@ -28,7 +28,7 @@ export default function AssignedCoursesPage() {
             <li key={a.id}>
               <Link
                 to={`/courses/${a.course_offering}`}
-                className="group flex items-center gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
+                className="card-surface card-surface-hover group flex items-center gap-4 rounded-2xl p-4 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                   <GraduationCap className="h-5 w-5" aria-hidden />

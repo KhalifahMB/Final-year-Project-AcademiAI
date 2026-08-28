@@ -401,7 +401,7 @@ export default function ResourcesPage() {
                     setSelected(r);
                   }
                 }}
-                className="group relative flex h-full cursor-pointer flex-col rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
+                className="card-surface card-surface-hover group relative flex h-full cursor-pointer flex-col rounded-2xl p-4 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 {/* Actions Dropdown */}
                 {(user?.role === 'admin' || user?.id === r.uploaded_by) && (
@@ -437,7 +437,7 @@ export default function ResourcesPage() {
                 )}
 
                 <div className="flex items-start gap-3 pr-8">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground">
                     <FileText className="h-5 w-5" aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1">

@@ -130,12 +130,12 @@ function MessageBubble({ msg }) {
     <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
       <span
         className={cn(
-          'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full shadow-sm',
+          'mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full shadow-sm ring-1',
           isUser
-            ? 'bg-primary text-primary-foreground'
+            ? 'bg-gradient-to-br from-primary to-primary/80 text-primary-foreground ring-white/20'
             : isSummary
-            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-            : 'bg-accent/80 text-accent-foreground border',
+            ? 'bg-emerald-100 text-emerald-700 ring-emerald-300/40 dark:bg-emerald-900/30 dark:text-emerald-400'
+            : 'bg-accent/80 text-accent-foreground border ring-border',
         )}
         aria-hidden
       >
@@ -143,10 +143,10 @@ function MessageBubble({ msg }) {
       </span>
       <div
         className={cn(
-          'max-w-[85%] rounded-2xl px-5 py-4 text-[15px] leading-relaxed shadow-sm sm:max-w-[75%]',
+          'max-w-[85%] rounded-2xl px-5 py-4 text-[15px] leading-relaxed shadow-card sm:max-w-[75%]',
           isUser
-            ? 'rounded-tr-sm bg-primary text-primary-foreground'
-            : 'rounded-tl-sm border bg-card/60 backdrop-blur-sm',
+            ? 'rounded-tr-sm bg-gradient-to-br from-primary to-primary/85 text-primary-foreground'
+            : 'rounded-tl-sm border bg-card',
         )}
       >
         {msg.title ? (
@@ -174,27 +174,35 @@ function MessageBubble({ msg }) {
         </div>
 
         {!isUser && sources.length > 0 ? (
-          <div className="mt-4 border-t pt-3 border-border/50">
+          <div className="mt-4 border-t border-border/50 pt-3">
             <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
               <BookOpenCheck className="h-3.5 w-3.5" aria-hidden /> Sources
             </p>
             <ul className="flex flex-wrap gap-2">
               {sources.map((s, i) => {
-                const title = s.resource_title || `Source ${s.rank ?? i + 1}`;
+                const title = s.resource_title || s.title || `Source ${s.rank ?? i + 1}`;
                 const rank = s.rank ?? i + 1;
-                const tooltip = `${title} · via ${s.retrieval_method || 'hybrid'} · rank ${rank}`;
+                const method =
+                  s.retrieval_method === 'semantic'
+                    ? 'Semantic'
+                    : s.retrieval_method === 'keyword'
+                    ? 'Keyword'
+                    : 'Hybrid';
+                const pageInfo = s.page ? ` · p.${s.page}` : '';
+                const tooltip = `${title}${pageInfo} · ${method} · rank ${rank}`;
                 return (
                   <li key={s.id || i}>
                     {s.resource_id ? (
                       <Link
                         to={`/resources/${s.resource_id}`}
                         title={tooltip}
-                        className="inline-flex max-w-full items-center gap-1.5 rounded-lg border bg-background/50 px-2.5 py-1 text-xs transition-colors hover:bg-accent hover:text-accent-foreground"
+                        className="group/source inline-flex max-w-full items-center gap-1.5 rounded-xl border bg-background/50 px-2.5 py-1.5 text-xs transition-all hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-ring"
                       >
-                        <Link2 className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                        <span className="max-w-[220px] truncate">
-                          {rank}. {title}
+                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[9px] font-bold text-primary group-hover/source:bg-primary group-hover/source:text-primary-foreground">
+                          {rank}
                         </span>
+                        <Link2 className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
+                        <span className="max-w-[220px] truncate text-foreground/90">{title}</span>
                         {s.version_number ? (
                           <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">v{s.version_number}</span>
                         ) : null}
@@ -202,10 +210,13 @@ function MessageBubble({ msg }) {
                     ) : (
                       <span
                         title={tooltip}
-                        className="inline-flex max-w-full items-center gap-1.5 rounded-lg border bg-background/50 px-2.5 py-1 text-xs"
+                        className="inline-flex max-w-full items-center gap-1.5 rounded-xl border bg-background/50 px-2.5 py-1.5 text-xs"
                       >
-                        <Link2 className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                        <span className="max-w-[220px] truncate">{rank}. {title}</span>
+                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-muted text-[9px] font-bold text-muted-foreground">
+                          {rank}
+                        </span>
+                        <Link2 className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
+                        <span className="max-w-[220px] truncate">{title}</span>
                       </span>
                     )}
                   </li>
@@ -652,19 +663,19 @@ export default function ChatPage() {
                   title="Ask anything about your courses"
                   description="Attach one or more materials from your library, or upload files directly from your device. Responses stream in real time with clickable citations."
                 />
-                <div className="grid w-full gap-3 sm:grid-cols-2">
+                <div className="grid w-full gap-3 sm:grid-cols-3">
                   {SUGGESTIONS.map((s) => (
                     <button
                       key={s}
                       type="button"
                       onClick={() => { setInput(s); setTimeout(() => send(s), 0); }}
                       disabled={loading}
-                      className="group flex flex-col items-start gap-2 rounded-xl border bg-card p-4 text-left text-sm text-muted-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-accent/30 hover:text-foreground hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
+                      className="group flex flex-col items-start gap-3 rounded-2xl border bg-card p-5 text-left text-sm text-muted-foreground shadow-card transition-all hover:-translate-y-1 hover:border-primary/40 hover:bg-accent/30 hover:text-foreground hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-ring"
                     >
-                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <FileText className="h-4 w-4 shrink-0" aria-hidden />
+                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                        <Sparkles className="h-4.5 w-4.5 shrink-0" aria-hidden />
                       </span>
-                      <span className="font-medium">{s}</span>
+                      <span className="font-medium leading-snug">{s}</span>
                     </button>
                   ))}
                 </div>
@@ -717,7 +728,7 @@ export default function ChatPage() {
                 </div>
               )}
 
-              <div className="flex items-end gap-2 rounded-2xl border bg-card p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring/20">
+              <div className="flex items-end gap-2 rounded-2xl border bg-card p-1.5 shadow-card transition-shadow focus-within:ring-2 focus-within:ring-ring/20 focus-within:shadow-card-hover">
                 <button
                   type="button"
                   onClick={() => setPickerOpen((o) => !o)}

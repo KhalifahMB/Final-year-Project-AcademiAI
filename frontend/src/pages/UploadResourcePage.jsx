@@ -168,7 +168,7 @@ export default function UploadResourcePage() {
           </Alert>
         ) : null}
 
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="rounded-2xl border bg-card p-5 shadow-card">
           <label
             htmlFor="file"
             onDragOver={(e) => e.preventDefault()}

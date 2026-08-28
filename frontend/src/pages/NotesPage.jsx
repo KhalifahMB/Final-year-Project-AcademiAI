@@ -342,7 +342,7 @@ export default function NotesPage() {
     >
       <div className="flex h-[calc(100vh-12rem)] flex-col md:flex-row gap-4 overflow-hidden">
         {/* LEFT PANE: LIST */}
-        <aside className="flex w-full md:w-80 shrink-0 flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
+        <aside className="flex w-full md:w-80 shrink-0 flex-col overflow-hidden rounded-xl card-surface">
           <div className="border-b p-3 space-y-3">
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -451,7 +451,7 @@ export default function NotesPage() {
         </aside>
 
         {/* RIGHT PANE: VIEWER/EDITOR */}
-        <main className="flex-1 overflow-hidden rounded-xl border bg-card shadow-sm flex flex-col relative">
+        <main className="flex-1 overflow-hidden rounded-xl card-surface flex flex-col relative">
           {!activeNote && !isEditing ? (
             <div className="flex h-full flex-col items-center justify-center text-center p-8">
               <div className="rounded-full bg-primary/10 p-4 mb-4 text-primary">

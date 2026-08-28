@@ -108,7 +108,7 @@ export default function QuizzesPage() {
             const buttonLabel = hasAttempts ? 'Retake quiz' : 'Take quiz';
             return (
               <li key={q.id}>
-                <article className="flex h-full flex-col rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+                <article className="card-surface card-surface-hover flex h-full flex-col rounded-2xl p-4">
                   <div className="flex items-start justify-between gap-2">
                     <h2
                       className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug"
@@ -130,8 +130,8 @@ export default function QuizzesPage() {
                         : 'No questions yet'}
                     </span>
                     {!isStaff && typeof q.best_score === 'number' && (
-                      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                        <Trophy className="h-3 w-3" /> Best {q.best_score}%
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-amber-600 dark:text-amber-400">
+                        <Trophy className="h-3 w-3" /> {q.best_score}%
                       </span>
                     )}
                     {!isStaff && q.last_attempt_at && (

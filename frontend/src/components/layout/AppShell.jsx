@@ -232,13 +232,22 @@ function SidebarNav({ onNavigate, collapsed }) {
                     aria-current={active ? "page" : undefined}
                     title={collapsed ? item.label : undefined}
                     className={cn(
-                      "group flex items-center gap-2.5 rounded-lg py-2 text-sm transition-colors",
+                      "group relative flex items-center gap-2.5 rounded-lg py-2 text-sm transition-colors",
                       collapsed ? "justify-center px-0" : "px-3",
                       active
-                        ? "bg-sidebar-active font-medium text-white shadow-sm"
+                        ? "bg-gradient-to-r from-sidebar-active/90 to-sidebar-active/40 font-medium text-white shadow-sm"
                         : "text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground",
                     )}
                   >
+                    {active && (
+                      <span
+                        className={cn(
+                          "absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-r-full bg-white/80",
+                          collapsed && "left-0.5",
+                        )}
+                        aria-hidden
+                      />
+                    )}
                     <Icon
                       className={cn("h-4 w-4 shrink-0", active && "text-white")}
                       aria-hidden
@@ -263,7 +272,6 @@ function SidebarNav({ onNavigate, collapsed }) {
     </nav>
   );
 }
-
 function UserMenu({ collapsed }) {
   const { user, logout } = useAuth();
   return (
@@ -446,7 +454,7 @@ export default function AppShell({ title, description, actions, children, fullBl
         )}
       >
         {!fullBleed && (
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur sm:px-6">
+          <header className="glass sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/75 px-4 backdrop-blur sm:px-6">
             <Button
               type="button"
               variant="ghost"

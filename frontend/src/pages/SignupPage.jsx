@@ -253,7 +253,11 @@ export default function SignupPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Programme (optional)</FormLabel>
-                  <Select value={field.value || undefined} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value || undefined}
+                    onValueChange={field.onChange}
+                    disabled={!chosenSlug || programmes.isLoading}
+                  >
                     <FormControl>
                       <SelectTrigger className="h-10 w-full">
                         <SelectValue

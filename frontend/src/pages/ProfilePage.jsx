@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AppShell from '@/components/layout/AppShell';
 import {
   Card,
@@ -13,6 +13,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import {
   Form,
@@ -35,12 +37,13 @@ import AvatarPicker from '@/components/shared/AvatarPicker';
 import Avatar from '@/components/shared/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { profileSchema, passwordChangeSchema } from '@/lib/validations';
-import api, { authApi } from '@/services/api';
+import api, { platformApi, authApi } from '@/services/api';
 import { toast } from 'sonner';
 import {
   Building2,
   Check,
   KeyRound,
+  Megaphone,
   Moon,
   ShieldCheck,
   Sun,
@@ -100,8 +103,66 @@ function AppearanceCard() {
   );
 }
 
-function InstitutionCard({ user }) {
+function AnnouncementPreferencesCard() {
+  const qc = useQueryClient();
+  const prefsQ = useQuery({
+    queryKey: ['announcement-preferences'],
+    queryFn: async () => (await platformApi.announcementSubscriptions.get()).data,
+    staleTime: 30_000,
+  });
+
+  const savePrefs = useMutation({
+    mutationFn: (payload) => platformApi.announcementSubscriptions.update(payload),
+    onSuccess: () => {
+      toast.success('Announcement preferences saved');
+      qc.setQueryData(['announcement-preferences'], (old) =>
+        old ? { ...old, ...savePrefs.variables } : old,
+      );
+    },
+    onError: () => toast.error('Could not save announcement preferences'),
+  });
+
+  const subscribedInfo = prefsQ.data?.subscribe_info !== false;
+
   return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Megaphone className="h-4 w-4 text-primary" aria-hidden /> Announcements
+        </CardTitle>
+        <CardDescription>
+          Choose which platform announcements are emailed to you. Important
+          announcements (warnings and critical) are always sent and cannot be
+          unsubscribed.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-start gap-3">
+          <Checkbox
+            id="subscribe-info"
+            checked={subscribedInfo}
+            disabled={savePrefs.isPending}
+            onCheckedChange={(v) => savePrefs.mutate({ subscribe_info: v === true })}
+          />
+          <div className="space-y-1">
+            <Label htmlFor="subscribe-info" className="text-sm font-medium">
+              General announcements
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Feature updates, tips, and routine notices (Info priority).
+            </p>
+          </div>
+        </div>
+        <p className="rounded-lg bg-amber-500/10 px-3 py-2.5 text-xs text-muted-foreground">
+          Warnings and Critical announcements are always emailed to you and
+          cannot be turned off.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function InstitutionCard({ user }) {  return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
@@ -315,6 +376,8 @@ export default function ProfilePage() {
             </Button>
           </CardContent>
         </Card>
+
+        <AnnouncementPreferencesCard />
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Personal info */}

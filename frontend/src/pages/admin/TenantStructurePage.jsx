@@ -13,7 +13,7 @@ import SkeletonRows from "@/components/shared/SkeletonRows";
 import StatusBadge from "@/components/shared/StatusBadge";
 import { toast } from "sonner";
 import {
-  Building2, CalendarRange, CalendarDays, ChevronRight, Plus, Settings2,
+  Building2, CalendarRange, CalendarDays, ChevronRight, Plus,
 } from "lucide-react";
 
 function formatBytes(bytes) {
@@ -29,7 +29,6 @@ const toList = (d) => d?.results || d || [];
 
 export default function TenantStructurePage() {
   const qc = useQueryClient();
-  const [editTenant, setEditTenant] = useState(false);
   const [addFaculty, setAddFaculty] = useState(false);
   const [addSession, setAddSession] = useState(false);
   const [addSemester, setAddSemester] = useState(null); // session object
@@ -60,13 +59,6 @@ export default function TenantStructurePage() {
     queryFn: async () => toList((await api.get("/semesters/?page_size=200")).data),
   });
 
-  const invalidateAll = () => {
-    qc.invalidateQueries({ queryKey: ["faculties"] });
-    qc.invalidateQueries({ queryKey: ["academic-sessions"] });
-    qc.invalidateQueries({ queryKey: ["semesters"] });
-    qc.invalidateQueries({ queryKey: ["my-tenant"] });
-  };
-
   const errText = (err, fallback) =>
     err?.response?.data?.error?.detail ||
     err?.response?.data?.detail ||
@@ -76,17 +68,6 @@ export default function TenantStructurePage() {
     fallback;
 
   // --- mutations ------------------------------------------------------
-  const saveTenant = useMutation({
-    mutationFn: (payload) => api.patch(`/tenants/${tenant.id}/`, payload),
-    onSuccess: () => {
-      toast.success("Institution profile updated");
-      setEditTenant(false);
-      setModalError("");
-      invalidateAll();
-    },
-    onError: (e) => setModalError(errText(e, "Update failed")),
-  });
-
   const createFaculty = useMutation({
     mutationFn: (payload) => api.post("/faculties/", payload),
     onSuccess: () => {
@@ -147,13 +128,6 @@ export default function TenantStructurePage() {
     <AppShell
       title="Institution"
       description="Your institution's profile, academic calendar, and faculty structure."
-      actions={
-        tenant ? (
-          <Button type="button" variant="outline" onClick={() => setEditTenant(true)} className="shadow-sm">
-            <Settings2 className="mr-2 h-4 w-4" aria-hidden /> Institution settings
-          </Button>
-        ) : null
-      }
     >
       {tenantQ.isLoading ? (
         <SkeletonRows rows={3} />
@@ -290,7 +264,7 @@ export default function TenantStructurePage() {
                     <li key={f.id}>
                       <Link
                         to={`/admin/faculties/${f.id}`}
-                        className="group flex items-center gap-3.5 rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
+                        className="card-surface card-surface-hover group flex items-center gap-3.5 rounded-2xl p-4 focus-visible:outline-2 focus-visible:outline-ring"
                       >
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary">
                           {(f.code || f.name || "?").slice(0, 2).toUpperCase()}
@@ -311,19 +285,6 @@ export default function TenantStructurePage() {
       )}
 
       {/* Modals */}
-      <EntityDialog
-        open={editTenant}
-        title="Institution settings"
-        fields={[
-          { name: "name", label: "Institution name", required: true },
-          { name: "domain", label: "Domain", placeholder: "e.g. university.edu" },
-        ]}
-        initial={tenant}
-        pending={saveTenant.isPending}
-        error={modalError}
-        onClose={() => setEditTenant(false)}
-        onSubmit={(payload) => saveTenant.mutate(payload)}
-      />
       <EntityDialog
         open={addFaculty}
         title="Add faculty"

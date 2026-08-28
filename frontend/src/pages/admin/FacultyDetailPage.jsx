@@ -131,7 +131,7 @@ export default function FacultyDetailPage() {
                 <li key={d.id}>
                   <Link
                     to={`/admin/departments/${d.id}`}
-                    className="group flex items-center gap-3.5 rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring"
+                    className="card-surface card-surface-hover group flex items-center gap-3.5 rounded-2xl p-4 focus-visible:outline-2 focus-visible:outline-ring"
                   >
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary">
                       {(d.code || d.name || "?").slice(0, 2).toUpperCase()}

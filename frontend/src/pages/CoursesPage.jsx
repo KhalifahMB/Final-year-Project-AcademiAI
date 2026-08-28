@@ -9,7 +9,7 @@ import { BookOpen } from "lucide-react";
 function CourseCard({ course }) {
   return (
     <li>
-      <article className="group flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+      <article className="card-surface card-surface-hover group flex h-full flex-col overflow-hidden rounded-2xl">
         <div className="flex items-center justify-between bg-gradient-to-br from-primary/10 via-primary/5 to-transparent px-4 py-3">
           <span className="rounded-md bg-primary/15 px-2.5 py-1 font-mono text-xs font-semibold tracking-wide text-primary">
             {course.code || "—"}

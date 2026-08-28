@@ -245,41 +245,56 @@ export default function QuizTakePage() {
 
       {result && (
         <div className="space-y-6">
-          <Card className="max-w-md">
-            <CardHeader>
-              <CardTitle className="text-lg">Results</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div>
-                Score: <strong>{result.score ?? "—"}%</strong>
-                {typeof result.correct_count === "number" && typeof result.total_questions === "number" && (
-                  <span className="text-muted-foreground">
-                    {" "}({result.correct_count}/{result.total_questions} correct)
-                  </span>
-                )}
-              </div>
-              <div>
-                Submitted:{" "}
-                <span title={result.submitted_at}>
-                  {result.submitted_at ? formatRelativeTime(result.submitted_at) : "—"}
-                </span>
-              </div>
-              <div className="flex gap-2 pt-2">
-                {!isStaff && (
-                  <Button type="button" onClick={retake}>
-                    <RotateCcw className="mr-2 h-4 w-4" /> Retake quiz
-                  </Button>
-                )}
-                <Button type="button" variant="outline" onClick={() => navigate("/quizzes")}>
-                  Back to quizzes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card className="card-surface-hover sm:col-span-2 lg:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Your score</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-5">
+                  <div
+                    className={cn(
+                      "flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-xl font-bold shadow-inner",
+                      (result.score ?? 0) >= 70
+                        ? "bg-emerald-500/10 text-emerald-600 ring-4 ring-emerald-500/15 dark:text-emerald-400"
+                        : (result.score ?? 0) >= 40
+                        ? "bg-amber-500/10 text-amber-600 ring-4 ring-amber-500/15 dark:text-amber-400"
+                        : "bg-rose-500/10 text-rose-600 ring-4 ring-rose-500/15 dark:text-rose-400"
+                    )}
+                  >
+                    {result.score ?? "—"}%
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    {typeof result.correct_count === "number" && typeof result.total_questions === "number" && (
+                      <p className="font-medium">
+                        {result.correct_count} of {result.total_questions} correct
+                      </p>
+                    )}
+                    <p className="text-muted-foreground">
+                      Submitted{" "}
+                      <span title={result.submitted_at} className="text-foreground">
+                        {result.submitted_at ? formatRelativeTime(result.submitted_at) : "—"}
+                      </span>
+                    </p>
+                    <div className="flex gap-2 pt-2">
+                      {!isStaff && (
+                        <Button type="button" onClick={retake} size="sm">
+                          <RotateCcw className="mr-2 h-4 w-4" /> Retake quiz
+                        </Button>
+                      )}
+                      <Button type="button" variant="outline" size="sm" onClick={() => navigate("/quizzes")}>
+                        Back to quizzes
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Review each question */}
           {Array.isArray(result.review) && result.review.length > 0 && (
-            <div className="space-y-3 max-w-2xl">
+            <div className="space-y-3 max-w-3xl">
               <h3 className="text-base font-semibold">Review your answers</h3>
               {result.review.map((r, i) => {
                 const correctIdx = r.correct_answer?.index;
@@ -294,22 +309,22 @@ export default function QuizTakePage() {
                     : r.user_answer;
                 return (
                   <Card key={r.question_id} className={cn(
-                    "border-l-4",
-                    r.is_correct ? "border-l-emerald-500" : "border-l-red-500",
+                    "shadow-card card-surface-hover border-l-4 overflow-hidden",
+                    r.is_correct ? "border-l-emerald-500" : "border-l-rose-500",
                   )}>
                     <CardHeader className="pb-2">
                       <CardTitle className="flex items-start gap-2 text-base">
                         {r.is_correct ? (
                           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
                         ) : (
-                          <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+                          <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
                         )}
                         <span>{i + 1}. {r.question_text}</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2 text-sm">
                       {Array.isArray(r.options) && r.options.length > 0 ? (
-                        <ul className="space-y-1">
+                        <ul className="space-y-1.5">
                           {r.options.map((opt, oi) => {
                             const isUser = oi === userIdx;
                             const isCorrect = oi === correctIdx;
@@ -317,16 +332,18 @@ export default function QuizTakePage() {
                               <li
                                 key={oi}
                                 className={cn(
-                                  "rounded-lg border px-3 py-1.5",
-                                  isCorrect && "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-                                  isUser && !isCorrect && "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-400",
+                                  "flex items-center gap-2 rounded-xl border px-3 py-2",
+                                  isCorrect && "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300",
+                                  isUser && !isCorrect && "border-rose-500/40 bg-rose-500/10 text-rose-800 dark:text-rose-300",
                                   !isUser && !isCorrect && "text-muted-foreground",
                                 )}
                               >
-                                <span className="mr-2 font-mono text-xs">{String.fromCharCode(65 + oi)}.</span>
-                                {typeof opt === "string" ? opt : opt.text || String(opt)}
-                                {isCorrect && <span className="ml-2 text-xs font-semibold">(correct)</span>}
-                                {isUser && !isCorrect && <span className="ml-2 text-xs font-semibold">(your answer)</span>}
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-mono">
+                                  {String.fromCharCode(65 + oi)}
+                                </span>
+                                <span className="flex-1">{typeof opt === "string" ? opt : opt.text || String(opt)}</span>
+                                {isCorrect && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
+                                {isUser && !isCorrect && <XCircle className="h-4 w-4 shrink-0 text-rose-500" />}
                               </li>
                             );
                           })}
@@ -338,7 +355,8 @@ export default function QuizTakePage() {
                         </div>
                       )}
                       {r.explanation && (
-                        <p className="rounded-md bg-muted/50 p-2 text-xs italic text-muted-foreground">
+                        <p className="rounded-lg bg-muted/50 p-2.5 text-xs italic text-muted-foreground">
+                          <span className="not-italic font-semibold text-foreground">Explanation: </span>
                           {r.explanation}
                         </p>
                       )}

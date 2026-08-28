@@ -265,6 +265,7 @@ CELERY_TASK_ROUTES = {
     "apps.chat.tasks.*": {"queue": "ai"},
     "apps.assessments.tasks.*": {"queue": "ai"},
     "apps.accounts.tasks.send_tenant_suspension_emails": {"queue": "email"},
+    "apps.platform.tasks.*": {"queue": "email"},
     "apps.accounts.tasks.restrict_suspended_tenant_logins": {"queue": "celery"},
 }
 

@@ -1,13 +1,21 @@
 from django.db import models as django_models
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import IsSuperuser
-from .models import Announcement
-from .serializers import AnnouncementSerializer, AnnouncementPublicSerializer
+from .models import Announcement, AnnouncementSubscription
+from .serializers import (
+    AnnouncementSerializer,
+    AnnouncementPublicSerializer,
+    AnnouncementSubscriptionSerializer,
+    AnnouncementSubscriptionInputSerializer,
+)
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @extend_schema(
@@ -23,6 +31,40 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
         if getattr(self, "swagger_fake_view", False):
             return Announcement.objects.none()
         return Announcement.objects.select_related("created_by").prefetch_related("target_tenants")
+
+    def perform_create(self, serializer):
+        announcement = serializer.save()
+        try:
+            from .tasks import dispatch_announcement_emails
+
+            dispatch_announcement_emails.delay(str(announcement.id))
+        except Exception:
+            logger.exception("Failed to queue announcement emails id=%s", announcement.id)
+
+
+@extend_schema(
+    tags=["Platform"],
+    summary="Current user announcement email preferences",
+    description=(
+        "Authenticated user's announcement subscription. Only the 'info' "
+        "type can be toggled; important (warning/critical) announcements are "
+        "always emailed."
+    ),
+)
+class AnnouncementSubscriptionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        pref, _ = AnnouncementSubscription.objects.get_or_create(user=request.user)
+        return Response(AnnouncementSubscriptionSerializer(pref).data)
+
+    def put(self, request):
+        pref, _ = AnnouncementSubscription.objects.get_or_create(user=request.user)
+        input_ser = AnnouncementSubscriptionInputSerializer(data=request.data)
+        input_ser.is_valid(raise_exception=True)
+        pref.subscribe_info = input_ser.validated_data["subscribe_info"]
+        pref.save(update_fields=["subscribe_info", "updated_at"])
+        return Response(AnnouncementSubscriptionSerializer(pref).data)
 
 
 @extend_schema(

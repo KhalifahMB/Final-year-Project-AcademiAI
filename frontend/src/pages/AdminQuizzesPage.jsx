@@ -461,7 +461,7 @@ export default function AdminQuizzesPage() {
           <Sparkles className="mx-auto mt-2 h-4 w-4 text-primary" aria-hidden />
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        <div className="overflow-hidden rounded-xl card-surface">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">

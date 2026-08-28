@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import api from "@/services/api";
-import { useAuth } from "@/hooks/useAuth";
-import ThemeToggle from "@/components/shared/ThemeToggle";
-import BrandMark from "@/components/shared/BrandMark";
-import SkeletonRows from "@/components/shared/SkeletonRows";
-import { Input } from "@/components/ui/input";
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/services/api';
+import { useAuth } from '@/hooks/useAuth';
+import ThemeToggle from '@/components/shared/ThemeToggle';
+import BrandMark from '@/components/shared/BrandMark';
+import SkeletonRows from '@/components/shared/SkeletonRows';
+import { Input } from '@/components/ui/input';
 import {
   ArrowRight,
   Bookmark,
@@ -22,7 +22,7 @@ import {
   Smartphone,
   Sparkles,
   UsersRound,
-} from "lucide-react";
+} from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
 /* Content                                                             */
@@ -31,38 +31,38 @@ import {
 const CORE_FEATURES = [
   {
     icon: Bot,
-    title: "Grounded AI chat",
-    text: "Ask questions about your university courses, get answers with citations from authorized materials. No hallucinations.",
-    chip: "Citations included",
+    title: 'Grounded AI chat',
+    text: 'Ask questions about your university courses, get answers with citations from authorized materials. No hallucinations.',
+    chip: 'Citations included',
   },
   {
     icon: ClipboardList,
-    title: "Auto-generated quizzes",
-    text: "Auto-generated quizzes from your course resources. Test understanding, track progress, ace exams.",
-    chip: "AI generated",
+    title: 'Auto-generated quizzes',
+    text: 'Auto-generated quizzes from your course resources. Test understanding, track progress, ace exams.',
+    chip: 'AI generated',
   },
   {
     icon: FileText,
-    title: "Smart summaries",
-    text: "Concise summaries of course materials. Save hours, retain more, focus on what matters.",
-    chip: "One tap",
+    title: 'Smart summaries',
+    text: 'Concise summaries of course materials. Save hours, retain more, focus on what matters.',
+    chip: 'One tap',
   },
 ];
 
 const HOW_STEPS = [
   {
-    n: "01",
-    title: "Your university gets its own tenant",
-    text: "Each university (tenant) gets its own isolated environment with faculties, departments, courses, roles and permissions.",
+    n: '01',
+    title: 'Your university gets its own tenant',
+    text: 'Each university (tenant) gets its own isolated environment with faculties, departments, courses, roles and permissions.',
   },
   {
-    n: "02",
-    title: "Lecturers upload authorized materials",
-    text: "Lecture notes, PDFs and slides are chunked, embedded and understood by the AI — within that tenant only.",
+    n: '02',
+    title: 'Lecturers upload authorized materials',
+    text: 'Lecture notes, PDFs and slides are chunked, embedded and understood by the AI — within that tenant only.',
   },
   {
-    n: "03",
-    title: "Students learn with cited answers",
+    n: '03',
+    title: 'Students learn with cited answers',
     text: "Chat, generate quizzes, and get summaries — all grounded in your own university's materials, with citations you can open.",
   },
 ];
@@ -70,52 +70,51 @@ const HOW_STEPS = [
 const EXTRAS = [
   {
     icon: Smartphone,
-    tag: "Coming soon",
-    title: "AcademiAI mobile",
-    text: "Study on the go, offline access, push notifications for quizzes and updates.",
+    tag: 'Coming soon',
+    title: 'AcademiAI mobile',
+    text: 'Study on the go, offline access, push notifications for quizzes and updates.',
   },
   {
     icon: UsersRound,
-    tag: "Coming soon",
-    title: "Collaborative study boards",
-    text: "Collaborate with classmates across your university — shared boards with grounded context.",
+    tag: 'Coming soon',
+    title: 'Collaborative study boards',
+    text: 'Collaborate with classmates across your university — shared boards with grounded context.',
   },
 ];
 
 const FOOTER_PRODUCT = [
-  { label: "For students", href: "#features" },
-  { label: "For lecturers", href: "#how" },
-  { label: "For admins", href: "#how" },
-  { label: "Institutions directory", href: "#institutions" },
+  { label: 'For students', href: '#features' },
+  { label: 'For lecturers', href: '#how' },
+  { label: 'For admins', href: '#how' },
+  { label: 'Institutions directory', href: '#institutions' },
 ];
 const FOOTER_PROJECT = [
-  { label: "Final Year Project 2025/2026", href: "#case-study" },
-  { label: "ATBU case study", href: "#case-study" },
-  { label: "Multi-tenant architecture", href: "#how" },
+  { label: 'Final Year Project 2025/2026', href: '#case-study' },
+  { label: 'ATBU case study', href: '#case-study' },
+  { label: 'Multi-tenant architecture', href: '#how' },
 ];
 
 /* ------------------------------------------------------------------ */
 /* Shared bits                                                         */
 /* ------------------------------------------------------------------ */
 
-
 const pillPrimary =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-ring";
+  'inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-xl focus-visible:outline-2 focus-visible:outline-ring';
 const pillGhost =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-card px-7 text-sm font-medium shadow-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring";
+  'inline-flex h-11 items-center justify-center gap-2 rounded-full border bg-card px-7 text-sm font-medium shadow-sm transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring';
 
 /* ------------------------------------------------------------------ */
 /* Institutions directory (visitor-facing)                             */
 /* ------------------------------------------------------------------ */
 
 function InstitutionDirectory() {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const q = search.trim();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["tenant-directory", q],
+    queryKey: ['tenant-directory', q],
     queryFn: async () => {
-      const { data } = await api.get("/tenants/directory/", {
+      const { data } = await api.get('/tenants/directory/', {
         params: q ? { search: q } : {},
       });
       return data.results || [];
@@ -146,30 +145,40 @@ function InstitutionDirectory() {
           <SkeletonRows rows={2} />
         ) : institutions.length === 0 ? (
           <div className="rounded-2xl border border-dashed px-6 py-8 text-center">
-            <Building2 className="mx-auto h-6 w-6 text-muted-foreground" aria-hidden />
+            <Building2
+              className="mx-auto h-6 w-6 text-muted-foreground"
+              aria-hidden
+            />
             <p className="mt-2 text-sm font-medium">
-              {q ? `No institutions match “${q}”` : "No institutions yet"}
+              {q ? `No institutions match “${q}”` : 'No institutions yet'}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Universities are onboarded by the platform team &mdash; yours could be next.
+              Universities are onboarded by the platform team &mdash; yours
+              could be next.
             </p>
-            <Link to="/request-institution" className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-              Don&apos;t see your university? Request it <ArrowRight className="h-3.5 w-3.5" />
+            <Link
+              to="/request-institution"
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            >
+              Don&apos;t see your university? Request it{' '}
+              <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2">
             {institutions.map((t) => (
               <li key={t.id} role="listitem">
-                <div className="flex items-center gap-3 rounded-2xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+                <div className="flex items-center gap-3 rounded-2xl border bg-card p-4 shadow-card transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold uppercase text-primary">
-                    {(t.name?.[0] || "?").toUpperCase()}
+                    {(t.name?.[0] || '?').toUpperCase()}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium" title={t.name}>
                       {t.name}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">/{t.slug}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      /{t.slug}
+                    </p>
                   </div>
                   <Link
                     to="/signup"
@@ -199,19 +208,25 @@ export default function LandingPage() {
       {/* ---------------------------------------------------------- Nav */}
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-ring rounded-md">
+          <Link
+            to="/"
+            className="flex items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-ring rounded-md"
+          >
             <BrandMark />
             <span className="text-lg font-bold tracking-tight">AcademiAI</span>
             <span className="ml-1 hidden rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground lg:inline-block">
               Multi-tenant · FYP
             </span>
           </Link>
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Page sections">
+          <nav
+            className="hidden items-center gap-1 md:flex"
+            aria-label="Page sections"
+          >
             {[
-              ["#features", "Features"],
-              ["#how", "How it works"],
-              ["#institutions", "Universities"],
-              ["#case-study", "Case study"],
+              ['#features', 'Features'],
+              ['#how', 'How it works'],
+              ['#institutions', 'Universities'],
+              ['#case-study', 'Case study'],
             ].map(([href, label]) => (
               <a
                 key={href}
@@ -229,7 +244,8 @@ export default function LandingPage() {
                 to="/dashboard"
                 className="inline-flex h-9 items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90"
               >
-                Open workspace <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
+                Open workspace{' '}
+                <ArrowRight className="ml-1 h-4 w-4" aria-hidden />
               </Link>
             ) : (
               <>
@@ -257,23 +273,23 @@ export default function LandingPage() {
           className="pointer-events-none absolute inset-0 blur-3xl"
           style={{
             background:
-              "radial-gradient(600px circle at 12% 10%, oklch(0.55 0.2 295 / 0.16), transparent 55%), radial-gradient(500px circle at 88% 30%, oklch(0.6 0.15 255 / 0.14), transparent 55%)",
+              'radial-gradient(600px circle at 12% 10%, oklch(0.55 0.2 295 / 0.16), transparent 55%), radial-gradient(500px circle at 88% 30%, oklch(0.6 0.15 255 / 0.14), transparent 55%)',
           }}
           aria-hidden
         />
         <div className="relative mx-auto grid max-w-[1280px] items-center gap-10 px-4 pb-20 pt-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:pb-28 lg:pt-24 lg:px-8">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+            {/* <span className="inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1 text-xs font-medium text-muted-foreground shadow-sm">
               <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden />
               Multi-tenant · Built as a Final Year Project
-            </span>
+            </span> */}
             <h1 className="mt-6 max-w-[16ch] text-4xl font-extrabold leading-[0.98] tracking-tight sm:text-5xl lg:text-[3.75rem]">
-              AI-powered academic assistance{" "}
+              AI-powered academic assistance{' '}
               <span
                 className="bg-clip-text text-transparent"
                 style={{
                   backgroundImage:
-                    "linear-gradient(to bottom right, oklch(0.55 0.25 293), oklch(0.55 0.23 265), oklch(0.58 0.21 250))",
+                    'linear-gradient(to bottom right, oklch(0.55 0.25 293), oklch(0.55 0.23 265), oklch(0.58 0.21 250))',
                 }}
               >
                 for every university
@@ -288,10 +304,10 @@ export default function LandingPage() {
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
-                to={isAuthenticated ? "/dashboard" : "/signup"}
+                to={isAuthenticated ? '/dashboard' : '/signup'}
                 className={pillPrimary}
               >
-                {isAuthenticated ? "Open workspace" : "Create account"}
+                {isAuthenticated ? 'Open workspace' : 'Create account'}
                 <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
               <a href="#institutions" className={pillGhost}>
@@ -300,14 +316,17 @@ export default function LandingPage() {
             </div>
             <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-600 dark:text-emerald-400">
-                <Check className="h-3.5 w-3.5" aria-hidden /> Live implementation
+                <Check className="h-3.5 w-3.5" aria-hidden /> Live
+                implementation
               </span>
               <span className="flex items-center gap-1.5">
-                <ShieldCheck className="h-3.5 w-3.5" aria-hidden /> Secure &amp; tenant-isolated
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden /> Secure &amp;
+                tenant-isolated
               </span>
-              <span className="flex items-center gap-1.5">
-                <Landmark className="h-3.5 w-3.5" aria-hidden /> Scales to any faculty
-              </span>
+              {/* <span className="flex items-center gap-1.5">
+                <Landmark className="h-3.5 w-3.5" aria-hidden /> Scales to any
+                faculty
+              </span> */}
             </div>
           </div>
 
@@ -320,7 +339,10 @@ export default function LandingPage() {
                 className="aspect-[4/3] w-full object-cover"
               />
               <div className="absolute bottom-3 left-3 inline-flex items-center gap-2 rounded-full bg-background/85 px-3 py-1.5 text-[11px] font-semibold backdrop-blur">
-                <GraduationCap className="h-3.5 w-3.5 text-primary" aria-hidden />
+                <GraduationCap
+                  className="h-3.5 w-3.5 text-primary"
+                  aria-hidden
+                />
                 One workspace per university — students, lecturers, admins
               </div>
             </div>
@@ -337,7 +359,10 @@ export default function LandingPage() {
       </section>
 
       {/* ----------------------------------------------------- Features */}
-      <section id="features" className="border-y bg-muted/40 py-20 scroll-mt-16 lg:py-24">
+      <section
+        id="features"
+        className="border-y bg-muted/40 py-20 scroll-mt-16 lg:py-24"
+      >
         <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
           <div className="mb-12 flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-end">
             <h2 className="max-w-[18ch] text-3xl font-bold leading-[0.98] tracking-tight sm:text-4xl">
@@ -353,13 +378,13 @@ export default function LandingPage() {
             {CORE_FEATURES.map(({ icon: Icon, title, text, chip }) => (
               <div
                 key={title}
-                className="group relative overflow-hidden rounded-2xl border bg-card p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl"
+                className="group relative overflow-hidden rounded-2xl border bg-card p-7 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-xl"
               >
                 <div
                   className="pointer-events-none absolute inset-x-0 top-0 h-1 opacity-0 transition-opacity group-hover:opacity-100"
                   style={{
                     backgroundImage:
-                      "linear-gradient(to right, oklch(0.55 0.25 293), oklch(0.55 0.23 265), oklch(0.58 0.21 220))",
+                      'linear-gradient(to right, oklch(0.55 0.25 293), oklch(0.55 0.23 265), oklch(0.58 0.21 220))',
                   }}
                   aria-hidden
                 />
@@ -372,21 +397,43 @@ export default function LandingPage() {
                   </span>
                 </div>
                 <h3 className="mt-5 text-lg font-semibold">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{text}</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {text}
+                </p>
               </div>
             ))}
           </div>
           <div className="mt-6 grid gap-5 md:grid-cols-3">
             {[
-              { icon: Bookmark, t: "Bookmarks & notes", d: "Personal learning space across every course." },
-              { icon: ShieldCheck, t: "Tenant isolation", d: "Database-level security keeps each university separate." },
-              { icon: GraduationCap, t: "Progress tracking", d: "Per-concept mastery as you move through the curriculum." },
+              {
+                icon: Bookmark,
+                t: 'Bookmarks & notes',
+                d: 'Personal learning space across every course.',
+              },
+              {
+                icon: ShieldCheck,
+                t: 'Tenant isolation',
+                d: 'Database-level security keeps each university separate.',
+              },
+              {
+                icon: GraduationCap,
+                t: 'Progress tracking',
+                d: 'Per-concept mastery as you move through the curriculum.',
+              },
             ].map(({ icon: Icon, t, d }) => (
-              <div key={t} className="flex items-start gap-3 rounded-2xl border bg-card/60 p-5">
-                <Icon className="mt-0.5 h-4.5 w-4.5 shrink-0 text-primary" aria-hidden />
+              <div
+                key={t}
+                className="flex items-start gap-3 rounded-2xl border bg-card/60 p-5"
+              >
+                <Icon
+                  className="mt-0.5 h-4.5 w-4.5 shrink-0 text-primary"
+                  aria-hidden
+                />
                 <div>
                   <p className="text-sm font-medium">{t}</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{d}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    {d}
+                  </p>
                 </div>
               </div>
             ))}
@@ -415,14 +462,16 @@ export default function LandingPage() {
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-white shadow-md"
                     style={{
                       backgroundImage:
-                        "linear-gradient(to bottom right, oklch(0.55 0.25 293), oklch(0.55 0.22 260))",
+                        'linear-gradient(to bottom right, oklch(0.55 0.25 293), oklch(0.55 0.22 260))',
                     }}
                   >
                     {n}
                   </span>
                   <div>
                     <h3 className="font-semibold">{title}</h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{text}</p>
+                    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                      {text}
+                    </p>
                   </div>
                 </li>
               ))}
@@ -434,7 +483,10 @@ export default function LandingPage() {
                 loading="lazy"
                 className="aspect-[4/3] h-full w-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" aria-hidden />
+              <div
+                className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"
+                aria-hidden
+              />
               <div className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-semibold text-zinc-900 backdrop-blur">
                 <Landmark className="h-3.5 w-3.5" aria-hidden />
                 Case study: ATBU campus · Faculty of Computing
@@ -464,18 +516,21 @@ export default function LandingPage() {
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
               Uploaded documents are chunked, embedded, and linked into a
-              concept map of your curriculum. When you ask a question,
-              AcademiAI retrieves the exact passages and cites them — never a
-              hallucinated reference.
+              concept map of your curriculum. When you ask a question, AcademiAI
+              retrieves the exact passages and cites them — never a hallucinated
+              reference.
             </p>
             <ul className="mt-6 space-y-2.5 text-sm">
               {[
-                "Citations point to real passages you can open",
-                "Concept-level progress tracking as you study",
-                "Visibility scopes keep materials within your institution",
+                'Citations point to real passages you can open',
+                'Concept-level progress tracking as you study',
+                'Visibility scopes keep materials within your institution',
               ].map((t) => (
                 <li key={t} className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" aria-hidden />
+                  <Check
+                    className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500"
+                    aria-hidden
+                  />
                   {t}
                 </li>
               ))}
@@ -522,7 +577,9 @@ export default function LandingPage() {
                       {tag}
                     </span>
                   </p>
-                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{text}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    {text}
+                  </p>
                 </div>
               </div>
             ))}
@@ -545,8 +602,8 @@ export default function LandingPage() {
             Department of Computer Science, Faculty of Computing, ATBU Bauchi.
             The faculty serves as the initial implementation example,
             demonstrating how any university can adopt AcademiAI as a
-            multi-tenant solution — starting with Computer Science courses,
-            with architecture ready for any faculty and university.
+            multi-tenant solution — starting with Computer Science courses, with
+            architecture ready for any faculty and university.
           </p>
         </div>
       </section>
@@ -557,13 +614,16 @@ export default function LandingPage() {
           className="absolute inset-0"
           style={{
             backgroundImage:
-              "linear-gradient(to bottom right, oklch(0.52 0.26 293), oklch(0.52 0.24 275), oklch(0.55 0.22 250))",
+              'linear-gradient(to bottom right, oklch(0.52 0.26 293), oklch(0.52 0.24 275), oklch(0.55 0.22 250))',
           }}
           aria-hidden
         />
         <div
           className="absolute inset-0"
-          style={{ background: "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.18), transparent 50%)" }}
+          style={{
+            background:
+              'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.18), transparent 50%)',
+          }}
           aria-hidden
         />
         <div className="relative mx-auto max-w-3xl px-4 py-20 text-center sm:px-6 lg:py-28">
@@ -576,10 +636,10 @@ export default function LandingPage() {
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link
-              to={isAuthenticated ? "/dashboard" : "/signup"}
+              to={isAuthenticated ? '/dashboard' : '/signup'}
               className="inline-flex h-12 items-center gap-2 rounded-full bg-white px-8 text-[15px] font-semibold text-zinc-900 shadow-xl transition-colors hover:bg-zinc-100 focus-visible:outline-2 focus-visible:outline-ring"
             >
-              {isAuthenticated ? "Open your workspace" : "Get started free"}
+              {isAuthenticated ? 'Open your workspace' : 'Get started free'}
               <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
             <a
@@ -601,7 +661,9 @@ export default function LandingPage() {
           <div>
             <div className="flex items-center gap-2.5">
               <BrandMark size="h-8 w-8" />
-              <span className="text-base font-bold tracking-tight">AcademiAI</span>
+              <span className="text-base font-bold tracking-tight">
+                AcademiAI
+              </span>
             </div>
             <p className="mt-3 max-w-[32ch] text-xs leading-relaxed text-muted-foreground">
               AI-powered academic assistance for every university. Multi-tenant
@@ -616,7 +678,10 @@ export default function LandingPage() {
             <ul className="mt-3 space-y-2 text-sm">
               {FOOTER_PRODUCT.map((l) => (
                 <li key={l.label}>
-                  <a href={l.href} className="text-muted-foreground transition-colors hover:text-foreground">
+                  <a
+                    href={l.href}
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
                     {l.label}
                   </a>
                 </li>
@@ -630,7 +695,10 @@ export default function LandingPage() {
             <ul className="mt-3 space-y-2 text-sm">
               {FOOTER_PROJECT.map((l) => (
                 <li key={l.label}>
-                  <a href={l.href} className="text-muted-foreground transition-colors hover:text-foreground">
+                  <a
+                    href={l.href}
+                    className="text-muted-foreground transition-colors hover:text-foreground"
+                  >
                     {l.label}
                   </a>
                 </li>
@@ -640,7 +708,8 @@ export default function LandingPage() {
         </div>
         <div className="mx-auto mt-12 max-w-[1280px] border-t px-4 pt-6 sm:px-6 lg:px-8">
           <p className="text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} AcademiAI — built for defense · designed for scale · open for collaboration
+            © {new Date().getFullYear()} AcademiAI — built for defense ·
+            designed for scale · open for collaboration
           </p>
         </div>
       </footer>

@@ -60,16 +60,16 @@ export default function DashboardPage() {
 
   const stats = isStaff
     ? [
-        { icon: Users, label: 'Total users', value: t.users, hint: 'In your institution' },
-        { icon: FileText, label: 'Materials', value: t.resources, hint: `${t.enrollments || 0} enrollments` },
-        { icon: ClipboardList, label: 'Quizzes', value: t.quizzes, hint: `${t.quiz_attempts || 0} attempts` },
-        { icon: MessageSquareText, label: 'AI chats', value: t.chat_sessions, hint: `${t.chat_messages || 0} messages` },
+        { icon: Users, label: 'Total users', value: t.users, hint: 'In your institution', accent: 'sky' },
+        { icon: FileText, label: 'Materials', value: t.resources, hint: `${t.enrollments || 0} enrollments`, accent: 'emerald' },
+        { icon: ClipboardList, label: 'Quizzes', value: t.quizzes, hint: `${t.quiz_attempts || 0} attempts`, accent: 'amber' },
+        { icon: MessageSquareText, label: 'AI chats', value: t.chat_sessions, hint: `${t.chat_messages || 0} messages`, accent: 'primary' },
       ]
     : [
-        { icon: GraduationCap, label: 'My courses', value: c.enrollments, hint: 'Enrolled this semester' },
-        { icon: FileText, label: 'Materials', value: c.resources, hint: 'Available to study' },
-        { icon: ClipboardList, label: 'Quiz attempts', value: c.quiz_attempts, hint: 'Practice sessions' },
-        { icon: StickyNote, label: 'My notes', value: c.notes, hint: `${c.bookmarks || 0} bookmarks` },
+        { icon: GraduationCap, label: 'My courses', value: c.enrollments, hint: 'Enrolled this semester', accent: 'primary' },
+        { icon: FileText, label: 'Materials', value: c.resources, hint: 'Available to study', accent: 'emerald' },
+        { icon: ClipboardList, label: 'Quiz attempts', value: c.quiz_attempts, hint: 'Practice sessions', accent: 'amber' },
+        { icon: StickyNote, label: 'My notes', value: c.notes, hint: `${c.bookmarks || 0} bookmarks`, accent: 'sky' },
       ];
 
   const quickActions = [
@@ -121,7 +121,7 @@ export default function DashboardPage() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((s) => (
-              <StatCard key={s.label} icon={s.icon} label={s.label} value={s.value} hint={s.hint} />
+              <StatCard key={s.label} icon={s.icon} label={s.label} value={s.value} hint={s.hint} accent={s.accent} />
             ))}
           </div>
 
@@ -135,11 +135,11 @@ export default function DashboardPage() {
                   key={to}
                   to={to}
                   className={cn(
-                    'group rounded-xl border bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring',
+                    'group rounded-2xl border bg-card p-5 shadow-card card-surface-hover',
                     primary && 'border-primary/30 bg-gradient-to-br from-primary/5 to-transparent',
                   )}
                 >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                     <Icon className="h-5 w-5" aria-hidden />
                   </span>
                   <p className="mt-3.5 font-medium">{label}</p>
@@ -151,7 +151,7 @@ export default function DashboardPage() {
 
           {/* ------------ STUDENT ANALYTICS ------------ */}
           {!isStaff && (
-            <section className="mt-8 rounded-xl border bg-card p-5 shadow-sm">
+            <section className="mt-8 card-surface card-surface-hover rounded-2xl p-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -223,7 +223,7 @@ export default function DashboardPage() {
           <div className="mt-8 grid gap-5 lg:grid-cols-3">
             {isStaff ? (
               <>
-                <section className="rounded-xl border bg-card p-5 shadow-sm lg:col-span-2">
+                <section className="card-surface card-surface-hover rounded-2xl p-5 lg:col-span-2">
                   <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                     <TrendingUp className="h-4 w-4" /> Material pipeline
                   </h2>
@@ -257,7 +257,7 @@ export default function DashboardPage() {
                   )}
                 </section>
 
-                <section className="rounded-xl border bg-card p-5 shadow-sm">
+                <section className="card-surface card-surface-hover rounded-2xl p-5">
                   <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                     Academic structure
                   </h2>
@@ -273,7 +273,7 @@ export default function DashboardPage() {
               </>
             ) : (
               <>
-                <section className="rounded-xl border bg-card p-5 shadow-sm lg:col-span-2">
+                <section className="card-surface card-surface-hover rounded-2xl p-5 lg:col-span-2">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                       My courses
@@ -308,7 +308,7 @@ export default function DashboardPage() {
                   )}
                 </section>
 
-                <section className="rounded-xl border bg-card p-5 shadow-sm">
+                <section className="card-surface card-surface-hover rounded-2xl p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                       Recent chats
@@ -346,7 +346,7 @@ export default function DashboardPage() {
 
           {/* ------------ ADMIN AUDIT ANALYTICS ------------ */}
           {isStaff && (
-            <section className="mt-8 rounded-xl border bg-card p-5 shadow-sm">
+            <section className="mt-8 card-surface card-surface-hover rounded-2xl p-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -494,7 +494,7 @@ export default function DashboardPage() {
                     <Link
                       key={r.id}
                       to={`/resources/${r.id}`}
-                      className="rounded-xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+                      className="card-surface card-surface-hover rounded-2xl p-4"
                     >
                       <FileText className="h-5 w-5 text-primary" />
                       <p className="mt-2 truncate font-medium">{r.title}</p>
@@ -515,7 +515,7 @@ export default function DashboardPage() {
                 { to: '/platform/tenants', label: 'Platform console', icon: BookMarked, desc: 'Only visible to superusers' },
                 { to: '/admin/faculties', label: 'Academic structure', icon: GraduationCap, desc: 'Faculties, Depts, Programmes' },
               ].map(({ to, label, icon: Icon, desc }) => (
-                <Link key={to} to={to} className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3.5 text-sm shadow-sm transition-colors hover:border-primary/40 hover:bg-accent/40">
+                <Link key={to} to={to} className="card-surface card-surface-hover flex items-center gap-3 rounded-2xl px-4 py-3.5 text-sm">
                   <Icon className="h-4 w-4 text-primary" aria-hidden />
                   <div>
                     <p className="font-medium">{label}</p>

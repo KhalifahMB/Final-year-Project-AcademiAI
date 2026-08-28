@@ -50,7 +50,7 @@ export default function BookmarksPage() {
                   type="button"
                   onClick={() => r && setSelected(r)}
                   disabled={!r}
-                  className="group flex w-full items-start gap-3 rounded-xl border bg-card p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
+                  className="card-surface card-surface-hover group flex w-full items-start gap-3 rounded-2xl p-4 text-left focus-visible:outline-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
                     <Bookmark className="h-5 w-5 text-primary" aria-hidden />

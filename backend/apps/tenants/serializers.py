@@ -26,7 +26,10 @@ class TenantSerializer(serializers.ModelSerializer):
 
 class PlatformTenantSerializer(TenantSerializer):
     """
-    Superuser-only representation: all fields manageable.
+    Superuser-only representation. Tenant records are immutable after
+    provisioning except for the status (suspend / reactivate), which the
+    platform superuser alone may change. Name, slug, domain, plan and storage
+    quota are all read-only to keep provisioning a one-way operation.
     """
 
     class Meta(TenantSerializer.Meta):
@@ -36,8 +39,13 @@ class PlatformTenantSerializer(TenantSerializer):
             "allowed_email_domains",
             "created_at", "updated_at",
         )
-        read_only_fields = ("id", "suspended_at", "created_at", "updated_at")
-        extra_kwargs = {"slug": {"required": True}}
+        # Only `status` remains writable for the superuser; every other
+        # field is fixed at provisioning time.
+        read_only_fields = (
+            "id", "name", "slug", "domain", "plan", "storage_quota_bytes",
+            "suspended_at", "allowed_email_domains",
+            "created_at", "updated_at",
+        )
 
 
 class TenantDirectorySerializer(serializers.ModelSerializer):

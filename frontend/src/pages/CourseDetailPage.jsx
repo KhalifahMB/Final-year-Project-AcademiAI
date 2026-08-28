@@ -192,7 +192,7 @@ export default function CourseDetailPage() {
             ) : (
                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                  {(resources.data || []).map((r) => (
-                    <article key={r.id} className="group flex flex-col rounded-xl border bg-card p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md">
+                    <article key={r.id} className="card-surface card-surface-hover group flex flex-col rounded-2xl p-4">
                        <div className="mb-3 flex items-start justify-between gap-3">
                           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                              {getFileIcon(r.file_type || r.title)}
