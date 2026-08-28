@@ -190,18 +190,18 @@ export const chatApi = {
             if (!data) continue;
             try {
               const parsed = JSON.parse(data);
-              if (event === 'token') onToken && onToken(parsed.text || '');
-              else if (event === 'user_message') onMeta && onMeta({ user_message: parsed });
-              else if (event === 'meta') onMeta && onMeta(parsed);
-              else if (event === 'done') { onDone && onDone(parsed.assistant_message); return; }
-            } catch (e) {
+              if (event === 'token') { if (onToken) onToken(parsed.text || ''); }
+              else if (event === 'user_message') { if (onMeta) onMeta({ user_message: parsed }); }
+              else if (event === 'meta') { if (onMeta) onMeta(parsed); }
+              else if (event === 'done') { if (onDone) onDone(parsed.assistant_message); return; }
+            } catch {
               // malformed chunk, ignore
             }
           }
         }
       } catch (err) {
         if (err.name === 'AbortError') return;
-        onError && onError(err);
+        if (onError) onError(err);
       }
     })();
     return ctrl;

@@ -71,8 +71,30 @@ function normalizeJobResult(r) {
   };
 }
 
-export default function ResourceDetailDialog({ resource, open, onClose, onUpdate }) {
+export default function ResourceDetailDialog({ resource: resourceProp, open, onClose, onUpdate }) {
   const qc = useQueryClient();
+
+  // If only a resource ID is provided (e.g. from a chat citation), fetch
+  // the full resource payload so the dialog can render correctly.
+  const needsFetch = open && resourceProp && resourceProp.id && !resourceProp.title;
+  const { data: fetchedResource, isLoading: fetchingResource } = useQuery({
+    queryKey: ['resource-by-id', resourceProp?.id],
+    queryFn: async () => {
+      if (!resourceProp?.id) return null;
+      const list = await api.get('/resources/').then((resp) => resp.data?.results || resp.data || []);
+      return list.find((item) => String(item.id) === String(resourceProp.id)) || null;
+    },
+    enabled: !!needsFetch,
+    staleTime: 30_000,
+  });
+
+  // Resolve which resource object to render (full object preferred, fetched fallback).
+  const resource = useMemo(() => {
+    if (resourceProp && resourceProp.title) return resourceProp;
+    if (needsFetch && fetchedResource) return fetchedResource;
+    return resourceProp;
+  }, [resourceProp, needsFetch, fetchedResource]);
+
   const { user } = useAuth();
   const [retrying, setRetrying] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -341,7 +363,29 @@ export default function ResourceDetailDialog({ resource, open, onClose, onUpdate
       ? bookmarks.find((b) => b.resource === resource.id)?.id || null
       : null;
 
-  if (!resource || !open) return null;
+  if (!resourceProp || !open) return null;
+
+  // If we're still fetching a resource stub (id-only), show a minimal
+  // loading dialog so the portal doesn't crash accessing undefined fields.
+  if (needsFetch && (fetchingResource || !resource || !resource.title)) {
+    const loadingContent = (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur">
+        <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6 shadow-lg">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden />
+          <p className="text-xs text-muted-foreground">Loading material…</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-1 text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+    if (typeof document === 'undefined') return null;
+    return createPortal(loadingContent, document.body);
+  }
 
   const toggleBookmark = async () => {
     try {
