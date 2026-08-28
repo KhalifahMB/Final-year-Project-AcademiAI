@@ -197,8 +197,8 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen antialiased">
       {/* ---------------------------------------------------------- Nav */}
-      <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur glass">
+        <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <Link to="/" className="flex items-center gap-2.5 focus-visible:outline-2 focus-visible:outline-ring rounded-md">
             <BrandMark />
             <span className="text-lg font-bold tracking-tight">AcademiAI</span>
@@ -383,7 +383,7 @@ export default function LandingPage() {
               { icon: GraduationCap, t: "Progress tracking", d: "Per-concept mastery as you move through the curriculum." },
             ].map(({ icon: Icon, t, d }) => (
               <div key={t} className="flex items-start gap-3 rounded-2xl border bg-card/60 p-5">
-                <Icon className="mt-0.5 h-4.5 w-4.5 shrink-0 text-primary" aria-hidden />
+                <Icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
                 <div>
                   <p className="text-sm font-medium">{t}</p>
                   <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{d}</p>

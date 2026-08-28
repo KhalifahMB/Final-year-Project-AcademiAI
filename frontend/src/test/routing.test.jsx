@@ -120,7 +120,7 @@ describe('routing and access control', () => {
     navigate('/dashboard');
     render(<App />, { wrapper: Wrapper });
     expect(
-      await screen.findByText(/academiai institutional workspace/i),
+      await screen.findByText(/welcome back/i),
     ).toBeInTheDocument();
   });
 

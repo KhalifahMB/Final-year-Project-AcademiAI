@@ -162,13 +162,13 @@ export default function VerifyEmailPage() {
 
   return (
     <AuthLayout
+      icon={MailCheck}
       title="Verify your email"
       subtitle={
         initialEmail
           ? `We sent a 6-digit code to ${initialEmail}. Enter it below to activate your account.`
-          : "Enter the 6-digit code we emailed you. Codes expire shortly."
+          : "Enter the 6-digit code we emailed you to activate your account."
       }
-      icon={MailCheck}
       footer={
         <>
           Back to{" "}
