@@ -89,7 +89,7 @@ export default function SignupPage() {
         if (avatarPreset) payload.avatar_preset = avatarPreset;
         await authApi.signup(payload);
       }
-      navigate('/verify-email');
+      navigate('/verify-email', { state: { email: values.email } });
     } catch (err) {
       const d = err.response?.data?.error?.detail;
       setError(

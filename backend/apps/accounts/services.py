@@ -38,10 +38,7 @@ def create_verification_code(user: User) -> str:
 def verify_email_code(email: str, code: str) -> User:
     try:
         user = User.objects.get(email=email)
-        print("verifying email code")
-        print(user)
     except User.DoesNotExist:
-        print("user does not exist")
         raise ValueError("Invalid verification code.")
 
     qs = EmailVerificationCode.objects.filter(
@@ -165,6 +162,33 @@ def signup_user(
         metadata={"role": role},
     )
     return user, code
+
+
+def resend_verification_code(email: str) -> bool:
+    """Issue a fresh verification code and email it. Always returns True so we
+    don't leak account existence (same response whether or not email matches)."""
+    # Lookup case-insensitive across tenants (emails are unique per tenant but
+    # a given email address typically only has one AcademiAI account).
+    user = User.objects.filter(email__iexact=email).order_by("-date_joined").first()
+    if not user or user.is_email_verified:
+        # Still return True — do not reveal whether the account exists.
+        return True
+    # Throttle: don't issue more than one code per 60 seconds per user.
+    latest = (
+        EmailVerificationCode.objects.filter(user=user)
+        .order_by("-created_at")
+        .first()
+    )
+    if latest and (timezone.now() - latest.created_at).total_seconds() < 60:
+        return True
+    code = create_verification_code(user)
+    try:
+        from .tasks import send_verification_email
+
+        send_verification_email(str(user.id), code)
+    except Exception:
+        logger.exception("Failed to queue verification resend email=%s", email)
+    return True
 
 
 def reactivate_tenant_users(tenant) -> int:

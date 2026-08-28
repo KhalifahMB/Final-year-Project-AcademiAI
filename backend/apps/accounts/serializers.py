@@ -95,6 +95,10 @@ class VerifyEmailSerializer(serializers.Serializer):
     code = serializers.CharField(max_length=12)
 
 
+class ResendVerificationSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)

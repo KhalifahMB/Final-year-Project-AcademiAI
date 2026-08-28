@@ -12,8 +12,6 @@ import {
   BarChart3,
   BookOpen,
   Building2,
-  ChevronLeft,
-  ChevronRight,
   ClipboardList,
   ClipboardPlus,
   FileText,
@@ -25,6 +23,8 @@ import {
   Menu,
   MessageSquareText,
   Bookmark,
+  PanelLeftClose,
+  PanelLeftOpen,
   ScrollText,
   StickyNote,
   TrendingUp,
@@ -321,33 +321,24 @@ function UserMenu({ collapsed }) {
 function SidebarContent({ onNavigate, collapsed, onToggleCollapse }) {
   return (
     <>
-      <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+      <div className="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
         <Brand onNavigate={onNavigate} collapsed={collapsed} />
         {!collapsed && (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            aria-label="Collapse sidebar"
-            title="Collapse sidebar"
-            className="hidden rounded-md p-1.5 text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground lg:inline-flex"
-          >
-            <ChevronLeft className="h-4 w-4" aria-hidden />
-          </button>
+          <div className="ml-auto">
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar (Ctrl+B)"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <PanelLeftClose className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
         )}
       </div>
       <SidebarNav onNavigate={onNavigate} collapsed={collapsed} />
       <UserMenu collapsed={collapsed} />
-      {collapsed && (
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          aria-label="Expand sidebar"
-          title="Expand sidebar"
-          className="hidden border-t border-sidebar-border py-2 text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground lg:inline-flex"
-        >
-          <ChevronRight className="mx-auto h-4 w-4" aria-hidden />
-        </button>
-      )}
     </>
   );
 }
@@ -374,6 +365,32 @@ export default function AppShell({ title, description, actions, children, fullBl
       /* ignore */
     }
   }, [collapsed]);
+
+  // Ctrl/Cmd+B toggles the sidebar from anywhere.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "b" || e.key === "B")) {
+        const target = e.target;
+        const tag = target?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
+        e.preventDefault();
+        setCollapsed((c) => !c);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Other components (e.g. fullscreen resource detail) can request the
+  // sidebar collapse/expand via a custom event.
+  useEffect(() => {
+    const onRequest = (e) => {
+      const want = e.detail?.collapsed;
+      if (typeof want === "boolean") setCollapsed(want);
+    };
+    window.addEventListener("academiai:request-sidebar", onRequest);
+    return () => window.removeEventListener("academiai:request-sidebar", onRequest);
+  }, []);
 
   const [prevPathname, setPrevPathname] = useState(loc.pathname);
   if (loc.pathname !== prevPathname) {
@@ -414,7 +431,7 @@ export default function AppShell({ title, description, actions, children, fullBl
               onClick={() => setMobileOpen(false)}
               className="absolute right-3 top-4 rounded-md p-1.5 text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-ring"
             >
-              <X className="h-4.5 w-4.5" aria-hidden />
+              <X className="h-5 w-5" aria-hidden />
             </button>
             <SidebarContent onNavigate={() => setMobileOpen(false)} collapsed={false} onToggleCollapse={() => {}} />
           </aside>
@@ -440,6 +457,19 @@ export default function AppShell({ title, description, actions, children, fullBl
             >
               <Menu className="h-5 w-5" aria-hidden />
             </Button>
+            {collapsed && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="hidden lg:inline-flex"
+                aria-label="Expand sidebar"
+                title="Expand sidebar (Ctrl+B)"
+                onClick={() => setCollapsed(false)}
+              >
+                <PanelLeftOpen className="h-5 w-5" aria-hidden />
+              </Button>
+            )}
             <p className="truncate text-sm font-medium text-muted-foreground">{title}</p>
             <div className="ml-auto flex items-center gap-2.5">
               <OnlineStatus />
