@@ -51,3 +51,7 @@ minio_data/
 secrets/
 
 mailpit/
+# Mailpit local database files
+mailpit/
+mailpit.db-wal
+mailpit.db-shm
