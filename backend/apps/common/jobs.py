@@ -54,13 +54,26 @@ def get_job_status(task_id: str) -> dict:
                 payload["result"] = None
         else:
             # Never expose internal exception reprs (task paths, tracebacks)
-            # to API clients; log the detail server-side instead.
+            # to API clients; log the full detail server-side instead so it
+            # shows up in both Django and Celery logs.
             try:
+                tb = getattr(result.result, "__traceback__", None)
                 logger.error(
-                    "Job failed task=%s error=%s", task_id, result.result
+                    "Job failed task=%s state=%s error=%r",
+                    task_id,
+                    state,
+                    result.result,
+                    exc_info=(type(result.result), result.result, tb)
+                    if isinstance(result.result, BaseException)
+                    else None,
                 )
             except Exception:  # noqa: S110 — logging must never raise
-                pass
+                logger.error(
+                    "Job failed task=%s state=%s error=%r",
+                    task_id,
+                    state,
+                    result.result,
+                )
             payload["error"] = (
                 "This job failed while processing. You can retry it from "
                 "where you started it."

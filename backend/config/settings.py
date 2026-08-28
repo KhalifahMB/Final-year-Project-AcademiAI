@@ -252,6 +252,7 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TASK_ROUTES = {
     "apps.resources.tasks.*": {"queue": "ingestion"},
+    "apps.resources.summary_tasks.*": {"queue": "ai"},
     "apps.knowledge.tasks.*": {"queue": "ingestion"},
     "apps.chat.tasks.*": {"queue": "ai"},
     "apps.assessments.tasks.*": {"queue": "ai"},

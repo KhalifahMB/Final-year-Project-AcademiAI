@@ -8,6 +8,7 @@ Chat viewsets and endpoints:
 import json
 import logging
 
+from django.db.models import Q
 from django.http import StreamingHttpResponse
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
@@ -16,6 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.db import tenant_scope
 from apps.common.permissions import IsTenantMember
 from apps.common.throttling import AiRateThrottle
 from django_filters.rest_framework import DjangoFilterBackend
@@ -121,6 +123,7 @@ class ChatSendMessageView(APIView):
         ser = ChatMessageCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         content = ser.validated_data["content"]
+        attached_resource_ids = ser.validated_data.get("resource_ids") or []
         user = request.user
 
         try:
@@ -148,6 +151,44 @@ class ChatSendMessageView(APIView):
             course_offering_id=str(session.course_offering_id) if session.course_offering_id else None,
             top_k=8,
         )
+
+        if attached_resource_ids:
+            from apps.resources.models import Resource, ResourceChunk
+
+            if user.role == "admin" or getattr(user, "is_superuser", False):
+                visible = Resource.objects.filter(
+                    tenant=user.tenant, id__in=attached_resource_ids,
+                )
+            else:
+                from apps.resources.views import _authorized_resources_q as _auth_q
+
+                visible = Resource.objects.filter(
+                    _auth_q(user), tenant=user.tenant, id__in=attached_resource_ids,
+                )
+            attached_chunks = []
+            for r in visible:
+                latest = r.versions.order_by("-version_number").first()
+                if not latest:
+                    continue
+                for rc in ResourceChunk.objects.filter(
+                    resource_version=latest, tenant_id=user.tenant_id,
+                ).order_by("chunk_index")[:10].values("id", "content"):
+                    attached_chunks.append(
+                        {
+                            "id": str(rc["id"]),
+                            "content": rc["content"],
+                            "score": 1.0,
+                            "method": "attached",
+                        }
+                    )
+            seen = {c["id"] for c in attached_chunks}
+            for c in chunks:
+                cid = str(c.get("id"))
+                if cid not in seen:
+                    attached_chunks.append(c)
+                    seen.add(cid)
+            chunks = attached_chunks[:24]
+
         answer, source_meta = generate_grounded_answer(content, chunks, user.role)
         assistant_msg = services.append_assistant_message(session, answer, source_meta)
 
@@ -156,6 +197,142 @@ class ChatSendMessageView(APIView):
                 "success": True,
                 "user_message": ChatMessageSerializer(user_msg).data,
                 "assistant_message": ChatMessageSerializer(assistant_msg).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class ChatQuickUploadView(APIView):
+    """
+    POST /api/v1/chat/upload/
+    Multipart upload: file=<binary> [,session_id=<uuid>]
+
+    Small convenience endpoint that accepts a browser file upload,
+    stores it in MinIO under the tenant's chat-attachments partition,
+    creates a private Resource owned by the user, kicks off async
+    ingestion, and returns the resource metadata so the UI can attach
+    the file as a chat reference.
+
+    This avoids the two-step presign dance for small in-chat uploads.
+    """
+
+    permission_classes = [IsTenantMember]
+    throttle_classes = [AiRateThrottle]
+
+    def post(self, request):
+        from django.conf import settings
+        from apps.common.storage import get_s3_client
+        from apps.common.security.file_validation import (
+            validate_upload_bytes,
+            FileValidationError,
+            MAX_UPLOAD_BYTES,
+        )
+        from apps.resources.models import Resource, ResourceVersion
+        from apps.resources.serializers import ResourceSerializer
+
+        user = request.user
+        uploaded = request.FILES.get("file")
+        if not uploaded:
+            return Response(
+                {"success": False, "error": {"detail": "file field required."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if uploaded.size and uploaded.size > MAX_UPLOAD_BYTES:
+            return Response(
+                {"success": False, "error": {"detail": "File exceeds the 25 MB limit."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data = uploaded.read()
+        try:
+            validate_upload_bytes(data, uploaded.content_type or "", uploaded.name)
+        except FileValidationError as e:
+            return Response(
+                {"success": False, "error": {"detail": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Determine MIME type from the upload if missing.
+        ct = (uploaded.content_type or "").lower() or "application/octet-stream"
+
+        # Resolve optional session for course-offering scoping.
+        session_id = request.data.get("session_id")
+        course_offering = None
+        if session_id:
+            course_offering = (
+                ChatSession.objects.filter(id=session_id, user=user, tenant=user.tenant)
+                .values_list("course_offering_id", flat=True)
+                .first()
+            )
+
+        # Open a tenant-scoped transaction for writes.
+        import uuid as _uuid
+
+        with tenant_scope(user.tenant_id):
+            resource = Resource.objects.create(
+                tenant=user.tenant,
+                uploaded_by=user,
+                title=uploaded.name or "Uploaded file",
+                visibility_scope=Resource.Visibility.PRIVATE,
+                mime_type=ct,
+                course_offering_id=course_offering,
+                processing_status=Resource.ProcessingStatus.PENDING,
+            )
+            key = (
+                f"tenants/{user.tenant_id}/chat-attachments/{user.id}/"
+                f"{resource.id}/{_uuid.uuid4()}"
+            )
+            try:
+                client = get_s3_client()
+                client.put_object(
+                    Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                    Key=key,
+                    Body=data,
+                    ContentType=ct,
+                )
+            except Exception:
+                logger.exception("Chat upload put_object failed")
+                resource.delete()
+                return Response(
+                    {
+                        "success": False,
+                        "error": {"detail": "Could not store file. Try again."},
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            version = ResourceVersion.objects.create(
+                tenant=user.tenant,
+                resource=resource,
+                version_number=1,
+                storage_key=key,
+                created_by=user,
+                file_size_bytes=len(data),
+            )
+            resource.storage_key = key
+            resource.save(update_fields=["storage_key", "updated_at"])
+
+        # Dispatch ingestion OUTSIDE the RLS scope — the Celery task sets its
+        # own tenant context.
+        job_id = None
+        try:
+            from apps.resources.tasks import process_resource_ingestion
+            from apps.common.jobs import claim_job
+
+            task_result = process_resource_ingestion.delay(
+                str(resource.id), str(version.id), str(user.tenant_id)
+            )
+            claim_job(task_result.id, user.id)
+            job_id = task_result.id
+        except Exception:
+            logger.exception("Failed to enqueue ingestion for chat upload")
+
+        return Response(
+            {
+                "success": True,
+                "resource": ResourceSerializer(resource).data,
+                "job_id": job_id,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -190,6 +367,7 @@ class ChatStreamMessageView(APIView):
         ser = ChatMessageCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         content = ser.validated_data["content"]
+        attached_resource_ids = ser.validated_data.get("resource_ids") or []
         user = request.user
 
         try:
@@ -219,6 +397,60 @@ class ChatStreamMessageView(APIView):
                 top_k=8,
             )
             cache.set(cache_key, chunks, 300)
+
+        # Fold in explicit user-attached resources: pull the most recent
+        # version's top chunks for each attached resource (authorized via
+        # RLS/ownership) and prepend them so they are always in context.
+        attached_chunks = []
+        if attached_resource_ids:
+            from apps.resources.models import Resource, ResourceChunk
+
+            # Validate ownership/visibility — user must be allowed to see
+            # each attached resource. Admins see the whole tenant; other
+            # roles use the same visibility filter as the resources list.
+            if user.role == "admin" or getattr(user, "is_superuser", False):
+                visible_resources = Resource.objects.filter(
+                    tenant=user.tenant, id__in=attached_resource_ids,
+                )
+            else:
+                from apps.resources.views import _authorized_resources_q as _auth_q
+
+                visible_resources = Resource.objects.filter(
+                    _auth_q(user), tenant=user.tenant, id__in=attached_resource_ids,
+                )
+            for r in visible_resources:
+                latest = r.versions.order_by("-version_number").first()
+                if not latest:
+                    continue
+                rcs = list(
+                    ResourceChunk.objects.filter(
+                        resource_version=latest,
+                        tenant_id=user.tenant_id,
+                    )
+                    .order_by("chunk_index")[:10]
+                    .values("id", "content", "chunk_index")
+                )
+                for rc in rcs:
+                    attached_chunks.append(
+                        {
+                            "id": str(rc["id"]),
+                            "content": rc["content"],
+                            "score": 1.0,
+                            "method": "attached",
+                            "rank": 0,
+                        }
+                    )
+
+        # Merge: attached first (highest priority), then hybrid results that
+        # aren't duplicates, capped at a reasonable total.
+        seen = {c["id"] for c in attached_chunks}
+        for c in chunks:
+            cid = str(c.get("id"))
+            if cid in seen:
+                continue
+            seen.add(cid)
+            attached_chunks.append(c)
+        chunks = attached_chunks[:24]
 
         client = _get_client()
 
@@ -307,12 +539,21 @@ class ChatStreamMessageView(APIView):
                     for i, c in enumerate(chunks)
                 ]
 
-            assistant_msg = services.append_assistant_message(
-                session, answer, sources_meta,
-            )
-            yield sse_event("done", {
-                "assistant_message": ChatMessageSerializer(assistant_msg).data,
-            })
+            # IMPORTANT: this generator runs AFTER the middleware's atomic
+            # block has exited (StreamingHttpResponse returns to the middleware
+            # first, then Django iterates the response body). We must open our
+            # own tenant-scoped transaction so RLS sees app.current_tenant_id
+            # for all DB writes performed here.
+            with tenant_scope(user.tenant_id):
+                # Refresh session from DB inside this transaction so
+                # save(update_fields=['updated_at']) works under RLS.
+                session.refresh_from_db()
+                assistant_msg = services.append_assistant_message(
+                    session, answer, sources_meta,
+                )
+                payload = ChatMessageSerializer(assistant_msg).data
+
+            yield sse_event("done", {"assistant_message": payload})
 
         response = StreamingHttpResponse(
             stream(), content_type="text/event-stream",

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '@/services/api';
@@ -11,21 +12,21 @@ import {
   GraduationCap, MessageSquareText, StickyNote,
   TrendingUp, Upload, Users, ScrollText, Sparkles, Clock,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatRelativeTime } from '@/lib/utils';
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip,
+  CartesianGrid, BarChart, Bar, Legend,
+} from 'recharts';
+import { Button } from '@/components/ui/button';
 
-function timeAgo(iso) {
-  if (!iso) return '';
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+function TimeAgo({ iso }) {
+  return <span title={iso}>{formatRelativeTime(iso)}</span>;
 }
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const isStaff = user?.role === 'lecturer' || user?.role === 'admin';
-  const isAdmin = user?.role === 'admin';
+  const isStaff = user?.role === 'lecturer' || user?.role === 'admin' || user?.is_superuser;
+  const isAdmin = user?.role === 'admin' || user?.is_superuser;
 
   const endpoint = isStaff ? dashboardApi.admin : dashboardApi.student;
   const dash = useQuery({
@@ -39,7 +40,24 @@ export default function DashboardPage() {
   const c = dash.data?.counts || {};
   const t = dash.data?.totals || {};
 
-  // Staff view shows platform totals
+  // ---- Student activity chart state ----
+  const [studentRange, setStudentRange] = useState('day');
+  const studentActivity = useQuery({
+    queryKey: ['student-activity', studentRange],
+    queryFn: () => dashboardApi.studentActivity(studentRange),
+    staleTime: 60_000,
+    enabled: !isStaff,
+  });
+
+  // ---- Admin audit chart state ----
+  const [auditDays, setAuditDays] = useState(14);
+  const auditSummary = useQuery({
+    queryKey: ['admin-audit-summary', auditDays],
+    queryFn: () => dashboardApi.adminAuditSummary(auditDays),
+    staleTime: 60_000,
+    enabled: isStaff,
+  });
+
   const stats = isStaff
     ? [
         { icon: Users, label: 'Total users', value: t.users, hint: 'In your institution' },
@@ -70,7 +88,23 @@ export default function DashboardPage() {
   const enrolledCourses = dash.data?.enrolled_courses || [];
   const recentResources = dash.data?.recent_resources || [];
   const recentChats = dash.data?.recent_chats || [];
-  const recentActivity = dash.data?.recent_resources; // admin-only
+  const recentActivity = dash.data?.recent_resources;
+
+  // ---- Chart helpers ----
+  const studentChart = studentActivity.data?.timeline || [];
+  const auditTimeline = auditSummary.data?.timeline || [];
+  const auditActions = auditSummary.data?.by_action || [];
+  const auditEntities = auditSummary.data?.by_entity_type || [];
+  const auditActors = auditSummary.data?.top_actors || [];
+  const auditRecent = auditSummary.data?.recent || [];
+
+  const rangeButtons = [
+    { id: 'hour', label: 'Hour' },
+    { id: 'day', label: 'Day' },
+    { id: 'week', label: 'Week' },
+    { id: 'month', label: 'Month' },
+  ];
+  const daysButtons = [7, 14, 30, 90];
 
   return (
     <AppShell
@@ -85,14 +119,12 @@ export default function DashboardPage() {
         <SkeletonRows rows={6} />
       ) : (
         <>
-          {/* Stat cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((s) => (
               <StatCard key={s.label} icon={s.icon} label={s.label} value={s.value} hint={s.hint} />
             ))}
           </div>
 
-          {/* Quick actions */}
           <section className="mt-8">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Quick actions
@@ -117,9 +149,78 @@ export default function DashboardPage() {
             </div>
           </section>
 
-          {/* Role-specific content grid */}
+          {/* ------------ STUDENT ANALYTICS ------------ */}
+          {!isStaff && (
+            <section className="mt-8 rounded-xl border bg-card p-5 shadow-sm">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    <TrendingUp className="h-4 w-4" /> Study activity
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    Chats, quiz attempts, and notes over time.
+                  </p>
+                </div>
+                <div className="inline-flex rounded-lg border bg-muted/50 p-0.5 text-xs">
+                  {rangeButtons.map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => setStudentRange(r.id)}
+                      className={cn(
+                        'rounded-md px-3 py-1 transition-colors',
+                        studentRange === r.id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {studentActivity.isLoading ? (
+                <div className="h-64 animate-pulse rounded-lg bg-muted/40" />
+              ) : studentChart.length === 0 ? (
+                <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+                  No activity yet — start a chat or take a quiz to see your study patterns.
+                </div>
+              ) : (
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={studentChart} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis
+                        dataKey="bucket"
+                        tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                        tickFormatter={(v) => {
+                          const d = new Date(v);
+                          if (studentRange === 'hour') return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                          if (studentRange === 'month') return d.toLocaleDateString([], { month: 'short' });
+                          return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                        }}
+                      />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                      <Tooltip
+                        contentStyle={{
+                          background: 'hsl(var(--popover))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: 8,
+                          fontSize: 12,
+                        }}
+                        labelFormatter={(v) => new Date(v).toLocaleString()}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Line type="monotone" dataKey="chats" name="Chats" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 2 }} />
+                      <Line type="monotone" dataKey="quizzes" name="Quizzes" stroke="#10b981" strokeWidth={2} dot={{ r: 2 }} />
+                      <Line type="monotone" dataKey="notes" name="Notes" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ------------ ROLE GRID ------------ */}
           <div className="mt-8 grid gap-5 lg:grid-cols-3">
-            {/* Staff: pipeline + recent uploads */}
             {isStaff ? (
               <>
                 <section className="rounded-xl border bg-card p-5 shadow-sm lg:col-span-2">
@@ -148,7 +249,7 @@ export default function DashboardPage() {
                               <span className="truncate font-medium">{r.title}</span>
                               <span className="text-xs text-muted-foreground">· {r.uploaded_by || 'unknown'}</span>
                             </div>
-                            <span className="text-xs text-muted-foreground">{timeAgo(r.created_at)}</span>
+                            <span className="text-xs text-muted-foreground"><TimeAgo iso={r.created_at} /></span>
                           </li>
                         ))}
                       </ul>
@@ -172,7 +273,6 @@ export default function DashboardPage() {
               </>
             ) : (
               <>
-                {/* Student: enrolled courses */}
                 <section className="rounded-xl border bg-card p-5 shadow-sm lg:col-span-2">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -208,7 +308,6 @@ export default function DashboardPage() {
                   )}
                 </section>
 
-                {/* Student: recent chats */}
                 <section className="rounded-xl border bg-card p-5 shadow-sm">
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -233,7 +332,7 @@ export default function DashboardPage() {
                             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                             <div className="min-w-0 flex-1">
                               <p className="truncate font-medium">{c.title || 'New chat'}</p>
-                              <p className="text-[11px] text-muted-foreground">{timeAgo(c.updated_at)}</p>
+                              <p className="text-[11px] text-muted-foreground"><TimeAgo iso={c.updated_at} /></p>
                             </div>
                           </Link>
                         </li>
@@ -245,7 +344,139 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Student: recent resources + jump back in */}
+          {/* ------------ ADMIN AUDIT ANALYTICS ------------ */}
+          {isStaff && (
+            <section className="mt-8 rounded-xl border bg-card p-5 shadow-sm">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                    <ScrollText className="h-4 w-4" /> Audit & activity analytics
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {auditSummary.data?.total_events ?? '—'} events in the last {auditDays} day{auditDays === 1 ? '' : 's'}.
+                  </p>
+                </div>
+                <div className="inline-flex rounded-lg border bg-muted/50 p-0.5 text-xs">
+                  {daysButtons.map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setAuditDays(d)}
+                      className={cn(
+                        'rounded-md px-3 py-1 transition-colors',
+                        auditDays === d ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {d}d
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {auditSummary.isLoading ? (
+                <div className="h-64 animate-pulse rounded-lg bg-muted/40" />
+              ) : (
+                <div className="grid gap-6 lg:grid-cols-3">
+                  <div className="h-64 lg:col-span-2">
+                    <p className="mb-2 text-xs font-semibold text-muted-foreground">Activity over time</p>
+                    <ResponsiveContainer width="100%" height="90%">
+                      <BarChart data={auditTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis
+                          dataKey="bucket"
+                          tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                          tickFormatter={(v) => new Date(v).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                        />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                        <Tooltip
+                          contentStyle={{
+                            background: 'hsl(var(--popover))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: 8,
+                            fontSize: 12,
+                          }}
+                        />
+                        <Bar dataKey="count" name="Events" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="space-y-5">
+                    <div>
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">Top action types</p>
+                      <ul className="space-y-1 text-sm">
+                        {auditActions.slice(0, 6).map((a) => (
+                          <li key={a.name} className="flex items-center justify-between gap-3">
+                            <code className="truncate rounded bg-muted px-1.5 py-0.5 text-xs">{a.name}</code>
+                            <span className="font-semibold">{a.count}</span>
+                          </li>
+                        ))}
+                        {auditActions.length === 0 && (
+                          <li className="text-xs text-muted-foreground">No events in this window.</li>
+                        )}
+                      </ul>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">Top actors</p>
+                      <ul className="space-y-1 text-sm">
+                        {auditActors.slice(0, 5).map((a, i) => (
+                          <li key={i} className="flex items-center justify-between gap-3">
+                            <span className="truncate">{a.name}</span>
+                            <span className="font-semibold">{a.count}</span>
+                          </li>
+                        ))}
+                        {auditActors.length === 0 && (
+                          <li className="text-xs text-muted-foreground">No actors yet.</li>
+                        )}
+                      </ul>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-xs font-semibold text-muted-foreground">Entity types</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {auditEntities.map((e) => (
+                          <span
+                            key={e.name}
+                            className="inline-flex items-center gap-1 rounded-full border bg-muted/40 px-2 py-0.5 text-xs"
+                          >
+                            {e.name} <strong>{e.count}</strong>
+                          </span>
+                        ))}
+                        {auditEntities.length === 0 && <span className="text-xs text-muted-foreground">None yet.</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {auditRecent.length > 0 && (
+                <div className="mt-6">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs font-semibold text-muted-foreground">Recent audit events</p>
+                    <Button asChild variant="ghost" size="sm">
+                      <Link to="/admin/audit">View all →</Link>
+                    </Button>
+                  </div>
+                  <ul className="divide-y rounded-lg border">
+                    {auditRecent.slice(0, 6).map((e) => (
+                      <li key={e.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                        <div className="min-w-0">
+                          <p className="truncate font-mono text-xs">{e.action}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {e.entity_type} · {e.actor}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          <TimeAgo iso={e.created_at} />
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </section>
+          )}
+
           {!isAdmin && (
             <section className="mt-8">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -268,7 +499,7 @@ export default function DashboardPage() {
                       <FileText className="h-5 w-5 text-primary" />
                       <p className="mt-2 truncate font-medium">{r.title}</p>
                       <p className="mt-0.5 text-xs capitalize text-muted-foreground">
-                        {r.visibility_scope} · {timeAgo(r.updated_at)}
+                        {r.visibility_scope} · <TimeAgo iso={r.updated_at} />
                       </p>
                     </Link>
                   ))}

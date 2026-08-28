@@ -8,10 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function MyProgrammePage() {
   const { user } = useAuth();
-  const me = useQuery({
-    queryKey: ["me"],
-    queryFn: async () => (await api.get("/auth/me/")).data,
-  });
   const programmes = useQuery({
     queryKey: ["programmes"],
     queryFn: async () => {
@@ -20,14 +16,14 @@ export default function MyProgrammePage() {
     },
   });
 
-  const profile = me.data;
+  const profile = user;
   return (
     <AppShell title="My programme">
-      {me.error && (
+      {!user ? (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>Could not load profile</AlertDescription>
         </Alert>
-      )}
+      ) : null}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -35,12 +31,12 @@ export default function MyProgrammePage() {
             <CardDescription>From your account</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <div>Email: {profile?.email || user?.email}</div>
+            <div>Email: {profile?.email || "—"}</div>
             <div>
               Name: {[profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "—"}
             </div>
             <div className="flex items-center gap-2">
-              Role: <Badge>{profile?.role || user?.role}</Badge>
+              Role: <Badge>{profile?.role || "—"}</Badge>
             </div>
             <div>
               Verified:{" "}
