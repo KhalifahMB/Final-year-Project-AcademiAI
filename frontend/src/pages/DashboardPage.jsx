@@ -91,6 +91,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const isSuper = !!user?.is_superuser;
   const isAdmin = user?.role === 'admin' || isSuper;
+  const isStaff = isAdmin || isSuper;
   const isLecturer = user?.role === 'lecturer';
   const isStudent = !isAdmin && !isLecturer && !isSuper;
   const firstName = user?.first_name || user?.email?.split('@')?.[0] || 'there';

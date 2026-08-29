@@ -73,8 +73,12 @@ export default function AuthLayout({
           to="/"
           className="relative flex w-fit items-center gap-3 rounded-md focus-visible:outline-2 focus-visible:outline-white/40"
         >
-          <span className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-white/95 shadow-[var(--shadow-pop)]">
-            <span className="grid h-7 w-7 place-items-center rounded-[7px] bg-[oklch(18%_0.015_255)] text-white font-bold text-[15px] tracking-[-0.02em]">A</span>
+          <span className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-white/95 p-[3px] shadow-[var(--shadow-pop)]">
+            <img
+              src="/images/Logo/academiai_icon_light.webp"
+              alt="AcademiAI"
+              className="block h-full w-full object-contain"
+            />
           </span>
           <span className="text-[18px] font-[680] tracking-[-0.02em]">AcademiAI</span>
         </Link>
