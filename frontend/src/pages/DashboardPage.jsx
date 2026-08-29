@@ -89,11 +89,18 @@ function SegmentedControl({ value, options, onChange, size = 'sm' }) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const isStaff = user?.role === 'lecturer' || user?.role === 'admin' || user?.is_superuser;
-  const isAdmin = user?.role === 'admin' || user?.is_superuser;
+  const isSuper = !!user?.is_superuser;
+  const isAdmin = user?.role === 'admin' || isSuper;
+  const isLecturer = user?.role === 'lecturer';
+  const isStudent = !isAdmin && !isLecturer && !isSuper;
   const firstName = user?.first_name || user?.email?.split('@')?.[0] || 'there';
 
-  const endpoint = isStaff ? dashboardApi.admin : dashboardApi.student;
+  // Pick aggregate endpoint by role
+  const endpoint = isAdmin || isSuper
+    ? dashboardApi.admin
+    : isLecturer
+      ? dashboardApi.lecturer
+      : dashboardApi.student;
   const dash = useQuery({
     queryKey: [isStaff ? 'dash-admin' : 'dash-student'],
     queryFn: endpoint,
