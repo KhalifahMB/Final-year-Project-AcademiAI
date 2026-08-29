@@ -111,52 +111,79 @@ def _authorized_resources_q(user) -> Q:
     Visibility filter for LIST endpoints — same scope semantics as the RAG
     pipeline (apps.knowledge.retrieval): institution-wide for everyone,
     course-scoped to enrolled students / assigned lecturers, programme /
-    department / faculty scopes via the viewer's academic profile, private
-    only for the uploader. Admins see the whole tenant.
+    department / faculty scopes via the viewer's academic profile.
+
+    Private materials are visible ONLY to their uploader, for every role —
+    including tenant admins and platform superusers. Admins retain broad
+    visibility over all non-private scopes in the tenant, but never over
+    another user's private resources.
     """
     from apps.academics.models import CourseEnrollment, LecturerCourseAssignment
     from apps.knowledge.retrieval import _viewer_academic_context
 
-    base = Q(visibility_scope=Resource.Visibility.INSTITUTION)
-
     role = getattr(user, "role", None)
-    if role == "admin":
-        return base | Q()  # whole tenant (tenant filter applied upstream)
+    is_admin = role == "admin" or bool(getattr(user, "is_superuser", False))
 
-    allowed_offerings = set()
-    if role == "student":
-        allowed_offerings = set(
-            CourseEnrollment.objects.filter(
-                student=user, status=CourseEnrollment.Status.ENROLLED
-            ).values_list("course_offering_id", flat=True)
-        )
-    elif role == "lecturer":
-        allowed_offerings = set(
-            LecturerCourseAssignment.objects.filter(lecturer=user).values_list(
-                "course_offering_id", flat=True
+    # The scope the user may read from, ignoring private visibility for a
+    # moment. Admins can read everything non-private in the tenant; students /
+    # lecturers are limited to their academic scope (whose clauses already
+    # require a non-private visibility value, so they never match private).
+    if is_admin:
+        scope = ~Q(visibility_scope=Resource.Visibility.PRIVATE)
+    else:
+        base = Q(visibility_scope=Resource.Visibility.INSTITUTION)
+
+        allowed_offerings = set()
+        if role == "student":
+            allowed_offerings = set(
+                CourseEnrollment.objects.filter(
+                    student=user, status=CourseEnrollment.Status.ENROLLED
+                ).values_list("course_offering_id", flat=True)
+            )
+        elif role == "lecturer":
+            allowed_offerings = set(
+                LecturerCourseAssignment.objects.filter(lecturer=user).values_list(
+                    "course_offering_id", flat=True
+                )
+            )
+
+        scope = (
+            base
+            | Q(
+                visibility_scope=Resource.Visibility.COURSE,
+                course_offering_id__in=allowed_offerings,
+            )
+            # A course-scoped material without an offering would otherwise be
+            # invisible to everyone — the uploader can always see their own.
+            | Q(
+                visibility_scope=Resource.Visibility.COURSE,
+                course_offering__isnull=True,
+                uploaded_by=user,
             )
         )
+        programme_id, department_id, faculty_id = _viewer_academic_context(user)
+        if programme_id:
+            scope |= Q(
+                visibility_scope=Resource.Visibility.PROGRAMME,
+                programme_id=programme_id,
+            )
+        if department_id:
+            scope |= Q(
+                visibility_scope=Resource.Visibility.DEPARTMENT,
+                department_id=department_id,
+            )
+        if faculty_id:
+            scope |= Q(
+                visibility_scope=Resource.Visibility.FACULTY,
+                faculty_id=faculty_id,
+            )
 
-    q = (
-        base
-        | Q(visibility_scope=Resource.Visibility.COURSE, course_offering_id__in=allowed_offerings)
-        # A course-scoped material without an offering would otherwise be
-        # invisible to everyone — the uploader can always see their own.
-        | Q(
-            visibility_scope=Resource.Visibility.COURSE,
-            course_offering__isnull=True,
-            uploaded_by=user,
-        )
-        | Q(visibility_scope=Resource.Visibility.PRIVATE, uploaded_by=user)
+    # Universal rule: a private resource is visible only to its uploader,
+    # regardless of role. `scope` never matches a private resource, so OR-ing
+    # the owner's own private materials is both necessary and sufficient.
+    return scope | Q(
+        visibility_scope=Resource.Visibility.PRIVATE, uploaded_by=user
     )
-    programme_id, department_id, faculty_id = _viewer_academic_context(user)
-    if programme_id:
-        q |= Q(visibility_scope=Resource.Visibility.PROGRAMME, programme_id=programme_id)
-    if department_id:
-        q |= Q(visibility_scope=Resource.Visibility.DEPARTMENT, department_id=department_id)
-    if faculty_id:
-        q |= Q(visibility_scope=Resource.Visibility.FACULTY, faculty_id=faculty_id)
-    return q
 
 
 @extend_schema(tags=["Resources"])
@@ -195,12 +222,9 @@ class ResourceViewSet(TenantModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         user = self.request.user
-        if getattr(user, "is_superuser", False):
-            return qs
-        if getattr(user, "role", None) == "admin":
-            return qs
         # Defense in depth: RLS scopes the tenant, this scopes visibility
-        # within it. Applied to list AND detail (get_object) alike.
+        # within it. Applied to list AND detail (get_object) alike. Private
+        # resources are owner-only for every role (admins included).
         return qs.filter(_authorized_resources_q(user))
 
     def get_permissions(self):
@@ -556,12 +580,11 @@ class ResourceVersionViewSet(TenantModelViewSet):
             resource__id=self.kwargs.get("resource_pk"),
         ).select_related("created_by")
         # The parent resource must also be visible to the caller — a private
-        # material's version history is not world-readable.
-        if not getattr(user, "is_superuser", False) and user.role != "admin":
-            visible = Resource.objects.filter(
-                _authorized_resources_q(user)
-            ).values("id")
-            qs = qs.filter(resource__in=visible)
+        # material's version history is not world-readable (admins included).
+        visible = Resource.objects.filter(
+            _authorized_resources_q(user)
+        ).values("id")
+        qs = qs.filter(resource__in=visible)
         return qs.order_by("-version_number")
 
     def perform_create(self, serializer):

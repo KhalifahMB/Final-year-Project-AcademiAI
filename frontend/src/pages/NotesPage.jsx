@@ -76,20 +76,80 @@ function EditorToolbar({ editor, onAddImage }) {
   if (!editor) return null;
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/30 px-2 py-1.5">
-      <ToolbarBtn title="Bold (⌘B)" icon={Bold} active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} />
-      <ToolbarBtn title="Italic (⌘I)" icon={Italic} active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} />
-      <ToolbarBtn title="Underline (⌘U)" icon={UnderlineIcon} active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} />
-      <ToolbarBtn title="Strikethrough" icon={Strikethrough} active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()} />
-      <ToolbarBtn title="Highlight" icon={Highlighter} active={editor.isActive('highlight')} onClick={() => editor.chain().focus().toggleHighlight().run()} />
+      <ToolbarBtn
+        title="Bold (⌘B)"
+        icon={Bold}
+        active={editor.isActive('bold')}
+        onClick={() => editor.chain().focus().toggleBold().run()}
+      />
+      <ToolbarBtn
+        title="Italic (⌘I)"
+        icon={Italic}
+        active={editor.isActive('italic')}
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+      />
+      <ToolbarBtn
+        title="Underline (⌘U)"
+        icon={UnderlineIcon}
+        active={editor.isActive('underline')}
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+      />
+      <ToolbarBtn
+        title="Strikethrough"
+        icon={Strikethrough}
+        active={editor.isActive('strike')}
+        onClick={() => editor.chain().focus().toggleStrike().run()}
+      />
+      <ToolbarBtn
+        title="Highlight"
+        icon={Highlighter}
+        active={editor.isActive('highlight')}
+        onClick={() => editor.chain().focus().toggleHighlight().run()}
+      />
       <Divider />
-      <ToolbarBtn title="Heading 1" icon={Heading1} active={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} />
-      <ToolbarBtn title="Heading 2" icon={Heading2} active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} />
-      <ToolbarBtn title="Heading 3" icon={Heading3} active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} />
+      <ToolbarBtn
+        title="Heading 1"
+        icon={Heading1}
+        active={editor.isActive('heading', { level: 1 })}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+      />
+      <ToolbarBtn
+        title="Heading 2"
+        icon={Heading2}
+        active={editor.isActive('heading', { level: 2 })}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+      />
+      <ToolbarBtn
+        title="Heading 3"
+        icon={Heading3}
+        active={editor.isActive('heading', { level: 3 })}
+        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+      />
       <Divider />
-      <ToolbarBtn title="Bullet list" icon={List} active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} />
-      <ToolbarBtn title="Ordered list" icon={ListOrdered} active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} />
-      <ToolbarBtn title="Blockquote" icon={Quote} active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} />
-      <ToolbarBtn title="Code block" icon={Code} active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()} />
+      <ToolbarBtn
+        title="Bullet list"
+        icon={List}
+        active={editor.isActive('bulletList')}
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+      />
+      <ToolbarBtn
+        title="Ordered list"
+        icon={ListOrdered}
+        active={editor.isActive('orderedList')}
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+      />
+      <ToolbarBtn
+        title="Blockquote"
+        icon={Quote}
+        active={editor.isActive('blockquote')}
+        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+      />
+      <ToolbarBtn
+        title="Code block"
+        icon={Code}
+        active={editor.isActive('codeBlock')}
+        onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+      />
       <Divider />
       <ToolbarBtn
         title="Link"
@@ -127,13 +187,41 @@ function EditorToolbar({ editor, onAddImage }) {
 /* ---------------- Slash menu ---------------- */
 
 const SLASH_COMMANDS = [
-  { title: 'Heading 1', icon: Heading1, action: (e) => e.chain().focus().toggleHeading({ level: 1 }).run() },
-  { title: 'Heading 2', icon: Heading2, action: (e) => e.chain().focus().toggleHeading({ level: 2 }).run() },
-  { title: 'Heading 3', icon: Heading3, action: (e) => e.chain().focus().toggleHeading({ level: 3 }).run() },
-  { title: 'Bullet list', icon: List, action: (e) => e.chain().focus().toggleBulletList().run() },
-  { title: 'Numbered list', icon: ListOrdered, action: (e) => e.chain().focus().toggleOrderedList().run() },
-  { title: 'Quote', icon: Quote, action: (e) => e.chain().focus().toggleBlockquote().run() },
-  { title: 'Code block', icon: Code, action: (e) => e.chain().focus().toggleCodeBlock().run() },
+  {
+    title: 'Heading 1',
+    icon: Heading1,
+    action: (e) => e.chain().focus().toggleHeading({ level: 1 }).run(),
+  },
+  {
+    title: 'Heading 2',
+    icon: Heading2,
+    action: (e) => e.chain().focus().toggleHeading({ level: 2 }).run(),
+  },
+  {
+    title: 'Heading 3',
+    icon: Heading3,
+    action: (e) => e.chain().focus().toggleHeading({ level: 3 }).run(),
+  },
+  {
+    title: 'Bullet list',
+    icon: List,
+    action: (e) => e.chain().focus().toggleBulletList().run(),
+  },
+  {
+    title: 'Numbered list',
+    icon: ListOrdered,
+    action: (e) => e.chain().focus().toggleOrderedList().run(),
+  },
+  {
+    title: 'Quote',
+    icon: Quote,
+    action: (e) => e.chain().focus().toggleBlockquote().run(),
+  },
+  {
+    title: 'Code block',
+    icon: Code,
+    action: (e) => e.chain().focus().toggleCodeBlock().run(),
+  },
 ];
 
 function SlashMenu({ pos, items, activeIdx, onPick }) {
@@ -143,14 +231,19 @@ function SlashMenu({ pos, items, activeIdx, onPick }) {
       className="fixed z-50 w-56 overflow-hidden rounded-lg border bg-popover py-1 shadow-xl"
       style={{ top: pos.top, left: pos.left }}
     >
-      <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Blocks</p>
+      <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Blocks
+      </p>
       {items.map((it, i) => {
         const Icon = it.icon;
         return (
           <button
             key={it.title}
             type="button"
-            onMouseDown={(e) => { e.preventDefault(); onPick(i); }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onPick(i);
+            }}
             className={cn(
               'flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs transition-colors',
               i === activeIdx ? 'bg-primary/10 text-primary' : 'hover:bg-muted',
@@ -175,7 +268,12 @@ export default function NotesPage() {
   const [title, setTitle] = useState('');
   const [isNew, setIsNew] = useState(false);
   const [saveState, setSaveState] = useState('idle'); // idle | saving | saved
-  const [slash, setSlash] = useState({ open: false, query: '', pos: null, active: 0 });
+  const [slash, setSlash] = useState({
+    open: false,
+    query: '',
+    pos: null,
+    active: 0,
+  });
   const saveTimer = useRef(null);
   const editorRef = useRef(null);
 
@@ -199,7 +297,10 @@ export default function NotesPage() {
       setTitle(n.title || '');
       setSaveState('saved');
     },
-    onError: () => { setSaveState('idle'); toast.error('Failed to create note'); },
+    onError: () => {
+      setSaveState('idle');
+      toast.error('Failed to create note');
+    },
   });
 
   const updateMut = useMutation({
@@ -210,7 +311,10 @@ export default function NotesPage() {
       const n = res.data || res;
       if (n) setTitle(n.title || '');
     },
-    onError: () => { setSaveState('idle'); toast.error('Failed to save'); },
+    onError: () => {
+      setSaveState('idle');
+      toast.error('Failed to save');
+    },
   });
 
   const deleteMut = useMutation({
@@ -240,13 +344,18 @@ export default function NotesPage() {
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Highlight.configure({ multicolor: false }),
       Image.configure({ inline: false, allowBase64: true }),
-      Link.configure({ openOnClick: false, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
+      }),
       Placeholder.configure({
         placeholder: 'Start writing… Type "/" for commands.',
       }),
     ],
     content: '',
-    onCreate: ({ editor: ed }) => { editorRef.current = ed; },
+    onCreate: ({ editor: ed }) => {
+      editorRef.current = ed;
+    },
     onUpdate: ({ editor: ed }) => {
       // Autosave debounce
       setSaveState('saving');
@@ -280,7 +389,11 @@ export default function NotesPage() {
 
   // Slash menu keyboard handling
   useEffect(() => {
-    if (!editor) return;
+    // The editor view is only available once EditorContent has mounted it
+    // (e.g. when a note is selected). Guard against accessing a null view
+    // while the notes list is shown or before first mount.
+    if (!editor || !editor.view || !editor.view.dom) return;
+    const dom = editor.view.dom;
     const handler = (e) => {
       if (!slash.open) return;
       const filtered = SLASH_COMMANDS.filter((c) =>
@@ -288,7 +401,10 @@ export default function NotesPage() {
       );
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSlash((s) => ({ ...s, active: Math.min(filtered.length - 1, s.active + 1) }));
+        setSlash((s) => ({
+          ...s,
+          active: Math.min(filtered.length - 1, s.active + 1),
+        }));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setSlash((s) => ({ ...s, active: Math.max(0, s.active - 1) }));
@@ -298,7 +414,9 @@ export default function NotesPage() {
         if (cmd) {
           // Remove the "/query" text
           const { from } = editor.state.selection;
-          const match = editor.state.doc.textBetween(Math.max(0, from - 30), from).match(/\/[a-zA-Z]*$/);
+          const match = editor.state.doc
+            .textBetween(Math.max(0, from - 30), from)
+            .match(/\/[a-zA-Z]*$/);
           if (match) {
             const start = from - match[0].length;
             editor.chain().focus().deleteRange({ from: start, to: from }).run();
@@ -310,8 +428,8 @@ export default function NotesPage() {
         setSlash({ open: false, query: '', pos: null, active: 0 });
       }
     };
-    editor.view.dom.addEventListener('keydown', handler);
-    return () => editor.view.dom.removeEventListener('keydown', handler);
+    dom.addEventListener('keydown', handler);
+    return () => dom.removeEventListener('keydown', handler);
   }, [editor, slash]);
 
   // Load active note content into editor
@@ -332,27 +450,37 @@ export default function NotesPage() {
   }, [editor, activeNote, isNew]);
 
   // Cleanup timer
-  useEffect(() => () => saveTimer.current && clearTimeout(saveTimer.current), []);
+  useEffect(
+    () => () => saveTimer.current && clearTimeout(saveTimer.current),
+    [],
+  );
 
-  const flushSave = useCallback((ed) => {
-    const html = ed?.getHTML?.() || editor?.getHTML?.() || '';
-    const finalTitle = title.trim() || 'Untitled';
-    if (!html || html === '<p></p>') {
-      setSaveState('idle');
-      return;
-    }
-    setSaveState('saving');
-    if (isNew || !activeId) {
-      createMut.mutate({ title: finalTitle, content: html });
-    } else {
-      updateMut.mutate({ id: activeId, data: { title: finalTitle, content: html } });
-    }
-  }, [title, isNew, activeId, createMut, updateMut, editor]);
+  const flushSave = useCallback(
+    (ed) => {
+      const html = ed?.getHTML?.() || editor?.getHTML?.() || '';
+      const finalTitle = title.trim() || 'Untitled';
+      if (!html || html === '<p></p>') {
+        setSaveState('idle');
+        return;
+      }
+      setSaveState('saving');
+      if (isNew || !activeId) {
+        createMut.mutate({ title: finalTitle, content: html });
+      } else {
+        updateMut.mutate({
+          id: activeId,
+          data: { title: finalTitle, content: html },
+        });
+      }
+    },
+    [title, isNew, activeId, createMut, updateMut, editor],
+  );
 
   // Image insert (base64 for now; backend persists HTML as-is)
   const addImage = (file, ed) => {
     const reader = new FileReader();
-    reader.onload = (ev) => ed.chain().focus().setImage({ src: ev.target.result }).run();
+    reader.onload = (ev) =>
+      ed.chain().focus().setImage({ src: ev.target.result }).run();
     reader.readAsDataURL(file);
   };
 
@@ -376,14 +504,20 @@ export default function NotesPage() {
   };
 
   const deleteSelected = (note) => {
-    if (!window.confirm(`Delete "${note.title || 'Untitled'}"? This cannot be undone.`)) return;
+    if (
+      !window.confirm(
+        `Delete "${note.title || 'Untitled'}"? This cannot be undone.`,
+      )
+    )
+      return;
     deleteMut.mutate(note.id);
   };
 
   const toggleSelect = (id) => {
     setSelectedNotes((prev) => {
       const n = new Set(prev);
-      if (n.has(id)) n.delete(id); else n.add(id);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
       return n;
     });
   };
@@ -394,7 +528,9 @@ export default function NotesPage() {
     return notes.filter(
       (n) =>
         (n.title || '').toLowerCase().includes(q) ||
-        stripHtml(n.content || '').toLowerCase().includes(q),
+        stripHtml(n.content || '')
+          .toLowerCase()
+          .includes(q),
     );
   }, [notes, search]);
 
@@ -403,7 +539,9 @@ export default function NotesPage() {
     return text.slice(0, 140) || 'No additional text';
   };
 
-  const displayNote = isNew ? { id: 'new', title: title || 'Untitled', content: '' } : activeNote;
+  const displayNote = isNew
+    ? { id: 'new', title: title || 'Untitled', content: '' }
+    : activeNote;
   const showingEditor = isNew || !!activeNote;
 
   return (
@@ -411,7 +549,11 @@ export default function NotesPage() {
       title="Notes"
       description="Capture thoughts, lecture summaries, and personal research. Auto-saves as you type."
       actions={
-        <Button size="sm" onClick={createNew} className="h-8 gap-1.5 px-3 text-xs shadow-sm">
+        <Button
+          size="sm"
+          onClick={createNew}
+          className="h-8 gap-1.5 px-3 text-xs shadow-sm"
+        >
           <Plus className="h-3.5 w-3.5" aria-hidden /> New note
         </Button>
       }
@@ -421,7 +563,10 @@ export default function NotesPage() {
         <aside className="flex w-full shrink-0 flex-col border-r md:w-72 lg:w-80">
           <div className="border-b p-3">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
               <Input
                 placeholder="Search notes…"
                 className="h-8 pl-8 pr-2 text-xs"
@@ -436,7 +581,9 @@ export default function NotesPage() {
                   variant="ghost"
                   size="sm"
                   className="h-6 px-2 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => bulkDeleteMut.mutate(Array.from(selectedNotes))}
+                  onClick={() =>
+                    bulkDeleteMut.mutate(Array.from(selectedNotes))
+                  }
                   disabled={bulkDeleteMut.isPending}
                 >
                   <Trash2 className="mr-1 h-3 w-3" />
@@ -449,23 +596,32 @@ export default function NotesPage() {
             {isLoading ? (
               <div className="space-y-1.5 p-2">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="skeleton h-[60px] rounded-lg" style={{ animationDelay: `${i * 60}ms` }} />
+                  <div
+                    key={i}
+                    className="skeleton h-[60px] rounded-lg"
+                    style={{ animationDelay: `${i * 60}ms` }}
+                  />
                 ))}
               </div>
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-                <StickyNote className="mb-2 h-7 w-7 text-muted-foreground/50" aria-hidden />
+                <StickyNote
+                  className="mb-2 h-7 w-7 text-muted-foreground/50"
+                  aria-hidden
+                />
                 <p className="text-xs font-medium">
                   {search ? 'No matching notes' : 'No notes yet'}
                 </p>
                 <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  {search ? 'Try a different search.' : 'Press "New note" to start writing.'}
+                  {search
+                    ? 'Try a different search.'
+                    : 'Press "New note" to start writing.'}
                 </p>
               </div>
             ) : (
               <ul className="space-y-0.5">
                 {filtered.map((note) => {
-                  const isActive = (isNew ? false : activeId === note.id);
+                  const isActive = isNew ? false : activeId === note.id;
                   const isSelected = selectedNotes.has(note.id);
                   return (
                     <li key={note.id}>
@@ -477,12 +633,23 @@ export default function NotesPage() {
                           isActive ? 'bg-primary/10' : 'hover:bg-muted/60',
                         )}
                       >
-                        <span onClick={(e) => e.stopPropagation()} className="mt-0.5 shrink-0">
-                          <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(note.id)} />
+                        <span
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-0.5 shrink-0"
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelect(note.id)}
+                          />
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-1">
-                            <p className={cn('truncate text-[13px] font-medium', isActive && 'text-primary')}>
+                            <p
+                              className={cn(
+                                'truncate text-[13px] font-medium',
+                                isActive && 'text-primary',
+                              )}
+                            >
                               {note.title || 'Untitled'}
                             </p>
                           </div>
@@ -491,7 +658,9 @@ export default function NotesPage() {
                           </p>
                           {note.updated_at && (
                             <p className="mt-1 text-[10px] text-muted-foreground/70">
-                              {formatDistanceToNow(new Date(note.updated_at), { addSuffix: true })}
+                              {formatDistanceToNow(new Date(note.updated_at), {
+                                addSuffix: true,
+                              })}
                             </p>
                           )}
                         </div>
@@ -511,30 +680,46 @@ export default function NotesPage() {
               <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                 <StickyNote className="h-7 w-7" aria-hidden />
               </span>
-              <h3 className="text-base font-semibold">Select a note to start</h3>
+              <h3 className="text-base font-semibold">
+                Select a note to start
+              </h3>
               <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                Choose a note from the list on the left, or create a new one. Notes auto-save as you type.
+                Choose a note from the list on the left, or create a new one.
+                Notes auto-save as you type.
               </p>
-              <Button size="sm" onClick={createNew} className="mt-5 h-8 gap-1.5 px-4 text-xs shadow-sm">
+              <Button
+                size="sm"
+                onClick={createNew}
+                className="mt-5 h-8 gap-1.5 px-4 text-xs shadow-sm"
+              >
                 <Plus className="h-3.5 w-3.5" /> Create note
               </Button>
             </div>
           ) : (
             <form
-              onSubmit={(e) => { e.preventDefault(); saveNow(); }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                saveNow();
+              }}
               className="flex h-full flex-col"
             >
               {/* Header */}
               <div className="flex items-center justify-between gap-3 border-b px-4 py-2.5">
                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <FileText className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                  <FileText
+                    className="h-4 w-4 shrink-0 text-primary"
+                    aria-hidden
+                  />
                   <input
                     value={title}
                     onChange={(e) => {
                       setTitle(e.target.value);
                       setSaveState('saving');
                       if (saveTimer.current) clearTimeout(saveTimer.current);
-                      saveTimer.current = setTimeout(() => flushSave(editor), 600);
+                      saveTimer.current = setTimeout(
+                        () => flushSave(editor),
+                        600,
+                      );
                     }}
                     placeholder="Untitled note"
                     className="min-w-0 flex-1 border-0 bg-transparent text-[15px] font-semibold tracking-tight shadow-none focus-visible:ring-0"
@@ -564,7 +749,12 @@ export default function NotesPage() {
                     </DropdownMenu>
                   )}
                   {(isNew || !displayNote) && saveState === 'idle' && (
-                    <Button type="submit" size="sm" className="h-7 px-3 text-xs" disabled={!title.trim()}>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      className="h-7 px-3 text-xs"
+                      disabled={!title.trim()}
+                    >
                       Create
                     </Button>
                   )}
@@ -585,14 +775,20 @@ export default function NotesPage() {
 
       <SlashMenu
         pos={slash.pos}
-        items={SLASH_COMMANDS.filter((c) => c.title.toLowerCase().includes(slash.query))}
+        items={SLASH_COMMANDS.filter((c) =>
+          c.title.toLowerCase().includes(slash.query),
+        )}
         activeIdx={slash.active}
         onPick={(i) => {
-          const filtered = SLASH_COMMANDS.filter((c) => c.title.toLowerCase().includes(slash.query));
+          const filtered = SLASH_COMMANDS.filter((c) =>
+            c.title.toLowerCase().includes(slash.query),
+          );
           const cmd = filtered[i];
           if (!cmd) return;
           const { from } = editor.state.selection;
-          const match = editor.state.doc.textBetween(Math.max(0, from - 30), from).match(/\/[a-zA-Z]*$/);
+          const match = editor.state.doc
+            .textBetween(Math.max(0, from - 30), from)
+            .match(/\/[a-zA-Z]*$/);
           if (match) {
             const start = from - match[0].length;
             editor.chain().focus().deleteRange({ from: start, to: from }).run();

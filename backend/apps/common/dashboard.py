@@ -257,9 +257,17 @@ class AdminDashboardView(APIView):
             tenant_id=tid, role=ChatMessage.Role.USER,
         ).count()
 
-        # Recent activity: last 10 resources uploaded
+        # Recent activity: last 8 resources uploaded. Private materials appear
+        # only if the current user is their uploader.
         recent_resources = list(
             Resource.objects.filter(tenant_id=tid)
+            .filter(
+                ~Q(visibility_scope=Resource.Visibility.PRIVATE)
+                | Q(
+                    visibility_scope=Resource.Visibility.PRIVATE,
+                    uploaded_by_id=user.id,
+                )
+            )
             .select_related("uploaded_by")
             .order_by("-created_at")[:8]
             .values(

@@ -316,6 +316,7 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("1", "true", "yes
 # Debug Toolbar (dev only)
 INTERNAL_IPS = ["127.0.0.1", "localhost"]
 DEBUG_TOOLBAR_CONFIG = {"SHOW_TOOLBAR_CALLBACK": lambda request: DEBUG}
+DEBUG_TOOLBAR_CONFIG['IS_RUNNING_TESTS'] = False
 
 # --- Production security hardening (env-driven; no-ops under DEBUG) -------
 if not DEBUG:

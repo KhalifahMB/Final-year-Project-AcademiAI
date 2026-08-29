@@ -65,12 +65,21 @@ def _authorized_resource_ids(user, course_offering_id=None):
     )
 
     role = getattr(user, "role", None)
-    if role == "admin":
+    is_admin = role == "admin" or bool(getattr(user, "is_superuser", False))
+    if is_admin:
         if course_offering_id:
             qs = qs.filter(
                 Q(course_offering_id=course_offering_id)
                 | Q(visibility_scope=Resource.Visibility.INSTITUTION)
             )
+        # Private materials are owner-only, even for admins/superusers.
+        qs = qs.filter(
+            ~Q(visibility_scope=Resource.Visibility.PRIVATE)
+            | Q(
+                visibility_scope=Resource.Visibility.PRIVATE,
+                uploaded_by=user,
+            )
+        )
         return list(qs.values_list("id", flat=True))
 
     # Students: enrolled offerings + institution-visible
