@@ -53,7 +53,7 @@ Celery worker (separate terminal):
 ```bash
 cd backend
 source .venv/bin/activate
-celery -A config worker -l info -Q ai,ingestion,email,celery
+celery -A config worker -l INFO -P solo -Q ai,celery,email,ingestion
 ```
 
 > **Windows note:** Celery's default prefork pool crashes on Windows
