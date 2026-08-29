@@ -97,9 +97,8 @@ export default function SignupPage() {
   return (
     <AuthLayout
       icon={UserPlus}
-      title="Create your account"
+      title="Create your account for free"
       subtitle="Join your institution's AcademiAI workspace in under a minute."
-      headingAccent="for free"
       footer={
         <>
           Already have an account?{' '}

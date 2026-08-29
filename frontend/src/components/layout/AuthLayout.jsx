@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Sparkles, LibraryBig, GraduationCap, BookOpen } from 'lucide-react';
 import ThemeToggle from '@/components/shared/ThemeToggle';
+import BrandMark from '@/components/shared/BrandMark';
 
 const HIGHLIGHTS = [
   {
@@ -16,27 +17,30 @@ const HIGHLIGHTS = [
   {
     icon: ShieldCheck,
     title: 'Institution-grade isolation',
-    text: 'Strict tenant boundaries keep your institution\u2019s materials private.',
+    text: 'Strict tenant boundaries keep your institution’s materials private.',
   },
 ];
 
 function BackgroundPattern() {
-  // Subtle dot grid + radial glow — always dark so the panel stays premium.
+  // Deep near-black brand panel with subtle dot grid + one accent glow
+  // tuned to the new indigo (hue 255) palette.
   return (
     <>
       <div
         className="absolute inset-0 -z-10"
         style={{
           background:
-            'radial-gradient(1200px 600px at 20% -10%, rgba(139,127,255,0.35), transparent 60%), radial-gradient(900px 500px at 90% 110%, rgba(90,72,220,0.45), transparent 60%), linear-gradient(135deg, #0f0c29 0%, #121033 40%, #0b0820 100%)',
+            'radial-gradient(1100px 600px at 18% -10%, oklch(58% 0.18 255 / 0.30), transparent 60%),' +
+            'radial-gradient(900px 600px at 95% 110%, oklch(42% 0.20 270 / 0.45), transparent 60%),' +
+            'linear-gradient(160deg, oklch(16% 0.015 255) 0%, oklch(19% 0.02 260) 55%, oklch(13% 0.01 250) 100%)',
         }}
         aria-hidden
       />
       <div
-        className="absolute inset-0 -z-10 opacity-[0.18]"
+        className="absolute inset-0 -z-10 opacity-[0.14]"
         style={{
           backgroundImage:
-            'radial-gradient(rgba(255,255,255,0.7) 1px, transparent 1px)',
+            'radial-gradient(rgba(255,255,255,0.8) 1px, transparent 1px)',
           backgroundSize: '22px 22px',
         }}
         aria-hidden
@@ -51,46 +55,48 @@ export default function AuthLayout({
   icon: Icon,
   footer,
   children,
-  headingAccent,
+  eyebrow,
 }) {
   return (
     <div className="relative grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
-      {/* Brand panel */}
+      {/* Brand panel — always dark, premium */}
       <aside className="relative hidden isolate overflow-hidden lg:flex lg:flex-col lg:justify-between p-10 text-white">
         <BackgroundPattern />
 
-        {/* Decorative floating shapes */}
-        <div className="pointer-events-none absolute -right-16 top-10 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute -left-20 bottom-10 h-72 w-72 rounded-full bg-indigo-600/20 blur-3xl" aria-hidden />
+        {/* Accent blobs, desaturated so they don't compete */}
+        <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full blur-3xl"
+             style={{ background: 'oklch(58% 0.18 255 / 0.20)' }} aria-hidden />
+        <div className="pointer-events-none absolute -left-20 bottom-0 h-80 w-80 rounded-full blur-3xl"
+             style={{ background: 'oklch(55% 0.20 280 / 0.22)' }} aria-hidden />
 
         <Link
           to="/"
           className="relative flex w-fit items-center gap-3 rounded-md focus-visible:outline-2 focus-visible:outline-white/40"
         >
-          <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white/95 shadow-lg">
-            <img
-              src="/images/Logo/academiai_icon_light.webp"
-              alt=""
-              aria-hidden
-              className="h-full w-full object-contain"
-            />
+          <span className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-white/95 shadow-[var(--shadow-pop)]">
+            <span className="grid h-7 w-7 place-items-center rounded-[7px] bg-[oklch(18%_0.015_255)] text-white font-bold text-[15px] tracking-[-0.02em]">A</span>
           </span>
-          <span className="text-xl font-bold tracking-tight">AcademiAI</span>
+          <span className="text-[18px] font-[680] tracking-[-0.02em]">AcademiAI</span>
         </Link>
 
         <div className="relative max-w-md">
-          <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/80 backdrop-blur">
+          <div className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-2.5 py-1 text-[11px] font-[600] tracking-wide text-white/75 backdrop-blur">
             <GraduationCap className="h-3.5 w-3.5" aria-hidden />
             Built for students & educators
           </div>
-          <h2 className="text-[40px] font-bold leading-[1.05] tracking-tight">
+          <h2 className="text-[40px] font-[650] leading-[1.05] tracking-[-0.02em]">
             Your institutional
             <br />
-            <span className="bg-gradient-to-r from-violet-300 to-indigo-200 bg-clip-text text-transparent">
+            <span style={{
+              background: 'linear-gradient(135deg, oklch(85% 0.10 255), oklch(92% 0.06 280))',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+            }}>
               AI study companion.
             </span>
           </h2>
-          <p className="mt-3 max-w-md text-[14px] leading-relaxed text-white/70">
+          <p className="mt-3 max-w-md text-[14px] leading-relaxed text-white/65">
             Grounded answers from your own course materials, one workspace for every
             resource, quiz, and note.
           </p>
@@ -98,19 +104,19 @@ export default function AuthLayout({
           <ul className="mt-10 space-y-4">
             {HIGHLIGHTS.map(({ icon: HIcon, title: t, text }) => (
               <li key={t} className="flex gap-3">
-                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/12 text-white ring-1 ring-white/15 backdrop-blur">
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white/10 text-white ring-1 ring-white/12 backdrop-blur">
                   <HIcon className="h-[18px] w-[18px]" aria-hidden />
                 </span>
                 <div>
-                  <p className="text-[14px] font-semibold text-white">{t}</p>
-                  <p className="mt-0.5 text-[13px] leading-relaxed text-white/70">{text}</p>
+                  <p className="text-[14px] font-[600] text-white">{t}</p>
+                  <p className="mt-0.5 text-[13px] leading-relaxed text-white/65">{text}</p>
                 </div>
               </li>
             ))}
           </ul>
         </div>
 
-        <div className="relative flex items-center justify-between text-[11px] text-white/50">
+        <div className="relative flex items-center justify-between text-[11px] text-white/45">
           <span>Multi-tenant academic platform · © {new Date().getFullYear()} AcademiAI</span>
           <div className="flex items-center gap-1.5">
             <BookOpen className="h-3.5 w-3.5" aria-hidden />
@@ -120,53 +126,41 @@ export default function AuthLayout({
       </aside>
 
       {/* Form panel */}
-      <main className="relative flex flex-col justify-center bg-background px-5 py-10 sm:px-10 lg:px-16">
+      <main className="relative flex flex-col justify-center bg-[var(--bg)] px-5 py-10 sm:px-10 lg:px-16">
         <div className="absolute right-4 top-4 flex items-center gap-1.5 sm:right-6 sm:top-6">
           <Link
             to="/"
-            className="rounded-md px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+            className="rounded-[var(--radius-md)] px-2.5 py-1.5 text-[12px] font-[520] text-[var(--muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--fg)] focus-visible:outline-2 focus-visible:outline-[var(--ring)]"
           >
             Home
           </Link>
           <ThemeToggle iconOnly />
         </div>
 
-        <div className="mx-auto w-full max-w-[380px]">
+        <div className="mx-auto w-full max-w-[400px]">
           {/* Mobile brand */}
           <Link
             to="/"
-            className="mb-8 flex w-fit items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-ring lg:hidden"
+            className="mb-8 flex w-fit items-center gap-2.5 rounded-md lg:hidden"
           >
-            <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border">
-              <img
-                src="/images/Logo/academiai_icon_light.webp"
-                alt=""
-                aria-hidden
-                className="h-full w-full object-contain dark:hidden"
-              />
-              <img
-                src="/images/Logo/academiai_icon_dark.png"
-                alt=""
-                aria-hidden
-                className="hidden h-full w-full object-contain dark:block"
-              />
-            </span>
-            <span className="text-base font-semibold tracking-tight">AcademiAI</span>
+            <BrandMark size="h-9 w-9" />
+            <span className="text-[16px] font-[680] tracking-[-0.02em]">AcademiAI</span>
           </Link>
 
+          {eyebrow && (
+            <p className="eyebrow mb-3">{eyebrow}</p>
+          )}
+
           {Icon && (
-            <div className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <div className="mb-5 inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
               <Icon className="h-5 w-5" aria-hidden />
             </div>
           )}
-          <h1 className="text-[26px] font-semibold leading-tight tracking-tight">
+          <h1 className="text-[30px] font-[650] leading-[1.1] tracking-[-0.02em]">
             {title}
-            {headingAccent && (
-              <span className="ai-text"> {headingAccent}</span>
-            )}
           </h1>
           {subtitle && (
-            <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 text-[14px] leading-relaxed text-[var(--muted)]">
               {subtitle}
             </p>
           )}
@@ -174,7 +168,7 @@ export default function AuthLayout({
           <div className="mt-7">{children}</div>
 
           {footer && (
-            <div className="mt-6 text-[13px] text-muted-foreground">{footer}</div>
+            <div className="mt-6 text-[13px] text-[var(--muted)]">{footer}</div>
           )}
         </div>
       </main>
