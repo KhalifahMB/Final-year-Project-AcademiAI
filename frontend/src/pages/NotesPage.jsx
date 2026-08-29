@@ -276,6 +276,27 @@ export default function NotesPage() {
   });
   const saveTimer = useRef(null);
   const editorRef = useRef(null);
+  // Refs mirroring the active-note identity so the TipTap editor callbacks
+  // (which close over the first render) always read the CURRENT note being
+  // edited instead of a stale snapshot. This prevents a save from writing one
+  // note's title/content onto another note.
+  const activeIdRef = useRef(null);
+  const titleRef = useRef('');
+  const isNewRef = useRef(false);
+  // True only once the TipTap editor view has actually mounted (onCreate). The
+  // editor object becomes non-null before the view is attached to the DOM, and
+  // calling commands (setContent) before mount throws
+  // "Cannot access view['dom']... may not be mounted yet".
+  const [editorReady, setEditorReady] = useState(false);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+    isNewRef.current = isNew;
+  }, [activeId, isNew]);
+
+  useEffect(() => {
+    titleRef.current = title;
+  }, [title]);
 
   const { data: notes = [], isLoading } = useQuery({
     queryKey: ['notes'],
@@ -354,13 +375,22 @@ export default function NotesPage() {
     ],
     content: '',
     onCreate: ({ editor: ed }) => {
+      setEditorReady(true);
       editorRef.current = ed;
     },
     onUpdate: ({ editor: ed }) => {
-      // Autosave debounce
+      // Autosave debounce. Capture the note identity + rendered HTML now so a
+      // pending save targets this exact note (never the note the user may have
+      // switched to before the timer fires).
       setSaveState('saving');
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => flushSave(ed), 800);
+      const snapshot = {
+        id: activeIdRef.current,
+        isNew: isNewRef.current,
+        title: titleRef.current,
+        html: ed.getHTML(),
+      };
+      saveTimer.current = setTimeout(() => commitRef.current(snapshot), 800);
 
       // Slash menu detection
       const { from } = ed.state.selection;
@@ -432,22 +462,27 @@ export default function NotesPage() {
     return () => dom.removeEventListener('keydown', handler);
   }, [editor, slash]);
 
-  // Load active note content into editor
+  // Load active note content into editor.
+  //
+  // Refs are updated synchronously BEFORE touching the editor so that the
+  // editor's onUpdate (which can fire from setContent/clearContent) never
+  // reads a stale note identity or a previous note's title. A pending save
+  // for the outgoing note is cleared, and the content swap is performed with
+  // emitUpdate:false so loading never triggers an autosave.
   useEffect(() => {
-    if (!editor) return;
-    if (isNew) {
-      editor.commands.clearContent();
-      setTitle('');
+    if (!editor || !editorReady) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    activeIdRef.current = isNew ? null : activeNote?.id ?? null;
+    isNewRef.current = isNew;
+    const nextTitle = isNew ? '' : activeNote?.title || '';
+    titleRef.current = nextTitle;
+    setTitle(nextTitle);
+    if (isNew || !activeNote) {
+      editor.commands.setContent('', { emitUpdate: false });
       return;
     }
-    if (activeNote) {
-      editor.commands.setContent(activeNote.content || '');
-      setTitle(activeNote.title || '');
-    } else {
-      editor.commands.clearContent();
-      setTitle('');
-    }
-  }, [editor, activeNote, isNew]);
+    editor.commands.setContent(activeNote.content || '', { emitUpdate: false });
+  }, [editor, editorReady, activeNote, isNew]);
 
   // Cleanup timer
   useEffect(
@@ -455,26 +490,33 @@ export default function NotesPage() {
     [],
   );
 
-  const flushSave = useCallback(
-    (ed) => {
-      const html = ed?.getHTML?.() || editor?.getHTML?.() || '';
-      const finalTitle = title.trim() || 'Untitled';
+  // Save a captured snapshot {id, isNew, title, html}. The note identity and
+  // its rendered HTML are fixed when the edit happens, so a debounced save can
+  // never be written to a different note that the user switched to while the
+  // timer was pending.
+  const commitSave = useCallback(
+    ({ id, isNew: isNewTarget, title: titleSnapshot, html }) => {
+      const finalTitle = (titleSnapshot || '').trim() || 'Untitled';
       if (!html || html === '<p></p>') {
         setSaveState('idle');
         return;
       }
       setSaveState('saving');
-      if (isNew || !activeId) {
+      if (isNewTarget || !id) {
         createMut.mutate({ title: finalTitle, content: html });
       } else {
-        updateMut.mutate({
-          id: activeId,
-          data: { title: finalTitle, content: html },
-        });
+        updateMut.mutate({ id, data: { title: finalTitle, content: html } });
       }
     },
-    [title, isNew, activeId, createMut, updateMut, editor],
+    [createMut, updateMut],
   );
+
+  // Always-current reference so stale editor callbacks can reach the latest
+  // save logic without closing over an old render.
+  const commitRef = useRef(commitSave);
+  useEffect(() => {
+    commitRef.current = commitSave;
+  });
 
   // Image insert (base64 for now; backend persists HTML as-is)
   const addImage = (file, ed) => {
@@ -500,7 +542,12 @@ export default function NotesPage() {
 
   const saveNow = () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    flushSave(editor);
+    commitSave({
+      id: activeIdRef.current,
+      isNew: isNewRef.current,
+      title: titleRef.current,
+      html: editor?.getHTML?.() || '',
+    });
   };
 
   const deleteSelected = (note) => {
@@ -713,12 +760,18 @@ export default function NotesPage() {
                   <input
                     value={title}
                     onChange={(e) => {
-                      setTitle(e.target.value);
+                      const next = e.target.value;
+                      setTitle(next);
                       setSaveState('saving');
                       if (saveTimer.current) clearTimeout(saveTimer.current);
-                      saveTimer.current = setTimeout(
-                        () => flushSave(editor),
-                        600,
+                      saveTimer.current = setTimeout(() =>
+                        commitRef.current({
+                          id: activeIdRef.current,
+                          isNew: isNewRef.current,
+                          title: next,
+                          html: editor?.getHTML?.() || '',
+                        }),
+                      600,
                       );
                     }}
                     placeholder="Untitled note"

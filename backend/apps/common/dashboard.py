@@ -74,7 +74,7 @@ class StudentDashboardView(APIView):
         )
         from apps.resources.models import Resource
         from apps.chat.models import ChatSession
-        from apps.assessments.models import QuizAttempt
+        from apps.assessments.models import Quiz, QuizAttempt
         from apps.learning.models import Note, Bookmark
 
         tenant_id = user.tenant_id
@@ -118,22 +118,18 @@ class StudentDashboardView(APIView):
             for c in enrolled_courses
         ]
 
-        # My resources: visible within enrolled offerings + broader scopes
+        # My resources: exactly what the resources page shows, so the count
+        # and "recent resources" match the /resources/ list (including the
+        # user's own private materials).
+        from apps.resources.views import _authorized_resources_q
+
         offering_ids = list(
             enrolled_qs.values_list("course_offering_id", flat=True),
         )
         res_qs = Resource.objects.filter(
             tenant_id=tenant_id,
             processing_status=Resource.ProcessingStatus.READY,
-        ).filter(
-            Q(course_offering_id__in=offering_ids)
-            | Q(visibility_scope__in=[
-                Resource.Visibility.DEPARTMENT,
-                Resource.Visibility.PROGRAMME,
-                Resource.Visibility.FACULTY,
-                Resource.Visibility.INSTITUTION,
-            ]),
-        )
+        ).filter(_authorized_resources_q(user))
         resources_count = res_qs.count()
         recent_resources = list(
             res_qs.order_by("-updated_at")[:6].values(
