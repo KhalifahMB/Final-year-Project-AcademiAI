@@ -35,6 +35,7 @@ import {
 } from 'recharts';
 
 import StudentDashboard from './dashboard/StudentDashboard';
+import LecturerDashboard from './dashboard/LecturerDashboard';
 
 function TimeAgo({ iso }) {
   return <span title={iso}>{formatRelativeTime(iso)}</span>;
@@ -106,7 +107,7 @@ export default function DashboardPage() {
         ? dashboardApi.lecturer
         : dashboardApi.student;
   const dash = useQuery({
-    queryKey: [isStaff ? 'dash-admin' : 'dash-student'],
+    queryKey: [isStaff ? 'dash-admin' : isLecturer ? 'dash-lecturer' : 'dash-student'],
     queryFn: endpoint,
     staleTime: 60_000,
     retry: 1,
@@ -253,7 +254,7 @@ export default function DashboardPage() {
     <AppShell>
       {dash.isLoading ? (
         <SkeletonRows rows={6} />
-      ) : isStudent || isLecturer ? (
+      ) : isStudent ? (
         <StudentDashboard
           dash={dash.data}
           studentActivity={studentActivity}
@@ -261,6 +262,8 @@ export default function DashboardPage() {
           setStudentRange={setStudentRange}
           firstName={firstName}
         />
+      ) : isLecturer ? (
+        <LecturerDashboard dash={dash.data} firstName={firstName} />
       ) : (
         <>
           {/* Greeting strip */}

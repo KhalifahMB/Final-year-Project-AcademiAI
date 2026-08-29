@@ -102,14 +102,14 @@ Retune the design system to the Open Design palette while keeping current class 
 - [ ] Commit `feat(redesign/student-dashboard): up-next, continue-learning, concept mastery, activity chart`
 
 ## Phase G — Lecturer Dashboard redesign
-- [ ] Dark hero (or white, matching user's dark pref) with LECTURER WORKSPACE eyebrow + term/context meta
-- [ ] 4 KPI tiles (Active courses / AI answers today / Concepts flagged / Quiz submissions)
-- [ ] "Students needing attention" table (At risk / Watch badges + View button)
-- [ ] "Reinforce weak concepts" CTA card (Generate quiz from week X materials)
-- [ ] "Asked about your materials" list (quote + course chip + citation)
-- [ ] "Concept confusion" colored progress bars
-- [ ] "Material ingestion" pipeline (ready/indexing/failed badges + retry)
-- [ ] Commit `feat(redesign/lecturer-dashboard): cohort attention + concept confusion views`
+- [x] Dark hero (or white, matching user's dark pref) with LECTURER WORKSPACE eyebrow + term/context meta
+- [x] 4+2 KPI tiles (active courses / students enrolled / concepts flagged / quiz submissions / AI answers today / completion rate)
+- [x] "Students needing attention" table (At risk / Watch / On track badges)
+- [x] "Reinforce weak concepts" CTA card (Generate quiz)
+- [x] "Asked about your materials" list (quote + course chip + mono similarity + time)
+- [x] "Concept confusion" colored progress bars (course code + attempts)
+- [x] "Material ingestion" pipeline (ready/indexing/failed tiles + stacked bar + Upload CTA)
+- [x] Commit `feat(redesign/phase-g): lecturer dashboard restyle
 
 ## Phase H — Flagship screens pass
 - [ ] **ChatPage**: composer with mono hint "Enter to send · Shift+Enter", grounding-scope select, chunks-in-scope count, citation superscript chips `[N]`, inline source rows (rank · bold title · locator · mono similarity), neutral chips (not accent-filled), typist dots. Keep sources right-rail toggle.
