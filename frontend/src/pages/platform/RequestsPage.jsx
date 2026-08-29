@@ -12,7 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Building2, Check, XCircle, Clock, Mail, User, Phone, Users } from 'lucide-react';
+import { Building2, Check, XCircle, Mail, User, Phone, Users } from 'lucide-react';
 
 function timeAgo(iso) {
   if (!iso) return '';

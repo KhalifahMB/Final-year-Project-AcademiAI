@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import {
-  BookOpen, Building2, ClipboardList, FileText, GraduationCap,
+Building2, ClipboardList, FileText, GraduationCap,
   HardDrive, Landmark, TrendingUp, Users, MessageSquareText,
   ScrollText,
 } from 'lucide-react';

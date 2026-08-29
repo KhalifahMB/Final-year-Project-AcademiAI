@@ -15,8 +15,6 @@ import {
   TrendingUp,
   Upload,
   Users,
-  Sparkles,
-  Clock,
   ArrowRight,
   Plus,
   Flame,
@@ -24,8 +22,6 @@ import {
 import { cn, formatRelativeTime } from '@/lib/utils';
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -238,12 +234,7 @@ export default function DashboardPage() {
     }
     return base.slice(0, isStaff ? 6 : 4);
   }, [isStaff, isAdmin]);
-
-  const enrolledCourses = dash.data?.enrolled_courses || [];
   const recentResources = dash.data?.recent_resources || [];
-  const recentChats = dash.data?.recent_chats || [];
-
-  const studentChart = studentActivity.data?.timeline || [];
   const auditTimeline = auditSummary.data?.timeline || [];
   const auditActions = auditSummary.data?.by_action || [];
   const auditEntities = auditSummary.data?.by_entity_type || [];

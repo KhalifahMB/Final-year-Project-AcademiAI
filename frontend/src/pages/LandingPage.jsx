@@ -222,40 +222,6 @@ function SourceChip({ label, detail, mono }) {
   );
 }
 
-function TutorMockCard() {
-  return (
-    <div className="relative">
-      <div className="relative rounded-[var(--radius-lg)] border border-white/10 bg-white/[0.04] p-4 shadow-[var(--shadow-pop)] backdrop-blur">
-        <div className="flex items-center gap-2 text-[11px] text-white/60">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
-            AI tutor · CS-301 Distributed Systems
-          </span>
-          <span className="ml-auto rounded-full border border-white/10 px-2 py-0.5 text-[10px] tracking-wide">
-            scoped to enrolled courses
-          </span>
-        </div>
-        <div className="mt-4 rounded-[var(--radius-md)] border border-white/10 bg-black/30 p-3.5">
-          <p className="text-[13px] text-white/85">
-            <span className="font-[600] text-white">You:</span> Why does Paxos need two phases if Raft manages in one?
-          </p>
-        </div>
-        <div className="mt-3 rounded-[var(--radius-md)] bg-white/[0.06] p-3.5 text-[13px] leading-relaxed text-white/85">
-          Raft folds leader election into the first phase by requiring candidates to carry committed entries, so log replication happens during the same round. In Paxos, proposer and acceptor roles are decoupled, which forces a separate prepare and accept phase.
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            <SourceChip label="Lecture 8" detail="slides pp. 12–14" />
-            <SourceChip label="similarity" detail="0.91" mono />
-          </div>
-        </div>
-      </div>
-      <div
-        aria-hidden
-        className="absolute -inset-8 -z-10 rounded-[32px] blur-2xl"
-        style={{ background: 'oklch(58% 0.18 255 / 0.25)' }}
-      />
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* Page                                                                */

@@ -142,9 +142,9 @@ Retune the design system to the Open Design palette while keeping current class 
 - [ ] **Mobile bottom tab bar** (Dashboard/Chat/Resources/Notes/Profile) + sidebar drawer for secondary items.
 - [ ] **Shortcut reference dialog** (press `?` or from command palette): ⌘K, ⌘B, Enter/Shift+Enter, F focus, Esc.
 - [ ] **Accessibility audit**: focus rings (accent, 2px/offset 2), icon-only buttons aria-labels, color-contrast spot check dark/light, keyboard nav in chat/notes/command palette, form errors announced.
-- [ ] **PWA manifest/splash**: theme-color updated to new accent, maskable icon check, shortcut entries (Chat, Resources, Notes, Dashboard).
+- [x] **PWA manifest/splash**: theme-color updated to new accent, maskable icon check, shortcut entries (Chat, Resources, Notes, Dashboard).
 - [ ] **Bundle trim**: lazy-load cmdk (currently in AppShell chunk), verify route-level splits.
-- [ ] **Oxlint warnings mop-up**: unused imports (BookOpen, Button, etc.), catch (e) unused vars, exhaustive-deps warnings.
+- [x] **Oxlint warnings mop-up**: unused imports (BookOpen, Button, etc.), catch (e) unused vars, exhaustive-deps warnings.
 - [ ] **Reduced-motion final pass**: ensure all hover/entry transitions respect reduced-motion.
 - [ ] Commit `feat(redesign/polish): mobile bottom bar, shortcuts dialog, a11y, PWA, warnings`
 

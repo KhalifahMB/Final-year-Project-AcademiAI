@@ -33,6 +33,12 @@ export default defineConfig({
             purpose: 'maskable',
           },
         ],
+        shortcuts: [
+          { name: 'Dashboard', short_name: 'Dashboard', url: '/dashboard', icons: [{ src: '/pwa-192.png', sizes: '192x192' }] },
+          { name: 'AI tutor',   short_name: 'Chat',      url: '/chat',      icons: [{ src: '/pwa-192.png', sizes: '192x192' }] },
+          { name: 'Resources',  short_name: 'Resources', url: '/resources', icons: [{ src: '/pwa-192.png', sizes: '192x192' }] },
+          { name: 'Notes',      short_name: 'Notes',     url: '/notes',     icons: [{ src: '/pwa-192.png', sizes: '192x192' }] },
+        ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],

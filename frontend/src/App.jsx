@@ -57,7 +57,8 @@ function ProtectedRoute({ children, roles, requireSuperuser, blockSuperuser }) {
   return children;
 }
 
-function ProtectedNotFound() {
+// eslint-disable-next-line react-refresh/only-export-components
+function _ProtectedNotFound() {
   return (
     <ProtectedRoute>
       <InAppNotFound />
