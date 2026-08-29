@@ -79,6 +79,7 @@ export const dashApi = {
 export const dashboardApi = {
   student: () => api.get('/dashboard/student/').then((r) => r.data),
   admin: () => api.get('/dashboard/admin/').then((r) => r.data),
+  lecturer: () => api.get('/dashboard/lecturer/').then((r) => r.data),
   studentActivity: (range = 'day') =>
     api.get('/dashboard/student/activity/', { params: { range } }).then((r) => r.data),
   adminAuditSummary: (days = 14) =>
