@@ -210,20 +210,6 @@ function InstitutionDirectory() {
 }
 
 /* ------------------------------------------------------------------ */
-/* AI tutor answer card                                                */
-/* ------------------------------------------------------------------ */
-
-function SourceChip({ label, detail, mono }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10.5px] text-white/70">
-      <span className="font-[600] text-white/85">{label}</span>
-      {detail && <span className={mono ? 'font-mono tabular-nums' : ''}>{detail}</span>}
-    </span>
-  );
-}
-
-
-/* ------------------------------------------------------------------ */
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
 

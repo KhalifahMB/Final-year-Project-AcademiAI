@@ -462,13 +462,23 @@ export default function NotesPage() {
  return () => dom.removeEventListener('keydown', handler);
  }, [editor, slash]);
 
- // Load active note content into editor.
+// Load active note content into editor.
  //
  // Refs are updated synchronously BEFORE touching the editor so that the
  // editor's onUpdate (which can fire from setContent/clearContent) never
  // reads a stale note identity or a previous note's title. A pending save
  // for the outgoing note is cleared, and the content swap is performed with
  // emitUpdate:false so loading never triggers an autosave.
+ // Keep the title input in sync with the currently opened note. Adjusted
+ // during render (not in an effect) when the active note identity changes so
+ // the editor effect below stays purely an external-system sync.
+ const [prevNoteKey, setPrevNoteKey] = useState(null);
+ const noteKey = isNew ? '' : (activeNote?.id ?? null);
+ if (noteKey !== prevNoteKey) {
+ setPrevNoteKey(noteKey);
+ setTitle(isNew ? '' : (activeNote?.title || ''));
+ }
+
  useEffect(() => {
  if (!editor || !editorReady) return;
  if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -476,7 +486,6 @@ export default function NotesPage() {
  isNewRef.current = isNew;
  const nextTitle = isNew ? '' : activeNote?.title || '';
  titleRef.current = nextTitle;
- setTitle(nextTitle);
  if (isNew || !activeNote) {
  editor.commands.setContent('', { emitUpdate: false });
  return;

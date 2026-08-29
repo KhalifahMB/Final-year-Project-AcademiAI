@@ -64,14 +64,18 @@ export default function QuizTakePage() {
  enabled: !!id,
  });
 
- useEffect(() => {
+// Reset local quiz state whenever the quiz id changes. Adjusted during
+ // render (not in an effect) so the quiz states never leak between quizzes.
+ const [prevQuizKey, setPrevQuizKey] = useState(id);
+ if (id !== prevQuizKey) {
+ setPrevQuizKey(id);
  setAnswers({});
  setAttemptId(null);
  setResult(null);
  setCurrentIdx(0);
  setFlagged({});
  setReviewIdx(0);
- }, [id]);
+ }
 
  const start = useMutation({
  mutationFn: () => api.post('/quiz-attempts/', { quiz: id }),

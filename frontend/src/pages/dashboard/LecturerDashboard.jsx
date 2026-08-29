@@ -33,7 +33,8 @@ import {
   XCircle,
 } from 'lucide-react';
 
-import { TimeAgo, greeting } from './DashboardPage.helpers';
+import { TimeAgo } from './DashboardPage.helpers';
+import { greeting } from '@/lib/utils';
 
 /* ---------------------------------------------------------------- */
 /* Small atoms                                                       */

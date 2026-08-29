@@ -128,6 +128,8 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
 
   useEffect(() => {
     if (open) {
+      // Reset transient UI state each time the dialog opens.
+      // eslint-disable-next-line react/set-state-in-effect
       setExpanded(false);
       setEditing(false);
       setSummaryJobId(null);

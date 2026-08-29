@@ -13,15 +13,14 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function MyCoursesPage() {
  const { user } = useAuth();
- const { data, isLoading, error, refetch } = useQuery({
+ const { data: enrollments, isLoading, error, refetch } = useQuery({
  queryKey: ['my-enrollments'],
  queryFn: async () => {
  const { data } = await api.get('/course-enrollments/');
  return data.results || data;
  },
+ select: (data) => data || [],
  });
-
- const enrollments = data || [];
 
  const counts = useMemo(() => {
  const active = enrollments.filter((e) => e.status === 'enrolled' || e.status === 'active').length;

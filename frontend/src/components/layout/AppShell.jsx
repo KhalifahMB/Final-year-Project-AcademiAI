@@ -554,10 +554,13 @@ export default function AppShell({ title, description, actions, children, fullBl
     return () => window.removeEventListener('academiai:request-sidebar', onRequest);
   }, []);
 
-  // Close mobile drawer on route change.
-  useEffect(() => {
+  // Close mobile drawer on route change (adjust state during render so the
+  // drawer never lingers open after navigating between pages).
+  const [prevPath, setPrevPath] = useState(loc.pathname);
+  if (loc.pathname !== prevPath) {
+    setPrevPath(loc.pathname);
     setMobileOpen(false);
-  }, [loc.pathname]);
+  }
 
   const sections = useMemo(() => getNav(user), [user]);
   const flat = useMemo(() => flattenNav(sections), [sections]);

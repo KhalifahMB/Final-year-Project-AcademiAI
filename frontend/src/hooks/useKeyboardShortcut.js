@@ -15,7 +15,9 @@ export function useKeyboardShortcut(keys, handler, options = {}) {
     [keys],
   );
   const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+  useEffect(() => {
+    handlerRef.current = handler;
+  }, [handler]);
 
   useEffect(() => {
     if (!enabled) return;

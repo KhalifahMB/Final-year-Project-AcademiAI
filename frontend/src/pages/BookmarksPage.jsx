@@ -6,7 +6,6 @@ import EmptyState from '@/components/shared/EmptyState';
 import ResourceCard from '@/components/resources/ResourceCard';
 import ResourceDetailDialog from '@/components/resources/ResourceDetailDialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Bookmark } from 'lucide-react';
 import { toast } from 'sonner';
 
