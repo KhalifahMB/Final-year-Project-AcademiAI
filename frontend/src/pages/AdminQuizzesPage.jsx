@@ -239,7 +239,7 @@ export default function AdminQuizzesPage() {
       title="Quiz manager"
       description="Author practice assessments manually or alongside AI generation — publish them when they are ready for students."
       actions={
-        <Button type="button" onClick={openCreate} size="sm" className="h-8 gap-1.5 px-3 text-xs shadow-sm">
+        <Button type="button" onClick={openCreate} size="sm" className="h-8 gap-1.5 px-3 text-xs">
           <ClipboardPlus className="h-3.5 w-3.5" aria-hidden /> New quiz
         </Button>
       }
@@ -467,7 +467,7 @@ export default function AdminQuizzesPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" size="sm" disabled={addQuestion.isPending} className="h-8 gap-1.5 text-xs shadow-sm">
+                <Button type="submit" size="sm" disabled={addQuestion.isPending} className="h-8 gap-1.5 text-xs">
                   {addQuestion.isPending ? 'Adding…' : (<><Plus className="h-3.5 w-3.5" /> Add question</>)}
                 </Button>
               </form>
@@ -523,7 +523,7 @@ export default function AdminQuizzesPage() {
           <p className="mt-1 max-w-sm text-xs text-muted-foreground">
             Create one manually or let students generate practice sets from their materials.
           </p>
-          <Button type="button" size="sm" onClick={openCreate} className="mt-4 h-8 gap-1.5 text-xs shadow-sm">
+          <Button type="button" size="sm" onClick={openCreate} className="mt-4 h-8 gap-1.5 text-xs">
             <Sparkles className="h-3.5 w-3.5" aria-hidden /> Create your first quiz
           </Button>
         </div>

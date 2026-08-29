@@ -15,7 +15,7 @@ import { useState } from 'react';
 
 const ROLE_STYLES = {
   admin: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20',
-  lecturer: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20',
+  lecturer: 'bg-[var(--info-soft)] text-sky-700 dark:text-sky-300 border-sky-500/20',
   student: 'bg-[var(--accent-soft)] text-[var(--accent-strong)] border-[var(--accent)]/20',
 };
 
@@ -23,7 +23,7 @@ function RoleBadge({ role }) {
   return (
     <span className={cn(
       'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize',
-      ROLE_STYLES[role] || 'bg-muted text-muted-foreground border-border',
+      ROLE_STYLES[role] || 'bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]',
     )}>
       {role}
     </span>
@@ -154,7 +154,7 @@ export default function AdminUsersPage() {
 function StatTile({ label, value, tone = 'indigo' }) {
   const tones = {
     indigo: 'text-primary bg-primary/10',
-    sky: 'text-sky-600 bg-sky-500/10 dark:text-sky-400',
+    sky: 'text-[var(--info)] bg-[var(--info-soft)] ',
     violet: 'text-[var(--accent-strong)] bg-[var(--accent-soft)]',
   };
   return (

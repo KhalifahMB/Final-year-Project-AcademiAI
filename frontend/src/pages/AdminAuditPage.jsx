@@ -114,7 +114,7 @@ export default function AdminAuditPage() {
                 className={cn(
                   "rounded-md px-3 py-1 transition-colors",
                   days === d
-                    ? "bg-background text-foreground shadow-sm"
+                    ? "bg-background text-foreground"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >

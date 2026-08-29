@@ -30,10 +30,10 @@ function formatBytes(bytes) {
 function PlanBadge({ plan }) {
   const colour =
     plan === "enterprise"
-      ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+      ? "bg-[var(--warn-soft)] text-[var(--warn)] border-[var(--warn)]/30"
       : plan === "pro"
-      ? "bg-violet-500/15 text-violet-700 dark:text-violet-400 border-violet-500/30"
-      : "bg-muted text-muted-foreground border-border";
+      ? "bg-[var(--accent-soft)] text-[var(--accent-strong)] border-[var(--accent)]/30"
+      : "bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]";
   return (
     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold capitalize ${colour}`}>
       {plan || "standard"}

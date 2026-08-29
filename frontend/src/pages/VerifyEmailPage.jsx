@@ -244,7 +244,7 @@ export default function VerifyEmailPage() {
         <Button
           type="submit"
           disabled={loading || code.length !== CODE_LENGTH}
-          className="h-11 w-full font-medium shadow-sm"
+          className="h-11 w-full font-medium"
         >
           {loading ? "Verifying…" : "Verify email"}
         </Button>

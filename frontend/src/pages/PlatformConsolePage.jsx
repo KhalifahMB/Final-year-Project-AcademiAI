@@ -109,7 +109,7 @@ export default function PlatformConsolePage() {
           <div className="grid gap-5 lg:grid-cols-2">
             {/* User signups trend */}
             {stats.trends?.user_signups?.length > 0 && (
-              <section className="rounded-2xl border bg-card p-5 shadow-card">
+              <section className="rounded-2xl border bg-card p-5">
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
                   <Users className="h-4 w-4 text-primary" aria-hidden /> User signups (30 days)
                 </h2>
@@ -135,7 +135,7 @@ export default function PlatformConsolePage() {
 
             {/* Tenant plan distribution */}
             {stats.tenants?.by_plan && Object.keys(stats.tenants.by_plan).length > 0 && (
-              <section className="rounded-2xl border bg-card p-5 shadow-card">
+              <section className="rounded-2xl border bg-card p-5">
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
                   <Building2 className="h-4 w-4 text-primary" aria-hidden /> Tenants by plan
                 </h2>
@@ -172,7 +172,7 @@ export default function PlatformConsolePage() {
 
             {/* Users by role */}
             {stats.users?.by_role && Object.keys(stats.users.by_role).length > 0 && (
-              <section className="rounded-2xl border bg-card p-5 shadow-card">
+              <section className="rounded-2xl border bg-card p-5">
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
                   <Users className="h-4 w-4 text-primary" aria-hidden /> Users by role
                 </h2>
@@ -197,7 +197,7 @@ export default function PlatformConsolePage() {
 
             {/* Top tenants */}
             {stats.top_tenants?.length > 0 && (
-              <section className="rounded-2xl border bg-card p-5 shadow-card">
+              <section className="rounded-2xl border bg-card p-5">
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
                   <TrendingUp className="h-4 w-4 text-primary" aria-hidden /> Top tenants by users
                 </h2>
@@ -222,7 +222,7 @@ export default function PlatformConsolePage() {
 
             {/* Resource pipeline */}
             {stats.resources?.by_status && Object.keys(stats.resources.by_status).length > 0 && (
-              <section className="rounded-2xl border bg-card p-5 shadow-card lg:col-span-2">
+              <section className="rounded-2xl border bg-card p-5 lg:col-span-2">
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
                   <FileText className="h-4 w-4 text-primary" aria-hidden /> Resource pipeline
                 </h2>

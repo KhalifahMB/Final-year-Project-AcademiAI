@@ -381,7 +381,7 @@ function MultiResourcePicker({ open, onClose, selected, onToggle }) {
  if (!open) return null;
 
  return (
- <div className="absolute bottom-full left-0 right-0 z-30 mb-2 overflow-hidden rounded-xl border bg-popover shadow-xl" role="dialog" aria-label="Attach materials">
+ <div className="absolute bottom-full left-0 right-0 z-30 mb-2 overflow-hidden rounded-xl border bg-popover" role="dialog" aria-label="Attach materials">
  <div className="flex items-center justify-between border-b bg-muted/50 px-3 py-2">
  <div>
  <p className="text-xs font-semibold">Attach materials</p>

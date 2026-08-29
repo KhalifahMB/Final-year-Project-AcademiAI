@@ -79,7 +79,7 @@ function SegmentedControl({ value, options, onChange, size = 'sm' }) {
           className={cn(
             'rounded-md px-2.5 py-1 font-medium transition-colors',
             value === o.id
-              ? 'bg-background text-foreground shadow-sm'
+              ? 'bg-background text-foreground'
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
@@ -284,7 +284,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2">
               <Link
                 to="/resources/upload"
-                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Upload material
@@ -314,7 +314,7 @@ export default function DashboardPage() {
                   key={to}
                   to={to}
                   className={cn(
-                    'group flex items-center gap-3 rounded-xl border bg-card p-3.5 shadow-sm transition-all hover:-translate-y-px hover:border-primary/30 hover:shadow-md',
+                    'group flex items-center gap-3 rounded-xl border bg-card p-3.5 transition-all hover:-translate-y-px hover:border-primary/30 hover:shadow-md',
                     primary &&
                       'border-primary/25  from-primary/5 via-transparent to-transparent',
                   )}
@@ -348,7 +348,7 @@ export default function DashboardPage() {
 
           {/* Role grid — staff only */}
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <section className="rounded-xl border bg-card p-4 shadow-sm lg:col-span-2">
+            <section className="rounded-xl border bg-card p-4 lg:col-span-2">
               <SectionHeader title="Material pipeline" />
               <div className="grid grid-cols-4 gap-2">
                 {(dash.data?.materials_by_status || []).map((s) => (
@@ -400,7 +400,7 @@ export default function DashboardPage() {
               )}
             </section>
 
-            <section className="rounded-xl border bg-card p-4 shadow-sm">
+            <section className="rounded-xl border bg-card p-4">
               <SectionHeader title="Academic structure" />
               <ul className="space-y-2">
                 {(dash.data?.structure || []).map((s) => (
@@ -419,7 +419,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Staff audit analytics */}
-          <section className="mt-6 rounded-xl border bg-card p-4 shadow-sm">
+          <section className="mt-6 rounded-xl border bg-card p-4">
             <SectionHeader
               title="Audit & activity"
               description={`${auditSummary.data?.total_events ?? '—'} events in the last ${auditDays} days.`}

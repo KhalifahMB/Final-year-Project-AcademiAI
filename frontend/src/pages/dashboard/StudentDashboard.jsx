@@ -262,7 +262,7 @@ function StudyActivity({ chartData, range, onChangeRange, loading, statsRow }) {
               onClick={() => onChangeRange(o.id)}
               className={`rounded-[var(--radius-sm)] px-2.5 py-1 font-[600] transition-colors ${
                 range === o.id
-                  ? 'bg-[var(--surface)] text-[var(--fg)] shadow-sm'
+                  ? 'bg-[var(--surface)] text-[var(--fg)]'
                   : 'text-[var(--muted)] hover:text-[var(--fg)]'
               }`}
             >
@@ -411,7 +411,7 @@ function QuickCTA({ firstName }) {
   return (
     <section className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--accent)]/20 bg-[var(--accent-soft)] p-5 dark:bg-[var(--accent-soft)]">
       <div className="flex items-start gap-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent)] text-white shadow-sm">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent)] text-white">
           <Sparkles className="h-5 w-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">

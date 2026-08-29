@@ -571,7 +571,7 @@ function StatTile({ label, value, tone = 'indigo', icon: Icon }) {
  const tones = {
  indigo: 'text-primary',
  emerald: 'text-[var(--success)] ',
- sky: 'text-sky-600 dark:text-sky-400',
+ sky: 'text-[var(--info)] ',
  red: 'text-[var(--danger)]',
  };
  return (

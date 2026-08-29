@@ -125,18 +125,18 @@ Retune the design system to the Open Design palette while keeping current class 
 - [x] Commit `feat(redesign/screens): re-skin Chat, Resources, Notes, Quizzes, Courses, Bookmarks, Progress, Profile to new tokens`
 
 ## Phase 11 — Admin/Platform console (originally planned, now in new tokens)
-- [ ] **AdminDashboardPage**: stats strip (tenants/users/storage/AI calls), platform-wide trend, recent activity, audit/health links.
-- [ ] **AdminUsersPage**: already good; retune any border/shadow artifacts.
-- [ ] **AdminQuizzesPage**: table tightened, keep publish quick-action.
-- [ ] **AdminAuditPage**: filter bar + bordered table + entity-type pills.
-- [ ] **PlatformConsolePage**: entry hub with cards linking to Tenants/Requests/Announcements/System Health.
-- [ ] **TenantsPage**: restore Add Institution dialog (removed in frontend-rebuild) in compact-pro style; status plan quota chips; table → `card-surface`.
-- [ ] **TenantDetailPage**: restore Edit dialog + Activate/Suspend; usage KPIs.
-- [ ] **TenantRequestsPage** (Requests): list + review dialog (approvision / reject).
-- [ ] **AnnouncementsPage**: composer with priority/target selectors, wysiwyg-lite, publish/send.
-- [ ] **SystemHealthPage**: keep existing implementation; retune banners/cards.
-- [ ] **TenantStructurePage / DepartmentDetail / FacultyDetail**: list cards to `card-surface-hover`, no heavy shadows.
-- [ ] Commit `feat(redesign/admin-platform-console): phase 11 admin + platform pages in new tokens`
+- [x] **AdminDashboardPage**: stats strip (tenants/users/storage/AI calls), platform-wide trend, recent activity, audit/health links.
+- [x] **AdminUsersPage**: already good; retune any border/shadow artifacts.
+- [x] **AdminQuizzesPage**: table tightened, keep publish quick-action.
+- [x] **AdminAuditPage**: filter bar + bordered table + entity-type pills.
+- [x] **PlatformConsolePage**: entry hub with cards linking to Tenants/Requests/Announcements/System Health.
+- [x] **TenantsPage**: restore Add Institution dialog (removed in frontend-rebuild) in compact-pro style; status plan quota chips; table → `card-surface`.
+- [x] **TenantDetailPage**: restore Edit dialog + Activate/Suspend; usage KPIs.
+- [x] **TenantRequestsPage** (Requests): list + review dialog (approvision / reject).
+- [x] **AnnouncementsPage**: composer with priority/target selectors, wysiwyg-lite, publish/send.
+- [x] **SystemHealthPage**: keep existing implementation; retune banners/cards.
+- [x] **TenantStructurePage / DepartmentDetail / FacultyDetail**: list cards to `card-surface-hover`, no heavy shadows.
+- [x] Commit `feat(redesign/admin-platform-console): phase 11 admin + platform pages in new tokens`
 
 ## Phase 13 — Polish pass
 - [ ] **Mobile bottom tab bar** (Dashboard/Chat/Resources/Notes/Profile) + sidebar drawer for secondary items.

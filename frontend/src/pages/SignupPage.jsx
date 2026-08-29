@@ -338,7 +338,7 @@ export default function SignupPage() {
           <Button
             type="submit"
             disabled={form.formState.isSubmitting || directory.isLoading}
-            className="h-10 w-full gap-2 text-[14px] font-semibold shadow-sm"
+            className="h-10 w-full gap-2 text-[14px] font-semibold"
           >
             {form.formState.isSubmitting ? (
               <>

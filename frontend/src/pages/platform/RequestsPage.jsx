@@ -24,7 +24,7 @@ function timeAgo(iso) {
 }
 
 const STATUS_STYLES = {
-  pending: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+  pending: 'bg-[var(--warn-soft)] text-[var(--warn)] border-[var(--warn)]/30',
   approved: 'bg-[var(--success)]/15 text-[var(--success)]  border-[var(--success)]/30',
   rejected: 'bg-[var(--danger)]/15 text-red-700 dark:text-red-400 border-red-500/30',
 };

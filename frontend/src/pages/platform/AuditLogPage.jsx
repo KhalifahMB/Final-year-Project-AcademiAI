@@ -22,7 +22,7 @@ const ACTION_STYLES = {
 };
 
 function ActionBadge({ action }) {
-  const style = ACTION_STYLES[action] || "bg-muted text-muted-foreground border-border";
+  const style = ACTION_STYLES[action] || "bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]";
   return (
     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${style}`}>
       {action}

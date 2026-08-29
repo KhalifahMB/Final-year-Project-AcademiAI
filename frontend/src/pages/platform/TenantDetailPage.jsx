@@ -34,7 +34,7 @@ const ROLE_STYLES = {
 
 function RoleBadge({ role }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${ROLE_STYLES[role] || "bg-muted text-muted-foreground border-border"}`}>
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${ROLE_STYLES[role] || "bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]"}`}>
       {role}
     </span>
   );

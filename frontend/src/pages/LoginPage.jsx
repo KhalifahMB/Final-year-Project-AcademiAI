@@ -123,7 +123,7 @@ export default function LoginPage() {
           <Button
             type="submit"
             disabled={form.formState.isSubmitting}
-            className="h-10 w-full gap-2 text-[14px] font-semibold shadow-sm"
+            className="h-10 w-full gap-2 text-[14px] font-semibold"
           >
             {form.formState.isSubmitting ? (
               <>

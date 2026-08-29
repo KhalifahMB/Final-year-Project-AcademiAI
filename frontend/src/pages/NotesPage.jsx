@@ -228,7 +228,7 @@ function SlashMenu({ pos, items, activeIdx, onPick }) {
  if (!pos) return null;
  return (
  <div
- className="fixed z-50 w-56 overflow-hidden rounded-lg border bg-popover py-1 shadow-xl"
+ className="fixed z-50 w-56 overflow-hidden rounded-lg border bg-popover py-1"
  style={{ top: pos.top, left: pos.left }}
  >
  <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

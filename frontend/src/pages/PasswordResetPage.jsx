@@ -139,7 +139,7 @@ export default function PasswordResetPage() {
             <Button
               type="submit"
               disabled={requestForm.formState.isSubmitting}
-              className="h-10 w-full gap-2 font-semibold shadow-sm"
+              className="h-10 w-full gap-2 font-semibold"
             >
               {requestForm.formState.isSubmitting ? (
                 <>
@@ -189,7 +189,7 @@ export default function PasswordResetPage() {
             <Button
               type="submit"
               disabled={confirmForm.formState.isSubmitting}
-              className="h-10 w-full gap-2 font-semibold shadow-sm"
+              className="h-10 w-full gap-2 font-semibold"
             >
               {confirmForm.formState.isSubmitting ? (
                 <>

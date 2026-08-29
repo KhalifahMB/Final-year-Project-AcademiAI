@@ -21,7 +21,7 @@ const PRIORITY_STYLES = {
 
 function PriorityBadge({ priority }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${PRIORITY_STYLES[priority] || "bg-muted text-muted-foreground border-border"}`}>
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${PRIORITY_STYLES[priority] || "bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]"}`}>
       {priority}
     </span>
   );
