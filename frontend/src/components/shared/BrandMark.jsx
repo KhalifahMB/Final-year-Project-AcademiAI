@@ -1,25 +1,29 @@
 /**
- * AcademiAI logo mark using the brand image assets, with automatic
- * light/dark variants. Shared by the landing page and auth screens so
- * branding stays identical everywhere.
+ * AcademiAI logo — brand-spec "square A" mark.
+ *
+ * The Open Design spec uses a 28px dark square with white "A" (light mode)
+ * and a light square with dark "A" (dark mode). We render this as a
+ * self-contained glyph to avoid asset dependency; the image assets
+ * remain available for the landing page.
  */
-export default function BrandMark({ size = "h-9 w-9" }) {
+export default function BrandMark({ size = "h-7 w-7", variant = "auto" }) {
+  const isDark = variant === "dark";
+  const isLight = variant === "light";
+  // variant="auto" adapts to theme via dark: classes
   return (
     <span
-      className={`flex ${size} shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-border`}
+      className={[
+        'inline-grid shrink-0 place-items-center rounded-[7px] font-[700] tracking-[-0.02em] select-none',
+        size,
+        isDark
+          ? 'bg-[var(--fg)] text-[var(--bg)]'
+          : isLight
+            ? 'bg-[var(--bg)] text-[var(--fg)]'
+            : 'bg-[var(--fg)] text-[var(--bg)] dark:bg-[var(--fg)] dark:text-[var(--bg)]',
+      ].join(' ')}
+      aria-hidden
     >
-      <img
-        src="/images/Logo/academiai_icon_light.webp"
-        alt=""
-        aria-hidden
-        className="h-full w-full object-contain dark:hidden"
-      />
-      <img
-        src="/images/Logo/academiai_icon_dark.png"
-        alt=""
-        aria-hidden
-        className="hidden h-full w-full object-contain dark:block"
-      />
+      A
     </span>
   );
 }

@@ -78,21 +78,21 @@ const SUPERUSER_NAV = [
 
 const ADMIN_NAV = [
   {
-    section: 'Learn',
+    section: 'Workspace',
     items: [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { to: '/assigned-courses', label: 'Assigned', icon: GraduationCap },
-      { to: '/courses', label: 'Courses', icon: BookOpen },
+      { to: '/resources', label: 'Resources', icon: FileText },
+      { to: '/chat', label: 'AI Chat', icon: MessageSquareText },
     ],
   },
   {
-    section: 'Workspace',
+    section: 'Teaching',
     items: [
-      { to: '/resources', label: 'Resources', icon: FileText },
-      { to: '/resources/upload', label: 'Upload', icon: Upload },
-      { to: '/chat', label: 'AI Assistant', icon: MessageSquareText },
+      { to: '/courses', label: 'Courses', icon: BookOpen },
+      { to: '/assigned-courses', label: 'My Courses', icon: GraduationCap },
       { to: '/quizzes', label: 'Quizzes', icon: ClipboardList },
       { to: '/admin/quizzes', label: 'Quiz Manager', icon: ClipboardPlus },
+      { to: '/resources/upload', label: 'Upload', icon: Upload },
     ],
   },
   {
@@ -107,9 +107,9 @@ const ADMIN_NAV = [
   {
     section: 'Admin',
     items: [
-      { to: '/admin/dashboard', label: 'Admin', icon: LayoutDashboard },
+      { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
       { to: '/admin/users', label: 'Users', icon: Users },
-      { to: '/admin/tenant', label: 'Institution', icon: Building2 },
+      { to: '/admin/tenant', label: 'Structure', icon: Building2 },
       { to: '/admin/audit', label: 'Audit Logs', icon: ScrollText },
     ],
   },
@@ -117,21 +117,21 @@ const ADMIN_NAV = [
 
 const LECTURER_NAV = [
   {
-    section: 'Learn',
+    section: 'Workspace',
     items: [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { to: '/assigned-courses', label: 'Assigned', icon: GraduationCap },
-      { to: '/courses', label: 'Courses', icon: BookOpen },
+      { to: '/resources', label: 'Resources', icon: FileText },
+      { to: '/chat', label: 'AI Chat', icon: MessageSquareText },
     ],
   },
   {
-    section: 'Workspace',
+    section: 'Teaching',
     items: [
-      { to: '/resources', label: 'Resources', icon: FileText },
-      { to: '/resources/upload', label: 'Upload', icon: Upload },
-      { to: '/chat', label: 'AI Assistant', icon: MessageSquareText },
+      { to: '/courses', label: 'Courses', icon: BookOpen },
+      { to: '/assigned-courses', label: 'My Courses', icon: GraduationCap },
       { to: '/quizzes', label: 'Quizzes', icon: ClipboardList },
       { to: '/admin/quizzes', label: 'Quiz Manager', icon: ClipboardPlus },
+      { to: '/resources/upload', label: 'Upload', icon: Upload },
     ],
   },
   {
@@ -147,20 +147,20 @@ const LECTURER_NAV = [
 
 const STUDENT_NAV = [
   {
-    section: 'Learn',
+    section: 'Workspace',
     items: [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { to: '/my-programme', label: 'Programme', icon: Building2 },
-      { to: '/my-courses', label: 'My Courses', icon: GraduationCap },
-      { to: '/courses', label: 'Catalogue', icon: BookOpen },
+      { to: '/resources', label: 'Resources', icon: FileText },
+      { to: '/chat', label: 'AI Chat', icon: MessageSquareText },
     ],
   },
   {
-    section: 'Workspace',
+    section: 'Learning',
     items: [
-      { to: '/resources', label: 'Resources', icon: FileText },
-      { to: '/chat', label: 'AI Assistant', icon: MessageSquareText },
+      { to: '/my-courses', label: 'My Courses', icon: GraduationCap },
+      { to: '/courses', label: 'Catalogue', icon: BookOpen },
       { to: '/quizzes', label: 'Quizzes', icon: ClipboardList },
+      { to: '/my-programme', label: 'Programme', icon: Building2 },
     ],
   },
   {
@@ -182,7 +182,6 @@ function getNav(user) {
   return STUDENT_NAV;
 }
 
-/* Flatten a nav structure to a single list of items for lookup. */
 function flattenNav(sections) {
   return sections.flatMap((s) => s.items || []);
 }
@@ -198,31 +197,22 @@ function NavItem({ item, collapsed, active, onNavigate }) {
       aria-current={active ? 'page' : undefined}
       title={collapsed ? item.label : undefined}
       className={cn(
-        'group relative flex items-center gap-2.5 rounded-lg text-[13px] font-medium transition-all duration-150',
-        collapsed ? 'h-9 w-9 justify-center' : 'h-8 px-2.5',
+        'group relative flex items-center gap-2.5 rounded-[var(--radius-md)] text-[13.5px] font-[520] transition-colors duration-150',
+        'min-h-[38px]',
+        collapsed
+          ? 'h-[38px] w-[38px] justify-center mx-auto'
+          : 'px-2.5 py-0 mx-1',
         active
-          ? 'bg-sidebar-active text-primary dark:text-sidebar-accent'
-          : 'text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground',
+          ? 'bg-[var(--accent-soft)] text-[var(--accent-strong)] font-[600]'
+          : 'text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]',
       )}
     >
-      {/* Active indicator strip */}
-      {active && (
-        <span
-          className={cn(
-            'absolute rounded-full bg-primary dark:bg-sidebar-accent',
-            collapsed
-              ? 'left-0 top-1/2 h-5 w-[3px] -translate-y-1/2'
-              : '-left-0 top-1/2 h-5 w-[3px] -translate-y-1/2',
-          )}
-          aria-hidden
-        />
-      )}
-      <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
+      <Icon className="h-4 w-4 shrink-0" aria-hidden />
       {!collapsed && (
         <>
           <span className="flex-1 truncate">{item.label}</span>
           {item.badge && (
-            <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-primary">
+            <span className="rounded-full bg-[var(--surface-2)] px-1.5 py-0 text-[10px] font-[590] uppercase tracking-wide text-[var(--muted)] border border-[var(--border)]">
               {item.badge}
             </span>
           )}
@@ -236,7 +226,7 @@ function NavItem({ item, collapsed, active, onNavigate }) {
         <TooltipTrigger asChild>{node}</TooltipTrigger>
         <TooltipContent side="right" className="flex items-center gap-2 text-xs">
           {item.label}
-          {item.badge && <span className="rounded bg-primary/20 px-1 text-[10px]">{item.badge}</span>}
+          {item.badge && <span className="rounded bg-[var(--accent-soft)] px-1 text-[10px] text-[var(--accent-strong)]">{item.badge}</span>}
         </TooltipContent>
       </Tooltip>
     );
@@ -257,36 +247,36 @@ function UserMenu({ user, logout }) {
         <button
           type="button"
           aria-label="Account menu"
-          className="group flex w-full items-center gap-2 rounded-lg p-1.5 text-left transition-colors hover:bg-sidebar-hover"
+          className="group flex w-full items-center gap-2.5 rounded-[var(--radius-md)] p-1.5 text-left transition-colors hover:bg-[var(--hover)]"
         >
-          <Avatar user={user} className="h-7 w-7 shrink-0 rounded-full ring-1 ring-sidebar-border" />
+          <Avatar user={user} className="h-8 w-8 shrink-0 rounded-full" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[12px] font-semibold leading-tight text-sidebar-foreground">
+            <p className="truncate text-[13px] font-[600] leading-tight text-[var(--fg)]">
               {displayName}
             </p>
-            <p className="truncate text-[10px] capitalize text-sidebar-muted">{roleLabel}</p>
+            <p className="truncate text-[11px] capitalize text-[var(--muted)]">{roleLabel}</p>
           </div>
-          <ChevronRight className="h-3.5 w-3.5 -rotate-90 text-sidebar-muted transition-transform group-data-[state=open]:rotate-0" aria-hidden />
+          <ChevronRight className="h-3.5 w-3.5 -rotate-90 text-[var(--muted)] transition-transform group-data-[state=open]:rotate-0" aria-hidden />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side="top" className="w-56" sideOffset={8}>
-        <DropdownMenuLabel className="flex flex-col gap-0.5">
-          <span className="truncate text-sm">{displayName}</span>
-          <span className="truncate text-[11px] font-normal text-muted-foreground">{user?.email}</span>
+      <DropdownMenuContent align="end" side="top" className="w-64 rounded-[var(--radius-lg)] p-1 shadow-[var(--shadow-pop)]" sideOffset={8}>
+        <DropdownMenuLabel className="flex flex-col gap-0.5 px-2 py-1.5">
+          <span className="truncate text-sm font-[600]">{displayName}</span>
+          <span className="truncate text-[11px] font-normal text-[var(--muted)]">{user?.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className="rounded-[var(--radius-sm)] h-9">
           <Link to="/settings">
             <UserRound className="mr-2 h-3.5 w-3.5" /> Profile & settings
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className="rounded-[var(--radius-sm)] h-9">
           <Link to="/dashboard">
             <Home className="mr-2 h-3.5 w-3.5" /> Dashboard
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600 dark:text-red-400">
+        <DropdownMenuItem onClick={logout} className="rounded-[var(--radius-sm)] h-9 text-[var(--danger)] focus:text-[var(--danger)]">
           <LogOut className="mr-2 h-3.5 w-3.5" /> Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -294,34 +284,67 @@ function UserMenu({ user, logout }) {
   );
 }
 
+function TenantCard({ user, collapsed }) {
+  if (collapsed) {
+    return (
+      <Tooltip delayDuration={250}>
+        <TooltipTrigger asChild>
+          <div className="flex h-[38px] w-[38px] items-center justify-center rounded-[var(--radius-md)] bg-[var(--surface-2)] border border-[var(--border)] text-[var(--muted)]">
+            <Building2 className="h-4 w-4" aria-hidden />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="text-xs">
+          {user?.tenant?.name || 'Institution'}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2.5 rounded-[var(--radius-md)] p-1.5 hover:bg-[var(--hover)] transition-colors">
+      <span className="inline-grid h-8 w-8 place-items-center rounded-[var(--radius-md)] bg-[var(--surface-2)] border border-[var(--border)] text-[var(--muted)]">
+        <Building2 className="h-4 w-4" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-[600] leading-tight text-[var(--fg)]">
+          {user?.tenant?.name || 'Institution'}
+        </p>
+        <p className="truncate text-[11px] text-[var(--muted)]">
+          {user?.first_name || user?.email} · {(user?.role || 'user').charAt(0).toUpperCase() + (user?.role || '').slice(1)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, activeKey, user }) {
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200 ease-out lg:flex',
-        collapsed ? 'w-[60px]' : 'w-[232px]',
+        'fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-[width] duration-200 ease-out lg:flex',
+        collapsed ? 'w-[60px]' : 'w-[var(--sidebar-w)]',
       )}
+      style={{ ['--sidebar-w']: '248px' }}
       aria-label="Main navigation"
     >
       {/* Top: Brand + collapse */}
       <div
         className={cn(
-          'flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border',
-          collapsed ? 'justify-center px-2' : 'px-3',
+          'flex h-14 shrink-0 items-center gap-2 border-b border-[var(--border)]',
+          collapsed ? 'justify-center px-2' : 'px-4',
         )}
       >
         <Link
           to={user?.is_superuser ? '/platform' : '/dashboard'}
           onClick={onNavigate}
           className={cn(
-            'flex items-center gap-2 rounded-md transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-ring',
+            'flex items-center gap-2.5 rounded-md transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-[var(--ring)]',
             collapsed ? 'justify-center' : '',
           )}
           title={collapsed ? 'AcademiAI' : undefined}
         >
-          <BrandMark size="h-8 w-8" />
+          <BrandMark size="h-7 w-7" />
           {!collapsed && (
-            <span className="text-[15px] font-semibold tracking-tight text-sidebar-foreground">
+            <span className="text-[16px] font-[680] tracking-[-0.02em] text-[var(--fg)]">
               AcademiAI
             </span>
           )}
@@ -332,7 +355,7 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
             onClick={onToggleCollapse}
             aria-label="Collapse sidebar"
             title="Collapse sidebar (Ctrl+B)"
-            className="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground"
+            className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] text-[var(--muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--fg)]"
           >
             <PanelLeftClose className="h-4 w-4" aria-hidden />
           </button>
@@ -342,20 +365,20 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
       {/* Nav (scrollable) */}
       <nav
         className={cn(
-          'flex-1 space-y-5 overflow-y-auto py-3',
-          collapsed ? 'px-2' : 'px-2.5',
+          'flex-1 overflow-y-auto py-3',
+          collapsed ? 'px-2' : 'px-2',
         )}
       >
         {sections.map((section) => (
-          <div key={section.section}>
+          <div key={section.section} className="mb-4">
             {!collapsed && (
-              <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sidebar-muted/80">
+              <p className="mb-1.5 px-3.5 text-[11px] font-[600] uppercase tracking-[0.08em] text-[var(--muted)]">
                 {section.section}
               </p>
             )}
-            <ul className="space-y-0.5">
+            <ul className={cn('space-y-0.5', collapsed && 'flex flex-col items-center')}>
               {section.items.map((item) => (
-                <li key={item.to}>
+                <li key={item.to} className={cn(collapsed ? 'w-full flex justify-center' : 'w-full')}>
                   <NavItem
                     item={item}
                     collapsed={collapsed}
@@ -369,15 +392,15 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
         ))}
       </nav>
 
-      {/* Bottom: Theme + User */}
+      {/* Bottom: tenant + user + theme */}
       <div
         className={cn(
-          'shrink-0 border-t border-sidebar-border',
-          collapsed ? 'p-2' : 'p-2',
+          'shrink-0 border-t border-[var(--border)] p-2',
         )}
       >
         {!collapsed ? (
           <div className="space-y-1">
+            <TenantCard user={user} />
             <UserMenu user={user} />
             <ThemeToggle className="w-full" />
           </div>
@@ -390,7 +413,7 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
                     type="button"
                     onClick={onToggleCollapse}
                     aria-label="Expand sidebar"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-md text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground"
+                    className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-[var(--radius-md)] text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"
                   >
                     <PanelLeftOpen className="h-4 w-4" aria-hidden />
                   </button>
@@ -401,7 +424,7 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
             <TooltipProvider delayDuration={250}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <ThemeToggle className="h-9 w-9 justify-center rounded-md" iconOnly />
+                  <ThemeToggle className="h-[38px] w-[38px] justify-center rounded-[var(--radius-md)]" iconOnly />
                 </TooltipTrigger>
                 <TooltipContent side="right">Toggle theme</TooltipContent>
               </Tooltip>
@@ -411,9 +434,9 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
                 <TooltipTrigger asChild>
                   <Link
                     to="/settings"
-                    className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-sidebar-hover"
+                    className="mt-1 inline-flex h-[38px] w-[38px] items-center justify-center rounded-[var(--radius-md)] hover:bg-[var(--hover)]"
                   >
-                    <Avatar user={user} className="h-7 w-7 rounded-full ring-1 ring-sidebar-border" />
+                    <Avatar user={user} className="h-8 w-8 rounded-full" />
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="right">
@@ -435,28 +458,28 @@ function MobileDrawer({ open, onClose, sections, onNavigate, activeKey, user, lo
         <button
           type="button"
           aria-label="Close menu"
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           onClick={onClose}
         />
-        <aside className="absolute inset-y-0 left-0 flex w-[260px] flex-col bg-sidebar shadow-2xl">
-          <div className="flex h-14 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
-            <Link to={user?.is_superuser ? '/platform' : '/dashboard'} onClick={onNavigate} className="flex items-center gap-2">
-              <BrandMark size="h-8 w-8" />
-              <span className="text-[15px] font-semibold text-sidebar-foreground">AcademiAI</span>
+        <aside className="absolute inset-y-0 left-0 flex w-[280px] flex-col bg-[var(--surface)] shadow-[var(--shadow-pop)]">
+          <div className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--border)] px-4">
+            <Link to={user?.is_superuser ? '/platform' : '/dashboard'} onClick={onNavigate} className="flex items-center gap-2.5">
+              <BrandMark size="h-7 w-7" />
+              <span className="text-[16px] font-[680] tracking-[-0.02em] text-[var(--fg)]">AcademiAI</span>
             </Link>
             <button
               type="button"
               aria-label="Close menu"
               onClick={onClose}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sidebar-muted hover:bg-sidebar-hover hover:text-sidebar-foreground"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
-          <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-3">
+          <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
             {sections.map((section) => (
               <div key={section.section}>
-                <p className="mb-1 px-2.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-sidebar-muted/80">
+                <p className="mb-1.5 px-3 text-[11px] font-[600] uppercase tracking-[0.08em] text-[var(--muted)]">
                   {section.section}
                 </p>
                 <ul className="space-y-0.5">
@@ -469,7 +492,8 @@ function MobileDrawer({ open, onClose, sections, onNavigate, activeKey, user, lo
               </div>
             ))}
           </nav>
-          <div className="shrink-0 space-y-1 border-t border-sidebar-border p-2">
+          <div className="shrink-0 space-y-1 border-t border-[var(--border)] p-2">
+            <TenantCard user={user} />
             <UserMenu user={user} logout={logout} />
             <ThemeToggle className="w-full" />
           </div>
@@ -520,8 +544,7 @@ export default function AppShell({ title, description, actions, children, fullBl
     return () => window.removeEventListener('academiai:open-command-palette', handler);
   }, []);
 
-  // External components (e.g. fullscreen resource preview) can request
-  // sidebar state via CustomEvent('academiai:request-sidebar', {detail:{collapsed}}).
+  // External components can request sidebar state via CustomEvent.
   useEffect(() => {
     const onRequest = (e) => {
       const want = e.detail?.collapsed;
@@ -539,11 +562,8 @@ export default function AppShell({ title, description, actions, children, fullBl
   const sections = useMemo(() => getNav(user), [user]);
   const flat = useMemo(() => flattenNav(sections), [sections]);
   const activeKey = useMemo(() => {
-    // Exact match first, then prefix match for nested pages (e.g. /resources/:id).
     const exact = flat.find((i) => i.to === loc.pathname);
     if (exact) return exact.to;
-    // Avoid false positives on /dashboard vs /d/...: require path to be a
-    // directory boundary.
     const prefix = flat
       .filter((i) => i.to !== '/dashboard' && i.to !== '/admin/dashboard' && i.to !== '/platform')
       .find((i) => loc.pathname.startsWith(i.to + '/') || loc.pathname === i.to);
@@ -552,11 +572,11 @@ export default function AppShell({ title, description, actions, children, fullBl
 
   const openPalette = () => setPaletteOpen(true);
 
-  const contentPadding = collapsed ? 'lg:pl-[60px]' : 'lg:pl-[232px]';
+  const contentPadding = collapsed ? 'lg:pl-[60px]' : 'lg:pl-[248px]';
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
         {/* Desktop sidebar */}
         <SidebarDesktop
           sections={sections}
@@ -581,54 +601,62 @@ export default function AppShell({ title, description, actions, children, fullBl
         {/* Main column */}
         <div className={cn('flex min-h-screen flex-col', contentPadding)}>
           {!fullBleed && (
-            <header className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b bg-background/85 px-3 backdrop-blur sm:px-5 glass">
+            <header
+              className="glass sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-[var(--border)] px-4 sm:px-7"
+            >
               <Button
                 type="button"
                 variant="ghost"
-                size="icon-sm"
+                size="icon"
                 className="lg:hidden"
                 aria-label="Open menu"
                 onClick={() => setMobileOpen(true)}
               >
-                <Menu className="h-[18px] w-[18px]" aria-hidden />
+                <Menu className="h-4 w-4" aria-hidden />
               </Button>
               {collapsed && !isMobile && (
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon-sm"
+                  size="icon"
                   className="hidden lg:inline-flex"
                   aria-label="Expand sidebar"
                   title="Expand sidebar (Ctrl+B)"
                   onClick={() => setCollapsed(false)}
                 >
-                  <PanelLeftOpen className="h-[18px] w-[18px]" aria-hidden />
+                  <PanelLeftOpen className="h-4 w-4" aria-hidden />
                 </Button>
               )}
 
-              {/* Breadcrumb / page title */}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium text-foreground/90">
-                  {title}
-                </p>
-              </div>
-
-              {/* Command-palette trigger */}
+              {/* Search / command trigger (brand spec topbar) */}
               <button
                 type="button"
                 onClick={openPalette}
-                className="hidden items-center gap-2 rounded-md border bg-card px-2.5 py-1 text-[12px] text-muted-foreground transition-colors hover:bg-muted md:inline-flex"
+                className="hidden md:flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] text-[var(--muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--fg)] min-w-[220px] md:w-[min(340px,42vw)]"
               >
-                <Search className="h-3.5 w-3.5" aria-hidden />
-                <span className="hidden lg:inline">Search…</span>
-                <kbd className="ml-1 hidden rounded border bg-muted px-1.5 py-0.5 text-[10px] font-mono lg:inline">
+                <Search className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="hidden lg:inline">Search resources, quizzes…</span>
+                <span className="lg:hidden">Search…</span>
+                <kbd className="ml-auto hidden md:inline-flex items-center gap-0.5 rounded border border-[var(--border)] border-b-2 bg-[var(--surface-2)] px-1.5 py-0.5 text-[10.5px] font-mono text-[var(--muted)]">
                   ⌘K
                 </kbd>
               </button>
 
+              {/* Title is now inside the content area (page header) */}
               <div className="ml-auto flex items-center gap-1.5">
                 <OnlineStatus className="hidden sm:inline-flex" />
+                <button
+                  type="button"
+                  className="md:hidden theme-btn"
+                  onClick={openPalette}
+                  aria-label="Open command palette"
+                >
+                  <Search className="h-4 w-4" aria-hidden />
+                </button>
                 <ThemeToggle className="lg:hidden" iconOnly />
+                <div className="hidden sm:block">
+                  <UserMenuSmall user={user} />
+                </div>
               </div>
             </header>
           )}
@@ -639,21 +667,21 @@ export default function AppShell({ title, description, actions, children, fullBl
             <main
               className={cn(
                 'mx-auto w-full flex-1',
-                'px-3 py-4 sm:px-5 sm:py-5',
-                'max-w-[1400px]',
+                'px-4 py-5 sm:px-7 sm:py-6',
+                'max-w-[1280px]',
               )}
             >
               <div className="view-enter">
                 {(title || description || actions) && (
-                  <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+                  <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       {title && (
-                        <h1 className="text-[1.35rem] font-semibold tracking-tight sm:text-xl">
+                        <h1 className="text-[30px] font-[650] leading-[1.15] tracking-[-0.02em]">
                           {title}
                         </h1>
                       )}
                       {description && (
-                        <p className="mt-1 max-w-2xl text-[13px] text-muted-foreground">
+                        <p className="mt-1.5 max-w-2xl text-[14px] leading-relaxed text-[var(--muted)]">
                           {description}
                         </p>
                       )}
@@ -673,5 +701,18 @@ export default function AppShell({ title, description, actions, children, fullBl
       </div>
       <CommandPalette open={paletteOpen} onOpen={setPaletteOpen} />
     </TooltipProvider>
+  );
+}
+
+/* Small avatar-only trigger for the topbar; routes to the full menu on mobile */
+function UserMenuSmall({ user }) {
+  return (
+    <Link
+      to="/settings"
+      aria-label="Account"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] hover:bg-[var(--hover)]"
+    >
+      <Avatar user={user} className="h-[30px] w-[30px] rounded-full" />
+    </Link>
   );
 }

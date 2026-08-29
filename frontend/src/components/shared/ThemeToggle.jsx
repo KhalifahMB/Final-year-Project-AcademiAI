@@ -3,9 +3,9 @@ import { Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * Theme toggle. When `iconOnly` is true renders a compact square button
- * suitable for nav rails; otherwise renders a full-width labelled button
- * (for sidebars/settings).
+ * Theme toggle. Two modes:
+ *  - iconOnly: compact square icon button for rails/topbar.
+ *  - default: full-width labelled item for the sidebar footer.
  */
 export default function ThemeToggle({ className = '', iconOnly = false }) {
   const { dark, toggle } = useTheme();
@@ -17,12 +17,12 @@ export default function ThemeToggle({ className = '', iconOnly = false }) {
       title={dark ? 'Light mode' : 'Dark mode'}
       className={cn(
         iconOnly
-          ? 'inline-flex h-9 w-9 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-ring'
-          : 'inline-flex h-9 w-full items-center justify-start gap-2 rounded-md border border-sidebar-border/70 bg-sidebar/50 px-2.5 text-[12px] font-medium text-sidebar-muted transition-colors hover:bg-sidebar-hover hover:text-sidebar-foreground focus-visible:outline-2 focus-visible:outline-ring',
+          ? 'theme-btn inline-flex items-center justify-center text-[var(--fg-soft)] hover:bg-[var(--hover)] hover:text-[var(--fg)]'
+          : 'inline-flex h-9 w-full items-center justify-start gap-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-[13px] font-[520] text-[var(--fg-soft)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--fg)] focus-visible:outline-2 focus-visible:outline-[var(--ring)]',
         className,
       )}
     >
-      {dark ? <Sun className="h-[17px] w-[17px]" aria-hidden /> : <Moon className="h-[17px] w-[17px]" aria-hidden />}
+      {dark ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}
       {!iconOnly && <span>{dark ? 'Light mode' : 'Dark mode'}</span>}
     </button>
   );
