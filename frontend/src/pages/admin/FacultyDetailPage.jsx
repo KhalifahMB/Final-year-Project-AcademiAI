@@ -91,7 +91,7 @@ export default function FacultyDetailPage() {
             type="button"
             variant="outline"
             size="sm"
-            className="border-red-500/40 text-red-700 hover:bg-red-500/10 dark:text-red-400"
+            className="border-red-500/40 text-red-700 hover:bg-[var(--danger)]/10 dark:text-red-400"
             onClick={() => setConfirmDelete(true)}
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Delete

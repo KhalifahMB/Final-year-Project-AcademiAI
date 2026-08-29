@@ -150,7 +150,7 @@ export default function CourseManagePage() {
             type="button"
             variant="outline"
             size="sm"
-            className="border-red-500/40 text-red-700 hover:bg-red-500/10 dark:text-red-400"
+            className="border-red-500/40 text-red-700 hover:bg-[var(--danger)]/10 dark:text-red-400"
             onClick={() => setConfirmDeleteCourse(true)}
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Delete
@@ -270,7 +270,7 @@ export default function CourseManagePage() {
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="text-red-600 hover:bg-red-500/10 hover:text-red-700"
+                              className="text-red-600 hover:bg-[var(--danger)]/10 hover:text-red-700"
                               onClick={() => setConfirmRemoveEnrollment(e)}
                             >
                               <Trash2 className="h-3.5 w-3.5" aria-hidden />

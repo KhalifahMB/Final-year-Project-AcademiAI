@@ -16,7 +16,7 @@ import { Megaphone, Plus, Pencil, Trash2 } from "lucide-react";
 const PRIORITY_STYLES = {
   info: "bg-sky-500/12 text-sky-700 dark:text-sky-300 border-sky-500/25",
   warning: "bg-amber-500/12 text-amber-700 dark:text-amber-300 border-amber-500/25",
-  critical: "bg-red-500/12 text-red-700 dark:text-red-300 border-red-500/25",
+  critical: "bg-[var(--danger)]/12 text-red-700 dark:text-red-300 border-red-500/25",
 };
 
 function PriorityBadge({ priority }) {

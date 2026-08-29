@@ -16,7 +16,7 @@ import { useState } from 'react';
 const ROLE_STYLES = {
   admin: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20',
   lecturer: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20',
-  student: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20',
+  student: 'bg-[var(--accent-soft)] text-[var(--accent-strong)] border-[var(--accent)]/20',
 };
 
 function RoleBadge({ role }) {
@@ -155,7 +155,7 @@ function StatTile({ label, value, tone = 'indigo' }) {
   const tones = {
     indigo: 'text-primary bg-primary/10',
     sky: 'text-sky-600 bg-sky-500/10 dark:text-sky-400',
-    violet: 'text-violet-600 bg-violet-500/10 dark:text-violet-400',
+    violet: 'text-[var(--accent-strong)] bg-[var(--accent-soft)]',
   };
   return (
     <div className="flex items-center gap-3 rounded-xl border bg-card/60 px-4 py-2.5">

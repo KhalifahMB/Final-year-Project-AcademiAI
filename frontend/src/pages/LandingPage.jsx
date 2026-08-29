@@ -99,7 +99,7 @@ const AUDIENCES = [
       'Ingest materials with OCR recovery',
     ],
     href: '/signup',
-    accent: 'from-emerald-500 to-teal-500',
+    accent: 'from-emerald-500 [var(--success)]',
   },
   {
     badge: 'Administrators',
@@ -445,7 +445,7 @@ export default function LandingPage() {
                 <span className="mb-4 inline-grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
                   <Icon className="h-[18px] w-[18px]" aria-hidden />
                 </span>
-                <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-[600] text-emerald-600 dark:text-emerald-400">
+                <span className="rounded-full bg-[var(--success-soft)] px-2.5 py-0.5 text-[11px] font-[600] text-[var(--success)]">
                   {chip}
                 </span>
               </div>
@@ -567,7 +567,7 @@ export default function LandingPage() {
                 'Visibility scopes keep materials within your institution',
               ].map((t) => (
                 <li key={t} className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" aria-hidden />
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" aria-hidden />
                   {t}
                 </li>
               ))}
@@ -600,7 +600,7 @@ export default function LandingPage() {
                 {a.points.map((p) => (
                   <li key={p} className="flex items-start gap-2">
                     <span
-                      className={`mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-gradient-to-r ${a.accent}`}
+                      className={`mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full  ${a.accent}`}
                       aria-hidden
                     />
                     {p}

@@ -9,9 +9,9 @@ import { Activity, CheckCircle, Database, HardDrive, MessageSquareText, RefreshC
 
 function StatusIndicator({ status }) {
   const config = {
-    healthy: { color: "bg-emerald-500", label: "Healthy", icon: CheckCircle },
+    healthy: { color: "bg-[var(--success)]", label: "Healthy", icon: CheckCircle },
     degraded: { color: "bg-amber-500", label: "Degraded", icon: Activity },
-    unhealthy: { color: "bg-red-500", label: "Unhealthy", icon: XCircle },
+    unhealthy: { color: "bg-[var(--danger)]", label: "Unhealthy", icon: XCircle },
     no_workers: { color: "bg-amber-500", label: "No workers", icon: Activity },
   };
   const c = config[status] || config.unhealthy;
@@ -60,13 +60,13 @@ export default function SystemHealthPage() {
           {/* ── Overall Status Banner ──────────────────────────── */}
           <div className={`mb-6 flex items-center gap-3 rounded-xl border p-4 ${
             health.overall === "healthy"
-              ? "border-emerald-500/30 bg-emerald-500/5"
+              ? "border-[var(--success)]/30 bg-[var(--success)]/5"
               : health.overall === "degraded"
               ? "border-amber-500/30 bg-amber-500/5"
-              : "border-red-500/30 bg-red-500/5"
+              : "border-red-500/30 bg-[var(--danger)]/5"
           }`}>
             {health.overall === "healthy" ? (
-              <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+              <CheckCircle className="h-5 w-5 text-[var(--success)] " aria-hidden />
             ) : health.overall === "degraded" ? (
               <Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden />
             ) : (
@@ -210,7 +210,7 @@ export default function SystemHealthPage() {
                             <td className="px-3 py-2 flex items-center gap-2">
                               <span className="font-medium">{q.name}</span>
                               {isDlq && (
-                                <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-400">
+                                <span className="rounded bg-[var(--danger)]/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-400">
                                   DLQ
                                 </span>
                               )}

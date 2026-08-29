@@ -25,8 +25,8 @@ function timeAgo(iso) {
 
 const STATUS_STYLES = {
   pending: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
-  approved: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
-  rejected: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+  approved: 'bg-[var(--success)]/15 text-[var(--success)]  border-[var(--success)]/30',
+  rejected: 'bg-[var(--danger)]/15 text-red-700 dark:text-red-400 border-red-500/30',
 };
 
 export default function PlatformRequestsPage() {
@@ -111,7 +111,7 @@ export default function PlatformRequestsPage() {
                   <Button size="sm" onClick={() => setReviewId(r.id)}>Review</Button>
                 )}
                 {r.provisioned_tenant_name && (
-                  <span className="text-xs text-emerald-600 font-medium">Provisioned: {r.provisioned_tenant_name}</span>
+                  <span className="text-xs text-[var(--success)] font-medium">Provisioned: {r.provisioned_tenant_name}</span>
                 )}
               </CardHeader>
               <CardContent className="space-y-3 text-sm">

@@ -567,7 +567,7 @@ export default function AdminQuizzesPage() {
                       <ListPlus className="h-3 w-3" aria-hidden /> Questions
                     </Button>
                     {q.status !== 'published' && (
-                      <Button type="button" variant="outline" size="sm" onClick={() => publishQuiz.mutate(q.id)} disabled={publishQuiz.isPending} className="h-7 gap-1 px-2 text-xs text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400">
+                      <Button type="button" variant="outline" size="sm" onClick={() => publishQuiz.mutate(q.id)} disabled={publishQuiz.isPending} className="h-7 gap-1 px-2 text-xs text-[var(--success)] hover:bg-[var(--success-soft)] ">
                         Publish
                       </Button>
                     )}

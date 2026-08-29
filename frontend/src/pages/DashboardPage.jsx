@@ -316,7 +316,7 @@ export default function DashboardPage() {
                   className={cn(
                     'group flex items-center gap-3 rounded-xl border bg-card p-3.5 shadow-sm transition-all hover:-translate-y-px hover:border-primary/30 hover:shadow-md',
                     primary &&
-                      'border-primary/25 bg-gradient-to-br from-primary/5 via-transparent to-transparent',
+                      'border-primary/25  from-primary/5 via-transparent to-transparent',
                   )}
                 >
                   <span

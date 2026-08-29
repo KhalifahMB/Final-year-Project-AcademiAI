@@ -292,10 +292,10 @@ export default function AdminDashboardPage() {
                       <span className={
                         'rounded-full px-2 py-0.5 text-[11px] font-medium ' +
                         (r.status === 'ready'
-                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                          ? 'bg-[var(--success)]/15 text-[var(--success)] '
                           : r.status === 'failed'
-                          ? 'bg-red-500/15 text-red-700 dark:text-red-400'
-                          : 'bg-amber-500/15 text-amber-700 dark:text-amber-400')
+                          ? 'bg-[var(--danger)]/15 text-red-700 dark:text-red-400'
+                          : 'bg-[var(--warn)]/15 text-amber-700 dark:text-amber-400')
                       }>
                         {r.status}
                       </span>

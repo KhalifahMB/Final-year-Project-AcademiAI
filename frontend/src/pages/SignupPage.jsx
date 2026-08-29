@@ -112,7 +112,7 @@ export default function SignupPage() {
       }
     >
       {error && (
-        <Alert variant="destructive" className="mb-4 border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400">
+        <Alert variant="destructive" className="mb-4 border-red-500/30 bg-[var(--danger-soft)] text-red-700 dark:text-red-400">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -275,7 +275,7 @@ export default function SignupPage() {
                     </SelectContent>
                   </Select>
                   <p className="flex items-start gap-1 text-[10px] text-muted-foreground">
-                    <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" aria-hidden />
+                    <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-[var(--success)]" aria-hidden />
                     Picking your programme auto-enrols you in departmental courses after
                     email verification.
                   </p>

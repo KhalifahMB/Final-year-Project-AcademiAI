@@ -187,7 +187,7 @@ export default function VerifyEmailPage() {
         </Alert>
       ) : null}
       {ok ? (
-        <Alert className="mb-5 border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
+        <Alert className="mb-5 border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)]">
           <AlertDescription>{ok}</AlertDescription>
         </Alert>
       ) : null}

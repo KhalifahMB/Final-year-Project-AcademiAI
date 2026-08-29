@@ -112,17 +112,17 @@ Retune the design system to the Open Design palette while keeping current class 
 - [x] Commit `feat(redesign/phase-g): lecturer dashboard restyle
 
 ## Phase H — Flagship screens pass
-- [ ] **ChatPage**: composer with mono hint "Enter to send · Shift+Enter", grounding-scope select, chunks-in-scope count, citation superscript chips `[N]`, inline source rows (rank · bold title · locator · mono similarity), neutral chips (not accent-filled), typist dots. Keep sources right-rail toggle.
-- [ ] **Resources Library**: stats strip, filter/search chips, grid/list views re-tuned to 12px radii, hairline cards, file-type tinted icons, ready/processing/failed pills, upload dialog tightened.
-- [ ] **UploadResourcePage**: re-tuned to new tokens.
-- [ ] **ResourceDetailDialog**: glass header, prose-academic, key-points, summary history.
-- [ ] **NotesPage**: split-pane, slash menu, toolbar to 36px density, autosave pill.
-- [ ] **QuizzesPage**: stats, AI generation banner, quiz cards.
-- [ ] **QuizTakePage**: single-question runner, progress bar, letter-badge answers, flag, navigator, results hero with score, review.
-- [ ] **MyCourses / CourseDetail / Bookmarks / Progress**: density/palette pass to new tokens (cards hairline, badges, meters).
-- [ ] **ProfilePage / Settings**: AnnouncementPreferencesCard kept, rest of cards tightened to new tokens; password/change-password centered (or split where appropriate).
-- [ ] **RequestInstitutionPage**: restyled.
-- [ ] Commit `feat(redesign/screens): re-skin Chat, Resources, Notes, Quizzes, Courses, Bookmarks, Progress, Profile to new tokens`
+- [x] **ChatPage**: composer with mono hint "Enter to send · Shift+Enter", grounding-scope select, chunks-in-scope count, citation superscript chips `[N]`, inline source rows (rank · bold title · locator · mono similarity), neutral chips (not accent-filled), typist dots. Keep sources right-rail toggle.
+- [x] **Resources Library**: stats strip, filter/search chips, grid/list views re-tuned to 12px radii, hairline cards, file-type tinted icons, ready/processing/failed pills, upload dialog tightened.
+- [x] **UploadResourcePage**: re-tuned to new tokens.
+- [x] **ResourceDetailDialog**: glass header, prose-academic, key-points, summary history.
+- [x] **NotesPage**: split-pane, slash menu, toolbar to 36px density, autosave pill.
+- [x] **QuizzesPage**: stats, AI generation banner, quiz cards.
+- [x] **QuizTakePage**: single-question runner, progress bar, letter-badge answers, flag, navigator, results hero with score, review.
+- [x] **MyCourses / CourseDetail / Bookmarks / Progress**: density/palette pass to new tokens (cards hairline, badges, meters).
+- [x] **ProfilePage / Settings**: AnnouncementPreferencesCard kept, rest of cards tightened to new tokens; password/change-password centered (or split where appropriate).
+- [x] **RequestInstitutionPage**: restyled.
+- [x] Commit `feat(redesign/screens): re-skin Chat, Resources, Notes, Quizzes, Courses, Bookmarks, Progress, Profile to new tokens`
 
 ## Phase 11 — Admin/Platform console (originally planned, now in new tokens)
 - [ ] **AdminDashboardPage**: stats strip (tenants/users/storage/AI calls), platform-wide trend, recent activity, audit/health links.

@@ -78,7 +78,7 @@ export default function AdminAuditPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--warn-soft)] text-amber-600">
               <ShieldAlert className="h-5 w-5" />
             </span>
             <div>
@@ -89,7 +89,7 @@ export default function AdminAuditPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--success-soft)] text-[var(--success)]">
               <UserCog className="h-5 w-5" />
             </span>
             <div>

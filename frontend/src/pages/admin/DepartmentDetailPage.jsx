@@ -118,7 +118,7 @@ export default function DepartmentDetailPage() {
             type="button"
             variant="outline"
             size="sm"
-            className="border-red-500/40 text-red-700 hover:bg-red-500/10 dark:text-red-400"
+            className="border-red-500/40 text-red-700 hover:bg-[var(--danger)]/10 dark:text-red-400"
             onClick={() => setConfirmDelete(true)}
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Delete
@@ -194,7 +194,7 @@ export default function DepartmentDetailPage() {
             ) : (
               <ul className="flex flex-wrap gap-2">
                 {(programmesQ.data || []).map((p) => (
-                  <li key={p.id} className="rounded-lg border bg-card px-3 py-2 text-sm shadow-sm">
+                  <li key={p.id} className="rounded-lg border bg-card px-3 py-2 text-sm">
                     <span className="font-medium">{p.code} — {p.name}</span>
                     <span className="ml-2 text-xs text-muted-foreground">
                       {p.degree_type || "—"} · {p.duration_years}y
