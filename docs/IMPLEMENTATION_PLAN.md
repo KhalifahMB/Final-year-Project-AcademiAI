@@ -92,13 +92,13 @@ Retune the design system to the Open Design palette while keeping current class 
 - [ ] Commit `feat(redesign/auth-landing): new palette for auth split-screen and dark landing hero`
 
 ## Phase F — Student Dashboard redesign (flagship)
-- [ ] Greeting (time-aware) + workspace context line
-- [ ] Stat strip → remove heavy number tiles in favor of subtle section headers with inline numbers where needed
-- [ ] "Up next" list (lecture/quiz/deadline rows with date chip + status pill "Pre-read sent to chat", "Due soon", "Deadline")
-- [ ] "Continue learning" course cards (code pill, course name, Next line, On-track/Behind status pill, progress meter)
-- [ ] Right rail: "Recent chats" list, "Concept mastery" colored bars (green/amber/red), "New in your library" list
-- [ ] "Study activity" filled area chart with "This week / vs last week / streak" stats
-- [ ] Backed by Phase C endpoints (graceful fallback to existing endpoints if aggregates error)
+- [x] Greeting (time-aware) + workspace context line
+- [x] Stat strip → 4-tile KPI row using hairline cards (Enrolled / AI chats / Quizzes / Materials)
+- [x] "Up next" list (quiz rows with course code + Available/Due-soon pill)
+- [x] "Continue learning" 2-col course cards (mono code pill, course name, On-track/Behind pill, color-coded progress meter)
+- [x] Right rail: Quick-CTA card, Up-next list, Concept mastery colored bars (ok/warn/bad/accent)
+- [x] "Study activity" filled area chart with "This period / vs last / Streak" derived stats + Day/Week/Month segmented control
+- [x] Backed by Phase C endpoints (continue_courses/up_next/concept_mastery/timeline)
 - [ ] Commit `feat(redesign/student-dashboard): up-next, continue-learning, concept mastery, activity chart`
 
 ## Phase G — Lecturer Dashboard redesign
