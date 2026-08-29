@@ -229,7 +229,13 @@ class ResourceViewSet(TenantModelViewSet):
 
     def get_permissions(self):
         perms = super().get_permissions()
-        write_actions = ("update", "partial_update", "destroy", "retry_processing")
+        # Actions that mutate a resource or issue privileged artifacts
+        # (presigned upload URLs, version creation, retries, summary
+        # generation is read-ish but rate-limited and auth-gated below).
+        write_actions = (
+            "update", "partial_update", "destroy", "retry_processing",
+            "request_upload_url", "complete_upload",
+        )
         if self.action in write_actions:
             return [IsOwnerOrAdminForWrite()] + perms
         return perms
@@ -569,14 +575,25 @@ class ResourceVersionViewSet(TenantModelViewSet):
     http_method_names = ["get", "post", "head", "options"]
     serializer_class = ResourceVersionSerializer
 
+    def _parent_resource(self):
+        from django.shortcuts import get_object_or_404
+        return get_object_or_404(
+            Resource.objects.filter(
+                _authorized_resources_q(self.request.user)
+                if not (getattr(self.request.user, "is_superuser", False)
+                        or getattr(self.request.user, "role", None) == "admin")
+                else Q(),
+                tenant=self.request.user.tenant,
+            ),
+            id=self.kwargs.get("resource_pk"),
+        )
+
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return ResourceVersion.objects.none()
         user = self.request.user
         qs = ResourceVersion.objects.filter(
             tenant=user.tenant,
-            # Object-level authorization: the parent resource must be in
-            # the caller's tenant (IDOR guard for guessed ids).
             resource__id=self.kwargs.get("resource_pk"),
         ).select_related("created_by")
         # The parent resource must also be visible to the caller — a private
@@ -588,9 +605,16 @@ class ResourceVersionViewSet(TenantModelViewSet):
         return qs.order_by("-version_number")
 
     def perform_create(self, serializer):
-        resource = Resource.objects.get(
-            id=self.kwargs.get("resource_pk"), tenant=self.request.user.tenant
-        )
+        # Only the uploader or a tenant admin may add a new version. This
+        # blocks students/other lecturers from uploading to someone else's
+        # resource even if they can see it (e.g. COURSE/INSTITUTION scoped).
+        resource = self._parent_resource()
+        user = self.request.user
+        is_owner = resource.uploaded_by_id == user.id
+        is_admin = getattr(user, "role", None) == "admin" or getattr(user, "is_superuser", False)
+        if not (is_owner or is_admin):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only the uploader or an admin may add a new version.")
         last = resource.versions.order_by("-version_number").first()
         next_ver = (last.version_number + 1) if last else 1
         serializer.save(
