@@ -286,9 +286,9 @@ export default function LandingPage() {
               ['#product', 'Product'],
               ['#how', 'How it works'],
               ['#audiences', 'Who it serves'],
-              ['#institutions', 'Universities'],
+              !isAuthenticated && ['#institutions', 'Universities'],
               ['#case-study', 'Case study'],
-            ].map(([href, label]) => (
+            ].filter(Boolean).map(([href, label]) => (
               <a
                 key={href}
                 href={href}
@@ -313,7 +313,7 @@ export default function LandingPage() {
                 </Button>
                 <Button size="sm" asChild>
                   <Link to="/signup">
-                    Create account <ArrowRight className="ml-1 h-3.5 w-3.5" aria-hidden />
+                    Create free account <ArrowRight className="ml-1 h-3.5 w-3.5" aria-hidden />
                   </Link>
                 </Button>
               </>
@@ -365,22 +365,37 @@ export default function LandingPage() {
               AcademiAI gives every university its own AI tutor. Students access, understand and excel with their course materials through intelligent chat, personalised quizzes and cohort insight — all grounded in authorised resources. Implemented as a case study at Abubakar Tafawa Balewa University, Bauchi.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Button
-                size="lg"
-                className="!h-11 !rounded-[var(--radius-md)] !bg-white !px-7 !text-[14px] !font-[620] !text-[oklch(18%_0.015_255)] hover:!bg-white/90"
-                asChild
-              >
-                <Link to={isAuthenticated ? '/dashboard' : '/signup'}>
-                  {isAuthenticated ? 'Open workspace' : 'Create free account'}
-                  <ArrowRight className="h-4 w-4" aria-hidden />
-                </Link>
-              </Button>
-              <a
-                href="#institutions"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-white/20 bg-white/5 px-7 text-[14px] font-[600] text-white backdrop-blur transition-colors hover:bg-white/10"
-              >
-                Find your university
-              </a>
+              {isAuthenticated ? (
+                <Button
+                  size="lg"
+                  className="!h-11 !rounded-[var(--radius-md)] !bg-white !px-7 !text-[14px] !font-[620] !text-[oklch(18%_0.015_255)] hover:!bg-white/90"
+                  asChild
+                >
+                  <Link to="/dashboard">
+                    Open workspace
+                    <ArrowRight className="h-4 w-4" aria-hidden />
+                  </Link>
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    size="lg"
+                    className="!h-11 !rounded-[var(--radius-md)] !bg-white !px-7 !text-[14px] !font-[620] !text-[oklch(18%_0.015_255)] hover:!bg-white/90"
+                    asChild
+                  >
+                    <Link to="/signup">
+                      Create free account
+                      <ArrowRight className="h-4 w-4" aria-hidden />
+                    </Link>
+                  </Button>
+                  <a
+                    href="#institutions"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-white/20 bg-white/5 px-7 text-[14px] font-[600] text-white backdrop-blur transition-colors hover:bg-white/10"
+                  >
+                    Find your university
+                  </a>
+                </>
+              )}
             </div>
             <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-white/55">
               <span className="inline-flex items-center gap-1.5">
@@ -395,7 +410,14 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <TutorMockCard />
+          {/* Hero visual — generated AcademiAI tutor mock */}
+          <div className="relative">
+            <img
+              src="/images/landing/hero-academiai-tutor.png"
+              alt="AcademiAI AI tutor showing a cited answer with source chips"
+              className="relative z-[1] w-full rounded-[20px] [filter:drop-shadow(0_30px_60px_oklch(58%_0.18_255/0.35))]"
+            />
+          </div>
         </div>
       </section>
 
@@ -686,22 +708,37 @@ export default function LandingPage() {
             Multi-tenant, secure, grounded. Built as an ATBU Faculty of Computing case study — open for collaboration with any university.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            <Button
-              size="lg"
-              className="!h-11 !rounded-[var(--radius-md)] !bg-white !px-8 !text-[14px] !font-[620] !text-[oklch(18%_0.015_255)] hover:!bg-white/90"
-              asChild
-            >
-              <Link to={isAuthenticated ? '/dashboard' : '/signup'}>
-                {isAuthenticated ? 'Open your workspace' : 'Get started free'}
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </Link>
-            </Button>
-            <a
-              href="#institutions"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-white/25 bg-white/5 px-8 text-[14px] font-[600] text-white backdrop-blur transition-colors hover:bg-white/10"
-            >
-              Browse universities
-            </a>
+            {isAuthenticated ? (
+              <Button
+                size="lg"
+                className="!h-11 !rounded-[var(--radius-md)] !bg-white !px-8 !text-[14px] !font-[620] !text-[oklch(18%_0.015_255)] hover:!bg-white/90"
+                asChild
+              >
+                <Link to="/dashboard">
+                  Open your workspace
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <Button
+                  size="lg"
+                  className="!h-11 !rounded-[var(--radius-md)] !bg-white !px-8 !text-[14px] !font-[620] !text-[oklch(18%_0.015_255)] hover:!bg-white/90"
+                  asChild
+                >
+                  <Link to="/signup">
+                    Get started free
+                    <ArrowRight className="h-4 w-4" aria-hidden />
+                  </Link>
+                </Button>
+                <a
+                  href="#institutions"
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-white/25 bg-white/5 px-8 text-[14px] font-[600] text-white backdrop-blur transition-colors hover:bg-white/10"
+                >
+                  Browse universities
+                </a>
+              </>
+            )}
           </div>
           <p className="mt-8 text-[12px] text-white/60">
             Multi-tenant · For any university · Open for collaboration
@@ -736,7 +773,9 @@ export default function LandingPage() {
               <li><a className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" href="#case-study">Final Year Project 2025/2026</a></li>
               <li><a className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" href="#case-study">ATBU case study</a></li>
               <li><a className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" href="#how">Multi-tenant architecture</a></li>
-              <li><Link className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" to="/request-institution">Request your institution</Link></li>
+              {!isAuthenticated && (
+                <li><Link className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" to="/request-institution">Request your institution</Link></li>
+              )}
             </ul>
           </nav>
         </div>
