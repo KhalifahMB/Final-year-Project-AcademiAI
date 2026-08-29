@@ -95,16 +95,16 @@ export default function DashboardPage() {
   const isAdmin = user?.role === 'admin' || isSuper;
   const isStaff = isAdmin || isSuper;
   const isLecturer = user?.role === 'lecturer';
-  const isStaff = isLecturer || isAdmin;
   const isStudent = !isAdmin && !isLecturer && !isSuper;
   const firstName = user?.first_name || user?.email?.split('@')?.[0] || 'there';
 
   // Pick aggregate endpoint by role
-  const endpoint = isAdmin || isSuper
-    ? dashboardApi.admin
-    : isLecturer
-      ? dashboardApi.lecturer
-      : dashboardApi.student;
+  const endpoint =
+    isAdmin || isSuper
+      ? dashboardApi.admin
+      : isLecturer
+        ? dashboardApi.lecturer
+        : dashboardApi.student;
   const dash = useQuery({
     queryKey: [isStaff ? 'dash-admin' : 'dash-student'],
     queryFn: endpoint,
@@ -133,43 +133,110 @@ export default function DashboardPage() {
 
   const stats = isStaff
     ? [
-        { icon: Users, label: 'Total users', value: t.users, hint: 'In your institution' },
-        { icon: FileText, label: 'Materials', value: t.resources, hint: `${t.enrollments || 0} enrollments` },
-        { icon: ClipboardList, label: 'Quizzes', value: t.quizzes, hint: `${t.quiz_attempts || 0} attempts` },
-        { icon: MessageSquareText, label: 'AI chats', value: t.chat_sessions, hint: `${t.chat_messages || 0} messages` },
+        {
+          icon: Users,
+          label: 'Total users',
+          value: t.users,
+          hint: 'In your institution',
+        },
+        {
+          icon: FileText,
+          label: 'Materials',
+          value: t.resources,
+          hint: `${t.enrollments || 0} enrollments`,
+        },
+        {
+          icon: ClipboardList,
+          label: 'Quizzes',
+          value: t.quizzes,
+          hint: `${t.quiz_attempts || 0} attempts`,
+        },
+        {
+          icon: MessageSquareText,
+          label: 'AI chats',
+          value: t.chat_sessions,
+          hint: `${t.chat_messages || 0} messages`,
+        },
       ]
     : [
-        { icon: GraduationCap, label: 'Enrolled courses', value: c.enrollments, hint: 'This semester' },
-        { icon: FileText, label: 'Materials', value: c.resources, hint: 'Available to study' },
-        { icon: ClipboardList, label: 'Quiz attempts', value: c.quiz_attempts, hint: 'Practice sessions' },
-        { icon: StickyNote, label: 'Notes & bookmarks', value: (c.notes || 0) + (c.bookmarks || 0), hint: `${c.notes || 0} notes · ${c.bookmarks || 0} bookmarks` },
+        {
+          icon: GraduationCap,
+          label: 'Enrolled courses',
+          value: c.enrollments,
+          hint: 'This semester',
+        },
+        {
+          icon: FileText,
+          label: 'Materials',
+          value: c.resources,
+          hint: 'Available to study',
+        },
+        {
+          icon: ClipboardList,
+          label: 'Quiz attempts',
+          value: c.quiz_attempts,
+          hint: 'Practice sessions',
+        },
+        {
+          icon: StickyNote,
+          label: 'Notes & bookmarks',
+          value: (c.notes || 0) + (c.bookmarks || 0),
+          hint: `${c.notes || 0} notes · ${c.bookmarks || 0} bookmarks`,
+        },
       ];
 
-  const quickActions = useMemo(
-    () => {
-      const base = [
-        {
-          to: '/chat',
-          label: 'Ask the AI',
-          icon: MessageSquareText,
-          desc: 'Grounded Q&A with citations',
-          primary: true,
-        },
-        { to: '/resources', label: 'Browse resources', icon: FileText, desc: 'Course materials & documents' },
-        { to: '/quizzes', label: 'Practice quizzes', icon: ClipboardList, desc: 'Test your understanding' },
-        { to: '/notes', label: 'My notes', icon: StickyNote, desc: 'Personal study space' },
-      ];
-      if (isStaff) {
-        base.push({ to: '/resources/upload', label: 'Upload resource', icon: Upload, desc: 'Add new course material' });
-      }
-      if (isAdmin) {
-        base.push({ to: '/admin/dashboard', label: 'Institution analytics', icon: TrendingUp, desc: 'Users, activity, health' });
-        base.push({ to: '/admin/users', label: 'Manage users', icon: Users, desc: 'Roles & access' });
-      }
-      return base.slice(0, isStaff ? 6 : 4);
-    },
-    [isStaff, isAdmin],
-  );
+  const quickActions = useMemo(() => {
+    const base = [
+      {
+        to: '/chat',
+        label: 'Ask the AI',
+        icon: MessageSquareText,
+        desc: 'Grounded Q&A with citations',
+        primary: true,
+      },
+      {
+        to: '/resources',
+        label: 'Browse resources',
+        icon: FileText,
+        desc: 'Course materials & documents',
+      },
+      {
+        to: '/quizzes',
+        label: 'Practice quizzes',
+        icon: ClipboardList,
+        desc: 'Test your understanding',
+      },
+      {
+        to: '/notes',
+        label: 'My notes',
+        icon: StickyNote,
+        desc: 'Personal study space',
+      },
+    ];
+    if (isStaff) {
+      base.push({
+        to: '/resources/upload',
+        label: 'Upload resource',
+        icon: Upload,
+        desc: 'Add new course material',
+      });
+    }
+    if (isAdmin) {
+      base.push({
+        to: '/admin/dashboard',
+        label: 'Institution analytics',
+        icon: TrendingUp,
+        desc: 'Users, activity, health',
+      });
+      base.push({
+        to: '/admin/users',
+        label: 'Manage users',
+        icon: Users,
+        desc: 'Roles & access',
+      });
+    }
+    return base.slice(0, isStaff ? 6 : 4);
+  }, [isStaff, isAdmin]);
 
   const enrolledCourses = dash.data?.enrolled_courses || [];
   const recentResources = dash.data?.recent_resources || [];
@@ -225,7 +292,13 @@ export default function DashboardPage() {
           {/* Stats row */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((s) => (
-              <StatCard key={s.label} icon={s.icon} label={s.label} value={s.value} hint={s.hint} />
+              <StatCard
+                key={s.label}
+                icon={s.icon}
+                label={s.label}
+                value={s.value}
+                hint={s.hint}
+              />
             ))}
           </div>
 
@@ -239,7 +312,8 @@ export default function DashboardPage() {
                   to={to}
                   className={cn(
                     'group flex items-center gap-3 rounded-xl border bg-card p-3.5 shadow-sm transition-all hover:-translate-y-px hover:border-primary/30 hover:shadow-md',
-                    primary && 'border-primary/25 bg-gradient-to-br from-primary/5 via-transparent to-transparent',
+                    primary &&
+                      'border-primary/25 bg-gradient-to-br from-primary/5 via-transparent to-transparent',
                   )}
                 >
                   <span
@@ -253,10 +327,17 @@ export default function DashboardPage() {
                     <Icon className="h-[18px] w-[18px]" aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold leading-tight">{label}</p>
-                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{desc}</p>
+                    <p className="text-[13px] font-semibold leading-tight">
+                      {label}
+                    </p>
+                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      {desc}
+                    </p>
                   </div>
-                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+                  <ArrowRight
+                    className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                    aria-hidden
+                  />
                 </Link>
               ))}
             </div>
@@ -268,9 +349,16 @@ export default function DashboardPage() {
               <SectionHeader title="Material pipeline" />
               <div className="grid grid-cols-4 gap-2">
                 {(dash.data?.materials_by_status || []).map((s) => (
-                  <div key={s.name} className="rounded-lg border bg-muted/30 p-2.5 text-center">
-                    <p className="text-xl font-semibold tabular-nums">{s.value}</p>
-                    <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{s.name}</p>
+                  <div
+                    key={s.name}
+                    className="rounded-lg border bg-muted/30 p-2.5 text-center"
+                  >
+                    <p className="text-xl font-semibold tabular-nums">
+                      {s.value}
+                    </p>
+                    <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {s.name}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -287,8 +375,13 @@ export default function DashboardPage() {
                           className="flex items-center justify-between gap-3 rounded-md -mx-2 px-2 py-2 text-[13px] transition-colors hover:bg-accent/40"
                         >
                           <div className="flex min-w-0 items-center gap-2">
-                            <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                            <span className="truncate font-medium">{r.title}</span>
+                            <FileText
+                              className="h-4 w-4 shrink-0 text-muted-foreground"
+                              aria-hidden
+                            />
+                            <span className="truncate font-medium">
+                              {r.title}
+                            </span>
                             <span className="hidden text-[11px] text-muted-foreground sm:inline">
                               · {r.uploaded_by || 'unknown'}
                             </span>
@@ -308,9 +401,14 @@ export default function DashboardPage() {
               <SectionHeader title="Academic structure" />
               <ul className="space-y-2">
                 {(dash.data?.structure || []).map((s) => (
-                  <li key={s.name} className="flex items-center justify-between text-[13px]">
+                  <li
+                    key={s.name}
+                    className="flex items-center justify-between text-[13px]"
+                  >
                     <span className="text-muted-foreground">{s.name}</span>
-                    <span className="font-semibold tabular-nums">{s.value}</span>
+                    <span className="font-semibold tabular-nums">
+                      {s.value}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -346,20 +444,36 @@ export default function DashboardPage() {
                   </p>
                   <div className="h-[calc(100%-22px)]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={auditTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <BarChart
+                        data={auditTimeline}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                      >
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="hsl(var(--border))"
+                          vertical={false}
+                        />
                         <XAxis
                           dataKey="bucket"
-                          tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                          tick={{
+                            fontSize: 11,
+                            fill: 'hsl(var(--muted-foreground))',
+                          }}
                           axisLine={false}
                           tickLine={false}
                           tickFormatter={(v) =>
-                            new Date(v).toLocaleDateString([], { month: 'short', day: 'numeric' })
+                            new Date(v).toLocaleDateString([], {
+                              month: 'short',
+                              day: 'numeric',
+                            })
                           }
                         />
                         <YAxis
                           allowDecimals={false}
-                          tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                          tick={{
+                            fontSize: 11,
+                            fill: 'hsl(var(--muted-foreground))',
+                          }}
                           axisLine={false}
                           tickLine={false}
                           width={28}
@@ -372,7 +486,12 @@ export default function DashboardPage() {
                             fontSize: 12,
                           }}
                         />
-                        <Bar dataKey="count" name="Events" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        <Bar
+                          dataKey="count"
+                          name="Events"
+                          fill="hsl(var(--primary))"
+                          radius={[4, 4, 0, 0]}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -385,13 +504,22 @@ export default function DashboardPage() {
                     </p>
                     <ul className="space-y-1 text-[12px]">
                       {auditActions.slice(0, 6).map((a) => (
-                        <li key={a.name} className="flex items-center justify-between gap-3">
-                          <code className="truncate rounded bg-muted px-1.5 py-0.5 text-[11px]">{a.name}</code>
-                          <span className="font-semibold tabular-nums">{a.count}</span>
+                        <li
+                          key={a.name}
+                          className="flex items-center justify-between gap-3"
+                        >
+                          <code className="truncate rounded bg-muted px-1.5 py-0.5 text-[11px]">
+                            {a.name}
+                          </code>
+                          <span className="font-semibold tabular-nums">
+                            {a.count}
+                          </span>
                         </li>
                       ))}
                       {auditActions.length === 0 && (
-                        <li className="text-[11px] text-muted-foreground">No events in this window.</li>
+                        <li className="text-[11px] text-muted-foreground">
+                          No events in this window.
+                        </li>
                       )}
                     </ul>
                   </div>
@@ -401,9 +529,14 @@ export default function DashboardPage() {
                     </p>
                     <ul className="space-y-1 text-[12px]">
                       {auditActors.slice(0, 5).map((a, i) => (
-                        <li key={i} className="flex items-center justify-between gap-3">
+                        <li
+                          key={i}
+                          className="flex items-center justify-between gap-3"
+                        >
                           <span className="truncate">{a.name}</span>
-                          <span className="font-semibold tabular-nums">{a.count}</span>
+                          <span className="font-semibold tabular-nums">
+                            {a.count}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -435,7 +568,11 @@ export default function DashboardPage() {
                     Recent events
                   </p>
                   <Link
-                    to={isAdmin && user?.is_superuser ? '/platform/audit' : '/admin/audit'}
+                    to={
+                      isAdmin && user?.is_superuser
+                        ? '/platform/audit'
+                        : '/admin/audit'
+                    }
                     className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary hover:underline"
                   >
                     View all
