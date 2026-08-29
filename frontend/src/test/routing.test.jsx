@@ -133,7 +133,7 @@ describe('routing and access control', () => {
     navigate('/dashboard');
     render(<App />, { wrapper: Wrapper });
     await waitFor(() => {
-      expect(screen.getAllByText(/quick actions/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/continue learning|up next/i).length).toBeGreaterThan(0);
     });
   });
 

@@ -12,14 +12,14 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      includeAssets: ['favicon.svg', 'icons.svg'],
+      includeAssets: ['favicon-32.png', 'favicon-192.png', 'pwa-192.png', 'pwa-512.png', 'icons.svg'],
       manifest: {
-        name: 'AcademiAI — Academic AI Assistant',
+        name: 'AcademiAI — AI-powered academic assistance',
         short_name: 'AcademiAI',
         description:
-          'Multi-tenant academic AI platform: course materials, AI study assistant, quizzes and progress tracking.',
-        theme_color: '#4f46e5',
-        background_color: '#f8fafc',
+          'Multi-tenant academic AI platform: grounded tutoring from your own course materials, auto-generated quizzes, cohort insight and progress tracking.',
+        theme_color: '#1779e1',
+        background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',
         scope: '/',
