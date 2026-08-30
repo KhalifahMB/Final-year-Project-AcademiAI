@@ -89,7 +89,7 @@ function SegmentedControl({ value, options, onChange, size = 'sm' }) {
 export default function DashboardPage() {
   const { user } = useAuth();
   const isSuper = !!user?.is_superuser;
-  const isAdmin = user?.role === 'admin' || isSuper;
+  const isAdmin = user?.role === 'tenant_admin' || isSuper;
   const isStaff = isAdmin || isSuper;
   const isLecturer = user?.role === 'lecturer';
   const isStudent = !isAdmin && !isLecturer && !isSuper;

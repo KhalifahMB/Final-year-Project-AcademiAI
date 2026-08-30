@@ -25,7 +25,8 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_active", True)
         extra_fields.setdefault("is_email_verified", True)
-        extra_fields.setdefault("role", User.Role.ADMIN)
+        # A superuser is platform-level and not scoped to a tenant, so no
+        # tenant role is stamped by default.
         return self.create_user(email, password, **extra_fields)
 
 
@@ -33,7 +34,7 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel, TimeStampedModel):
     class Role(models.TextChoices):
         STUDENT = "student", "Student"
         LECTURER = "lecturer", "Lecturer"
-        ADMIN = "admin", "Admin"
+        TENANT_ADMIN = "tenant_admin", "Tenant Admin"
 
     class Gender(models.TextChoices):
         MALE = "male", "Male"
@@ -90,6 +91,10 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel, TimeStampedModel):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip() or self.email
+
+    @property
+    def is_tenant_admin(self):
+        return self.role == self.Role.TENANT_ADMIN
 
 
 class StudentProfile(models.Model):

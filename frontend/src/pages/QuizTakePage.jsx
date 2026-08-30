@@ -31,7 +31,7 @@ export default function QuizTakePage() {
  const navigate = useNavigate();
  const { user } = useAuth();
  const qc = useQueryClient();
- const isStaff = user?.role === 'lecturer' || user?.role === 'admin' || user?.is_superuser;
+ const isStaff = user?.role === 'lecturer' || user?.role === 'tenant_admin' || user?.is_superuser;
 
  const [answers, setAnswers] = useState({});
  const [attemptId, setAttemptId] = useState(null);

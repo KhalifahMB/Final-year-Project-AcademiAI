@@ -27,7 +27,7 @@ const STATUSES = ['all', 'published', 'draft', 'archived'];
 export default function QuizzesPage() {
  const qc = useQueryClient();
  const { user } = useAuth();
- const isStaff = user?.role === 'lecturer' || user?.role === 'admin' || user?.is_superuser;
+ const isStaff = user?.role === 'lecturer' || user?.role === 'tenant_admin' || user?.is_superuser;
  const [pollJob, setPollJob] = useState(null);
  const [statusFilter, setStatusFilter] = useState('all');
 

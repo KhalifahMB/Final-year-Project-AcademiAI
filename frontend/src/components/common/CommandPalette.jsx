@@ -43,7 +43,7 @@ export default function CommandPalette({ open, onOpen }) {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
 
-  const isStaff = user?.role === 'admin' || user?.is_superuser;
+  const isStaff = user?.role === 'tenant_admin' || user?.is_superuser;
   const isLecturer = user?.role === 'lecturer';
 
   // Resources for quick navigation (refreshed from cache on open)

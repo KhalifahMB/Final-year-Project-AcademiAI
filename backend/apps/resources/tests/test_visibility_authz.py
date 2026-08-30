@@ -61,7 +61,7 @@ def test_student_sees_own_private_only():
 @pytest.mark.django_db
 def test_admin_does_not_see_others_private():
     tenant = _make_tenant()
-    admin = _make_user("admin@x.com", tenant, role=User.Role.ADMIN)
+    admin = _make_user("admin@x.com", tenant, role=User.Role.TENANT_ADMIN)
     b = _make_user("b@x.com", tenant)
     shared = _priv(tenant, b, "B shared", scope=Resource.Visibility.INSTITUTION)
     _priv(tenant, b, "B private")
@@ -93,7 +93,7 @@ def test_superuser_does_not_see_others_private():
 @pytest.mark.django_db
 def test_retrieve_rejects_others_private_for_admin():
     tenant = _make_tenant()
-    admin = _make_user("admin@x.com", tenant, role=User.Role.ADMIN)
+    admin = _make_user("admin@x.com", tenant, role=User.Role.TENANT_ADMIN)
     b = _make_user("b@x.com", tenant)
     theirs = _priv(tenant, b, "B private")
 

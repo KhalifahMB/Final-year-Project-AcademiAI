@@ -43,7 +43,7 @@ def test_me_patch_cannot_change_role():
     client.force_authenticate(student)
 
     resp = client.patch(
-        "/api/v1/auth/me/", {"role": "admin", "first_name": "New"}, format="json"
+        "/api/v1/auth/me/", {"role": "tenant_admin", "first_name": "New"}, format="json"
     )
     assert resp.status_code == 200
     student.refresh_from_db()
@@ -61,7 +61,7 @@ def test_signup_ignores_client_role():
             "email": "evil@signup-role.edu",
             "password": PASSWORD,
             "tenant_slug": "signup-role",
-            "role": "admin",
+            "role": "tenant_admin",
         },
         format="json",
     )
@@ -74,7 +74,7 @@ def test_signup_ignores_client_role():
 def test_complete_upload_rejects_foreign_storage_key():
     ta = _tenant("up-a")
     tb = _tenant("up-b")
-    admin_b = _user("admin-b@upb.edu", tb, role="admin")
+    admin_b = _user("admin-b@upb.edu", tb, role="tenant_admin")
 
     # A resource in tenant A with a key inside tenant B's partition.
     res_a = Resource.objects.create(tenant=ta, title="A doc", uploaded_by=None)
@@ -92,7 +92,7 @@ def test_complete_upload_rejects_foreign_storage_key():
     assert resp.status_code == 404  # hidden by tenant scoping
 
     # Tenant A user cannot claim a key pointing at another tenant's partition.
-    admin_a = _user("admin-a@upa.edu", ta, role="admin")
+    admin_a = _user("admin-a@upa.edu", ta, role="tenant_admin")
     client.force_authenticate(admin_a)
     resp = client.post(
         f"/api/v1/resources/{res_a.id}/complete_upload/",
@@ -108,7 +108,7 @@ def test_complete_upload_rejects_foreign_storage_key():
 def test_complete_upload_accepts_own_key_and_claims_job(mock_delay):
     mock_delay.return_value.id = "task-123"
     ta = _tenant("up-c")
-    admin_a = _user("a@upc.edu", ta, role="admin")
+    admin_a = _user("a@upc.edu", ta, role="tenant_admin")
     res = Resource.objects.create(tenant=ta, title="C doc", uploaded_by=admin_a)
 
     own_key = f"tenants/{ta.id}/resources/{res.id}/abc-123"

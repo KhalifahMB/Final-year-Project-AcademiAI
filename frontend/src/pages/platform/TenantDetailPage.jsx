@@ -27,15 +27,21 @@ function formatBytes(bytes) {
 }
 
 const ROLE_STYLES = {
-  admin: "bg-violet-500/12 text-violet-700 dark:text-violet-300 border-violet-500/25",
+  tenant_admin: "bg-violet-500/12 text-violet-700 dark:text-violet-300 border-violet-500/25",
   lecturer: "bg-sky-500/12 text-sky-700 dark:text-sky-300 border-sky-500/25",
   student: "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300 border-indigo-500/25",
 };
 
+const ROLE_LABELS = {
+  student: "Student",
+  lecturer: "Lecturer",
+  tenant_admin: "Tenant Admin",
+};
+
 function RoleBadge({ role }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${ROLE_STYLES[role] || "bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]"}`}>
-      {role}
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${ROLE_STYLES[role] || "bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]"}`}>
+      {ROLE_LABELS[role] || role}
     </span>
   );
 }

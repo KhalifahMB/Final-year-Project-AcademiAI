@@ -16,7 +16,7 @@ export default function MyCoursesPage() {
  const { data, isLoading, error, refetch } = useQuery({
  queryKey: ['my-enrollments'],
  queryFn: async () => {
- const { data } = await api.get('/course-enrollments/');
+ const { data } = await api.get('/course-enrollments/mine/');
  return data.results || data;
  },
  select: (data) => data || [],

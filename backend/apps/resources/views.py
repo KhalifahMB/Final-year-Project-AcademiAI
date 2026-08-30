@@ -122,7 +122,7 @@ def _authorized_resources_q(user) -> Q:
     from apps.knowledge.retrieval import _viewer_academic_context
 
     role = getattr(user, "role", None)
-    is_admin = role == "admin" or bool(getattr(user, "is_superuser", False))
+    is_admin = getattr(user, "is_tenant_admin", False) or bool(getattr(user, "is_superuser", False))
 
     # The scope the user may read from, ignoring private visibility for a
     # moment. Admins can read everything non-private in the tenant; students /
@@ -553,8 +553,8 @@ class ResourceViewSet(TenantModelViewSet):
             )
         is_creator = summary.created_by_id == request.user.id
         is_admin = getattr(request.user, "is_superuser", False) or getattr(
-            request.user, "role", None
-        ) == "admin"
+            request.user, "is_tenant_admin", False
+        )
         if not (is_creator or is_admin):
             return Response(
                 {"success": False, "error": {"detail": "You cannot delete this summary."}},
@@ -581,7 +581,7 @@ class ResourceVersionViewSet(TenantModelViewSet):
             Resource.objects.filter(
                 _authorized_resources_q(self.request.user)
                 if not (getattr(self.request.user, "is_superuser", False)
-                        or getattr(self.request.user, "role", None) == "admin")
+                        or getattr(self.request.user, "is_tenant_admin", False))
                 else Q(),
                 tenant=self.request.user.tenant,
             ),
@@ -611,7 +611,7 @@ class ResourceVersionViewSet(TenantModelViewSet):
         resource = self._parent_resource()
         user = self.request.user
         is_owner = resource.uploaded_by_id == user.id
-        is_admin = getattr(user, "role", None) == "admin" or getattr(user, "is_superuser", False)
+        is_admin = getattr(user, "is_tenant_admin", False) or getattr(user, "is_superuser", False)
         if not (is_owner or is_admin):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Only the uploader or an admin may add a new version.")

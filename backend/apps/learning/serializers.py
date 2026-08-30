@@ -21,7 +21,7 @@ def _resource_visible_to_user(resource, user) -> bool:
         return True
     if resource.tenant_id != getattr(user, "tenant_id", None):
         return False
-    if getattr(user, "role", None) == "admin":
+    if getattr(user, "is_tenant_admin", False):
         return True
     from apps.resources.views import _authorized_resources_q
     return Resource.objects.filter(_authorized_resources_q(user), pk=resource.pk).exists()

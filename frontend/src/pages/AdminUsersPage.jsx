@@ -14,18 +14,24 @@ import { Search, UsersRound } from 'lucide-react';
 import { useState } from 'react';
 
 const ROLE_STYLES = {
-  admin: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20',
+  tenant_admin: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20',
   lecturer: 'bg-[var(--info-soft)] text-sky-700 dark:text-sky-300 border-sky-500/20',
   student: 'bg-[var(--accent-soft)] text-[var(--accent-strong)] border-[var(--accent)]/20',
+};
+
+const ROLE_LABELS = {
+  student: 'Student',
+  lecturer: 'Lecturer',
+  tenant_admin: 'Tenant Admin',
 };
 
 function RoleBadge({ role }) {
   return (
     <span className={cn(
-      'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize',
+      'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium',
       ROLE_STYLES[role] || 'bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]',
     )}>
-      {role}
+      {ROLE_LABELS[role] || role}
     </span>
   );
 }
@@ -73,7 +79,7 @@ export default function AdminUsersPage() {
           <StatTile label="Total users" value={users.length} tone="indigo" />
           <StatTile label="Students" value={users.filter((u) => u.role === 'student').length} tone="indigo" />
           <StatTile label="Lecturers" value={users.filter((u) => u.role === 'lecturer').length} tone="sky" />
-          <StatTile label="Admins" value={users.filter((u) => u.role === 'admin').length} tone="violet" />
+          <StatTile label="Admins" value={users.filter((u) => u.role === 'tenant_admin').length} tone="violet" />
         </div>
       )}
 
@@ -85,17 +91,17 @@ export default function AdminUsersPage() {
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search users…" className="h-8 pl-8 text-xs" />
           </div>
           <div className="inline-flex rounded-lg border bg-card p-0.5">
-            {['all', 'student', 'lecturer', 'admin'].map((r) => (
+            {['all', 'student', 'lecturer', 'tenant_admin'].map((r) => (
               <button
                 key={r}
                 type="button"
                 onClick={() => setRoleFilter(r)}
                 className={cn(
-                  'h-7 rounded-md px-2.5 text-[11px] font-medium capitalize transition-colors',
+                  'h-7 rounded-md px-2.5 text-[11px] font-medium transition-colors',
                   roleFilter === r ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
-                {r}
+                {r === 'all' ? 'All' : (ROLE_LABELS[r] || r)}
               </button>
             ))}
           </div>

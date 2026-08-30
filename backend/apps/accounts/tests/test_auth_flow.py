@@ -110,7 +110,7 @@ def test_password_reset_flow_single_use_and_generic_responses():
         email="reset@reset-u.edu",
         password=PASSWORD,
         tenant=tenant,
-        role="admin",
+        role="tenant_admin",
         is_email_verified=True,
     )
     anon = APIClient()

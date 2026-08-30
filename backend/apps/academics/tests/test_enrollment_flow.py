@@ -213,7 +213,7 @@ def test_creating_offering_does_not_auto_enroll():
     tenant = _tenant("offering-u")
     fac, dept, prog, session, semester = _structure(tenant)
     student = _user("stu@offering-u.edu", tenant, "student")
-    admin = _user("admin@offering-u.edu", tenant, "admin")
+    admin = _user("admin@offering-u.edu", tenant, "tenant_admin")
     course = Course.objects.create(tenant=tenant, department=dept, code="MTH101", title="Maths 1")
     client = _auth(admin)
 
@@ -235,7 +235,7 @@ def test_creating_offering_does_not_auto_enroll():
 def test_admin_creates_course_offering_and_assigns_lecturer():
     tenant = _tenant("mgmt-u")
     fac, dept, prog, session, semester = _structure(tenant)
-    admin = _user("admin@mgmt-u.edu", tenant, "admin")
+    admin = _user("admin@mgmt-u.edu", tenant, "tenant_admin")
     lecturer = _user("teach@mgmt-u.edu", tenant, "lecturer")
     client = _auth(admin)
 
@@ -296,7 +296,7 @@ def test_admin_cannot_assign_cross_tenant_lecturer():
     tenant_b = _tenant("assign-b")
     fac, dept, prog, session, semester = _structure(tenant_a)
     _, offering = _course_and_offering(tenant_a, dept, session, semester)
-    admin = _user("admin@assign-a.edu", tenant_a, "admin")
+    admin = _user("admin@assign-a.edu", tenant_a, "tenant_admin")
     lecturer_b = _user("lect@assign-b.edu", tenant_b, "lecturer")
     client = _auth(admin)
 
@@ -317,7 +317,7 @@ def test_admin_cannot_assign_non_lecturer():
     tenant = _tenant("nolec-u")
     fac, dept, prog, session, semester = _structure(tenant)
     _, offering = _course_and_offering(tenant, dept, session, semester)
-    admin = _user("admin@nolec-u.edu", tenant, "admin")
+    admin = _user("admin@nolec-u.edu", tenant, "tenant_admin")
     student = _user("stu@nolec-u.edu", tenant, "student")
     client = _auth(admin)
 
@@ -339,7 +339,7 @@ def test_admin_cannot_enroll_cross_tenant_student():
     tenant_b = _tenant("enroll-b")
     fac, dept, prog, session, semester = _structure(tenant_a)
     _, offering = _course_and_offering(tenant_a, dept, session, semester)
-    admin = _user("admin@enroll-a.edu", tenant_a, "admin")
+    admin = _user("admin@enroll-a.edu", tenant_a, "tenant_admin")
     student_b = _user("stu@enroll-b.edu", tenant_b, "student")
     client = _auth(admin)
 
@@ -353,3 +353,68 @@ def test_admin_cannot_enroll_cross_tenant_student():
     )
     assert resp.status_code == 400, resp.data
     assert CourseEnrollment.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_mine_endpoint_returns_only_callers_enrollments():
+    """GET /course-enrollments/mine/ is scoped to the caller, regardless of role."""
+    tenant = _tenant("mine-u")
+    fac, dept, prog, session, semester = _structure(tenant)
+    _, offering = _course_and_offering(tenant, dept, session, semester)
+    admin = _user("admin@mine-u.edu", tenant, "tenant_admin")
+    student_a = _user("stu-a@mine-u.edu", tenant, "student")
+    student_b = _user("stu-b@mine-u.edu", tenant, "student")
+
+    client = _auth(admin)
+    # Admin wires up two enrollments from the management endpoint.
+    for s in (student_a, student_b):
+        resp = client.post(
+            "/api/v1/course-enrollments/",
+            {"course_offering": str(offering.id), "student": str(s.id)},
+            format="json",
+        )
+        assert resp.status_code == 201, resp.data
+
+    # Admin "My Courses" must NOT show the whole tenant's enrollments.
+    resp = client.get("/api/v1/course-enrollments/mine/")
+    assert resp.status_code == 200
+    assert resp.data["results"] == []
+
+    # Student A sees only their own enrollment, not Student B's.
+    client_a = _auth(student_a)
+    resp = client_a.get("/api/v1/course-enrollments/mine/")
+    assert resp.status_code == 200
+    rows = resp.data["results"]
+    assert len(rows) == 1
+    assert rows[0]["student_email"] == student_a.email
+
+    # The management list still exposes all enrollments to the admin.
+    resp = client.get("/api/v1/course-enrollments/")
+    assert resp.status_code == 200
+    assert resp.data["count"] == 2
+
+
+@pytest.mark.django_db
+def test_student_cannot_read_management_list():
+    """Students must not hit the admin management list; use /mine/ instead."""
+    tenant = _tenant("stu-list-u")
+    fac, dept, prog, session, semester = _structure(tenant)
+    _, offering = _course_and_offering(tenant, dept, session, semester)
+    admin = _user("admin@stu-list-u.edu", tenant, "tenant_admin")
+    student = _user("stu@stu-list-u.edu", tenant, "student")
+
+    client = _auth(admin)
+    resp = client.post(
+        "/api/v1/course-enrollments/",
+        {"course_offering": str(offering.id), "student": str(student.id)},
+        format="json",
+    )
+    assert resp.status_code == 201, resp.data
+
+    student_client = _auth(student)
+    resp = student_client.get("/api/v1/course-enrollments/")
+    assert resp.status_code == 403, resp.data
+    # ... but they can read their own via the dedicated endpoint.
+    resp = student_client.get("/api/v1/course-enrollments/mine/")
+    assert resp.status_code == 200
+    assert resp.data["count"] == 1

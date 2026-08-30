@@ -331,12 +331,12 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
   const isOwnerOrAdmin =
     !!user &&
     !!resource &&
-    (user.role === 'admin' || user.is_superuser || resource.uploaded_by === user.id);
+    (user.role === 'tenant_admin' || user.is_superuser || resource.uploaded_by === user.id);
 
   const canDeleteSummary = (s) =>
     !!user &&
     !!s &&
-    (user.is_superuser || user.role === 'admin' || !s.created_by || s.created_by === user.id);
+    (user.is_superuser || user.role === 'tenant_admin' || !s.created_by || s.created_by === user.id);
 
   const {
     data: preview,

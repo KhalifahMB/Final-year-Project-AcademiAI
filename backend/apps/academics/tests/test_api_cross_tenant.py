@@ -18,7 +18,7 @@ def _make_tenant(slug):
     return Tenant.objects.create(name=f"Univ {slug}", slug=slug)
 
 
-def _make_user(email, tenant, role="admin"):
+def _make_user(email, tenant, role="tenant_admin"):
     return User.objects.create_user(
         email=email,
         password=PASSWORD,

@@ -286,7 +286,7 @@ class AdminDashboardView(APIView):
         user = request.user
         if not user.tenant_id:
             return Response(self._empty())
-        key = _tenant_cache_key(user, "admin")
+        key = _tenant_cache_key(user, "tenant_admin")
         data = cache.get(key)
         if data is not None:
             return Response(data)
@@ -406,7 +406,7 @@ class AdminDashboardView(APIView):
             "users_by_role": [
                 {"name": "Students", "value": role_map.get("student", 0)},
                 {"name": "Lecturers", "value": role_map.get("lecturer", 0)},
-                {"name": "Admins", "value": role_map.get("admin", 0)},
+                {"name": "Admins", "value": role_map.get("tenant_admin", 0)},
             ],
             "materials_by_status": [
                 {"name": "Ready", "value": status_map.get("ready", 0)},
@@ -470,7 +470,7 @@ class LecturerDashboardView(APIView):
         tid = user.tenant_id
 
         # Admins see whole tenant; lecturers see assigned offerings only.
-        is_admin = getattr(user, "role", None) == "admin" or getattr(user, "is_superuser", False)
+        is_admin = getattr(user, "is_tenant_admin", False) or getattr(user, "is_superuser", False)
         if is_admin:
             assigned_offering_ids = list(
                 LecturerCourseAssignment.objects.filter(tenant_id=tid)

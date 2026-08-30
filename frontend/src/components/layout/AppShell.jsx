@@ -56,6 +56,18 @@ import {
    titles in collapsed mode.
    ============================================================= */
 
+const ROLE_LABELS = {
+  student: 'Student',
+  lecturer: 'Lecturer',
+  tenant_admin: 'Tenant Admin',
+};
+
+function roleLabel(user) {
+  if (user?.is_superuser) return 'Platform Operator';
+  const role = user?.role || '';
+  return ROLE_LABELS[role] || role.charAt(0).toUpperCase() + role.slice(1);
+}
+
 const SUPERUSER_NAV = [
   {
     section: 'Platform',
@@ -178,7 +190,7 @@ const STUDENT_NAV = [
 function getNav(user) {
   if (!user) return [];
   if (user.is_superuser) return SUPERUSER_NAV;
-  if (user.role === 'admin') return ADMIN_NAV;
+  if (user.role === 'tenant_admin') return ADMIN_NAV;
   if (user.role === 'lecturer') return LECTURER_NAV;
   return STUDENT_NAV;
 }
@@ -238,9 +250,6 @@ function NavItem({ item, collapsed, active, onNavigate }) {
 function UserMenu({ user }) {
   const displayName =
     user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.email;
-  const roleLabel = user?.is_superuser
-    ? 'Platform Operator'
-    : (user?.role || '').charAt(0).toUpperCase() + (user?.role || '').slice(1);
 
   return (
     <DropdownMenu>
@@ -255,7 +264,7 @@ function UserMenu({ user }) {
             <p className="truncate text-[13px] font-[600] leading-tight text-[var(--fg)]">
               {displayName}
             </p>
-            <p className="truncate text-[11px] capitalize text-[var(--muted)]">{roleLabel}</p>
+            <p className="truncate text-[11px] capitalize text-[var(--muted)]">{roleLabel(user)}</p>
           </div>
           <ChevronRight className="h-3.5 w-3.5 -rotate-90 text-[var(--muted)] transition-transform group-data-[state=open]:rotate-0" aria-hidden />
         </button>
@@ -306,7 +315,7 @@ function TenantCard({ user, collapsed }) {
           {user?.tenant?.name || 'Institution'}
         </p>
         <p className="truncate text-[11px] text-[var(--muted)]">
-          {user?.first_name || user?.email} · {(user?.role || 'user').charAt(0).toUpperCase() + (user?.role || '').slice(1)}
+          {user?.first_name || user?.email} · {roleLabel(user)}
         </p>
       </div>
     </div>

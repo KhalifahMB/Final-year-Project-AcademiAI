@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 
 from apps.common.db import tenant_scope
+from apps.common.permissions import IsAdminRoleOrSuperuser
 from apps.common.viewsets import AdminWriteViewSet
 
 from .models import (
@@ -154,6 +155,12 @@ class LecturerAssignmentViewSet(AdminWriteViewSet):
 
 @extend_schema(tags=["Enrollments"])
 class CourseEnrollmentViewSet(AdminWriteViewSet):
+    """
+    Management surface for enrollments (tenant admins): list all enrollments
+    in the tenant, create/update/delete them. Students must use the dedicated
+    self-service endpoints: GET /course-enrollments/mine/, POST /enroll/, POST /unenroll/.
+    """
+
     queryset = CourseEnrollment.objects.select_related(
         "course_offering__course",
         "course_offering__academic_session",
@@ -163,13 +170,28 @@ class CourseEnrollmentViewSet(AdminWriteViewSet):
     serializer_class = CourseEnrollmentSerializer
     filterset_fields = ["course_offering", "course_offering__course", "student", "status"]
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-        # Students only see their own enrollments; admins manage all.
-        if user.role == "student":
-            qs = qs.filter(student=user)
-        return qs
+    def get_permissions(self):
+        # The list/retrieve + CRUD endpoints are an admin management surface.
+        if self.action in ("list", "retrieve", "create", "update", "partial_update", "destroy"):
+            return [IsAdminRoleOrSuperuser()]
+        # Self-service actions (mine, enroll, unenroll): any tenant member.
+        return super().get_permissions()
+
+    @action(detail=False, methods=["get"])
+    def mine(self, request):
+        """The caller's own enrollments. Empty for non-students.
+
+        Used by "My Courses" so an admin/lecturer never sees the whole
+        tenant's enrollments through a personal view.
+        """
+        enrollments = self.filter_queryset(self.get_queryset().filter(student=request.user))
+        page = self.paginate_queryset(enrollments)
+        serializer = self.get_serializer(
+            page if page is not None else enrollments, many=True
+        )
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
 
     @action(detail=False, methods=["post"])
     def enroll(self, request):

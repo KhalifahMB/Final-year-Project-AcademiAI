@@ -44,7 +44,7 @@ export default function ResourceCard({
   const isOwnerOrAdmin =
     !!user &&
     !!resource &&
-    (user.role === 'admin' || user.is_superuser || resource.uploaded_by === user.id);
+    (user.role === 'tenant_admin' || user.is_superuser || resource.uploaded_by === user.id);
 
   const handleDelete = async (e) => {
     e.stopPropagation();

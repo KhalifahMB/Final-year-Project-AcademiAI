@@ -64,8 +64,7 @@ def _authorized_resource_ids(user, course_offering_id=None):
         processing_status=Resource.ProcessingStatus.READY,
     )
 
-    role = getattr(user, "role", None)
-    is_admin = role == "admin" or bool(getattr(user, "is_superuser", False))
+    is_admin = getattr(user, "is_tenant_admin", False) or bool(getattr(user, "is_superuser", False))
     if is_admin:
         if course_offering_id:
             qs = qs.filter(

@@ -21,7 +21,7 @@ def _make_tenant(slug="univ-x", **kwargs):
 def _make_admin(email, tenant):
     return User.objects.create_user(
         email=email, password=PASSWORD, tenant=tenant,
-        role=User.Role.ADMIN, is_active=True, is_email_verified=True,
+        role=User.Role.TENANT_ADMIN, is_active=True, is_email_verified=True,
     )
 
 

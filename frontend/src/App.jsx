@@ -108,7 +108,7 @@ export default function App() {
           <Route path="/my-programme" element={<Guard><MyProgrammePage /></Guard>} />
           <Route
             path="/assigned-courses"
-            element={<Guard roles={['lecturer', 'admin']}><AssignedCoursesPage /></Guard>}
+            element={<Guard roles={['lecturer', 'tenant_admin']}><AssignedCoursesPage /></Guard>}
           />
 
           <Route path="/resources" element={<Guard><ResourcesPage /></Guard>} />
@@ -120,74 +120,74 @@ export default function App() {
           <Route path="/quizzes/:id/take" element={<Guard><QuizTakePage /></Guard>} />
           <Route
             path="/admin/quizzes"
-            element={<Guard roles={['lecturer', 'admin']}><AdminQuizzesPage /></Guard>}
+            element={<Guard roles={['lecturer', 'tenant_admin']}><AdminQuizzesPage /></Guard>}
           />
 
           <Route
             path="/admin/dashboard"
-            element={<Guard roles={['admin']} blockSuperuser><AdminDashboardPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} blockSuperuser><AdminDashboardPage /></Guard>}
           />
           <Route
             path="/admin/users"
-            element={<Guard roles={['admin']} blockSuperuser><AdminUsersPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} blockSuperuser><AdminUsersPage /></Guard>}
           />
           <Route
             path="/admin/audit"
-            element={<Guard roles={['admin']} blockSuperuser><AdminAuditPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} blockSuperuser><AdminAuditPage /></Guard>}
           />
           <Route
             path="/admin/tenant"
-            element={<Guard roles={['admin']} blockSuperuser><TenantStructurePage /></Guard>}
+            element={<Guard roles={['tenant_admin']} blockSuperuser><TenantStructurePage /></Guard>}
           />
           <Route
             path="/admin/faculties/:id"
-            element={<Guard roles={['admin']} blockSuperuser><FacultyDetailPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} blockSuperuser><FacultyDetailPage /></Guard>}
           />
           <Route
             path="/admin/departments/:id"
-            element={<Guard roles={['admin']} blockSuperuser><DepartmentDetailPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} blockSuperuser><DepartmentDetailPage /></Guard>}
           />
           <Route
             path="/admin/courses"
-            element={<Guard roles={['admin']} blockSuperuser><AdminCoursesPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} blockSuperuser><AdminCoursesPage /></Guard>}
           />
           <Route
             path="/admin/courses/:id"
-            element={<Guard roles={['admin']} blockSuperuser><CourseManagePage /></Guard>}
+            element={<Guard roles={['tenant_admin']} blockSuperuser><CourseManagePage /></Guard>}
           />
 
           {/* Platform (superuser) */}
           <Route
             path="/platform"
-            element={<Guard roles={['admin']} requireSuperuser><PlatformConsolePage /></Guard>}
+            element={<Guard roles={['tenant_admin']} requireSuperuser><PlatformConsolePage /></Guard>}
           />
           <Route
             path="/platform/tenants"
-            element={<Guard roles={['admin']} requireSuperuser><PlatformTenantsPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} requireSuperuser><PlatformTenantsPage /></Guard>}
           />
           <Route
             path="/platform/tenants/:id"
-            element={<Guard roles={['admin']} requireSuperuser><PlatformTenantDetailPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} requireSuperuser><PlatformTenantDetailPage /></Guard>}
           />
           <Route
             path="/platform/requests"
-            element={<Guard roles={['admin']} requireSuperuser><PlatformRequestsPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} requireSuperuser><PlatformRequestsPage /></Guard>}
           />
           <Route
             path="/platform/analytics"
-            element={<Guard roles={['admin']} requireSuperuser><PlatformAnalyticsPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} requireSuperuser><PlatformAnalyticsPage /></Guard>}
           />
           <Route
             path="/platform/health"
-            element={<Guard roles={['admin']} requireSuperuser><PlatformSystemHealthPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} requireSuperuser><PlatformSystemHealthPage /></Guard>}
           />
           <Route
             path="/platform/audit"
-            element={<Guard roles={['admin']} requireSuperuser><PlatformAuditLogPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} requireSuperuser><PlatformAuditLogPage /></Guard>}
           />
           <Route
             path="/platform/announcements"
-            element={<Guard roles={['admin']} requireSuperuser><PlatformAnnouncementsPage /></Guard>}
+            element={<Guard roles={['tenant_admin']} requireSuperuser><PlatformAnnouncementsPage /></Guard>}
           />
 
           <Route path="/notes" element={<Guard><NotesPage /></Guard>} />

@@ -93,7 +93,7 @@ def test_student_cannot_delete_other_users_resource():
     # Admin can delete anyone's in-tenant resource
     res2 = Resource.objects.create(tenant=t, title="Mine2", uploaded_by=owner)
     admin = User.objects.create_user(
-        email="a@t3.edu", password=PASSWORD, tenant=t, role="admin", is_email_verified=True
+        email="a@t3.edu", password=PASSWORD, tenant=t, role="tenant_admin", is_email_verified=True
     )
     client.force_authenticate(admin)
     assert client.delete(f"/api/v1/resources/{res2.id}/").status_code == 204
