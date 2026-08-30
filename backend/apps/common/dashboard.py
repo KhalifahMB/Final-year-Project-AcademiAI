@@ -177,7 +177,9 @@ class StudentDashboardView(APIView):
             on_track = progress >= 35
             continue_courses.append(
                 {
-                    "id": str(course.id),
+                    # Link to the offering the student is enrolled in (the
+                    # course detail page resolves /course-offerings/:id).
+                    "id": str(co.id),
                     "code": course.code,
                     "title": course.title,
                     "semester": co.semester.name if co and co.semester else None,

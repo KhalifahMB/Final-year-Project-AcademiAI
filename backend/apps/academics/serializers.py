@@ -109,6 +109,22 @@ class CourseEnrollmentSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "tenant", "enrolled_at", "created_at")
 
+    def validate(self, attrs):
+        request = self.context.get("request")
+        tenant_id = getattr(getattr(request, "user", None), "tenant_id", None)
+        if tenant_id is None:
+            return attrs
+        offering = attrs.get("course_offering")
+        if offering is not None and offering.tenant_id != tenant_id:
+            raise serializers.ValidationError({"course_offering": "Unknown offering."})
+        student = attrs.get("student")
+        if student is not None:
+            if student.tenant_id != tenant_id:
+                raise serializers.ValidationError({"student": "Unknown student."})
+            if student.role != "student":
+                raise serializers.ValidationError({"student": "Only students can be enrolled."})
+        return attrs
+
 
 class LecturerAssignmentSerializer(serializers.ModelSerializer):
     lecturer_email = serializers.EmailField(source="lecturer.email", read_only=True)
@@ -137,6 +153,24 @@ class LecturerAssignmentSerializer(serializers.ModelSerializer):
             "tenant", "created_at",
         )
         read_only_fields = ("id", "tenant", "created_at")
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        tenant_id = getattr(getattr(request, "user", None), "tenant_id", None)
+        if tenant_id is None:
+            return attrs
+        offering = attrs.get("course_offering")
+        if offering is not None and offering.tenant_id != tenant_id:
+            raise serializers.ValidationError({"course_offering": "Unknown offering."})
+        lecturer = attrs.get("lecturer")
+        if lecturer is not None:
+            if lecturer.tenant_id != tenant_id:
+                raise serializers.ValidationError({"lecturer": "Unknown lecturer."})
+            if lecturer.role != "lecturer":
+                raise serializers.ValidationError(
+                    {"lecturer": "Only lecturers can be assigned to courses."}
+                )
+        return attrs
 
 
 class CurriculumCourseSerializer(serializers.ModelSerializer):

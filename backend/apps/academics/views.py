@@ -3,9 +3,11 @@ from django.core.exceptions import PermissionDenied
 import logging
 
 from drf_spectacular.utils import extend_schema
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import status
 
 from apps.common.db import tenant_scope
 from apps.common.viewsets import AdminWriteViewSet
@@ -57,7 +59,7 @@ class ProgrammeViewSet(AdminWriteViewSet):
     description=(
         "Unauthenticated list of programmes for one ACTIVE tenant slug, "
         "used by the signup form so students can pick their programme "
-        "(drives auto-enrollment). Exposes id/name/code/department only."
+        "and build their academic profile. Exposes id/name/code/department only."
     ),
     auth=[],
 )
@@ -129,17 +131,6 @@ class CourseOfferingViewSet(AdminWriteViewSet):
     serializer_class = CourseOfferingSerializer
     filterset_fields = ["course", "academic_session", "semester", "status"]
 
-    def perform_create(self, serializer):
-        offering = serializer.save()
-        try:
-            from .services import enroll_department_students
-
-            enroll_department_students(offering)
-        except Exception:
-            logger.exception(
-                "Auto-enrollment failed for new offering=%s", offering.id
-            )
-
 
 @extend_schema(tags=["Lecturer Assignments"])
 class LecturerAssignmentViewSet(AdminWriteViewSet):
@@ -150,7 +141,7 @@ class LecturerAssignmentViewSet(AdminWriteViewSet):
         "lecturer",
     ).order_by("-created_at")
     serializer_class = LecturerAssignmentSerializer
-    filterset_fields = ["course_offering", "lecturer"]
+    filterset_fields = ["course_offering", "course_offering__course", "lecturer"]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -179,6 +170,73 @@ class CourseEnrollmentViewSet(AdminWriteViewSet):
         if user.role == "student":
             qs = qs.filter(student=user)
         return qs
+
+    @action(detail=False, methods=["post"])
+    def enroll(self, request):
+        """Self-service enrolment: a student joins an active offering."""
+        user = request.user
+        if user.role != "student":
+            return Response(
+                {"detail": "Only students can enrol themselves."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        offering_id = request.data.get("course_offering")
+        if not offering_id:
+            return Response(
+                {"detail": "course_offering is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        offering = (
+            CourseOffering.objects.filter(tenant_id=user.tenant_id, id=offering_id)
+            .select_related("course", "academic_session", "semester")
+            .first()
+        )
+        if not offering:
+            return Response(
+                {"detail": "Offering not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if offering.status != "active":
+            return Response(
+                {"detail": "This offering is not open for enrolment."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        with tenant_scope(str(user.tenant_id)):
+            enrollment, created = CourseEnrollment.objects.get_or_create(
+                tenant_id=user.tenant_id,
+                course_offering=offering,
+                student=user,
+                defaults={"status": CourseEnrollment.Status.ENROLLED},
+            )
+        serializer = self.get_serializer(enrollment)
+        return Response(
+            serializer.data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["post"])
+    def unenroll(self, request):
+        """Self-service unenrolment: a student leaves an offering."""
+        user = request.user
+        if user.role != "student":
+            return Response(
+                {"detail": "Only students can unenrol themselves."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        offering_id = request.data.get("course_offering")
+        if not offering_id:
+            return Response(
+                {"detail": "course_offering is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        with tenant_scope(str(user.tenant_id)):
+            deleted, _ = CourseEnrollment.objects.filter(
+                tenant_id=user.tenant_id,
+                student=user,
+                course_offering_id=offering_id,
+            ).delete()
+        message = "Unenrolled." if deleted else "You are not enrolled in this offering."
+        return Response({"success": True, "message": message})
 
 
 @extend_schema(tags=["Curriculum"])

@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function MyCoursesPage() {
  const { user } = useAuth();
- const { data: enrollments, isLoading, error, refetch } = useQuery({
+ const { data, isLoading, error, refetch } = useQuery({
  queryKey: ['my-enrollments'],
  queryFn: async () => {
  const { data } = await api.get('/course-enrollments/');
@@ -21,6 +21,10 @@ export default function MyCoursesPage() {
  },
  select: (data) => data || [],
  });
+
+ // React Query's `select` is not applied while the first load is pending
+ // (data is undefined), so fall back to a stable empty array.
+ const enrollments = useMemo(() => data ?? [], [data]);
 
  const counts = useMemo(() => {
  const active = enrollments.filter((e) => e.status === 'enrolled' || e.status === 'active').length;
@@ -63,14 +67,14 @@ export default function MyCoursesPage() {
  <EmptyState
  icon={GraduationCap}
  title="No enrollments yet"
- description={
- user?.role === 'student'
- ? 'Enrollments are created automatically from your programme. If you just signed up, an admin can also enroll you manually.'
- :"When your institution enrolls you in course offerings, they'll show up here."
- }
- actionTo={user?.role === 'student' ? '/my-programme' : undefined}
- action={user?.role === 'student' ? 'View my programme' : undefined}
- />
+description={
+    user?.role === 'student'
+    ? 'You are not enrolled in any courses yet. Browse the catalogue and enrol yourself, or ask an admin to enrol you.'
+    : 'When your institution enrols you in course offerings, they\u2019ll show up here.'
+  }
+  actionTo={user?.role === 'student' ? '/courses' : undefined}
+  action={user?.role === 'student' ? 'Browse course catalogue' : undefined}
+  />
  ) : (
  <ul className="grid gap-3 sm:grid-cols-2">
  {enrollments.map((e) => (

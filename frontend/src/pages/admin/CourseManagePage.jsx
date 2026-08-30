@@ -14,7 +14,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ClipboardList, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { ClipboardList, Pencil, Plus, Trash2, UserCheck, Users } from "lucide-react";
 
 const toList = (d) => d?.results || d || [];
 
@@ -25,8 +25,10 @@ export default function CourseManagePage() {
   const [editOpen, setEditOpen] = useState(false);
   const [addOffering, setAddOffering] = useState(false);
   const [addEnrollment, setAddEnrollment] = useState(false);
+  const [addAssignment, setAddAssignment] = useState(false);
   const [confirmDeleteCourse, setConfirmDeleteCourse] = useState(false);
   const [confirmRemoveEnrollment, setConfirmRemoveEnrollment] = useState(null); // enrollment object
+  const [confirmRemoveAssignment, setConfirmRemoveAssignment] = useState(null); // assignment object
   const [modalError, setModalError] = useState("");
 
   const courseQ = useQuery({
@@ -69,6 +71,19 @@ export default function CourseManagePage() {
     enabled: addEnrollment,
   });
 
+  const lecturersQ = useQuery({
+    queryKey: ["tenant-lecturers"],
+    queryFn: async () => toList((await api.get("/auth/users/?role=lecturer&page_size=200")).data),
+    enabled: addAssignment,
+  });
+
+  const assignmentsQ = useQuery({
+    queryKey: ["lecturer-assignments", "course", id],
+    queryFn: async () =>
+      toList((await api.get(`/lecturer-assignments/?course_offering__course=${id}&page_size=200`)).data),
+    enabled: !!id,
+  });
+
   const errText = (err, fallback) =>
     err?.response?.data?.error?.detail ||
     err?.response?.data?.detail ||
@@ -79,6 +94,7 @@ export default function CourseManagePage() {
     qc.invalidateQueries({ queryKey: ["courses"] });
     qc.invalidateQueries({ queryKey: ["offerings", "course", id] });
     qc.invalidateQueries({ queryKey: ["enrollments", "course", id] });
+    qc.invalidateQueries({ queryKey: ["lecturer-assignments", "course", id] });
   };
 
   const saveCourse = useMutation({
@@ -95,7 +111,7 @@ export default function CourseManagePage() {
   const createOffering = useMutation({
     mutationFn: (payload) => api.post("/course-offerings/", { ...payload, course: id, status: "active" }),
     onSuccess: () => {
-      toast.success("Offering created — students of this department were auto-enrolled");
+      toast.success("Offering created");
       setAddOffering(false);
       setModalError("");
       invalidate();
@@ -122,6 +138,28 @@ export default function CourseManagePage() {
       invalidate();
     },
     onError: () => toast.error("Could not remove enrollment"),
+  });
+
+  const createAssignment = useMutation({
+    mutationFn: (payload) =>
+      api.post("/lecturer-assignments/", { ...payload, assignment_role: "lecturer" }),
+    onSuccess: () => {
+      toast.success("Lecturer assigned");
+      setAddAssignment(false);
+      setModalError("");
+      invalidate();
+    },
+    onError: (e) => setModalError(errText(e, "Could not assign lecturer")),
+  });
+
+  const removeAssignment = useMutation({
+    mutationFn: (assignmentId) => api.delete(`/lecturer-assignments/${assignmentId}/`),
+    onSuccess: () => {
+      toast.success("Assignment removed");
+      setConfirmRemoveAssignment(null);
+      invalidate();
+    },
+    onError: () => toast.error("Could not remove assignment"),
   });
 
   const deleteCourse = useMutation({
@@ -173,7 +211,8 @@ export default function CourseManagePage() {
                 <ClipboardList className="h-4.5 w-4.5 text-primary" aria-hidden /> Offerings
               </CardTitle>
               <CardDescription>
-                A course runs per session/semester. Creating an offering auto-enrolls students of the department.
+                A course runs per session/semester. Students can self-enrol once an
+                offering is active; you can also enrol students manually.
               </CardDescription>
             </div>
             <Button type="button" size="sm" className="shadow-sm" onClick={() => { setModalError(""); setAddOffering(true); }}>
@@ -198,6 +237,73 @@ export default function CourseManagePage() {
                         <p className="text-xs text-muted-foreground">{count} enrolled</p>
                       </div>
                       <Badge variant="outline" className="capitalize">{o.status}</Badge>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Lecturers */}
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <UserCheck className="h-4.5 w-4.5 text-primary" aria-hidden /> Lecturers
+              </CardTitle>
+              <CardDescription>
+                Staff assigned to teach this course. Each assignment is tied to one offering.
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="shadow-sm"
+              disabled={(offeringsQ.data || []).length === 0}
+              onClick={() => { setModalError(""); setAddAssignment(true); }}
+            >
+              <Plus className="mr-1.5 h-4 w-4" aria-hidden /> Assign lecturer
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {assignmentsQ.isLoading ? (
+              <SkeletonRows rows={2} />
+            ) : (assignmentsQ.data || []).length === 0 ? (
+              <EmptyState
+                icon={UserCheck}
+                title="No lecturers assigned"
+                description={
+                  (offeringsQ.data || []).length === 0
+                    ? "Create an offering first, then assign the lecturers who teach it."
+                    : "Assign a lecturer to an offering so staff can pick this course up in 'My Courses'."
+                }
+              />
+            ) : (
+              <ul className="space-y-2">
+                {(assignmentsQ.data || []).map((a) => {
+                  const offering = (offeringsQ.data || []).find((o) => o.id === a.course_offering);
+                  return (
+                    <li key={a.id} className="flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-3 text-sm">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium">{a.lecturer_name || a.lecturer_email}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {offering
+                            ? `${sessionName(offering.academic_session)} · ${semesterName(offering.semester)}`
+                            : "—"}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="capitalize">{a.assignment_role || "lecturer"}</Badge>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:bg-[var(--danger)]/10 hover:text-red-700"
+                        onClick={() => setConfirmRemoveAssignment(a)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      </Button>
                     </li>
                   );
                 })}
@@ -235,8 +341,8 @@ export default function CourseManagePage() {
                 title="No enrollments"
                 description={
                   (offeringsQ.data || []).length === 0
-                    ? "Create an offering first — then enroll students or let auto-enrollment handle it."
-                    : "Enroll students manually or create an offering to auto-enroll the department."
+                    ? "Create an offering first — then students can self-enrol or you can enrol them here."
+                    : "Students self-enrol from the course catalogue. You can also enrol them manually."
                 }
               />
             ) : (
@@ -395,6 +501,45 @@ export default function CourseManagePage() {
           removeEnrollment.mutate(id);
         }}
         onCancel={() => setConfirmRemoveEnrollment(null)}
+      />
+
+      {/* Assign lecturer */}
+      <EntityDialog
+        open={addAssignment}
+        title="Assign lecturer"
+        fields={[
+          {
+            name: "course_offering", label: "Offering", type: "select", required: true,
+            options: (offeringsQ.data || []).map((o) => ({
+              value: o.id, label: `${sessionName(o.academic_session)} · ${semesterName(o.semester)}`,
+            })),
+          },
+          {
+            name: "lecturer", label: "Lecturer", type: "select", required: true,
+            options: (lecturersQ.data || []).map((u) => ({
+              value: u.id, label: u.full_name ? `${u.full_name} (${u.email})` : u.email,
+            })),
+          },
+        ]}
+        pending={createAssignment.isPending}
+        error={modalError}
+        onClose={() => setAddAssignment(false)}
+        onSubmit={(payload) => createAssignment.mutate(payload)}
+      />
+
+      {/* Remove assignment confirmation */}
+      <ConfirmDialog
+        open={!!confirmRemoveAssignment}
+        title="Remove lecturer?"
+        description={`Unassign ${confirmRemoveAssignment?.lecturer_name || confirmRemoveAssignment?.lecturer_email || "this lecturer"} from this course?`}
+        confirmLabel="Remove"
+        destructive
+        onConfirm={() => {
+          const id = confirmRemoveAssignment?.id;
+          setConfirmRemoveAssignment(null);
+          removeAssignment.mutate(id);
+        }}
+        onCancel={() => setConfirmRemoveAssignment(null)}
       />
     </AppShell>
   );

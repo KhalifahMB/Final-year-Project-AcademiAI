@@ -37,6 +37,7 @@ const TenantStructurePage = lazy(() => import('@/pages/admin/TenantStructurePage
 const FacultyDetailPage = lazy(() => import('@/pages/admin/FacultyDetailPage'));
 const DepartmentDetailPage = lazy(() => import('@/pages/admin/DepartmentDetailPage'));
 const CourseManagePage = lazy(() => import('@/pages/admin/CourseManagePage'));
+const AdminCoursesPage = lazy(() => import('@/pages/admin/AdminCoursesPage'));
 
 const PlatformConsolePage = lazy(() => import('@/pages/PlatformConsolePage'));
 const PlatformTenantsPage = lazy(() => import('@/pages/platform/TenantsPage'));
@@ -145,6 +146,10 @@ export default function App() {
           <Route
             path="/admin/departments/:id"
             element={<Guard roles={['admin']} blockSuperuser><DepartmentDetailPage /></Guard>}
+          />
+          <Route
+            path="/admin/courses"
+            element={<Guard roles={['admin']} blockSuperuser><AdminCoursesPage /></Guard>}
           />
           <Route
             path="/admin/courses/:id"

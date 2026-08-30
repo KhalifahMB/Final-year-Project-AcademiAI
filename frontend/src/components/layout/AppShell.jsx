@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import {
@@ -110,6 +110,7 @@ const ADMIN_NAV = [
       { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
       { to: '/admin/users', label: 'Users', icon: Users },
       { to: '/admin/tenant', label: 'Structure', icon: Building2 },
+      { to: '/admin/courses', label: 'Manage Courses', icon: BookOpen },
       { to: '/admin/audit', label: 'Audit Logs', icon: ScrollText },
     ],
   },
@@ -234,7 +235,7 @@ function NavItem({ item, collapsed, active, onNavigate }) {
   return node;
 }
 
-function UserMenu({ user, logout }) {
+function UserMenu({ user }) {
   const displayName =
     user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.email;
   const roleLabel = user?.is_superuser
@@ -274,10 +275,6 @@ function UserMenu({ user, logout }) {
           <Link to="/dashboard">
             <Home className="mr-2 h-3.5 w-3.5" /> Dashboard
           </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout} className="rounded-[var(--radius-sm)] h-9 text-[var(--danger)] focus:text-[var(--danger)]">
-          <LogOut className="mr-2 h-3.5 w-3.5" /> Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -451,7 +448,7 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
   );
 }
 
-function MobileDrawer({ open, onClose, sections, onNavigate, activeKey, user, logout }) {
+function MobileDrawer({ open, onClose, sections, onNavigate, activeKey, user }) {
   return (
     open && (
       <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
@@ -494,7 +491,7 @@ function MobileDrawer({ open, onClose, sections, onNavigate, activeKey, user, lo
           </nav>
           <div className="shrink-0 space-y-1 border-t border-[var(--border)] p-2">
             <TenantCard user={user} />
-            <UserMenu user={user} logout={logout} />
+            <UserMenu user={user} />
             <ThemeToggle className="w-full" />
           </div>
         </aside>
@@ -509,6 +506,8 @@ export default function AppShell({ title, description, actions, children, fullBl
   const { user, logout } = useAuth();
   const loc = useLocation();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
+  const searchRef = useRef(null);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
@@ -573,8 +572,6 @@ export default function AppShell({ title, description, actions, children, fullBl
     return prefix?.to || (user?.is_superuser ? '/platform' : '/dashboard');
   }, [flat, loc.pathname, user]);
 
-  const openPalette = () => setPaletteOpen(true);
-
   const contentPadding = collapsed ? 'lg:pl-[60px]' : 'lg:pl-[248px]';
 
   return (
@@ -598,7 +595,6 @@ export default function AppShell({ title, description, actions, children, fullBl
           onNavigate={() => setMobileOpen(false)}
           activeKey={activeKey}
           user={user}
-          logout={logout}
         />
 
         {/* Main column */}
@@ -631,35 +627,32 @@ export default function AppShell({ title, description, actions, children, fullBl
                 </Button>
               )}
 
-              {/* Search / command trigger (brand spec topbar) */}
-              <button
-                type="button"
-                onClick={openPalette}
-                className="hidden md:flex h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 text-[13px] text-[var(--muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--fg)] min-w-[220px] md:w-[min(340px,42vw)]"
+              {/* Search field (navigates to the resources library) */}
+              <form
+                role="search"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const q = searchRef.current?.value.trim() || '';
+                  navigate(q ? `/resources?q=${encodeURIComponent(q)}` : '/resources');
+                }}
+                className="flex h-9 w-full min-w-0 max-w-[440px] flex-1 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 transition-colors focus-within:border-[var(--border)] md:max-w-[min(340px,42vw)]"
               >
                 <Search className="h-4 w-4 shrink-0" aria-hidden />
-                <span className="hidden lg:inline">Search resources, quizzes…</span>
-                <span className="lg:hidden">Search…</span>
-                <kbd className="ml-auto hidden md:inline-flex items-center gap-0.5 rounded border border-[var(--border)] border-b-2 bg-[var(--surface-2)] px-1.5 py-0.5 text-[10.5px] font-mono text-[var(--muted)]">
-                  ⌘K
-                </kbd>
-              </button>
+                <input
+                  ref={searchRef}
+                  type="search"
+                  defaultValue=""
+                  placeholder="Search resources, quizzes…"
+                  aria-label="Search materials"
+                  className="h-full w-full min-w-0 bg-transparent text-[13px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
+                />
+              </form>
 
               {/* Title is now inside the content area (page header) */}
               <div className="ml-auto flex items-center gap-1.5">
                 <OnlineStatus className="hidden sm:inline-flex" />
-                <button
-                  type="button"
-                  className="md:hidden theme-btn"
-                  onClick={openPalette}
-                  aria-label="Open command palette"
-                >
-                  <Search className="h-4 w-4" aria-hidden />
-                </button>
                 <ThemeToggle className="lg:hidden" iconOnly />
-                <div className="hidden sm:block">
-                  <UserMenuSmall user={user} />
-                </div>
+                <UserMenuSmall user={user} logout={logout} />
               </div>
             </header>
           )}
@@ -707,15 +700,38 @@ export default function AppShell({ title, description, actions, children, fullBl
   );
 }
 
-/* Small avatar-only trigger for the topbar; routes to the full menu on mobile */
-function UserMenuSmall({ user }) {
+/* Avatar-only trigger for the topbar with a compact account menu */
+function UserMenuSmall({ user, logout }) {
+  const displayName =
+    user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.email;
+
   return (
-    <Link
-      to="/settings"
-      aria-label="Account"
-      className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] hover:bg-[var(--hover)]"
-    >
-      <Avatar user={user} className="h-[30px] w-[30px] rounded-full" />
-    </Link>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="Account menu"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] hover:bg-[var(--hover)]"
+        >
+          <Avatar user={user} className="h-[30px] w-[30px] rounded-full" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 rounded-[var(--radius-lg)] p-1 shadow-[var(--shadow-pop)]" sideOffset={8}>
+        <DropdownMenuLabel className="flex flex-col gap-0.5 px-2 py-1.5">
+          <span className="truncate text-sm font-[600]">{displayName}</span>
+          <span className="truncate text-[11px] font-normal text-[var(--muted)]">{user?.email}</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="rounded-[var(--radius-sm)] h-9">
+          <Link to="/settings">
+            <UserRound className="mr-2 h-3.5 w-3.5" /> Profile & settings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={logout} className="rounded-[var(--radius-sm)] h-9 text-[var(--danger)] focus:text-[var(--danger)]">
+          <LogOut className="mr-2 h-3.5 w-3.5" /> Log out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

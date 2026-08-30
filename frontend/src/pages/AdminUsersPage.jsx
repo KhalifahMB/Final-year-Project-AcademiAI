@@ -33,7 +33,7 @@ function RoleBadge({ role }) {
 export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const { data: users, isLoading, error } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
       const { data } = await api.get('/auth/users/');
@@ -41,6 +41,9 @@ export default function AdminUsersPage() {
     },
     select: (data) => data || [],
   });
+  // React Query's `select` is not applied at the first render (data is
+  // undefined), so fall back to a stable empty array.
+  const users = useMemo(() => data ?? [], [data]);
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return users.filter((u) => {

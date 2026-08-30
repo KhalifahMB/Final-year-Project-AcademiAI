@@ -70,14 +70,6 @@ def verify_email_code(email: str, code: str) -> User:
             send_welcome_email(str(user.id))
         except Exception:
             logger.exception("Failed to queue welcome email")
-        # First-time onboarding: auto-enrol students into the course
-        # offerings of their programme's department.
-        try:
-            from apps.academics.services import auto_enroll_student
-
-            auto_enroll_student(user)
-        except Exception:
-            logger.exception("Auto-enrollment failed user=%s", user.id)
     log_action(
         tenant=user.tenant,
         actor=user,
@@ -175,7 +167,7 @@ def resend_verification_code(email: str) -> bool:
     don't leak account existence (same response whether or not email matches)."""
     # Lookup case-insensitive across tenants (emails are unique per tenant but
     # a given email address typically only has one AcademiAI account).
-    user = User.objects.filter(email__iexact=email).order_by("-date_joined").first()
+    user = User.objects.filter(email__iexact=email).order_by("-created_at").first()
     if not user or user.is_email_verified:
         # Still return True — do not reveal whether the account exists.
         return True

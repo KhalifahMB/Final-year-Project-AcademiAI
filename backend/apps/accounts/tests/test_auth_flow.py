@@ -172,9 +172,9 @@ def test_password_reset_flow_single_use_and_generic_responses():
 
 @pytest.mark.django_db
 def test_signup_cannot_attach_cross_tenant_programme():
-    """A student must never be attached to (or auto-enrolled into) another
-    tenant's programme, even if they forge that programme's id at signup.
-    This assertion must hold regardless of whether database RLS is enabled."""
+    """A student must never be attached to another tenant's programme, even
+    if they forge that programme's id at signup. This assertion must hold
+    regardless of whether database RLS is enabled."""
     from apps.accounts.models import StudentProfile
 
     tenant_a = Tenant.objects.create(name="New Univ", slug="new-u")
@@ -211,8 +211,9 @@ def test_signup_cannot_attach_cross_tenant_programme():
     assert profile.programme_id is None
     assert profile.tenant_id == tenant_a.id
 
-    # Verify → auto-enrollment must not create enrollments in tenant A
-    # (which has no offerings) nor spill across into tenant B.
+    # Verify → no enrollments must be created in either tenant: enrolment is
+    # opt-in (student self-enrolment or admin management) and the forged
+    # programme must never leak coursework access across institutions.
     from apps.academics.models import CourseEnrollment
 
     code = services.create_verification_code(user)

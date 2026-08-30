@@ -76,18 +76,22 @@ export default function SignupPage() {
     try {
       const payload = { ...values };
       if (!payload.programme) delete payload.programme;
+      let signupRes;
       if (avatarFile) {
         const fd = new FormData();
         Object.entries(payload).forEach(([k, v]) => {
           if (v !== undefined && v !== null && v !== '') fd.append(k, v);
         });
         fd.append('avatar', avatarFile);
-        await authApi.signup(fd);
+        signupRes = await authApi.signup(fd);
       } else {
         if (avatarPreset) payload.avatar_preset = avatarPreset;
-        await authApi.signup(payload);
+        signupRes = await authApi.signup(payload);
       }
-      navigate('/verify-email', { state: { email: values.email } });
+      // Use the backend-normalized email so the verify-email page pre-fills
+      // exactly what the account was created with.
+      const emails = signupRes?.data?.user?.email || signupRes?.user?.email;
+      navigate('/verify-email', { state: { email: emails || values.email } });
     } catch (err) {
       const d = err.response?.data?.error?.detail;
       setError(typeof d === 'string' ? d : JSON.stringify(d || 'Signup failed'));
@@ -276,8 +280,8 @@ export default function SignupPage() {
                   </Select>
                   <p className="flex items-start gap-1 text-[10px] text-muted-foreground">
                     <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-[var(--success)]" aria-hidden />
-                    Picking your programme auto-enrols you in departmental courses after
-                    email verification.
+                    Your programme starts a curated profile so you can browse and enrol in your
+                    department's courses after email verification.
                   </p>
                 </FormItem>
               )}
