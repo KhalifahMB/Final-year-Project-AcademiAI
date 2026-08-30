@@ -406,8 +406,9 @@ class ChatStreamMessageView(APIView):
             session.title = content[:80]
             session.save(update_fields=["title", "updated_at"])
 
-        # Authorization-first retrieval (cached briefly keyed by tenant+query)
-        cache_key = "rag:" + str(user.tenant_id) + ":" + hashlib.sha256(
+        # Authorization-first retrieval (cached briefly keyed by
+        # tenant+user+query so private-resource chunks never cross users).
+        cache_key = "rag:" + str(user.tenant_id) + ":" + str(user.id) + ":" + hashlib.sha256(
             content.encode("utf-8"),
         ).hexdigest()[:16]
         chunks = cache.get(cache_key)

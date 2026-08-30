@@ -134,7 +134,7 @@ def send_tenant_suspension_emails(self, tenant_id: str):
             send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
             sent += 1
         except Exception:
-            logger.exception("Suspension notice failed tenant=%s to=%s", tenant.id, email)
+            logger.exception("Suspension notice failed tenant=%s one recipient", tenant.id)
     logger.info("Suspension notices sent tenant=%s count=%s", tenant.id, sent)
 
 

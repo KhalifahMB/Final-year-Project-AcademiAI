@@ -10,14 +10,14 @@ class ResourceSerializer(serializers.ModelSerializer):
         model = Resource
         fields = (
             "id", "title", "description", "visibility_scope", "mime_type",
-            "storage_key", "processing_status", "processing_error",
+            "processing_status", "processing_error",
             "has_extractable_text",
             "course_offering", "programme", "department", "faculty",
             "uploaded_by", "uploaded_by_username", "tenant",
             "created_at", "updated_at", "latest_summary",
         )
         read_only_fields = (
-            "id", "storage_key", "processing_status", "processing_error",
+            "id", "processing_status", "processing_error",
             "has_extractable_text",
             "uploaded_by", "tenant", "created_at", "updated_at",
             "latest_summary",
@@ -48,7 +48,7 @@ class ResourceVersionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResourceVersion
         fields = (
-            "id", "resource", "version_number", "storage_key", "checksum",
+            "id", "resource", "version_number",
             "file_size_bytes", "created_by", "created_at",
         )
         read_only_fields = fields

@@ -175,6 +175,7 @@ REST_FRAMEWORK = {
         "auth": "20/minute",
         "ai": "30/minute",
         "upload": "20/hour",
+        "tenant_request": "5/hour",
     },
 }
 
@@ -189,6 +190,8 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUDIENCE": os.getenv("JWT_AUDIENCE", "academiai-api"),
+    "ISSUER": os.getenv("JWT_ISSUER", "academiai"),
 }
 
 SPECTACULAR_SETTINGS = {
@@ -330,6 +333,29 @@ if not DEBUG:
     SESSION_COOKIE_HTTPONLY = True
     CSRF_COOKIE_HTTPONLY = True
     X_FRAME_OPTIONS = "DENY"
+
+# Fail fast on known-insecure infrastructure credentials when not in DEBUG,
+# mirroring the SECRET_KEY guard above. Without this, a deployment that omits
+# any of these env vars would run against publicly-known default passwords.
+if not DEBUG:
+    _KNOWN_DEFAULT_PASSWORDS = {
+        "academiai_app",  # postgres
+        "academiai",      # rabbitmq / postgres
+        "minioadmin",     # minio / s3
+    }
+    _insecure = []
+    if os.getenv("POSTGRES_PASSWORD", "academiai_app") in _KNOWN_DEFAULT_PASSWORDS:
+        _insecure.append("POSTGRES_PASSWORD")
+    if os.getenv("AWS_SECRET_ACCESS_KEY", "minioadmin") in _KNOWN_DEFAULT_PASSWORDS:
+        _insecure.append("AWS_SECRET_ACCESS_KEY")
+    if "academiai:academiai@" in os.getenv("CELERY_BROKER_URL", ""):
+        _insecure.append("CELERY_BROKER_URL")
+    if _insecure:
+        raise RuntimeError(
+            "Insecure default credential(s) used in production: "
+            + ", ".join(sorted(_insecure))
+            + ". Set strong values via env when DEBUG=False."
+        )
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"

@@ -31,7 +31,12 @@ class TenantDirectoryView(APIView):
         search = (request.query_params.get("search") or "").strip()
         if search:
             qs = qs.filter(name__icontains=search) | qs.filter(slug__icontains=search)
-        limit = min(int(request.query_params.get("limit", 100) or 100), 200)
+        try:
+            limit = min(int(request.query_params.get("limit", 100) or 100), 200)
+        except (TypeError, ValueError):
+            limit = 100
+        if limit < 1:
+            limit = 100
         data = TenantDirectorySerializer(qs[:limit], many=True).data
         return Response({"count": len(data), "results": data})
 

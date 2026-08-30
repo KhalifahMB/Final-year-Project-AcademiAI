@@ -133,7 +133,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token["role"] = user.role
         token["tenant_id"] = str(user.tenant_id) if user.tenant_id else None
-        token["email"] = user.email
+        # Note: never embed PII (email) in the token — authorization always
+        # reads the DB user, not these claims.
         return token
 
 

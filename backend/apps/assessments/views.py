@@ -154,6 +154,11 @@ class QuizAttemptViewSet(TenantModelViewSet):
         total = len(questions) or 1
         for qid, q in questions.items():
             user_ans = answers.get(qid)
+            # Unanswered questions are never correct, even when the question
+            # has no correct_answer configured ({} default) — otherwise
+            # _norm(None) == _norm(None) would wrongly score it as correct.
+            if user_ans is None:
+                continue
             ca = q.correct_answer or {}
             if (
                 user_ans == ca

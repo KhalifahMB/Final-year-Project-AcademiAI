@@ -99,7 +99,18 @@ def signup_user(
             raise ValueError("Tenant not found or inactive.")
 
     if User.objects.filter(email=email, tenant=tenant).exists():
-        raise ValueError("A user with this email already exists for this institution.")
+        # Do not reveal that the email already exists (anti-enumeration).
+        # Return None so the caller issues the same generic "check your
+        # inbox" response as for a brand-new signup.
+        log_action(
+            tenant=tenant,
+            actor=None,
+            action="user.signup_attempt_existing",
+            entity_type="email",
+            entity_id="",
+            metadata={"role": role},
+        )
+        return None, None
 
     # Anonymous signup requests carry no tenant context; academic tables are
     # RLS-protected, so resolve + write inside an explicit scope.
@@ -185,7 +196,12 @@ def resend_verification_code(email: str) -> bool:
 
         send_verification_email(str(user.id), code)
     except Exception:
-        logger.exception("Failed to queue verification resend email=%s", email)
+        if user is not None:
+            logger.exception(
+                "Failed to queue verification resend user=%s", user.id
+            )
+        else:
+            logger.exception("Failed to queue verification resend")
     return True
 
 
@@ -210,7 +226,7 @@ def create_password_reset_token(user: User) -> str:
 
 def confirm_password_reset(email: str, token: str, new_password: str) -> None:
     # Do not reveal whether email exists
-    user = User.objects.filter(email=email).first()
+    user = User.objects.filter(email__iexact=email).first()
     if not user:
         return
     record = (
