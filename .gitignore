@@ -52,3 +52,5 @@ secrets/
 
 # Mailpit local database (runtime-generated, do not commit)
 mailpit/
+
+.opencode/
