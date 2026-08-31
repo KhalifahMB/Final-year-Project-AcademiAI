@@ -142,6 +142,7 @@ Severity legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🟢 Low / Info
 
 ### Frontend
 - **L16** — `pages/AdminQuizzesPage.jsx`: added missing `useMemo` import (was a runtime crash). ✅
+- **L18** — Deep UI/UX review + fixes applied — see `UX_REVIEW.md` for the full inventory (rated 6.5/10): live visual bugs (`bg-[var(--accent)]` class-splicing), fake study minutes, dead `AdminCrudPage` deleted, ops-jargon leaks, duplicate KPIs, password toggles, retry buttons, and copy/decor sweeps. ✅
 
 ### Not applied (require infra/arch/ops or are informational)
 - C1 (RLS runtime role), H1 (rotate keys — user action), H2 (seed_demo), H3 (localStorage JWT), H4 (CSP/headers), H8 (bind infra to loopback), H9 (gate admin/schema), M3, M6, M7, M8, M10, L7-L15, L17-L20.

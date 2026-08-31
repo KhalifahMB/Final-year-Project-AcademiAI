@@ -832,7 +832,7 @@ export default function ChatPage() {
  <Button
  size="sm"
  onClick={startNewChat}
- className="h-8 w-full gap-1.5  [var(--accent)] text-xs text-white hover:bg-[var(--accent-strong)]"
+ className="h-8 w-full gap-1.5 bg-[var(--accent)] text-xs text-white hover:bg-[var(--accent-strong)]"
  >
  <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden />
  New chat

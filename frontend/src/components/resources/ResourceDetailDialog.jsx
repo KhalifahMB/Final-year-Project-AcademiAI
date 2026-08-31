@@ -254,11 +254,11 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
                   warnOnceRef.current = true;
                   setWorkerOutdatedWarned(true);
                   toast.warning(
-                    'Summary generated but not saved — restart the Celery worker and run `python manage.py migrate`.',
+                    'Summary generated, but saving is currently unavailable. Contact your administrator for help.',
                     { duration: 8000 },
                   );
                 } else {
-                  toast.success('Summary ready (not saved — restart Celery worker)');
+                  toast.success('Summary ready (couldn\'t be saved — ask an admin)');
                 }
               }
             }
@@ -676,7 +676,7 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
 
         {workerOutdatedWarned && (
           <div className="shrink-0 border-b bg-amber-50 px-4 py-2 text-[12px] text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
-            <strong>Heads up:</strong> Summaries are showing but not being saved. Stop the Celery worker and restart it with: <code className="rounded bg-black/10 px-1 dark:bg-white/10">celery -A config worker -l INFO -P solo -Q ai,celery,email,ingestion</code>, then run <code className="rounded bg-black/10 px-1 dark:bg-white/10">python manage.py migrate</code>.
+            <strong>Heads up:</strong> Summaries are showing but not being saved right now. Please contact your administrator so they can restore saving.
           </div>
         )}
         {summaryLoading && (

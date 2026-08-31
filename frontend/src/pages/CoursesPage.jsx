@@ -102,7 +102,7 @@ export default function CoursesPage() {
  const [pendingOffering, setPendingOffering] = useState(null);
  const isStudent = user?.role === 'student';
 
- const { data, isLoading, error } = useQuery({
+ const { data, isLoading, error, refetch } = useQuery({
   queryKey: ['courses'],
   queryFn: async () => {
   const { data } = await api.get('/courses/');
@@ -197,7 +197,12 @@ export default function CoursesPage() {
 
   {error ? (
   <Alert variant="destructive" className="mb-4">
-  <AlertDescription className="text-xs">Failed to load courses</AlertDescription>
+  <div className="flex w-full items-center justify-between gap-3">
+  <AlertDescription className="text-xs">{errMsg(error, 'Failed to load courses')}</AlertDescription>
+  <Button type="button" variant="outline" size="sm" onClick={() => refetch()} className="shrink-0 h-7 text-[11px]">
+  Retry
+  </Button>
+  </div>
   </Alert>
   ) : null}
 

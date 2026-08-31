@@ -97,7 +97,7 @@ export default function QuizzesPage() {
  size="sm"
  onClick={() => gen.mutate()}
  disabled={generating}
- className="h-8 gap-1.5  [var(--accent)] px-3 text-xs text-white hover:bg-[var(--accent-strong)]"
+ className="h-8 gap-1.5 bg-[var(--accent)] px-3 text-xs text-white hover:bg-[var(--accent-strong)]"
  >
  {generating ? (
  <Loader2 className="h-3.5 w-3.5 animate-spin" />

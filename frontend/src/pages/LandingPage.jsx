@@ -654,10 +654,10 @@ export default function LandingPage() {
         />
         <div className="relative mx-auto max-w-3xl px-5 py-20 text-center sm:px-6 lg:py-28">
           <h2 className="text-[34px] font-[650] leading-[1.05] tracking-[-0.02em] sm:text-[44px]">
-            Join the future of academic learning.
+            Get grounded answers from materials your students can actually access.
           </h2>
           <p className="mx-auto mt-4 max-w-[60ch] text-[15px] leading-relaxed text-white/75">
-            Multi-tenant, secure, grounded. Built as an ATBU Faculty of Computing case study — open for collaboration with any university.
+            Every answer cites the slide, page or passage it came from — and content never leaks between institutions.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             {isAuthenticated ? (
@@ -693,7 +693,7 @@ export default function LandingPage() {
             )}
           </div>
           <p className="mt-8 text-[12px] text-white/60">
-            Multi-tenant · For any university · Open for collaboration
+            Multi-tenant · Built as an ATBU Faculty of Computing case study · Open for collaboration
           </p>
         </div>
       </section>

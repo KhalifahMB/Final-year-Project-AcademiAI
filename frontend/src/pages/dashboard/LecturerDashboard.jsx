@@ -27,7 +27,6 @@ import {
   MessageSquareText,
   Plus,
   Sparkles,
-  TrendingUp,
   Upload,
   Users,
   XCircle,
@@ -345,7 +344,7 @@ export default function LecturerDashboard({ dash, firstName }) {
     { icon: AlertTriangle,      label: 'Concepts flagged',   value: k.concepts_flagged ?? 0,  hint: 'Below 50% mastery', accent: 'bg-[var(--danger-soft)] text-[var(--danger)]' },
     { icon: ClipboardList,      label: 'Quiz submissions',   value: k.quiz_submissions ?? 0,  hint: `${k.quiz_completion_pct ?? 0}% graded` },
     { icon: MessageSquareText,  label: 'AI answers today',   value: k.ai_answers_today ?? 0,  hint: 'Citing your materials' },
-    { icon: TrendingUp,         label: 'Completion rate',    value: `${k.quiz_completion_pct ?? 0}%`, hint: 'Of attempts graded' },
+    { icon: Clock,              label: 'Graded so far',      value: `${k.quiz_completion_pct ?? 0}%`, hint: 'Completion rate' },
   ];
 
   return (
@@ -359,7 +358,7 @@ export default function LecturerDashboard({ dash, firstName }) {
           </p>
           <h1 className="mt-1 text-[30px] font-[650] leading-[1.08] tracking-[-0.02em]">
             {greeting()}, {firstName}
-            <span className="text-[var(--muted)] font-[450]"> — cohort is live.</span>
+            <span className="text-[var(--muted)] font-[450]"> — here’s your cohort.</span>
           </h1>
           <p className="mt-1 text-[13.5px] text-[var(--muted)]">
             {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} · {students.length} student{students.length === 1 ? '' : 's'} flagged · {k.ai_answers_today ?? 0} AI answers today

@@ -119,7 +119,7 @@ const ADMIN_NAV = [
   {
     section: 'Admin',
     items: [
-      { to: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
+      { to: '/admin/dashboard', label: 'Institution dashboard', icon: LayoutDashboard },
       { to: '/admin/users', label: 'Users', icon: Users },
       { to: '/admin/tenant', label: 'Structure', icon: Building2 },
       { to: '/admin/courses', label: 'Manage Courses', icon: BookOpen },

@@ -416,7 +416,7 @@ function QuickCTA({ firstName }) {
           <Sparkles className="h-5 w-5" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="eyebrow !mb-0 !text-[var(--accent-strong)]">Ask anything</p>
+          <p className="eyebrow !mb-0 !text-[var(--accent-strong)]">AI tutor</p>
           <h3 className="mt-1 text-[15px] font-[640] tracking-[-0.01em]">
             {firstName}, your AI tutor is ready.
           </h3>
@@ -428,7 +428,7 @@ function QuickCTA({ firstName }) {
             to="/chat"
             className="mt-3 inline-flex h-9 items-center gap-1 rounded-[var(--radius-md)] bg-[var(--accent)] px-4 text-[13px] font-[620] text-[var(--on-accent)] transition-colors hover:bg-[var(--accent-strong)]"
           >
-            Open AI tutor
+            Ask the AI tutor
             <ArrowRight className="h-3.5 w-3.5" aria-hidden />
           </Link>
         </div>
@@ -444,23 +444,17 @@ function QuickCTA({ firstName }) {
 function deriveActivityStats(timeline) {
   if (!timeline || timeline.length === 0) {
     return [
-      { label: 'This week', value: '0m', hint: 'No activity yet', icon: <Clock className="mr-1 h-3 w-3" aria-hidden /> },
-      { label: 'vs last week', value: '+0', hint: 'Start a session', icon: <TrendingUp className="mr-1 h-3 w-3" aria-hidden /> },
+      { label: 'This period', value: '0', hint: 'No activity yet', icon: <Clock className="mr-1 h-3 w-3" aria-hidden /> },
+      { label: 'vs last period', value: '+0', hint: 'Start a chat or try a quiz', icon: <TrendingUp className="mr-1 h-3 w-3" aria-hidden /> },
       { label: 'Streak', value: '0 days', hint: 'Keep it going', icon: <Flame className="mr-1 h-3 w-3" aria-hidden /> },
     ];
   }
-  // Each "count" is an event; approximate minutes by weighting.
-  const toMins = (events) => events * 6;
+  // Each "count" is an activity event (a chat message, quiz answer or note).
   const mid = Math.floor(timeline.length / 2);
   const recent = timeline.slice(mid).reduce((a, p) => a + (p.chats + p.quizzes + p.notes), 0);
   const prior = timeline.slice(0, mid).reduce((a, p) => a + (p.chats + p.quizzes + p.notes), 0);
-  const recentMins = toMins(recent);
-  const priorMins = toMins(prior);
-  const diff = recentMins - priorMins;
-  const h = Math.floor(recentMins / 60);
-  const m = recentMins % 60;
-  const recentStr = h > 0 ? `${h}h${m > 0 ? m : ''}m` : `${m}m`;
-  const diffStr = diff >= 0 ? `+${diff}m` : `-${Math.abs(diff)}m`;
+  const diff = recent - prior;
+  const diffStr = diff >= 0 ? `+${diff}` : `-${Math.abs(diff)}`;
   // streak = trailing consecutive buckets with >=1 event
   let streak = 0;
   for (let i = timeline.length - 1; i >= 0; i--) {
@@ -469,8 +463,8 @@ function deriveActivityStats(timeline) {
     else break;
   }
   return [
-    { label: 'This period', value: recentStr, hint: 'Chats + quizzes + notes', icon: <Clock className="mr-1 h-3 w-3" aria-hidden /> },
-    { label: 'vs last', value: diffStr, hint: priorMins === 0 ? 'New activity 🎉' : 'Period over period', icon: <TrendingUp className="mr-1 h-3 w-3" aria-hidden /> },
+    { label: 'This period', value: `${recent}`, hint: 'Chats, quizzes & notes', icon: <Clock className="mr-1 h-3 w-3" aria-hidden /> },
+    { label: 'vs last', value: diffStr, hint: prior === 0 ? 'New activity' : 'Period over period', icon: <TrendingUp className="mr-1 h-3 w-3" aria-hidden /> },
     { label: 'Streak', value: `${streak} day${streak === 1 ? '' : 's'}`, hint: 'Active days in a row', icon: <Flame className="mr-1 h-3 w-3" aria-hidden /> },
   ];
 }
@@ -511,10 +505,12 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
           </p>
           <h1 className="mt-1 text-[30px] font-[650] leading-[1.08] tracking-[-0.02em]">
             Hi {firstName}
-            <span className="text-[var(--muted)] font-[450]"> — welcome back.</span>
+            <span className="text-[var(--muted)] font-[450]"> — here’s your study workspace.</span>
           </h1>
           <p className="mt-1 text-[13.5px] text-[var(--muted)]">
-            Here’s what’s waiting in your study workspace today.
+            {dash?.up_next?.length
+              ? 'Jump straight in, or ask the AI tutor about any enrolled course.'
+              : 'Enrol in a course or ask the AI tutor to get started.'}
           </p>
         </div>
         <Link
@@ -522,7 +518,7 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
           className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--accent)] px-4 text-[13px] font-[620] text-[var(--on-accent)] transition-colors hover:bg-[var(--accent-strong)]"
         >
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
-          Ask anything
+          Ask the AI tutor
         </Link>
       </div>
 

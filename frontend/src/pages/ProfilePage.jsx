@@ -13,6 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -524,8 +525,7 @@ export default function ProfilePage() {
  : 'Confirm new password'}
  </FormLabel>
  <FormControl>
- <Input
- type="password"
+ <PasswordInput
  autoComplete={
  name === 'old_password'
  ? 'current-password'

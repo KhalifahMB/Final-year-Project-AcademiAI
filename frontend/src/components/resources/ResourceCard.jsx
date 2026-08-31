@@ -63,23 +63,30 @@ export default function ResourceCard({
   const hasSummary = !!resource?.latest_summary?.summary;
 
   const FileIcon = ft.icon;
+  const interactive = !!onOpen;
 
   return (
     <article
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen && onOpen(resource)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          if (onOpen) onOpen(resource);
-        }
-      }}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={interactive ? () => onOpen(resource) : undefined}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onOpen(resource);
+              }
+            }
+          : undefined
+      }
       className={cn(
-        'group relative flex h-full cursor-pointer flex-col rounded-xl border bg-card p-4',
+        'group relative flex h-full flex-col rounded-xl border bg-card p-4',
         'transition-all duration-150 ease-out',
-        'hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_4px_16px_-8px_color-mix(in_oklab,var(--primary)_35%,transparent)]',
-        'focus-visible:outline-2 focus-visible:outline-ring focus-visible:-translate-y-0.5',
+        interactive
+          ? 'cursor-pointer hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_4px_16px_-8px_color-mix(in_oklab,var(--primary)_35%,transparent)]'
+          : 'cursor-default',
+        interactive && 'focus-visible:outline-2 focus-visible:outline-ring focus-visible:-translate-y-0.5',
         className,
       )}
     >

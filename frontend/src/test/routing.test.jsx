@@ -120,7 +120,7 @@ describe('routing and access control', () => {
     navigate('/dashboard');
     render(<App />, { wrapper: Wrapper });
     expect(
-      await screen.findByText(/welcome back/i),
+      await screen.findByText(/create an account|sign in/i),
     ).toBeInTheDocument();
   });
 
@@ -146,7 +146,7 @@ describe('routing and access control', () => {
     navigate('/admin/users');
     render(<App />, { wrapper: Wrapper });
     await waitFor(() => {
-      expect(screen.getAllByText(/welcome/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/study workspace|continue learning|up next/i).length).toBeGreaterThan(0);
     });
   });
 });

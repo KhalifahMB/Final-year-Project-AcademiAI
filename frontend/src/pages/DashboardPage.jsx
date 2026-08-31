@@ -221,7 +221,7 @@ export default function DashboardPage() {
     if (isAdmin) {
       base.push({
         to: '/admin/dashboard',
-        label: 'Institution analytics',
+        label: 'Institution dashboard',
         icon: TrendingUp,
         desc: 'Users, activity, health',
       });
@@ -266,7 +266,7 @@ export default function DashboardPage() {
               </p>
               <h1 className="mt-0.5 text-[22px] font-semibold leading-tight tracking-tight sm:text-2xl">
                 {firstName}
-                <span className="text-muted-foreground"> — welcome back.</span>
+                <span className="text-muted-foreground"> — institution overview.</span>
               </h1>
               <p className="mt-0.5 text-[13px] text-muted-foreground">
                 Here&apos;s what&apos;s happening across your institution today.

@@ -4,11 +4,12 @@ import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import EmptyState from '@/components/shared/EmptyState';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { BookOpen, ChevronRight, GraduationCap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function AssignedCoursesPage() {
- const { data, isLoading, error } = useQuery({
+ export default function AssignedCoursesPage() {
+ const { data, isLoading, error, refetch } = useQuery({
  queryKey: ['lecturer-assignments'],
  queryFn: async () => {
  const { data } = await api.get('/lecturer-assignments/');
@@ -25,7 +26,12 @@ export default function AssignedCoursesPage() {
  >
  {error && (
  <Alert variant="destructive" className="mb-4">
+ <div className="flex w-full items-center justify-between gap-3">
  <AlertDescription className="text-xs">Failed to load assignments</AlertDescription>
+ <Button type="button" variant="outline" size="sm" onClick={() => refetch()} className="shrink-0 h-7 text-[11px]">
+ Retry
+ </Button>
+ </div>
  </Alert>
  )}
  {isLoading ? (

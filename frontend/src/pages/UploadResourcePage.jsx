@@ -440,7 +440,7 @@ export default function UploadResourcePage() {
 
  {/* RIGHT: info sidebar */}
  <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
- <div className="rounded-xl border  from-indigo-50 to-violet-50 p-5 dark: dark:">
+ <div className="rounded-xl border bg-[var(--surface-2)] p-5">
  <div className="flex items-center gap-2">
  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/60 text-primary dark:bg-white/10">
  <Sparkles className="h-4 w-4" aria-hidden />

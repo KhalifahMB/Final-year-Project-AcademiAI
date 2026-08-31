@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { loginSchema } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -61,7 +62,7 @@ export default function LoginPage() {
       }
     >
       {error && (
-        <Alert variant="destructive" className="mb-4 border-red-500/30 bg-[var(--danger-soft)] text-red-700 dark:text-red-400">
+        <Alert variant="destructive" className="mb-4">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -102,8 +103,7 @@ export default function LoginPage() {
                   </Link>
                 </div>
                 <FormControl>
-                  <Input
-                    type="password"
+                  <PasswordInput
                     autoComplete="current-password"
                     placeholder="Enter your password"
                     className="h-10"

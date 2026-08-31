@@ -221,7 +221,7 @@ export default function QuizTakePage() {
  {/* Start screen */}
  {showStart && (
  <div className="mx-auto max-w-xl view-enter">
- <div className="rounded-2xl border  from-indigo-50 to-violet-50 p-8 text-center dark: dark:">
+ <div className="rounded-2xl border bg-[var(--surface-2)] p-8 text-center">
  <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface)]/80 text-primary dark:bg-white/10">
  <Sparkles className="h-7 w-7" aria-hidden />
  </span>
@@ -235,7 +235,7 @@ export default function QuizTakePage() {
  size="sm"
  onClick={() => start.mutate()}
  disabled={start.isPending || qs.length === 0}
- className="h-9 gap-1.5  [var(--accent)] px-5 text-xs text-white hover:bg-[var(--accent-strong)]"
+ className="h-9 gap-1.5 bg-[var(--accent)] px-5 text-xs text-white hover:bg-[var(--accent-strong)]"
  >
  {start.isPending ? 'Starting…' : attempts.data?.length ? 'Start new attempt' : 'Start attempt'}
  <ChevronRight className="h-3.5 w-3.5" aria-hidden />
@@ -325,7 +325,7 @@ function QuizRunner({
  </div>
  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
  <div
- className="h-full rounded-full  [var(--accent)] transition-all duration-200"
+ className="h-full rounded-full bg-[var(--accent)] transition-all duration-200"
  style={{ width: `${progress}%` }}
  role="progressbar"
  aria-valuenow={progress}
@@ -548,7 +548,7 @@ function QuizResults({ result, _qs, reviewIdx, setReviewIdx, retake, canRetake, 
  </div>
  <div className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
  {canRetake && (
- <Button size="sm" onClick={retake} className="h-8 gap-1.5  [var(--accent)] px-4 text-xs text-white hover:bg-[var(--accent-strong)]">
+ <Button size="sm" onClick={retake} className="h-8 gap-1.5 bg-[var(--accent)] px-4 text-xs text-white hover:bg-[var(--accent-strong)]">
  <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Retake quiz
  </Button>
  )}

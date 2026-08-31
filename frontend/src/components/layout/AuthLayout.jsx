@@ -63,12 +63,6 @@ export default function AuthLayout({
       <aside className="relative hidden isolate overflow-hidden lg:flex lg:flex-col lg:justify-between p-10 text-white">
         <BackgroundPattern />
 
-        {/* Accent blobs, desaturated so they don't compete */}
-        <div className="pointer-events-none absolute -right-20 top-10 h-64 w-64 rounded-full blur-3xl"
-             style={{ background: 'oklch(58% 0.18 255 / 0.20)' }} aria-hidden />
-        <div className="pointer-events-none absolute -left-20 bottom-0 h-80 w-80 rounded-full blur-3xl"
-             style={{ background: 'oklch(55% 0.20 280 / 0.22)' }} aria-hidden />
-
         <Link
           to="/"
           className="relative flex w-fit items-center gap-3 rounded-md focus-visible:outline-2 focus-visible:outline-white/40"
@@ -124,7 +118,7 @@ export default function AuthLayout({
           <span>Multi-tenant academic platform · © {new Date().getFullYear()} AcademiAI</span>
           <div className="flex items-center gap-1.5">
             <BookOpen className="h-3.5 w-3.5" aria-hidden />
-            <span>Learn smarter.</span>
+            <span>Every answer cites a real source.</span>
           </div>
         </div>
       </aside>

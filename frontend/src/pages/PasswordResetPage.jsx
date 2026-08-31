@@ -11,6 +11,7 @@ import {
 } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Form,
@@ -96,7 +97,7 @@ export default function PasswordResetPage() {
       }
     >
       {error && (
-        <Alert variant="destructive" className="mb-4 border-red-500/30 bg-[var(--danger-soft)] text-red-700 dark:text-red-400">
+        <Alert variant="destructive" className="mb-4">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -167,19 +168,20 @@ export default function PasswordResetPage() {
                   <FormItem>
                     <FormLabel className="text-[12px] font-medium">{CONFIRM_LABELS[name]}</FormLabel>
                     <FormControl>
-                      <Input
-                        className="h-10"
-                        type={
-                          name === 'password' || name === 'confirm'
-                            ? 'password'
-                            : name === 'token'
-                              ? 'text'
-                              : 'email'
-                        }
-                        autoComplete={name === 'password' || name === 'confirm' ? 'new-password' : undefined}
-                        placeholder={name === 'token' ? '6-digit code' : undefined}
-                        {...field}
-                      />
+                      {name === 'password' || name === 'confirm' ? (
+                        <PasswordInput
+                          className="h-10"
+                          autoComplete="new-password"
+                          {...field}
+                        />
+                      ) : (
+                        <Input
+                          className="h-10"
+                          type={name === 'token' ? 'text' : 'email'}
+                          placeholder={name === 'token' ? '6-digit code' : undefined}
+                          {...field}
+                        />
+                      )}
                     </FormControl>
                     <FormMessage />
                   </FormItem>

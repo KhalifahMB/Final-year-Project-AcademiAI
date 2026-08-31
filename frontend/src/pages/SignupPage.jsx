@@ -10,6 +10,7 @@ import api, { authApi } from '@/services/api';
 import { signupSchema } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Form,
@@ -176,8 +177,7 @@ export default function SignupPage() {
               <FormItem>
                 <FormLabel className="text-[12px] font-medium">Password</FormLabel>
                 <FormControl>
-                  <Input
-                    type="password"
+                  <PasswordInput
                     className="h-9"
                     placeholder="At least 8 characters"
                     autoComplete="new-password"
