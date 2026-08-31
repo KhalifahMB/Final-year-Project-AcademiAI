@@ -154,17 +154,13 @@ class ChatSendMessageView(APIView):
 
         if attached_resource_ids:
             from apps.resources.models import Resource, ResourceChunk
+            from apps.resources.views import _authorized_resources_q as _auth_q
 
-            if user.role == "admin" or getattr(user, "is_superuser", False):
-                visible = Resource.objects.filter(
-                    tenant=user.tenant, id__in=attached_resource_ids,
-                )
-            else:
-                from apps.resources.views import _authorized_resources_q as _auth_q
-
-                visible = Resource.objects.filter(
-                    _auth_q(user), tenant=user.tenant, id__in=attached_resource_ids,
-                )
+            # Visibility-first: private materials are only retrievable by
+            # their uploader, for every role (admins included).
+            visible = Resource.objects.filter(
+                _auth_q(user), tenant=user.tenant, id__in=attached_resource_ids,
+            )
             attached_chunks = []
             for r in visible:
                 latest = r.versions.order_by("-version_number").first()
@@ -410,8 +406,9 @@ class ChatStreamMessageView(APIView):
             session.title = content[:80]
             session.save(update_fields=["title", "updated_at"])
 
-        # Authorization-first retrieval (cached briefly keyed by tenant+query)
-        cache_key = "rag:" + str(user.tenant_id) + ":" + hashlib.sha256(
+        # Authorization-first retrieval (cached briefly keyed by
+        # tenant+user+query so private-resource chunks never cross users).
+        cache_key = "rag:" + str(user.tenant_id) + ":" + str(user.id) + ":" + hashlib.sha256(
             content.encode("utf-8"),
         ).hexdigest()[:16]
         chunks = cache.get(cache_key)
@@ -430,19 +427,14 @@ class ChatStreamMessageView(APIView):
         if attached_resource_ids:
             from apps.resources.models import Resource, ResourceChunk
 
-            # Validate ownership/visibility — user must be allowed to see
-            # each attached resource. Admins see the whole tenant; other
-            # roles use the same visibility filter as the resources list.
-            if user.role == "admin" or getattr(user, "is_superuser", False):
-                visible_resources = Resource.objects.filter(
-                    tenant=user.tenant, id__in=attached_resource_ids,
-                )
-            else:
-                from apps.resources.views import _authorized_resources_q as _auth_q
+            # Validate ownership/visibility — the user must be allowed to
+            # see each attached resource. Private materials are only
+            # retrievable by their uploader, for every role.
+            from apps.resources.views import _authorized_resources_q as _auth_q
 
-                visible_resources = Resource.objects.filter(
-                    _auth_q(user), tenant=user.tenant, id__in=attached_resource_ids,
-                )
+            visible_resources = Resource.objects.filter(
+                _auth_q(user), tenant=user.tenant, id__in=attached_resource_ids,
+            )
             for r in visible_resources:
                 latest = r.versions.order_by("-version_number").first()
                 if not latest:

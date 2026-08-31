@@ -20,7 +20,7 @@ class IsAdminRole(BasePermission):
         return (
             request.user
             and request.user.is_authenticated
-            and getattr(request.user, "role", None) == "admin"
+            and getattr(request.user, "is_tenant_admin", False)
         )
 
 
@@ -32,7 +32,7 @@ class IsAdminRoleOrSuperuser(BasePermission):
             request.user
             and request.user.is_authenticated
             and (
-                getattr(request.user, "role", None) == "admin"
+                getattr(request.user, "is_tenant_admin", False)
                 or request.user.is_superuser
             )
         )
@@ -52,7 +52,7 @@ class IsSuperuser(BasePermission):
 class IsLecturerOrAdmin(BasePermission):
     def has_permission(self, request, view):
         role = getattr(request.user, "role", None)
-        return request.user and request.user.is_authenticated and role in ("lecturer", "admin")
+        return request.user and request.user.is_authenticated and role in ("lecturer", "tenant_admin")
 
 
 class IsStudentOrAbove(BasePermission):

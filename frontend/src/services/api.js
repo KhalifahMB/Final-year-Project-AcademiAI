@@ -79,6 +79,7 @@ export const dashApi = {
 export const dashboardApi = {
   student: () => api.get('/dashboard/student/').then((r) => r.data),
   admin: () => api.get('/dashboard/admin/').then((r) => r.data),
+  lecturer: () => api.get('/dashboard/lecturer/').then((r) => r.data),
   studentActivity: (range = 'day') =>
     api.get('/dashboard/student/activity/', { params: { range } }).then((r) => r.data),
   adminAuditSummary: (days = 14) =>
@@ -100,7 +101,6 @@ export const platformApi = {
   auditLogs: (params) => api.get('/platform/audit-logs/', { params }),
   tenants: {
     list: (params) => api.get('/tenants/', { params }),
-    create: (payload) => api.post('/tenants/', payload),
     update: (id, payload) => api.patch(`/tenants/${id}/`, payload),
   },
   tenantRequests: {
@@ -113,6 +113,10 @@ export const platformApi = {
     create: (payload) => api.post('/announcements/', payload),
     update: (id, payload) => api.patch(`/announcements/${id}/`, payload),
     delete: (id) => api.delete(`/announcements/${id}/`),
+  },
+  announcementSubscriptions: {
+    get: () => api.get('/announcements/subscriptions/'),
+    update: (payload) => api.put('/announcements/subscriptions/', payload),
   },
 };
 
@@ -190,18 +194,18 @@ export const chatApi = {
             if (!data) continue;
             try {
               const parsed = JSON.parse(data);
-              if (event === 'token') onToken && onToken(parsed.text || '');
-              else if (event === 'user_message') onMeta && onMeta({ user_message: parsed });
-              else if (event === 'meta') onMeta && onMeta(parsed);
-              else if (event === 'done') { onDone && onDone(parsed.assistant_message); return; }
-            } catch (e) {
+              if (event === 'token') { if (onToken) onToken(parsed.text || ''); }
+              else if (event === 'user_message') { if (onMeta) onMeta({ user_message: parsed }); }
+              else if (event === 'meta') { if (onMeta) onMeta(parsed); }
+              else if (event === 'done') { if (onDone) onDone(parsed.assistant_message); return; }
+            } catch {
               // malformed chunk, ignore
             }
           }
         }
       } catch (err) {
         if (err.name === 'AbortError') return;
-        onError && onError(err);
+        if (onError) onError(err);
       }
     })();
     return ctrl;

@@ -4,7 +4,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.permissions import IsAdminRoleOrSuperuser, IsSuperuser
+from apps.common.permissions import IsSuperuser
 from .models import Tenant
 from .serializers import (
     TenantSerializer,
@@ -31,7 +31,12 @@ class TenantDirectoryView(APIView):
         search = (request.query_params.get("search") or "").strip()
         if search:
             qs = qs.filter(name__icontains=search) | qs.filter(slug__icontains=search)
-        limit = min(int(request.query_params.get("limit", 100) or 100), 200)
+        try:
+            limit = min(int(request.query_params.get("limit", 100) or 100), 200)
+        except (TypeError, ValueError):
+            limit = 100
+        if limit < 1:
+            limit = 100
         data = TenantDirectorySerializer(qs[:limit], many=True).data
         return Response({"count": len(data), "results": data})
 
@@ -40,27 +45,27 @@ class TenantDirectoryView(APIView):
 class TenantViewSet(viewsets.ModelViewSet):
     """
     Tenant CRUD. Reads are limited to the caller's own tenant
-    (superusers may list all). Writes require the Admin role; tenant admins
-    can only manage their own institution profile (name/domain) — plan,
-    status, slug and storage quota are superuser-controlled.
+    (superusers may list all). Creation and destruction are platform
+    provisioning concerns handled exclusively via tenant-request approval, so
+    this view does not expose POST or DELETE. Updates (status suspension /
+    reactivation) are reserved for the platform superuser; all other tenant
+    details are read-only.
     """
 
     serializer_class = TenantSerializer
     search_fields = ["name", "slug"]
     lookup_field = "id"
+    # Tenants are created and removed exclusively through tenant-request
+    # approval, never via a generic CRUD route — so POST and DELETE are
+    # disabled here (DRF returns 405 for them).
+    http_method_names = ["get", "patch", "head", "options"]
 
     def get_permissions(self):
-        perms = super().get_permissions()
-        # Tenant lifecycle (create/delete) is platform provisioning —
-        # a tenant admin must never be able to mint or destroy tenants,
-        # their own included. Updates stay admin-scoped via get_queryset.
-        if self.action in ("create", "destroy"):
-            return [IsSuperuser()] + perms
+        # Only the platform superuser may suspend/reactivate a tenant.
+        # No role (admin/lecturer/student) may edit tenant records otherwise.
         if self.action in ("update", "partial_update"):
-            # Tenant admins manage their own profile; the platform operator
-            # (superuser) may also suspend/reactivate tenants.
-            return [IsAdminRoleOrSuperuser()] + perms
-        return perms
+            return [IsSuperuser()]
+        return []
 
     def get_serializer_class(self):
         user = getattr(self.request, "user", None)

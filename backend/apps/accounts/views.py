@@ -2,6 +2,7 @@ import logging
 import uuid
 
 from django.contrib.auth import authenticate
+from django.utils import timezone
 from rest_framework import parsers
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, permissions, status, viewsets
@@ -78,6 +79,18 @@ class SignupView(APIView):
                 {"success": False, "error": {"detail": str(e)}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        if user is None:
+            # Email already registered for this institution. Reply identically
+            # to a fresh signup so the response does not disclose existence
+            # (anti-enumeration).
+            return Response(
+                {
+                    "success": True,
+                    "message": "Account created. Please verify your email.",
+                    "user": None,
+                },
+                status=status.HTTP_201_CREATED,
+            )
         # Optional profile picture uploaded at signup time.
         avatar_file = request.FILES.get("avatar")
         if avatar_file is not None and user.tenant_id:
@@ -108,7 +121,7 @@ class SignupView(APIView):
                         "Signup avatar upload failed user=%s", user.id
                     )
             else:
-                logger.info("Signup avatar rejected (type/size) email=%s", data["email"])
+                logger.info("Signup avatar rejected (type/size) user=%s", user.id)
         # Dispatch email task (non-blocking)
         try:
             from .tasks import send_verification_email
@@ -268,6 +281,28 @@ class MeView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+    def perform_update(self, serializer):
+        user = self.request.user
+        new_email = (serializer.validated_data.get("email") or "").lower().strip()
+        if new_email and new_email != (user.email or "").lower().strip():
+            # Email ownership changed: the new address is unverified until the
+            # user proves ownership. Reset verification + expire prior codes to
+            # keep the "unverified accounts cannot log in" guarantee.
+            from apps.accounts.models import EmailVerificationCode
+            from .tasks import send_verification_email
+
+            EmailVerificationCode.objects.filter(user=user, is_used=False).update(
+                expires_at=timezone.now()
+            )
+            serializer.save(is_email_verified=False)
+            try:
+                code = services.create_verification_code(user)
+                send_verification_email(str(user.id), code)
+            except Exception:
+                logger.exception("Failed to queue re-verification email user=%s", user.id)
+            return
+        serializer.save()
 
 
 MeView = extend_schema_view(

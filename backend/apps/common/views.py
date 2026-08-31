@@ -122,11 +122,12 @@ class SystemHealthView(APIView):
                 "active_workers": worker_count,
                 "active_tasks": total_active_tasks,
                 "registered_tasks": total_registered,
+                "queue_depths": queue_depths,
             }
         except Exception as e:
             health["celery"] = {"status": "unhealthy", "error": str(e)}
 
-        # ── RabbitMQ direct check ──────────────────────────────────
+        # ── RabbitMQ direct check (versions + queue inventory) ──────
         try:
             import os
             import urllib.request
@@ -138,17 +139,43 @@ class SystemHealthView(APIView):
             rmq_port = os.getenv("RABBITMQ_MGMT_PORT", "15672")
 
             credentials = base64.b64encode(f"{rmq_user}:{rmq_pass}".encode()).decode()
-            req = urllib.request.Request(
-                f"http://{rmq_host}:{rmq_port}/api/overview",
-                headers={"Authorization": f"Basic {credentials}"},
+            headers = {"Authorization": f"Basic {credentials}"}
+
+            def _get(path):
+                req = urllib.request.Request(
+                    f"http://{rmq_host}:{rmq_port}{path}", headers=headers
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    return __import__("json").loads(resp.read())
+
+            overview = _get("/api/overview")
+            queues = _get("/api/queues?columns=name,messages,consumers")
+
+            queue_list = sorted(
+                (
+                    {
+                        "name": q.get("name"),
+                        "messages": q.get("messages", 0),
+                        "consumers": q.get("consumers", 0),
+                    }
+                    for q in queues
+                ),
+                key=lambda q: q["name"],
             )
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = __import__("json").loads(resp.read())
-                health["rabbitmq"] = {
-                    "status": "healthy",
-                    "version": data.get("rabbitmq_version", "unknown"),
-                    "erlang_version": data.get("erlang_version", "unknown"),
-                }
+            dead_letter = next(
+                (q for q in queue_list if q["name"].endswith("dlq")), None
+            )
+
+            health["rabbitmq"] = {
+                "status": "healthy",
+                "version": overview.get("rabbitmq_version", "unknown"),
+                "erlang_version": overview.get("erlang_version", "unknown"),
+                "queues": queue_list,
+                "dead_letter": {
+                    "messages": dead_letter["messages"] if dead_letter else 0,
+                    "queue": dead_letter["name"] if dead_letter else "dlq",
+                },
+            }
         except Exception as e:
             health["rabbitmq"] = {"status": "unhealthy", "error": str(e)}
 

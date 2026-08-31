@@ -12,17 +12,17 @@ import {
 import { Search, ScrollText } from "lucide-react";
 
 const ACTION_STYLES = {
-  "user.signup": "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 border-emerald-500/25",
+  "user.signup": "bg-[var(--success)]/12 text-[var(--success)]  border-emerald-500/25",
   "user.login": "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300 border-indigo-500/25",
   "user.email_verified": "bg-sky-500/12 text-sky-700 dark:text-sky-300 border-sky-500/25",
   "user.password_change": "bg-amber-500/12 text-amber-700 dark:text-amber-300 border-amber-500/25",
   "resource.create": "bg-violet-500/12 text-violet-700 dark:text-violet-300 border-violet-500/25",
-  "resource.delete": "bg-red-500/12 text-red-700 dark:text-red-300 border-red-500/25",
+  "resource.delete": "bg-[var(--danger)]/12 text-red-700 dark:text-red-300 border-red-500/25",
   "tenant.update": "bg-zinc-500/12 text-zinc-600 dark:text-zinc-300 border-zinc-500/25",
 };
 
 function ActionBadge({ action }) {
-  const style = ACTION_STYLES[action] || "bg-muted text-muted-foreground border-border";
+  const style = ACTION_STYLES[action] || "bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]";
   return (
     <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${style}`}>
       {action}
@@ -82,7 +82,7 @@ export default function AuditLogPage() {
         <Alert variant="destructive"><AlertDescription>Failed to load audit logs — superuser access required.</AlertDescription></Alert>
       ) : (
         <>
-          <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+          <div className="overflow-hidden rounded-xl card-surface">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">

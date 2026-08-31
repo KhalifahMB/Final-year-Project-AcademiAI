@@ -70,14 +70,6 @@ def verify_email_code(email: str, code: str) -> User:
             send_welcome_email(str(user.id))
         except Exception:
             logger.exception("Failed to queue welcome email")
-        # First-time onboarding: auto-enrol students into the course
-        # offerings of their programme's department.
-        try:
-            from apps.academics.services import auto_enroll_student
-
-            auto_enroll_student(user)
-        except Exception:
-            logger.exception("Auto-enrollment failed user=%s", user.id)
     log_action(
         tenant=user.tenant,
         actor=user,
@@ -107,7 +99,18 @@ def signup_user(
             raise ValueError("Tenant not found or inactive.")
 
     if User.objects.filter(email=email, tenant=tenant).exists():
-        raise ValueError("A user with this email already exists for this institution.")
+        # Do not reveal that the email already exists (anti-enumeration).
+        # Return None so the caller issues the same generic "check your
+        # inbox" response as for a brand-new signup.
+        log_action(
+            tenant=tenant,
+            actor=None,
+            action="user.signup_attempt_existing",
+            entity_type="email",
+            entity_id="",
+            metadata={"role": role},
+        )
+        return None, None
 
     # Anonymous signup requests carry no tenant context; academic tables are
     # RLS-protected, so resolve + write inside an explicit scope.
@@ -120,8 +123,14 @@ def signup_user(
             if programme_id:
                 from apps.academics.models import Programme
 
-                # Cross-tenant ids simply resolve to None here (IDOR-safe).
-                programme = Programme.objects.filter(id=programme_id).first()
+                # Explicitly scope to the chosen tenant. Never rely on RLS
+                # alone for this isolation: a cross-tenant programme id must
+                # resolve to None even if RLS is not enabled on the database,
+                # otherwise a foreign programme could be attached and drive
+                # auto-enrollment into another institution's coursework.
+                programme = Programme.objects.filter(
+                    id=programme_id, tenant=tenant
+                ).first()
 
             user = User.objects.create_user(
                 email=email,
@@ -169,7 +178,7 @@ def resend_verification_code(email: str) -> bool:
     don't leak account existence (same response whether or not email matches)."""
     # Lookup case-insensitive across tenants (emails are unique per tenant but
     # a given email address typically only has one AcademiAI account).
-    user = User.objects.filter(email__iexact=email).order_by("-date_joined").first()
+    user = User.objects.filter(email__iexact=email).order_by("-created_at").first()
     if not user or user.is_email_verified:
         # Still return True — do not reveal whether the account exists.
         return True
@@ -187,7 +196,12 @@ def resend_verification_code(email: str) -> bool:
 
         send_verification_email(str(user.id), code)
     except Exception:
-        logger.exception("Failed to queue verification resend email=%s", email)
+        if user is not None:
+            logger.exception(
+                "Failed to queue verification resend user=%s", user.id
+            )
+        else:
+            logger.exception("Failed to queue verification resend")
     return True
 
 
@@ -212,7 +226,7 @@ def create_password_reset_token(user: User) -> str:
 
 def confirm_password_reset(email: str, token: str, new_password: str) -> None:
     # Do not reveal whether email exists
-    user = User.objects.filter(email=email).first()
+    user = User.objects.filter(email__iexact=email).first()
     if not user:
         return
     record = (

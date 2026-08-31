@@ -4,12 +4,10 @@ import { getPresetAvatar, getDefaultAvatar } from "@/lib/avatars";
 import { cn } from "@/lib/utils";
 
 /**
- * User avatar with graceful fallbacks:
- * uploaded picture → chosen preset → gender default → neutral.
+ * User avatar — uploaded → preset → initials fallback.
  *
- * `user` is the auth user object (needs has_custom_avatar / avatar_preset /
- * gender). The presigned URL for an uploaded picture is fetched lazily and
- * cached by react-query.
+ * Pass className to set size (e.g. "h-8 w-8"). The component supplies
+ * surface/border defaults consistent with the design system.
  */
 export default function Avatar({ user, className }) {
   const custom = !!user?.has_custom_avatar;
@@ -28,14 +26,14 @@ export default function Avatar({ user, className }) {
   if (custom && data) src = data;
   else if (!custom) src = getPresetAvatar(user?.avatar_preset) || getDefaultAvatar(user?.gender);
 
+  const base =
+    "shrink-0 inline-flex items-center justify-center rounded-full bg-[var(--surface-2)] border border-[var(--border)] text-[11px] font-[650] text-[var(--fg-soft)] tracking-[.02em] overflow-hidden";
+
   if (!src) {
     return (
       <span
         aria-hidden
-        className={cn(
-          "flex shrink-0 items-center justify-center rounded-full bg-primary/15 font-semibold uppercase text-primary",
-          className,
-        )}
+        className={cn(base, className)}
       >
         {(user?.first_name?.[0] || user?.email?.[0] || "?").toUpperCase()}
       </span>
@@ -47,7 +45,7 @@ export default function Avatar({ user, className }) {
       src={src}
       alt=""
       aria-hidden
-      className={cn("shrink-0 rounded-full object-cover", className)}
+      className={cn(base, "object-cover", className)}
       draggable="false"
     />
   );

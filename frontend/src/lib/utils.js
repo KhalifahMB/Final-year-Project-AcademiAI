@@ -5,6 +5,15 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
+export function greeting() {
+  const h = new Date().getHours();
+  if (h < 5) return 'Working late';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  if (h < 21) return 'Good evening';
+  return 'Good night';
+}
+
 /**
  * Format an ISO date/timestamp as a short relative time ("3 seconds ago",
  * "2 minutes ago", "last month", etc.). Uses Intl.RelativeTimeFormat when

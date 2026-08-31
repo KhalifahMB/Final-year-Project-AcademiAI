@@ -49,14 +49,43 @@ for _mod in _EXTRA_TASK_MODULES:
     importlib.import_module(_mod)
 
 # Explicit queue declarations so workers started without -Q know every
-# routing target and celery inspect lists them all.
-app.conf.task_queues = {
-    "celery": {"exchange": "celery", "routing_key": "celery"},
-    "ai": {"exchange": "ai", "routing_key": "ai"},
-    "ingestion": {"exchange": "ingestion", "routing_key": "ingestion"},
-    "email": {"exchange": "email", "routing_key": "email"},
-}
+# routing target and celery inspect lists them all. Each work queue is
+# dead-lettered: messages that are rejected / negatively acknowledged (e.g.
+# after a worker is lost, or explicitly rejected by a task) land on the "dlq"
+# queue via the "dlx" exchange, where they stay for inspection instead of
+# being silently dropped.
+from kombu import Exchange, Queue
+
+_DLX = Exchange("dlx", type="direct")
+_DLQ = Queue("dlq", exchange=_DLX, routing_key="dlq")
+
+
+def _work_queue(name):
+    return Queue(
+        name,
+        Exchange(name, type="direct"),
+        routing_key=name,
+        queue_arguments={
+            "x-dead-letter-exchange": "dlx",
+            "x-dead-letter-routing-key": "dlq",
+        },
+    )
+
+
+app.conf.task_queues = (
+    _work_queue("celery"),
+    _work_queue("ai"),
+    _work_queue("ingestion"),
+    _work_queue("email"),
+    _DLQ,
+)
 app.conf.task_default_queue = "celery"
+
+# Late-ack + reject-on-worker-lost so a crashed worker negatively acks the
+# in-flight message, routing it to the dead-letter queue rather than losing
+# it. Finished (acked) messages are never redelivered.
+app.conf.acks_late = True
+app.conf.task_reject_on_worker_lost = True
 
 # Windows: billiard's prefork pool depends on POSIX semaphores and
 # crashes ("Access is denied", invalid handle) on win32. The solo pool

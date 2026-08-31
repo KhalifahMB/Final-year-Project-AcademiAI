@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
+import { UserPlus, Loader2, Building2, CheckCircle2 } from 'lucide-react';
 import AuthLayout from '@/components/layout/AuthLayout';
 import AvatarPicker from '@/components/shared/AvatarPicker';
 import api, { authApi } from '@/services/api';
 import { signupSchema } from '@/lib/validations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Form,
@@ -32,6 +34,7 @@ export default function SignupPage() {
   const [avatarPreset, setAvatarPreset] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+
   const form = useForm({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -46,7 +49,6 @@ export default function SignupPage() {
     },
   });
 
-  // Public directory of active institutions — replaces typing a raw slug.
   const directory = useQuery({
     queryKey: ['tenant-directory'],
     queryFn: async () => {
@@ -56,8 +58,6 @@ export default function SignupPage() {
     staleTime: 5 * 60_000,
   });
 
-  // Programmes of the chosen institution — drives the academic profile and
-  // auto-enrollment into departmental courses after verification.
   const chosenSlug = useWatch({ control: form.control, name: 'tenant_slug' });
   const watchedRole = useWatch({ control: form.control, name: 'role' });
   const programmes = useQuery({
@@ -77,51 +77,53 @@ export default function SignupPage() {
     try {
       const payload = { ...values };
       if (!payload.programme) delete payload.programme;
+      let signupRes;
       if (avatarFile) {
-        // Multipart so the profile picture travels with the signup request.
         const fd = new FormData();
         Object.entries(payload).forEach(([k, v]) => {
           if (v !== undefined && v !== null && v !== '') fd.append(k, v);
         });
         fd.append('avatar', avatarFile);
-        await authApi.signup(fd);
+        signupRes = await authApi.signup(fd);
       } else {
         if (avatarPreset) payload.avatar_preset = avatarPreset;
-        await authApi.signup(payload);
+        signupRes = await authApi.signup(payload);
       }
-      navigate('/verify-email', { state: { email: values.email } });
+      // Use the backend-normalized email so the verify-email page pre-fills
+      // exactly what the account was created with.
+      const emails = signupRes?.data?.user?.email || signupRes?.user?.email;
+      navigate('/verify-email', { state: { email: emails || values.email } });
     } catch (err) {
       const d = err.response?.data?.error?.detail;
-      setError(
-        typeof d === 'string' ? d : JSON.stringify(d || 'Signup failed'),
-      );
+      setError(typeof d === 'string' ? d : JSON.stringify(d || 'Signup failed'));
     }
   };
 
   return (
     <AuthLayout
-      title="Create your account"
-      subtitle="Join your institution's AcademiAI workspace"
+      icon={UserPlus}
+      title="Create your account for free"
+      subtitle="Join your institution's AcademiAI workspace in under a minute."
       footer={
         <>
           Already have an account?{' '}
           <Link
             to="/login"
-            className="font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring rounded-sm"
+            className="font-semibold text-primary underline-offset-4 hover:underline"
           >
             Sign in
           </Link>
         </>
       }
     >
-      {error ? (
-        <Alert variant="destructive" className="mb-5">
+      {error && (
+        <Alert variant="destructive" className="mb-4 border-red-500/30 bg-[var(--danger-soft)] text-red-700 dark:text-red-400">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      ) : null}
+      )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3.5">
           <div className="grid grid-cols-2 gap-3">
             {['first_name', 'last_name'].map((name) => (
               <FormField
@@ -130,10 +132,12 @@ export default function SignupPage() {
                 name={name}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{name === 'first_name' ? 'First name' : 'Last name'}</FormLabel>
+                    <FormLabel className="text-[12px] font-medium">
+                      {name === 'first_name' ? 'First name' : 'Last name'}
+                    </FormLabel>
                     <FormControl>
                       <Input
-                        className="h-10"
+                        className="h-9"
                         placeholder={name === 'first_name' ? 'Ada' : 'Lovelace'}
                         autoComplete={name === 'first_name' ? 'given-name' : 'family-name'}
                         {...field}
@@ -151,11 +155,11 @@ export default function SignupPage() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel className="text-[12px] font-medium">Institutional email</FormLabel>
                 <FormControl>
                   <Input
-                    className="h-10"
                     type="email"
+                    className="h-9"
                     placeholder="you@university.edu"
                     autoComplete="email"
                     {...field}
@@ -171,12 +175,11 @@ export default function SignupPage() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
+                <FormLabel className="text-[12px] font-medium">Password</FormLabel>
                 <FormControl>
-                  <Input
-                    className="h-10"
-                    type="password"
-                    placeholder="Minimum 8 characters"
+                  <PasswordInput
+                    className="h-9"
+                    placeholder="At least 8 characters"
                     autoComplete="new-password"
                     {...field}
                   />
@@ -192,7 +195,7 @@ export default function SignupPage() {
               name="tenant_slug"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Institution</FormLabel>
+                  <FormLabel className="text-[12px] font-medium">Institution</FormLabel>
                   <Select
                     value={field.value || undefined}
                     onValueChange={(v) => {
@@ -201,11 +204,9 @@ export default function SignupPage() {
                     }}
                   >
                     <FormControl>
-                      <SelectTrigger className="h-10 w-full">
+                      <SelectTrigger className="h-9 w-full">
                         <SelectValue
-                          placeholder={
-                            directory.isLoading ? 'Loading…' : 'Select institution'
-                          }
+                          placeholder={directory.isLoading ? 'Loading…' : 'Select'}
                         />
                       </SelectTrigger>
                     </FormControl>
@@ -226,20 +227,20 @@ export default function SignupPage() {
               name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>I am a</FormLabel>
+                  <FormLabel className="text-[12px] font-medium">I am a</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
-                      <SelectTrigger className="h-10 w-full capitalize">
+                      <SelectTrigger className="h-9 w-full capitalize">
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="student" className="capitalize">Student</SelectItem>
-                      <SelectItem value="lecturer" className="capitalize">Lecturer</SelectItem>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="lecturer">Lecturer</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-[11px] leading-snug text-muted-foreground">
-                    Admin access is granted by your institution's admin.
+                  <p className="text-[10px] text-muted-foreground">
+                    Admin access is granted by your institution.
                   </p>
                 </FormItem>
               )}
@@ -252,10 +253,10 @@ export default function SignupPage() {
               name="programme"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Programme (optional)</FormLabel>
+                  <FormLabel className="text-[12px] font-medium">Programme (optional)</FormLabel>
                   <Select value={field.value || undefined} onValueChange={field.onChange}>
                     <FormControl>
-                      <SelectTrigger className="h-10 w-full">
+                      <SelectTrigger className="h-9 w-full">
                         <SelectValue
                           placeholder={
                             !chosenSlug
@@ -277,11 +278,11 @@ export default function SignupPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-[11px] leading-snug text-muted-foreground">
-                    Picking your programme auto-enrolls you in your
-                    department's courses once your email is verified.
+                  <p className="flex items-start gap-1 text-[10px] text-muted-foreground">
+                    <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-[var(--success)]" aria-hidden />
+                    Your programme starts a curated profile so you can browse and enrol in your
+                    department's courses after email verification.
                   </p>
-                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -292,10 +293,10 @@ export default function SignupPage() {
             name="gender"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Gender</FormLabel>
+                <FormLabel className="text-[12px] font-medium">Gender (optional)</FormLabel>
                 <Select value={field.value || 'unspecified'} onValueChange={field.onChange}>
                   <FormControl>
-                    <SelectTrigger className="h-10 w-full">
+                    <SelectTrigger className="h-9 w-full">
                       <SelectValue />
                     </SelectTrigger>
                   </FormControl>
@@ -306,13 +307,12 @@ export default function SignupPage() {
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormMessage />
               </FormItem>
             )}
           />
 
           <div>
-            <p className="mb-2 text-sm font-medium">Profile picture</p>
+            <p className="mb-1.5 text-[12px] font-medium">Profile picture (optional)</p>
             <AvatarPicker
               presetId={avatarPreset}
               onPresetId={setAvatarPreset}
@@ -328,9 +328,13 @@ export default function SignupPage() {
 
           {directory.isSuccess && (directory.data || []).length === 0 && (
             <Alert>
-              <AlertDescription>
-                Your institution hasn't joined AcademiAI yet — an administrator
-                can register it first, then you can sign up here.
+              <Building2 className="h-3.5 w-3.5" />
+              <AlertDescription className="text-[12px]">
+                Your institution hasn't joined AcademiAI yet — an administrator can register
+                it first, then you can sign up here.{' '}
+                <Link to="/request-institution" className="font-medium text-primary underline">
+                  Request it
+                </Link>
               </AlertDescription>
             </Alert>
           )}
@@ -338,14 +342,23 @@ export default function SignupPage() {
           <Button
             type="submit"
             disabled={form.formState.isSubmitting || directory.isLoading}
-            className="h-10 w-full font-medium shadow-sm"
+            className="h-10 w-full gap-2 text-[14px] font-semibold"
           >
-            {form.formState.isSubmitting
-              ? 'Creating account…'
-              : 'Create account'}
+            {form.formState.isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Creating account…
+              </>
+            ) : (
+              <>
+                <UserPlus className="h-4 w-4" />
+                Create account
+              </>
+            )}
           </Button>
-          <p className="text-center text-xs text-muted-foreground">
-            You'll receive a verification code by email before you can sign in.
+          <p className="text-center text-[11px] text-muted-foreground">
+            By creating an account you agree to AcademiAI's terms. You'll receive a 6-digit
+            verification code by email.
           </p>
         </form>
       </Form>

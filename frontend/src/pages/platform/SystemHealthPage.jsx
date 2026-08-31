@@ -9,9 +9,9 @@ import { Activity, CheckCircle, Database, HardDrive, MessageSquareText, RefreshC
 
 function StatusIndicator({ status }) {
   const config = {
-    healthy: { color: "bg-emerald-500", label: "Healthy", icon: CheckCircle },
+    healthy: { color: "bg-[var(--success)]", label: "Healthy", icon: CheckCircle },
     degraded: { color: "bg-amber-500", label: "Degraded", icon: Activity },
-    unhealthy: { color: "bg-red-500", label: "Unhealthy", icon: XCircle },
+    unhealthy: { color: "bg-[var(--danger)]", label: "Unhealthy", icon: XCircle },
     no_workers: { color: "bg-amber-500", label: "No workers", icon: Activity },
   };
   const c = config[status] || config.unhealthy;
@@ -60,13 +60,13 @@ export default function SystemHealthPage() {
           {/* ── Overall Status Banner ──────────────────────────── */}
           <div className={`mb-6 flex items-center gap-3 rounded-xl border p-4 ${
             health.overall === "healthy"
-              ? "border-emerald-500/30 bg-emerald-500/5"
+              ? "border-[var(--success)]/30 bg-[var(--success)]/5"
               : health.overall === "degraded"
               ? "border-amber-500/30 bg-amber-500/5"
-              : "border-red-500/30 bg-red-500/5"
+              : "border-red-500/30 bg-[var(--danger)]/5"
           }`}>
             {health.overall === "healthy" ? (
-              <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+              <CheckCircle className="h-5 w-5 text-[var(--success)] " aria-hidden />
             ) : health.overall === "degraded" ? (
               <Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden />
             ) : (
@@ -135,6 +135,9 @@ export default function SystemHealthPage() {
               <CardContent className="text-xs text-muted-foreground space-y-1">
                 {health.rabbitmq?.version && <p>Version: {health.rabbitmq.version}</p>}
                 {health.rabbitmq?.erlang_version && <p>Erlang: {health.rabbitmq.erlang_version}</p>}
+                {health.rabbitmq?.queues && (
+                  <p>Queues: {health.rabbitmq.queues.length} totalling {health.rabbitmq.queues.reduce((n, q) => n + (q.messages || 0), 0)} messages</p>
+                )}
                 {health.rabbitmq?.error && <p className="text-destructive">Error: {health.rabbitmq.error}</p>}
               </CardContent>
             </Card>
@@ -175,6 +178,62 @@ export default function SystemHealthPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* ── Message Queues & Dead Letters ─────────────────────── */}
+          {health.rabbitmq?.queues ? (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <MessageSquareText className="h-4 w-4 text-primary" aria-hidden />
+                    Message Queues
+                  </span>
+                  <StatusIndicator status={health.rabbitmq.status} />
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-xs text-muted-foreground space-y-1">
+                <div className="overflow-hidden rounded-lg border">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-3 py-2 font-semibold">Queue</th>
+                        <th className="px-3 py-2 font-semibold text-right">Messages</th>
+                        <th className="px-3 py-2 font-semibold text-right">Consumers</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {health.rabbitmq.queues.map((q) => {
+                        const isDlq = q.name.endsWith("dlq");
+                        const depth = q.messages || 0;
+                        return (
+                          <tr key={q.name} className="border-t first:border-t-0">
+                            <td className="px-3 py-2 flex items-center gap-2">
+                              <span className="font-medium">{q.name}</span>
+                              {isDlq && (
+                                <span className="rounded bg-[var(--danger)]/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-400">
+                                  DLQ
+                                </span>
+                              )}
+                            </td>
+                            <td className={`px-3 py-2 text-right tabular-nums ${isDlq && depth > 0 ? "text-destructive font-semibold" : ""}`}>
+                              {depth.toLocaleString()}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums">{q.consumers}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex items-center justify-between pt-2">
+                  <span>Dead-letter queue</span>
+                  <span className={`font-semibold tabular-nums ${(health.rabbitmq.dead_letter?.messages || 0) > 0 ? "text-destructive" : ""}`}>
+                    {(health.rabbitmq.dead_letter?.messages || 0).toLocaleString()} message(s)
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
         </>
       ) : null}
     </AppShell>

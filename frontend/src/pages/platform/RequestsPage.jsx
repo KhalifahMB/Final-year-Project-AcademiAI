@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { platformApi } from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
-import StatusBadge from '@/components/shared/StatusBadge';
 import SkeletonRows from '@/components/shared/SkeletonRows';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Building2, Check, XCircle, Clock, Mail, User, Phone, Users } from 'lucide-react';
+import { Building2, Check, XCircle, Mail, User, Phone, Users } from 'lucide-react';
 
 function timeAgo(iso) {
   if (!iso) return '';
@@ -24,9 +23,9 @@ function timeAgo(iso) {
 }
 
 const STATUS_STYLES = {
-  pending: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
-  approved: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
-  rejected: 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30',
+  pending: 'bg-[var(--warn-soft)] text-[var(--warn)] border-[var(--warn)]/30',
+  approved: 'bg-[var(--success)]/15 text-[var(--success)]  border-[var(--success)]/30',
+  rejected: 'bg-[var(--danger)]/15 text-red-700 dark:text-red-400 border-red-500/30',
 };
 
 export default function PlatformRequestsPage() {
@@ -111,7 +110,7 @@ export default function PlatformRequestsPage() {
                   <Button size="sm" onClick={() => setReviewId(r.id)}>Review</Button>
                 )}
                 {r.provisioned_tenant_name && (
-                  <span className="text-xs text-emerald-600 font-medium">Provisioned: {r.provisioned_tenant_name}</span>
+                  <span className="text-xs text-[var(--success)] font-medium">Provisioned: {r.provisioned_tenant_name}</span>
                 )}
               </CardHeader>
               <CardContent className="space-y-3 text-sm">

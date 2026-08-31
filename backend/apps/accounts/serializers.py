@@ -77,8 +77,8 @@ class SignupSerializer(serializers.Serializer):
     # Accepted but never trusted: the view coerces anything other than
     # student/lecturer down to student (privilege-escalation guard).
     role = serializers.CharField(required=False, default="student")
-    # Optional programme (students) — drives the academic profile and
-    # auto-enrollment into departmental course offerings on verification.
+    # Optional programme (students) — builds the academic profile used to
+    # scope institution structure and course enrolment.
     programme = serializers.UUIDField(required=False, allow_null=True)
     gender = serializers.ChoiceField(
         choices=User.Gender.choices, required=False, allow_blank=True
@@ -133,7 +133,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token["role"] = user.role
         token["tenant_id"] = str(user.tenant_id) if user.tenant_id else None
-        token["email"] = user.email
+        # Note: never embed PII (email) in the token — authorization always
+        # reads the DB user, not these claims.
         return token
 
 

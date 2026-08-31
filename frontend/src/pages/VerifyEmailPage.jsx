@@ -162,13 +162,13 @@ export default function VerifyEmailPage() {
 
   return (
     <AuthLayout
+      icon={MailCheck}
       title="Verify your email"
       subtitle={
         initialEmail
           ? `We sent a 6-digit code to ${initialEmail}. Enter it below to activate your account.`
-          : "Enter the 6-digit code we emailed you. Codes expire shortly."
+          : "Enter the 6-digit code we emailed you to activate your account."
       }
-      icon={MailCheck}
       footer={
         <>
           Back to{" "}
@@ -187,7 +187,7 @@ export default function VerifyEmailPage() {
         </Alert>
       ) : null}
       {ok ? (
-        <Alert className="mb-5 border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300">
+        <Alert className="mb-5 border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)]">
           <AlertDescription>{ok}</AlertDescription>
         </Alert>
       ) : null}
@@ -244,7 +244,7 @@ export default function VerifyEmailPage() {
         <Button
           type="submit"
           disabled={loading || code.length !== CODE_LENGTH}
-          className="h-11 w-full font-medium shadow-sm"
+          className="h-11 w-full font-medium"
         >
           {loading ? "Verifying…" : "Verify email"}
         </Button>

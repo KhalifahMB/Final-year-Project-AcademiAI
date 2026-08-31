@@ -35,7 +35,7 @@ class QuizQuestionSerializer(serializers.ModelSerializer):
             user
             and (
                 getattr(user, "is_superuser", False)
-                or getattr(user, "role", None) in ("admin", "lecturer")
+                or getattr(user, "role", None) in ("tenant_admin", "lecturer")
             )
         )
         if not is_staff and not self.context.get("reveal_answers", False):
@@ -154,7 +154,7 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
             user
             and (
                 getattr(user, "is_superuser", False)
-                or getattr(user, "role", None) in ("admin", "lecturer")
+                or getattr(user, "role", None) in ("tenant_admin", "lecturer")
             )
         )
         if not (is_owner or is_staff):

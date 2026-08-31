@@ -13,15 +13,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import {
-  BookOpen, Building2, ClipboardList, FileText, GraduationCap,
+  Building2, ClipboardList, FileText, GraduationCap,
   HardDrive, Landmark, TrendingUp, Users, MessageSquareText,
   ScrollText,
 } from 'lucide-react';
 
 const PIE_COLORS = [
-  'oklch(0.55 0.25 293)',
-  'oklch(0.6 0.2 255)',
-  'oklch(0.65 0.16 215)',
+  'var(--accent-strong)',
+  'var(--accent)',
+  'var(--info)',
 ];
 
 function formatBytes(bytes) {
@@ -91,7 +91,7 @@ export default function AdminDashboardPage() {
 
           <div className="mt-6 grid gap-5 lg:grid-cols-2">
             {roleData.length > 0 && (
-              <section className="rounded-xl border bg-card p-5 shadow-sm">
+              <section className="rounded-2xl border bg-card p-5">
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
                   <Users className="h-4 w-4 text-primary" aria-hidden /> People by role
                 </h2>
@@ -126,7 +126,7 @@ export default function AdminDashboardPage() {
             )}
 
             {pipelineData.length > 0 && (
-              <section className="rounded-xl border bg-card p-5 shadow-sm">
+              <section className="rounded-2xl border bg-card p-5">
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
                   <TrendingUp className="h-4 w-4 text-primary" aria-hidden /> Material pipeline
                 </h2>
@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
               </section>
             )}
 
-            <section className="rounded-xl border bg-card p-5 shadow-sm lg:col-span-2">
+            <section className="rounded-2xl border bg-card p-5 lg:col-span-2">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
                 <Building2 className="h-4 w-4 text-primary" aria-hidden /> Academic structure
               </h2>
@@ -164,7 +164,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Audit analytics */}
-          <section className="mt-6 rounded-xl border bg-card p-5 shadow-sm">
+          <section className="mt-6 rounded-2xl border bg-card p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -181,7 +181,7 @@ export default function AdminDashboardPage() {
                     onClick={() => setAuditDays(d)}
                     className={cn(
                       'rounded-md px-3 py-1 transition-colors',
-                      auditDays === d ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                      auditDays === d ? 'bg-background text-foreground' : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
                     {d}d
@@ -268,7 +268,7 @@ export default function AdminDashboardPage() {
           </section>
 
           {recentResources.length > 0 && (
-            <section className="mt-6 rounded-xl border bg-card p-5 shadow-sm">
+            <section className="mt-6 rounded-2xl border bg-card p-5">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
                 <FileText className="h-4 w-4 text-primary" aria-hidden /> Recent uploads
               </h2>
@@ -292,10 +292,10 @@ export default function AdminDashboardPage() {
                       <span className={
                         'rounded-full px-2 py-0.5 text-[11px] font-medium ' +
                         (r.status === 'ready'
-                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                          ? 'bg-[var(--success)]/15 text-[var(--success)] '
                           : r.status === 'failed'
-                          ? 'bg-red-500/15 text-red-700 dark:text-red-400'
-                          : 'bg-amber-500/15 text-amber-700 dark:text-amber-400')
+                          ? 'bg-[var(--danger)]/15 text-red-700 dark:text-red-400'
+                          : 'bg-[var(--warn)]/15 text-amber-700 dark:text-amber-400')
                       }>
                         {r.status}
                       </span>

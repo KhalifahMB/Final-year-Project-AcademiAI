@@ -34,6 +34,7 @@ from .serializers import (
 class TenantRequestCreateView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_scope = "tenant_request"
 
     def post(self, request):
         ser = TenantRequestCreateSerializer(data=request.data)

@@ -50,5 +50,8 @@ minio_data/
 *.key
 secrets/
 
+# Mailpit local database (runtime-generated, do not commit)
 mailpit/
+
+.opencode/
 .opencode/

@@ -21,7 +21,7 @@ class Command(BaseCommand):
                 email=email,
                 password="DemoAdmin123!",
                 tenant=tenant,
-                role=User.Role.ADMIN,
+                role=User.Role.TENANT_ADMIN,
                 first_name="Demo",
                 last_name="Admin",
             )

@@ -10,6 +10,6 @@ class IsOwnerOrAdminForWrite(BasePermission):
         if request.method in SAFE_METHODS:
             return True
         return (
-            getattr(request.user, "role", None) == "admin"
+            getattr(request.user, "is_tenant_admin", False)
             or obj.uploaded_by_id == request.user.id
         )

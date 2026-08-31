@@ -16,12 +16,12 @@ import { Megaphone, Plus, Pencil, Trash2 } from "lucide-react";
 const PRIORITY_STYLES = {
   info: "bg-sky-500/12 text-sky-700 dark:text-sky-300 border-sky-500/25",
   warning: "bg-amber-500/12 text-amber-700 dark:text-amber-300 border-amber-500/25",
-  critical: "bg-red-500/12 text-red-700 dark:text-red-300 border-red-500/25",
+  critical: "bg-[var(--danger)]/12 text-red-700 dark:text-red-300 border-red-500/25",
 };
 
 function PriorityBadge({ priority }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${PRIORITY_STYLES[priority] || "bg-muted text-muted-foreground border-border"}`}>
+    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${PRIORITY_STYLES[priority] || "bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]"}`}>
       {priority}
     </span>
   );
@@ -99,6 +99,12 @@ export default function AnnouncementsPage() {
         </Button>
       }
     >
+      <Alert className="mb-4">
+        <AlertDescription>
+          Announcements are delivered by email. Warning and Critical ("important") announcements are emailed to all targeted users and cannot be unsubscribed; Info announcements are emailed unless a user opts out in Settings.
+        </AlertDescription>
+      </Alert>
+
       {announcementsQ.isLoading ? (
         <SkeletonRows rows={4} />
       ) : announcementsQ.error ? (
