@@ -149,18 +149,21 @@ export default function TenantDetailPage() {
           </Card>
 
           {/* ── Stats ───────────────────────────────────────────── */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard icon={Users} label="Users" value={stats?.users?.total} hint={`${stats?.users?.verified || 0} verified`} />
             <StatCard icon={FileText} label="Resources" value={stats?.resources?.total} hint={formatBytes(stats?.resources?.storage_used_bytes)} />
-            <StatCard icon={GraduationCap} label="Enrollments" value={stats?.academic?.enrollments} hint={`${stats?.academic?.courses || 0} courses`} />
-            <StatCard icon={Landmark} label="Faculties" value={stats?.academic?.faculties} hint={`${stats?.academic?.departments || 0} departments`} />
+            <StatCard icon={GraduationCap} label="Quiz Attempts" value={stats?.quizzes?.attempts} hint={`${stats?.quizzes?.total || 0} quizzes`} />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <StatCard icon={Users} label="Chat Sessions" value={stats?.chat?.sessions} hint={`${stats?.chat?.messages || 0} messages`} />
-            <StatCard icon={Users} label="Quiz Attempts" value={stats?.quizzes?.attempts} hint={`${stats?.quizzes?.total || 0} quizzes`} />
-            <StatCard icon={HardDrive} label="Vector Chunks" value={stats?.resources?.chunks} hint="Embedded" />
-          </div>
+          {/* Structure stats are only exposed to the tenant's own admin. */}
+          {data?.structure_visible && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard icon={GraduationCap} label="Enrollments" value={stats?.academic?.enrollments} hint={`${stats?.academic?.courses || 0} courses`} />
+              <StatCard icon={Landmark} label="Faculties" value={stats?.academic?.faculties} hint={`${stats?.academic?.departments || 0} departments`} />
+              <StatCard icon={Users} label="Chat Sessions" value={stats?.chat?.sessions} hint={`${stats?.chat?.messages || 0} messages`} />
+              <StatCard icon={HardDrive} label="Vector Chunks" value={stats?.resources?.chunks} hint="Embedded" />
+            </div>
+          )}
 
           {/* ── Users by Role ───────────────────────────────────── */}
           {stats?.users?.by_role && Object.keys(stats.users.by_role).length > 0 && (
@@ -180,7 +183,7 @@ export default function TenantDetailPage() {
           )}
 
           {/* ── Academic Structure ──────────────────────────────── */}
-          {stats?.academic && (
+          {data?.structure_visible && stats?.academic && (
             <Card>
               <CardContent className="py-5">
                 <h3 className="text-sm font-semibold mb-3">Academic structure</h3>

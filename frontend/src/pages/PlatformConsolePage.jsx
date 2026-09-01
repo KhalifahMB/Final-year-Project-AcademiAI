@@ -8,10 +8,9 @@ import { platformApi } from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
 import StatCard from "@/components/shared/StatCard";
 import SkeletonRows from "@/components/shared/SkeletonRows";
-import { Button } from "@/components/ui/button";
 import {
   Activity, Building2, FileText, MessageSquareText,
-  Plus, Users, ClipboardList, HardDrive, Megaphone,
+  Users, ClipboardList, HardDrive, Megaphone,
   ArrowRight, TrendingUp,
 } from "lucide-react";
 
@@ -70,16 +69,6 @@ export default function PlatformConsolePage() {
     <AppShell
       title="Platform Dashboard"
       description="Overview of AcademiAI — tenants, users, resources, and AI activity across the platform."
-      actions={
-        <div className="flex gap-2">
-          <Link to="/platform/tenants">
-            <Button type="button" className="shadow-sm">
-              <Plus className="mr-2 h-4 w-4" aria-hidden />
-              Add Tenant
-            </Button>
-          </Link>
-        </div>
-      }
     >
       {statsQ.isLoading ? (
         <SkeletonRows rows={6} />

@@ -6,6 +6,79 @@ class ResourceSerializer(serializers.ModelSerializer):
     uploaded_by_username = serializers.CharField(source="uploaded_by.username", read_only=True, default=None)
     latest_summary = serializers.SerializerMethodField()
 
+    def validate(self, attrs):
+        """
+        Course-linked materials are permission-gated:
+
+        - Course-offering attachments must belong to the caller's tenant.
+        - Students may attach an offering ONLY when they are enrolled and
+          keep 'course' visibility (their upload surface is the Resources
+          page; course-page uploads belong to lecturers).
+        - Lecturers may attach ONLY offerings they are assigned to teach;
+          for 'department' visibility the owning department is coerced from
+          the offering's course so a lecturer can never file material under
+          another department.
+        - Tenant admins / platform users are unrestricted.
+        """
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not getattr(user, "tenant_id", None):
+            return attrs
+
+        offering = attrs.get("course_offering")
+        if offering is None:
+            return attrs
+
+        if offering.tenant_id != user.tenant_id:
+            raise serializers.ValidationError({"course_offering": "Unknown offering."})
+
+        scope = attrs.get("visibility_scope") or (
+            getattr(self.instance, "visibility_scope", None) or Resource.Visibility.COURSE
+        )
+        is_admin = bool(getattr(user, "is_tenant_admin", False)) or bool(
+            getattr(user, "is_superuser", False)
+        )
+        if is_admin:
+            return attrs
+
+        role = getattr(user, "role", None)
+        from apps.academics.models import (
+            CourseEnrollment,
+            LecturerCourseAssignment,
+        )
+
+        if role == "student":
+            if scope != Resource.Visibility.COURSE:
+                raise serializers.ValidationError(
+                    {"visibility_scope": "Students can only attach materials to their enrolled course offerings with 'course' visibility."}
+                )
+            enrolled = CourseEnrollment.objects.filter(
+                student=user,
+                course_offering=offering,
+                status=CourseEnrollment.Status.ENROLLED,
+            ).exists()
+            if not enrolled:
+                raise serializers.ValidationError(
+                    {"course_offering": "You are not enrolled in this offering."}
+                )
+            return attrs
+
+        if role == "lecturer":
+            assigned = LecturerCourseAssignment.objects.filter(
+                lecturer=user, course_offering=offering
+            ).exists()
+            if not assigned:
+                raise serializers.ValidationError(
+                    {"course_offering": "You are not assigned to teach this offering."}
+                )
+            if scope == Resource.Visibility.DEPARTMENT:
+                attrs["department"] = offering.course.department
+            return attrs
+
+        raise serializers.ValidationError(
+            {"course_offering": "You cannot attach materials to a course offering."}
+        )
+
     class Meta:
         model = Resource
         fields = (

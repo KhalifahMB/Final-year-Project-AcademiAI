@@ -14,6 +14,12 @@ class UserSerializer(serializers.ModelSerializer):
 
     full_name = serializers.CharField(read_only=True)
     has_custom_avatar = serializers.SerializerMethodField()
+    # Academic profile derived from the user's role-linked profile.
+    # Students inherit from their programme (programme → department → faculty);
+    # lecturers from their assigned department. Admins/platform users: None.
+    programme_id = serializers.SerializerMethodField()
+    department_id = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -24,9 +30,13 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "full_name",
             "role",
+            "is_active",
             "is_email_verified",
             "is_superuser",
             "tenant",
+            "programme_id",
+            "department_id",
+            "department_name",
             "phone_number",
             "gender",
             "avatar_preset",
@@ -34,6 +44,41 @@ class UserSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = fields
+
+    def _profile(self, obj):
+        role = getattr(obj, "role", None)
+        if role == "student":
+            return getattr(obj, "student_profile", None)
+        if role == "lecturer":
+            return getattr(obj, "lecturer_profile", None)
+        return None
+
+    def get_programme_id(self, obj):
+        profile = self._profile(obj)
+        programme = getattr(profile, "programme", None)
+        return str(programme.id) if programme else None
+
+    def get_department_id(self, obj):
+        profile = self._profile(obj)
+        if profile is None:
+            return None
+        if getattr(obj, "role", None) == "student":
+            programme = getattr(profile, "programme", None)
+            dept = getattr(programme, "department", None)
+        else:
+            dept = getattr(profile, "department", None)
+        return str(dept.id) if dept else None
+
+    def get_department_name(self, obj):
+        profile = self._profile(obj)
+        if profile is None:
+            return None
+        if getattr(obj, "role", None) == "student":
+            programme = getattr(profile, "programme", None)
+            dept = getattr(programme, "department", None)
+        else:
+            dept = getattr(profile, "department", None)
+        return dept.name if dept else None
 
     def get_has_custom_avatar(self, obj):
         return bool(obj.avatar_key)

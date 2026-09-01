@@ -1,0 +1,128 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>{% block subject %}{{ subject }}{% endblock %}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
+  <style>
+    /* Dark mode: keep the card light and readable regardless of client theme. */
+    @media (prefers-color-scheme: dark) {
+      .email-block {
+        background-color: {{ card_bg }} !important;
+      }
+    }
+    @media only screen and (max-width: 620px) {
+      .email-container { width: 100% !important; }
+      .email-pad { padding-left: 24px !important; padding-right: 24px !important; }
+      .email-pad-xl { padding-left: 20px !important; padding-right: 20px !important; }
+      .btn-block { display: block !important; width: 100% !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; width:100%; background-color:{{ page_bg }}; word-spacing:normal; -webkit-text-size-adjust:100%;">
+  <!-- Preheader (hidden) -->
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all;">
+    {% block preheader %}{% endblock %}&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:{{ page_bg }}; padding:32px 0;">
+    <tr>
+      <td align="center" style="padding:0 16px;">
+        <table class="email-container" role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background-color:{{ card_bg }}; border:1px solid {{ border }}; border-radius:16px; overflow:hidden; box-shadow:0 8px 30px rgba(16,24,40,0.06);">
+          <!-- Brand header -->
+          <tr>
+            <td style="background-color:{{ card_bg }}; padding:28px 40px 24px 40px;" class="email-pad">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="vertical-align:middle;">
+                    {% if logo_data_uri %}
+                    <img src="{{ logo_data_uri }}" alt="{{ product_name }}" width="44" height="44"
+                         style="display:inline-block; vertical-align:middle; border:0; outline:none; text-decoration:none; margin-right:12px;">
+                    {% endif %}
+                    <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:20px; font-weight:700; color:{{ text_primary }}; letter-spacing:-0.01em; vertical-align:middle;">
+                      {{ product_name }}
+                    </span>
+                  </td>
+                  <td align="right" style="vertical-align:middle;">
+                    <span style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:{{ brand_main }};">
+                      {{ header_tag | default:"Academic Cloud" }}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Eyebrow + heading -->
+          {% block masthead %}
+          <tr>
+            <td class="email-pad" style="padding:8px 40px 0 40px;">
+              {% if eyebrow %}<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:{{ brand_main }}; margin-bottom:8px;">{{ eyebrow }}</div>{% endif %}
+              {% if heading %}<h1 style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:26px; font-weight:700; color:{{ text_primary }}; letter-spacing:-0.02em; line-height:1.2;">{{ heading }}</h1>{% endif %}
+            </td>
+          </tr>
+          {% endblock %}
+
+          <!-- Body -->
+          <tr>
+            <td class="email-pad email-pad-xl" style="padding:24px 40px 32px 40px;">
+              {% block body %}
+              <p style="margin:0 0 16px 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:15px; line-height:1.6; color:{{ text_primary }};">
+                {{ body | default:"" }}
+              </p>
+              {% endblock %}
+
+              <!-- Primary CTA -->
+              {% if cta_url %}
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 4px 0;">
+                <tr>
+                  <td align="center" class="btn-block" style="border-radius:10px; background-color:{{ brand_main }}; padding:0;">
+                    <a href="{{ cta_url }}" target="_blank"
+                       style="display:inline-block; padding:14px 28px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:15px; font-weight:600; color:#ffffff; text-decoration:none; border-radius:10px; background-color:{{ brand_main }};">
+                      {{ cta_label | default:"Take action" }}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              {% if cta_hint %}<p style="margin:10px 0 0 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.5; color:{{ text_muted }};">{{ cta_hint }}</p>{% endif %}
+              {% endif %}
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr><td style="padding:0 40px;"><div style="height:1px; background-color:{{ border }};"></div></td></tr>
+
+          <!-- Footer -->
+          <tr>
+            <td class="email-pad" style="padding:24px 40px 28px 40px;">
+              <p style="margin:0 0 10px 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; line-height:1.55; color:{{ text_muted }};">
+                {% block footer_note %}If you received this by mistake, you can safely ignore it.{% endblock %}
+              </p>
+              {% block footer_extra %}{% endblock %}
+              <p style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.5; color:{{ footer }};">
+                {{ product_name }} · Your institution's trusted AI workspace.<br>
+                If you need help, contact your administrator or <a href="mailto:{{ support_email }}" style="color:{{ footer }}; text-decoration:underline;">{{ support_email }}</a>.
+              </p>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin:16px 0 0 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:11px; line-height:1.4; color:{{ footer }};">
+          © {% now "Y" %} {{ product_name }}. This is a transactional message from your academic platform.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

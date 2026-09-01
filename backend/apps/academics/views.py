@@ -100,6 +100,18 @@ class AcademicSessionViewSet(AdminWriteViewSet):
     queryset = AcademicSession.objects.all()
     serializer_class = AcademicSessionSerializer
 
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        instance = serializer.instance
+        # Auto-set as current if it is the latest by start_date.
+        is_latest = not AcademicSession.objects.filter(
+            tenant_id=instance.tenant_id,
+            start_date__gt=instance.start_date,
+        ).exists()
+        if is_latest:
+            instance.is_current = True
+            instance.save(update_fields=["is_current"])
+
 
 @extend_schema(tags=["Semesters"])
 class SemesterViewSet(AdminWriteViewSet):
@@ -107,13 +119,17 @@ class SemesterViewSet(AdminWriteViewSet):
     serializer_class = SemesterSerializer
     filterset_fields = ["academic_session"]
 
-    def perform_update(self, serializer):
-        semester = serializer.save()
-        # Only one current semester per tenant at a time.
-        if semester.is_current:
-            Semester.objects.filter(
-                tenant_id=semester.tenant_id, is_current=True
-            ).exclude(id=semester.id).update(is_current=False)
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        instance = serializer.instance
+        # Auto-set as current if it is the latest by start_date.
+        is_latest = not Semester.objects.filter(
+            tenant_id=instance.tenant_id,
+            start_date__gt=instance.start_date,
+        ).exists()
+        if is_latest:
+            instance.is_current = True
+            instance.save(update_fields=["is_current"])
 
 
 @extend_schema(tags=["Courses"])
@@ -128,7 +144,7 @@ class CourseViewSet(AdminWriteViewSet):
 class CourseOfferingViewSet(AdminWriteViewSet):
     queryset = CourseOffering.objects.select_related(
         "course", "academic_session", "semester"
-    ).order_by("-created_at")
+    ).prefetch_related("lecturer_assignments__lecturer").order_by("-created_at")
     serializer_class = CourseOfferingSerializer
     filterset_fields = ["course", "academic_session", "semester", "status"]
 

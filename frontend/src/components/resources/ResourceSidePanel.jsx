@@ -119,7 +119,7 @@ export default function ResourceSidePanel({
                 size="sm"
                 onClick={requestSummary}
                 disabled={summaryLoading}
-                className="w-full justify-start h-8 bg-gradient-to-r from-indigo-500 to-violet-600 text-xs text-white hover:from-indigo-600 hover:to-violet-700"
+                className="w-full justify-start h-8 bg-[var(--accent)] text-xs text-[var(--on-accent)] hover:bg-[var(--accent-strong)]"
               >
                 {summaryLoading
                   ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" aria-hidden />

@@ -6,6 +6,10 @@ from .models import (
 )
 
 
+def _is_admin(user):
+    return bool(getattr(user, "is_tenant_admin", False)) or bool(getattr(user, "is_superuser", False))
+
+
 class FacultySerializer(serializers.ModelSerializer):
     class Meta:
         model = Faculty
@@ -53,31 +57,76 @@ class SemesterSerializer(serializers.ModelSerializer):
 
 
 class CourseSerializer(serializers.ModelSerializer):
+    department_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Course
         fields = (
-            "id", "department", "code", "title", "description", "credit_unit",
+            "id", "department", "department_name", "code", "title", "description", "credit_unit",
             "status", "tenant", "created_at", "updated_at",
         )
         read_only_fields = ("id", "tenant", "created_at", "updated_at")
+
+    def get_department_name(self, obj):
+        dept = obj.department
+        return dept.name if dept else None
 
 
 class CourseOfferingSerializer(serializers.ModelSerializer):
     course_code = serializers.CharField(source="course.code", read_only=True)
     course_title = serializers.CharField(source="course.title", read_only=True)
+    # The owning department — drives the course detail uploads (department-scoped
+    # materials) and the catalogue department filter.
+    department = serializers.UUIDField(source="course.department_id", read_only=True)
+    department_name = serializers.SerializerMethodField()
     session_name = serializers.CharField(
         source="academic_session.name", read_only=True
     )
     semester_name = serializers.CharField(source="semester.name", read_only=True)
+    # Roles that may attach materials to this offering from its course page.
+    can_manage_materials = serializers.SerializerMethodField()
+    # Assigned teaching staff (visible to every authorized viewer).
+    lecturers = serializers.SerializerMethodField()
 
     class Meta:
         model = CourseOffering
         fields = (
             "id", "course", "course_code", "course_title",
             "academic_session", "session_name", "semester", "semester_name",
+            "department", "department_name", "can_manage_materials", "lecturers",
             "status", "tenant", "created_at",
         )
         read_only_fields = ("id", "tenant", "created_at")
+
+    def get_department_name(self, obj):
+        dept = obj.course.department
+        return dept.name if dept else None
+
+    def get_can_manage_materials(self, obj):
+        user = getattr(self.context.get("request"), "user", None)
+        if user is None or not getattr(user, "tenant_id", None):
+            return False
+        if _is_admin(user):
+            return True
+        if getattr(user, "role", None) == "lecturer":
+            return LecturerCourseAssignment.objects.filter(
+                lecturer=user, course_offering_id=obj.id
+            ).exists()
+        return False
+
+    def get_lecturers(self, obj):
+        # When the viewset prefetches lecturer_assignments__lecturer, .all()
+        # resolves from that cache; otherwise it degrades to a single query.
+        assignments = obj.lecturer_assignments.all()
+        return [
+            {
+                "id": str(a.lecturer_id),
+                "name": a.lecturer.full_name or a.lecturer.email,
+                "email": a.lecturer.email,
+                "role": a.assignment_role,
+            }
+            for a in assignments
+        ]
 
 
 class CourseEnrollmentSerializer(serializers.ModelSerializer):

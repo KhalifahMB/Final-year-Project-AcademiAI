@@ -1,0 +1,40 @@
+{% extends "emails/base_email.html" %}
+
+{% block subject %}{% if priority == "critical" %}[CRITICAL] {% elif priority == "warning" %}[WARNING] {% endif %}{{ title }}{% endblock %}
+{% block preheader %}{{ summary | default:"" }}{% endblock %}
+{% block masthead %}
+  <tr>
+    <td class="email-pad" style="padding:8px 40px 8px 40px;">
+      {% if priority == "critical" or priority == "warning" %}
+      <div style="display:inline-block; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#ffffff; background-color:{{ danger }}; border-radius:999px; padding:5px 12px; margin-bottom:12px;">{{ priority | upper }}</div>
+      {% endif %}
+      <h1 style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:24px; font-weight:700; color:{{ text_primary }}; letter-spacing:-0.02em; line-height:1.25;">{{ title }}</h1>
+      {% if institution_name %}<p style="margin:6px 0 0 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; font-weight:600; color:{{ text_muted }};">{{ institution_name }}</p>{% endif %}
+    </td>
+  </tr>
+{% endblock %}
+{% block body %}
+  <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:15px; line-height:1.6; color:{{ text_primary }};">
+    {{ announcement_body | linebreaks }}
+  </div>
+
+  {% if cta_url %}
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 4px 0;">
+    <tr>
+      <td align="center" class="btn-block" style="border-radius:10px; background-color:{{ brand_main }}; padding:0;">
+        <a href="{{ cta_url }}" target="_blank"
+           style="display:inline-block; padding:13px 26px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:14px; font-weight:600; color:#ffffff; text-decoration:none; border-radius:10px; background-color:{{ brand_main }};">
+          {{ cta_label | default:"View announcement" }}
+        </a>
+      </td>
+    </tr>
+  </table>
+  {% endif %}
+{% endblock %}
+
+{% block footer_note %}You are receiving this announcement because you're a member of this {{ product_name }} workspace.{% endblock %}
+{% block footer_extra %}
+  <p style="margin:0 0 10px 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.5; color:{{ text_muted }};">
+    You can adjust your announcement preferences in your profile settings.
+  </p>
+{% endblock %}

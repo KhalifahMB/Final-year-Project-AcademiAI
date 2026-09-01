@@ -28,6 +28,7 @@ def _make_student(tenant, email, **kwargs):
 
 def _make_resource(owner, scope, **kwargs):
     defaults = dict(
+        tenant=owner.tenant,
         title=f"{scope} doc",
         description="t",
         visibility_scope=scope,

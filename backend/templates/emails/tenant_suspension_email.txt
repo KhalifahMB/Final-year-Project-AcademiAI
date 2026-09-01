@@ -1,0 +1,9 @@
+Hello,
+
+Your institution's {{ product_name }} workspace ({{ tenant_name }}) has been
+suspended by the platform team.
+
+You can still sign in for the next {{ grace_hours }} hours. After that,
+account access will be restricted until your institution is reactivated.
+
+Please contact your institution's administrator for details.

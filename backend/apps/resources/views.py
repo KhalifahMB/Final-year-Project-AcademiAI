@@ -592,17 +592,15 @@ class ResourceVersionViewSet(TenantModelViewSet):
         if getattr(self, "swagger_fake_view", False):
             return ResourceVersion.objects.none()
         user = self.request.user
-        qs = ResourceVersion.objects.filter(
-            tenant=user.tenant,
-            resource__id=self.kwargs.get("resource_pk"),
-        ).select_related("created_by")
-        # The parent resource must also be visible to the caller — a private
+        # The parent resource must itself be visible to the caller — a private
         # material's version history is not world-readable (admins included).
-        visible = Resource.objects.filter(
-            _authorized_resources_q(user)
-        ).values("id")
-        qs = qs.filter(resource__in=visible)
-        return qs.order_by("-version_number")
+        # Raises 404 for unauthorized parents, mirroring summaries/detail.
+        resource = self._parent_resource()
+        return (
+            ResourceVersion.objects.filter(tenant=user.tenant, resource=resource)
+            .select_related("created_by")
+            .order_by("-version_number")
+        )
 
     def perform_create(self, serializer):
         # Only the uploader or a tenant admin may add a new version. This

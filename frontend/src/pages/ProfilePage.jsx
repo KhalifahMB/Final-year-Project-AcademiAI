@@ -163,36 +163,49 @@ function AnnouncementPreferencesCard() {
  );
 }
 
-function InstitutionCard({ user }) { return (
- <Card>
- <CardHeader>
- <CardTitle className="flex items-center gap-2 text-lg">
- <Building2 className="h-4 w-4 text-primary" aria-hidden /> Institution
- </CardTitle>
- <CardDescription>
- Managed by your institution's administrators — read-only for you.
- </CardDescription>
- </CardHeader>
- <CardContent className="space-y-3 text-sm">
- <div className="flex items-center justify-between gap-3">
- <span className="text-muted-foreground">Role</span>
- <Badge className="capitalize">{user?.role}</Badge>
- </div>
- <Separator />
- <div className="flex items-center justify-between gap-3">
- <span className="text-muted-foreground">Email verified</span>
- <Badge variant={user?.is_email_verified ? 'default' : 'secondary'}>
- {user?.is_email_verified ? 'Verified' : 'Not verified'}
- </Badge>
- </div>
- <Separator />
- <p className="rounded-lg bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
- Programme, department and enrollment details are maintained by your
- institution. Contact your administrator to correct them.
- </p>
- </CardContent>
- </Card>
- );
+function InstitutionCard({ user }) {
+ const isAdmin = user?.role === 'tenant_admin';
+ return (
+  <Card>
+  <CardHeader>
+  <CardTitle className="flex items-center gap-2 text-lg">
+  <Building2 className="h-4 w-4 text-primary" aria-hidden /> Institution
+  </CardTitle>
+  <CardDescription>
+  {isAdmin
+   ? 'You manage this institution. Academic structure and enrollments live in your admin area.'
+   : "Managed by your institution's administrators — read-only for you."}
+  </CardDescription>
+  </CardHeader>
+  <CardContent className="space-y-3 text-sm">
+  <div className="flex items-center justify-between gap-3">
+  <span className="text-muted-foreground">Role</span>
+  <Badge className="capitalize">{user?.role}</Badge>
+  </div>
+  <Separator />
+  <div className="flex items-center justify-between gap-3">
+  <span className="text-muted-foreground">Institution</span>
+  <span className="font-medium">{user?.tenant?.name || 'Not enrolled in an institution'}</span>
+  </div>
+  <Separator />
+  <div className="flex items-center justify-between gap-3">
+  <span className="text-muted-foreground">Email verified</span>
+  <Badge variant={user?.is_email_verified ? 'default' : 'secondary'}>
+  {user?.is_email_verified ? 'Verified' : 'Not verified'}
+  </Badge>
+  </div>
+  {!isAdmin && (
+  <>
+  <Separator />
+  <p className="rounded-lg bg-muted/60 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+  Programme, department and enrollment details are maintained by your
+  institution. Contact your administrator to correct them.
+  </p>
+  </>
+  )}
+  </CardContent>
+  </Card>
+  );
 }
 
 function ProfileHeader({ user }) {
@@ -218,9 +231,9 @@ function ProfileHeader({ user }) {
  </h2>
  <p className="mt-0.5 truncate text-sm text-white/80">{user?.email}</p>
  <div className="mt-2.5 flex flex-wrap gap-1.5">
- <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium capitalize backdrop-blur">
- {user?.role}
- </span>
+<span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium capitalize backdrop-blur">
+  {user?.is_superuser ? 'Platform Operator' : user?.role}
+  </span>
  {user?.is_email_verified && (
  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/25 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
  <ShieldCheck className="h-3 w-3" aria-hidden /> Verified
@@ -550,7 +563,7 @@ export default function ProfilePage() {
  </CardContent>
  </Card>
 
- <InstitutionCard user={user} />
+ {user?.tenant && <InstitutionCard user={user} />}
  <AppearanceCard />
  </div>
  </div>

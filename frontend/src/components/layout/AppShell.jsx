@@ -567,6 +567,14 @@ export default function AppShell({ title, description, actions, children, fullBl
     return () => window.removeEventListener('academiai:request-sidebar', onRequest);
   }, []);
 
+  // Full-bleed pages (e.g. chat) have no header, so they can ask to open the
+  // mobile drawer to give users a way back to the rest of the app.
+  useEffect(() => {
+    const onOpenMenu = () => setMobileOpen(true);
+    window.addEventListener('academiai:open-mobile-menu', onOpenMenu);
+    return () => window.removeEventListener('academiai:open-mobile-menu', onOpenMenu);
+  }, []);
+
   // Close mobile drawer on route change (adjust state during render so the
   // drawer never lingers open after navigating between pages).
   const [prevPath, setPrevPath] = useState(loc.pathname);
@@ -649,7 +657,7 @@ export default function AppShell({ title, description, actions, children, fullBl
                   const q = searchRef.current?.value.trim() || '';
                   navigate(q ? `/resources?q=${encodeURIComponent(q)}` : '/resources');
                 }}
-                className="search-pill flex h-9 w-full min-w-0 max-w-[440px] flex-1 items-center gap-2 rounded-[var(--radius-md)] px-3 md:max-w-[min(340px,42vw)]"
+                className="search-pill flex h-9 w-full min-w-0 flex-1 items-center gap-2 rounded-[var(--radius-md)] px-3"
               >
                 <Search className="h-4 w-4 shrink-0 text-[var(--muted)]" aria-hidden />
                 <input

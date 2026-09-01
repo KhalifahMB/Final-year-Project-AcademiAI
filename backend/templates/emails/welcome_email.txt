@@ -1,0 +1,12 @@
+Hello {{ first_name | default:"there" }},
+
+Your email is verified and your {{ tenant_name | default:"institution" }}
+workspace is ready. Here's what you can do next:
+
+1. Ask your AI tutor questions grounded in your course materials.
+2. Browse your institution's resource library and take quizzes.
+3. Save notes and bookmarks and track your progress over time.
+
+Open your dashboard here: {{ dashboard_url | default:frontend_url }}
+
+If you didn't create this account, contact your administrator immediately.

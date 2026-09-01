@@ -6,10 +6,12 @@ from datetime import timedelta
 from django.db.models import Count, Q, Sum, F
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.db import tenant_scope
 from apps.common.permissions import IsSuperuser
 from .models import Tenant
 
@@ -207,10 +209,15 @@ class PlatformStatsView(APIView):
 @extend_schema(
     tags=["Platform"],
     summary="Detailed stats for a specific tenant",
-    description="Superuser-only. Returns per-tenant breakdown of users, resources, chat, quizzes, and academic structure.",
+    description=(
+        "Role-aware. Platform operators (superusers) receive operational usage "
+        "stats only (users, resources, quizzes). Tenant administrators of the "
+        "requested tenant additionally receive its internal academic structure, "
+        "chat sessions, and vector chunks."
+    ),
 )
 class PlatformTenantDetailView(APIView):
-    permission_classes = [IsSuperuser]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, tenant_id):
         try:
@@ -220,87 +227,144 @@ class PlatformTenantDetailView(APIView):
                 {"error": {"detail": "Tenant not found."}}, status=404
             )
 
-        # ── Users ──────────────────────────────────────────────────
-        try:
+        user = request.user
+        is_platform_operator = user.is_superuser
+        is_tenant_manager = (
+            getattr(user, "is_tenant_admin", False)
+            and str(user.tenant_id) == str(tenant.id)
+        )
+        if not is_platform_operator and not is_tenant_manager:
+            return Response(
+                {
+                    "error": {
+                        "detail": "You do not have access to this tenant's details."
+                    }
+                },
+                status=403,
+            )
+
+        # Aggregate inside tenant_scope so counts are RLS-correct for BOTH the
+        # NOBYPASSRLS app role (production) and a superuser connector (dev).
+        # Platform operators never query structure tables: they get operational
+        # usage figures, while the tenant's own admin gets the full breakdown.
+        facts = {}
+
+        def _users_facts():
             from apps.accounts.models import User
 
             user_qs = User.objects.filter(tenant=tenant)
-            users_total = user_qs.count()
-            users_by_role = {
+            facts["users_total"] = user_qs.count()
+            facts["users_by_role"] = {
                 row["role"]: row["count"]
                 for row in user_qs.values("role").annotate(count=Count("id"))
             }
-            users_verified = user_qs.filter(is_email_verified=True).count()
-        except Exception:
-            users_total = 0
-            users_by_role = {}
-            users_verified = 0
+            facts["users_verified"] = user_qs.filter(
+                is_email_verified=True
+            ).count()
 
-        # ── Resources ──────────────────────────────────────────────
-        try:
-            from apps.resources.models import Resource, ResourceChunk
+        def _resources_facts():
+            from apps.resources.models import Resource
 
             res_qs = Resource.objects.filter(tenant=tenant)
-            resources_total = res_qs.count()
-            resources_by_status = {
+            facts["resources_total"] = res_qs.count()
+            facts["resources_by_status"] = {
                 row["processing_status"]: row["count"]
-                for row in res_qs.values("processing_status").annotate(count=Count("id"))
+                for row in res_qs.values("processing_status").annotate(
+                    count=Count("id")
+                )
             }
-            storage_used = (
-                res_qs.aggregate(total=Sum("versions__file_size_bytes"))["total"] or 0
+            facts["storage_used"] = (
+                res_qs.aggregate(total=Sum("versions__file_size_bytes"))["total"]
+                or 0
             )
-            chunks_total = ResourceChunk.objects.filter(tenant=tenant).count()
-        except Exception:
-            resources_total = 0
-            resources_by_status = {}
-            storage_used = 0
-            chunks_total = 0
 
-        # ── Chat ───────────────────────────────────────────────────
-        try:
+        def _chunks_facts():
+            from apps.resources.models import ResourceChunk
+
+            facts["chunks_total"] = ResourceChunk.objects.filter(
+                tenant=tenant
+            ).count()
+
+        def _chat_facts():
             from apps.chat.models import ChatSession, ChatMessage
 
-            chat_sessions = ChatSession.objects.filter(tenant=tenant).count()
-            chat_messages = ChatMessage.objects.filter(
+            facts["chat_sessions"] = ChatSession.objects.filter(
+                tenant=tenant
+            ).count()
+            facts["chat_messages"] = ChatMessage.objects.filter(
                 session__tenant=tenant, role="user"
             ).count()
-        except Exception:
-            chat_sessions = 0
-            chat_messages = 0
 
-        # ── Quizzes ────────────────────────────────────────────────
-        try:
+        def _quizzes_facts():
             from apps.assessments.models import Quiz, QuizAttempt
 
-            quizzes_total = Quiz.objects.filter(tenant=tenant).count()
-            quiz_attempts = QuizAttempt.objects.filter(
+            facts["quizzes_total"] = Quiz.objects.filter(tenant=tenant).count()
+            facts["quiz_attempts"] = QuizAttempt.objects.filter(
                 quiz__tenant=tenant
             ).count()
-        except Exception:
-            quizzes_total = 0
-            quiz_attempts = 0
 
-        # ── Academic structure ─────────────────────────────────────
-        try:
+        def _academic_facts():
             from apps.academics.models import (
-                Faculty, Department, Programme, Course, CourseOffering, CourseEnrollment,
+                Faculty,
+                Department,
+                Programme,
+                Course,
+                CourseOffering,
+                CourseEnrollment,
             )
 
-            faculties = Faculty.objects.filter(tenant=tenant).count()
-            departments = Department.objects.filter(tenant=tenant).count()
-            programmes = Programme.objects.filter(tenant=tenant).count()
-            courses = Course.objects.filter(tenant=tenant).count()
-            offerings = CourseOffering.objects.filter(tenant=tenant).count()
-            enrollments = CourseEnrollment.objects.filter(
+            facts["faculties"] = Faculty.objects.filter(tenant=tenant).count()
+            facts["departments"] = Department.objects.filter(tenant=tenant).count()
+            facts["programmes"] = Programme.objects.filter(tenant=tenant).count()
+            facts["courses"] = Course.objects.filter(tenant=tenant).count()
+            facts["offerings"] = CourseOffering.objects.filter(tenant=tenant).count()
+            facts["enrollments"] = CourseEnrollment.objects.filter(
                 offering__tenant=tenant
             ).count()
-        except Exception:
-            faculties = 0
-            departments = 0
-            programmes = 0
-            courses = 0
-            offerings = 0
-            enrollments = 0
+
+        with tenant_scope(tenant.id):
+            for fn in (_users_facts, _resources_facts, _quizzes_facts):
+                try:
+                    fn()
+                except Exception:
+                    pass
+            if is_tenant_manager:
+                for fn in (_chunks_facts, _chat_facts, _academic_facts):
+                    try:
+                        fn()
+                    except Exception:
+                        pass
+
+        stats = {
+            "users": {
+                "total": facts.get("users_total", 0),
+                "by_role": facts.get("users_by_role", {}),
+                "verified": facts.get("users_verified", 0),
+            },
+            "resources": {
+                "total": facts.get("resources_total", 0),
+                "by_status": facts.get("resources_by_status", {}),
+                "storage_used_bytes": facts.get("storage_used", 0),
+            },
+            "quizzes": {
+                "total": facts.get("quizzes_total", 0),
+                "attempts": facts.get("quiz_attempts", 0),
+            },
+        }
+        if is_tenant_manager:
+            stats["resources"]["chunks"] = facts.get("chunks_total", 0)
+            stats["chat"] = {
+                "sessions": facts.get("chat_sessions", 0),
+                "messages": facts.get("chat_messages", 0),
+            }
+            stats["academic"] = {
+                "faculties": facts.get("faculties", 0),
+                "departments": facts.get("departments", 0),
+                "programmes": facts.get("programmes", 0),
+                "courses": facts.get("courses", 0),
+                "offerings": facts.get("offerings", 0),
+                "enrollments": facts.get("enrollments", 0),
+            }
 
         return Response(
             {
@@ -314,35 +378,8 @@ class PlatformTenantDetailView(APIView):
                     "storage_quota_bytes": tenant.storage_quota_bytes,
                     "created_at": tenant.created_at.isoformat() if tenant.created_at else None,
                 },
-                "stats": {
-                    "users": {
-                        "total": users_total,
-                        "by_role": users_by_role,
-                        "verified": users_verified,
-                    },
-                    "resources": {
-                        "total": resources_total,
-                        "by_status": resources_by_status,
-                        "storage_used_bytes": storage_used,
-                        "chunks": chunks_total,
-                    },
-                    "chat": {
-                        "sessions": chat_sessions,
-                        "messages": chat_messages,
-                    },
-                    "quizzes": {
-                        "total": quizzes_total,
-                        "attempts": quiz_attempts,
-                    },
-                    "academic": {
-                        "faculties": faculties,
-                        "departments": departments,
-                        "programmes": programmes,
-                        "courses": courses,
-                        "offerings": offerings,
-                        "enrollments": enrollments,
-                    },
-                },
+                "structure_visible": is_tenant_manager,
+                "stats": stats,
             }
         )
 

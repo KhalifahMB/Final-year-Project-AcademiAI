@@ -78,7 +78,6 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
   const [editDesc, setEditDesc] = useState('');
   const [editScope, setEditScope] = useState('');
   const [saving, setSaving] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
 
   // AI summary state
   const [summaryJobId, setSummaryJobId] = useState(null);
@@ -111,18 +110,18 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
       setSummaryJobId(null);
       setSummaryLoading(false);
       setSummaryError('');
-      setShowHistory(false);
       setEphemeralSummary(null);
       setWorkerOutdatedWarned(false);
       warnOnceRef.current = false;
       const latest = resource?.latest_summary;
       if (latest?.id && latest?.summary) {
         setActiveSummaryId(latest.id);
-        setShowSummary(true);
       } else {
         setActiveSummaryId(null);
-        setShowSummary(false);
       }
+      // Never auto-pop the summary banner on open — it stays collapsed behind
+      // the "View summary" trigger so opening a resource is unobtrusive.
+      setShowSummary(false);
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -138,7 +137,6 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (e.key === 'Escape') {
         if (expanded) setExpanded(false);
-        else if (showHistory) setShowHistory(false);
         else onClose();
         e.preventDefault();
       }
@@ -149,7 +147,7 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, expanded, onClose, showHistory]);
+  }, [open, expanded, onClose]);
 
   // Saved summaries
   const {
@@ -520,8 +518,8 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
         <SummaryPanel
           activeSummary={activeSummary}
           allSummaries={allSummaries}
-          showHistory={showHistory}
-          onToggleHistory={() => setShowHistory((v) => !v)}
+          show={showSummary}
+          onShow={() => setShowSummary(true)}
           onSelectSummary={(id) => { setActiveSummaryId(id); setShowSummary(true); }}
           onDismiss={() => setShowSummary(false)}
           canDeleteSummary={canDeleteSummary}
@@ -529,6 +527,8 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
           deletingId={deletingId}
           summaryLoading={summaryLoading}
           summaryError={summaryError}
+          requestSummary={() => requestSummary()}
+          savedCount={savedCount}
           workerOutdatedWarned={workerOutdatedWarned}
         />
 

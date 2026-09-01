@@ -34,6 +34,7 @@ import {
  Link2,
  Loader2,
  MessageSquarePlus,
+  Menu,
  PanelRightClose,
  PanelRightOpen,
  Pencil,
@@ -879,8 +880,20 @@ export default function ChatPage() {
  {/* Conversation column */}
  <section className="flex min-w-0 flex-1 flex-col">
  {/* Header */}
- <header className="glass flex h-12 shrink-0 items-center justify-between gap-2 border-b px-3 sm:px-4">
- <div className="flex min-w-0 items-center gap-1.5">
+<header className="glass flex h-12 shrink-0 items-center justify-between gap-2 border-b px-3 sm:px-4">
+  <Button
+  variant="ghost"
+  size="icon"
+  className="h-7 w-7 text-muted-foreground lg:hidden"
+  onClick={() =>
+  window.dispatchEvent(new CustomEvent('academiai:open-mobile-menu'))
+  }
+  aria-label="Open menu"
+  title="Open menu"
+  >
+  <Menu className="h-4 w-4" aria-hidden />
+  </Button>
+  <div className="flex min-w-0 items-center gap-1.5">
  {!historyOpen && (
  <Button
  variant="ghost"
@@ -974,7 +987,7 @@ export default function ChatPage() {
  <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-6 p-6 text-center sm:p-8">
  {/* Empty hero */}
  <div className="flex flex-col items-center gap-3">
- <span className="flex h-14 w-14 items-center justify-center rounded-2xl  var(--accent-soft) text-primary">
+ <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-primary">
  <Sparkles className="h-7 w-7" aria-hidden />
  </span>
  <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">

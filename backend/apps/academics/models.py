@@ -69,6 +69,13 @@ class AcademicSession(TenantScopedModel):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.is_current:
+            AcademicSession.objects.filter(
+                tenant_id=self.tenant_id, is_current=True
+            ).exclude(id=self.id).update(is_current=False)
+
 
 class Semester(TenantScopedModel):
     academic_session = models.ForeignKey(
@@ -90,6 +97,13 @@ class Semester(TenantScopedModel):
 
     def __str__(self):
         return f"{self.academic_session.name} — {self.name}"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.is_current:
+            Semester.objects.filter(
+                tenant_id=self.tenant_id, is_current=True
+            ).exclude(id=self.id).update(is_current=False)
 
 
 class Course(TenantScopedModel):

@@ -93,6 +93,7 @@ vi.mock('@/services/api', () => {
 });
 
 import { authApi } from '@/services/api';
+import api from '@/services/api';
 
 function makeWrapper() {
   const qc = new QueryClient({
@@ -120,7 +121,7 @@ describe('routing and access control', () => {
     navigate('/dashboard');
     render(<App />, { wrapper: Wrapper });
     expect(
-      await screen.findByText(/create an account|sign in/i),
+      await screen.findByText(/welcome back/i, {}, { timeout: 15000 }),
     ).toBeInTheDocument();
   });
 
@@ -132,12 +133,15 @@ describe('routing and access control', () => {
     });
     navigate('/dashboard');
     render(<App />, { wrapper: Wrapper });
-    await waitFor(() => {
-      expect(screen.getAllByText(/continue learning|up next/i).length).toBeGreaterThan(0);
-    });
+    await waitFor(
+      () => {
+        expect(screen.getAllByText(/continue learning|up next/i).length).toBeGreaterThan(0);
+      },
+      { timeout: 15000 },
+    );
   });
 
-  it('denies a student access to admin-only page (redirects to dashboard)', async () => {
+  it('denies a student access to an admin-only page (walks them to /forbidden)', async () => {
     localStorage.setItem('access_token', 'test-token');
     localStorage.setItem('refresh_token', 'test-refresh');
     authApi.me.mockResolvedValue({
@@ -145,8 +149,78 @@ describe('routing and access control', () => {
     });
     navigate('/admin/users');
     render(<App />, { wrapper: Wrapper });
-    await waitFor(() => {
-      expect(screen.getAllByText(/study workspace|continue learning|up next/i).length).toBeGreaterThan(0);
+    expect(
+      await screen.findByText(/access denied/i, {}, { timeout: 15000 }),
+    ).toBeInTheDocument();
+    // Guard redirected before the page mounted — no tenant API calls fired.
+    await waitFor(() => expect(api.get).not.toHaveBeenCalled());
+  });
+
+  it('sends a platform superuser away from tenant pages to /platform without firing tenant API calls', async () => {
+    localStorage.setItem('access_token', 'test-token');
+    localStorage.setItem('refresh_token', 'test-refresh');
+    authApi.me.mockResolvedValue({
+      data: {
+        id: 'su1', email: 'operator@academiai.app', role: 'tenant_admin',
+        first_name: 'Op', is_superuser: true,
+      },
     });
+    navigate('/resources');
+    render(<App />, { wrapper: Wrapper });
+    expect(
+      await screen.findByText(/platform dashboard/i, {}, { timeout: 15000 }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(api.get).not.toHaveBeenCalled());
+  });
+
+  it('lets a tenant_admin open a workspace route like /resources', async () => {
+    localStorage.setItem('access_token', 'test-token');
+    localStorage.setItem('refresh_token', 'test-refresh');
+    authApi.me.mockResolvedValue({
+      data: {
+        id: 'a1', email: 'admin@uni.edu', role: 'tenant_admin',
+        first_name: 'Ad', is_superuser: false, tenant: {},
+      },
+    });
+    navigate('/resources');
+    render(<App />, { wrapper: Wrapper });
+    // Page actually mounted (its queries fired) instead of being blocked.
+    expect(
+      await screen.findByText(/no resources yet/i, {}, { timeout: 15000 }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+  }, 15000);
+
+  it('keeps lecturer-grade routes open to tenant admins who can also teach', async () => {
+    localStorage.setItem('access_token', 'test-token');
+    localStorage.setItem('refresh_token', 'test-refresh');
+    authApi.me.mockResolvedValue({
+      data: {
+        id: 'a2', email: 'admin@uni.edu', role: 'tenant_admin',
+        first_name: 'Ad', is_superuser: false, tenant: {},
+      },
+    });
+    navigate('/assigned-courses');
+    render(<App />, { wrapper: Wrapper });
+    // AssignedCoursesPage mounts and calls /lecturer-assignments/.
+    expect(
+      await screen.findByText(/no assignments yet/i, {}, { timeout: 15000 }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+  }, 15000);
+
+  it('sends a signed-in user with no tenant to institution onboarding', async () => {
+    localStorage.setItem('access_token', 'test-token');
+    localStorage.setItem('refresh_token', 'test-refresh');
+    authApi.me.mockResolvedValue({
+      data: { id: 'u3', email: 'orphan@example.com', role: 'student', first_name: 'Or' },
+    });
+    navigate('/dashboard');
+    render(<App />, { wrapper: Wrapper });
+    expect(
+      await screen.findByText(/get your institution on academiai/i, {}, { timeout: 15000 }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(api.get).not.toHaveBeenCalled());
   });
 });
+

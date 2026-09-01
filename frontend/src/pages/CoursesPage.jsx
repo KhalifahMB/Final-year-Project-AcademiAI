@@ -1,15 +1,23 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import EmptyState from '@/components/shared/EmptyState';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+ Select,
+ SelectContent,
+ SelectItem,
+ SelectTrigger,
+ SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { BookOpen, ChevronRight, GraduationCap } from 'lucide-react';
+import { BookOpen, ChevronRight, GraduationCap, Search, X } from 'lucide-react';
 
 const errMsg = (err, fallback) =>
  err?.response?.data?.error?.detail ||
@@ -112,6 +120,45 @@ export default function CoursesPage() {
  });
  const courses = useMemo(() => data ?? [], [data]);
 
+ const [searchParams] = useSearchParams();
+ const [deptFilter, setDeptFilter] = useState(
+  () => searchParams.get('dept') || (isStudent ? user?.department_id || 'all' : 'all'),
+ );
+ const [search, setSearch] = useState(searchParams.get('q') ?? '');
+
+ // Every department that owns at least one course in the catalogue, so the
+ // filter list reflects what the institution actually offers.
+ const departments = useMemo(() => {
+  const map = new Map();
+  for (const c of courses) {
+  if (!c.department) continue;
+  if (!map.has(c.department)) {
+  map.set(c.department, { id: c.department, name: c.department_name || 'Unknown department' });
+  }
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+ }, [courses]);
+
+ const filtered = useMemo(() => {
+  let list = courses;
+  if (deptFilter !== 'all') list = list.filter((c) => c.department === deptFilter);
+  const q = search.trim().toLowerCase();
+  if (q) {
+  list = list.filter(
+  (c) =>
+  (c.title || '').toLowerCase().includes(q) ||
+  (c.code || '').toLowerCase().includes(q),
+  );
+  }
+  return list;
+ }, [courses, deptFilter, search]);
+
+ const hasFilters = deptFilter !== 'all' || search.trim() !== '';
+ const resetFilters = () => {
+  setDeptFilter(isStudent ? user?.department_id || 'all' : 'all');
+  setSearch('');
+ };
+
  // Course detail links resolve to a course offering (/course-offerings/:id),
  // so map each course to its latest offering (the API returns newest first).
  const { data: offeringData } = useQuery({
@@ -182,6 +229,40 @@ export default function CoursesPage() {
   title="Course catalogue"
   description="Every course offered across your institution."
   >
+  {/* Filters */}
+  {!isLoading && courses.length > 0 && (
+  <div className="mb-4 flex flex-col gap-2.5 rounded-xl border bg-card p-3 sm:flex-row sm:items-center">
+  <Select value={deptFilter} onValueChange={setDeptFilter}>
+  <SelectTrigger className="h-9 w-full text-sm sm:w-56">
+  <SelectValue placeholder="All departments" />
+  </SelectTrigger>
+  <SelectContent>
+  <SelectItem value="all" className="text-sm">All departments</SelectItem>
+  {departments.map((d) => (
+  <SelectItem key={d.id} value={d.id} className="text-sm">{d.name}</SelectItem>
+  ))}
+  </SelectContent>
+  </Select>
+  <div className="relative flex-1">
+  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+  <Input
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+  placeholder="Search by code or title…"
+  className="h-9 pl-8 text-sm"
+  />
+  </div>
+  {hasFilters && (
+  <Button type="button" variant="ghost" size="sm" onClick={resetFilters} className="h-8 gap-1 text-[11px] text-muted-foreground">
+  <X className="h-3.5 w-3.5" aria-hidden /> Clear
+  </Button>
+  )}
+  <span className="shrink-0 text-[11px] text-muted-foreground">
+  {filtered.length} of {courses.length} course{courses.length === 1 ? '' : 's'}
+  </span>
+  </div>
+  )}
+
   {/* Stats */}
   {!isLoading && courses.length > 0 && (
   <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
@@ -218,9 +299,15 @@ export default function CoursesPage() {
   title="The catalogue is empty"
   description="Courses created by your institution's administrators will appear here."
   />
+  ) : filtered.length === 0 ? (
+  <EmptyState
+  icon={Search}
+  title="No courses match your filters"
+  description={deptFilter !== 'all' ? 'Try another department, or clear the filters above to see the full catalogue.' : 'Try a different search term.'}
+  />
   ) : (
   <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-  {courses.map((c) => {
+  {filtered.map((c) => {
   const offeringId = offeringByCourse.get(c.id);
   return (
   <CourseCard

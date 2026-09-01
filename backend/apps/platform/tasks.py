@@ -14,7 +14,8 @@ import logging
 
 from celery import shared_task
 from django.conf import settings
-from django.core.mail import send_mail
+
+from apps.common.mail import send_email
 
 logger = logging.getLogger(__name__)
 
@@ -78,21 +79,24 @@ def send_announcement_email_chunk(self, announcement_id: str, user_ids):
         return {"sent": 0}
 
     users = User.objects.filter(id__in=user_ids)
-    subject = f"[{announcement.priority.upper()}] {announcement.title}"
-    message = (
-        f"{announcement.body}\n\n"
-        "— AcademiAI"
+    subject = (
+        f"[{announcement.priority.upper()}] {announcement.title}"
+        if announcement.priority in _IMPORTANT_PRIORITIES
+        else announcement.title
     )
     sent = 0
     try:
         for user in users.iterator(chunk_size=200):
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
-            )
+            context = {
+                "first_name": user.first_name or user.email,
+                "tenant_name": user.tenant.name if user.tenant else None,
+                "title": announcement.title,
+                "priority": announcement.priority,
+                "announcement_body": announcement.body,
+                "cta_url": settings.FRONTEND_URL,
+                "cta_label": "Open AcademiAI",
+            }
+            send_email(subject, [user.email], "announcement_email", context)
             sent += 1
         return {"sent": sent}
     except Exception as exc:

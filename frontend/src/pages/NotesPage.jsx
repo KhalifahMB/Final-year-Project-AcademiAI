@@ -10,6 +10,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 import { notesApi } from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ import { formatDistanceToNow } from 'date-fns';
 import {
  StickyNote,
  Plus,
+ Save,
  Trash2,
  Search,
  Bold,
@@ -45,9 +47,8 @@ import {
 import {
  DropdownMenu,
  DropdownMenuContent,
- DropdownMenuItem,
- DropdownMenuTrigger,
- DropdownMenuSeparator,
+DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
 /* ---------------- Toolbar ---------------- */
@@ -276,7 +277,6 @@ export default function NotesPage() {
  pos: null,
  active: 0,
  });
- const saveTimer = useRef(null);
  const editorRef = useRef(null);
  // Refs mirroring the active-note identity so the TipTap editor callbacks
  // (which close over the first render) always read the CURRENT note being
@@ -285,6 +285,8 @@ export default function NotesPage() {
  const activeIdRef = useRef(null);
  const titleRef = useRef('');
  const isNewRef = useRef(false);
+ // Tracks unsaved edits so we can flush on blur, note switch, or page exit.
+ const dirtyRef = useRef(false);
  // True only once the TipTap editor view has actually mounted (onCreate). The
  // editor object becomes non-null before the view is attached to the DOM, and
  // calling commands (setContent) before mount throws
@@ -312,33 +314,37 @@ export default function NotesPage() {
 
  const createMut = useMutation({
  mutationFn: notesApi.create,
- onSuccess: (res) => {
+onSuccess: (res) => {
  const n = res.data || res;
  qc.invalidateQueries({ queryKey: ['notes'] });
  setActiveId(n.id);
  setIsNew(false);
  setTitle(n.title || '');
+ dirtyRef.current = false;
  setSaveState('saved');
  },
  onError: () => {
- setSaveState('idle');
+ dirtyRef.current = true;
+ setSaveState('dirty');
  toast.error('Failed to create note');
  },
- });
+});
 
  const updateMut = useMutation({
  mutationFn: ({ id, data }) => notesApi.update(id, data),
- onSuccess: (res) => {
+onSuccess: (res) => {
  qc.invalidateQueries({ queryKey: ['notes'] });
+ dirtyRef.current = false;
  setSaveState('saved');
  const n = res.data || res;
  if (n) setTitle(n.title || '');
  },
  onError: () => {
- setSaveState('idle');
+ dirtyRef.current = true;
+ setSaveState('dirty');
  toast.error('Failed to save');
  },
- });
+});
 
  const deleteMut = useMutation({
  mutationFn: notesApi.delete,
@@ -380,40 +386,36 @@ export default function NotesPage() {
  setEditorReady(true);
  editorRef.current = ed;
  },
- onUpdate: ({ editor: ed }) => {
- // Autosave debounce. Capture the note identity + rendered HTML now so a
- // pending save targets this exact note (never the note the user may have
- // switched to before the timer fires).
- setSaveState('saving');
- if (saveTimer.current) clearTimeout(saveTimer.current);
- const snapshot = {
- id: activeIdRef.current,
- isNew: isNewRef.current,
- title: titleRef.current,
- html: ed.getHTML(),
- };
- saveTimer.current = setTimeout(() => commitRef.current(snapshot), 800);
+onUpdate: ({ editor: ed }) => {
+  // No autosave while typing — mark the note dirty. Persistence happens on
+  // blur, explicit save (Save / Ctrl+S), note switch, or page exit so edits
+  // are never lost while keystrokes stay uninterrupted.
+  setSaveState('dirty');
+  dirtyRef.current = true;
 
- // Slash menu detection
- const { from } = ed.state.selection;
- const textBefore = ed.state.doc.textBetween(
- Math.max(0, from - 30),
- from,
- '\n',
- );
- const slashMatch = textBefore.match(/(?:^|\s)\/([a-zA-Z]*)$/);
- if (slashMatch) {
- const coords = ed.view.coordsAtPos(from);
- setSlash({
- open: true,
- query: slashMatch[1].toLowerCase(),
- pos: { top: coords.bottom + 6, left: coords.left },
- active: 0,
- });
- } else if (slash.open) {
- setSlash({ open: false, query: '', pos: null, active: 0 });
- }
- },
+  // Slash menu detection
+  const { from } = ed.state.selection;
+  const textBefore = ed.state.doc.textBetween(
+  Math.max(0, from - 30),
+  from,
+  '\n',
+  );
+  const slashMatch = textBefore.match(/(?:^|\s)\/([a-zA-Z]*)$/);
+  if (slashMatch) {
+  const coords = ed.view.coordsAtPos(from);
+  setSlash({
+  open: true,
+  query: slashMatch[1].toLowerCase(),
+  pos: { top: coords.bottom + 6, left: coords.left },
+  active: 0,
+  });
+  } else if (slash.open) {
+  setSlash({ open: false, query: '', pos: null, active: 0 });
+  }
+  },
+  onBlur: () => {
+  if (dirtyRef.current) saveNowRef.current();
+  },
  onKeyDown: (_e) => {
  // handle slash nav via wrapper below since we need editor + state
  },
@@ -464,7 +466,55 @@ export default function NotesPage() {
  return () => dom.removeEventListener('keydown', handler);
  }, [editor, slash]);
 
-// Load active note content into editor.
+// Save a captured snapshot {id, isNew, title, html}. The note identity and
+  // its rendered HTML are fixed when the edit happens, so a save can never be
+  // written to a different note the user switched to while a timer was pending.
+const commitSave = useCallback(
+    ({ id, isNew: isNewTarget, title: titleSnapshot, html }) => {
+      const finalTitle = (titleSnapshot || '').trim() || 'Untitled';
+      const hasTitle = !!(titleSnapshot || '').trim();
+      const hasContent = !!html && html !== '<p></p>' && html !== '<p><br></p>';
+      // Refuse to create a fully empty note; title-only saves (Ctrl+S with an
+      // empty body) must still persist for existing notes.
+      if ((isNewTarget || !id) && !hasTitle && !hasContent) {
+        setSaveState('dirty');
+        return;
+      }
+      setSaveState('saving');
+      if (isNewTarget || !id) {
+        createMut.mutate({ title: finalTitle, content: html });
+      } else {
+        updateMut.mutate({ id, data: { title: finalTitle, content: html } });
+      }
+    },
+    [createMut, updateMut],
+  );
+
+  // Always-current references so stale editor callbacks can reach the latest
+  // save logic without closing over an old render.
+  const commitRef = useRef(commitSave);
+  const saveNowRef = useRef(() => {});
+  useEffect(() => {
+    commitRef.current = commitSave;
+    saveNowRef.current = () => {
+      commitRef.current({
+        id: activeIdRef.current,
+        isNew: isNewRef.current,
+        title: titleRef.current,
+        html: editorRef.current?.getHTML?.() || '',
+      });
+    };
+  });
+
+  // Ctrl/Cmd+S must work wherever focus is. The <form> keydown never fires
+  // when focus sits inside the TipTap editor (ProseMirror intercepts keydown),
+  // so bind it globally on the window and save through the always-current ref.
+  useKeyboardShortcut('mod+s', (e) => {
+    e.preventDefault();
+    saveNowRef.current();
+  });
+
+  // Load active note content into editor.
  //
  // Refs are updated synchronously BEFORE touching the editor so that the
  // editor's onUpdate (which can fire from setContent/clearContent) never
@@ -483,7 +533,16 @@ export default function NotesPage() {
 
  useEffect(() => {
  if (!editor || !editorReady) return;
- if (saveTimer.current) clearTimeout(saveTimer.current);
+ // Flush any unsaved edits to the note being left before switching.
+ if (dirtyRef.current && (isNewRef.current || activeIdRef.current)) {
+ commitRef.current({
+ id: activeIdRef.current,
+ isNew: isNewRef.current,
+ title: titleRef.current,
+ html: editor.getHTML(),
+ });
+ dirtyRef.current = false;
+ }
  activeIdRef.current = isNew ? null : activeNote?.id ?? null;
  isNewRef.current = isNew;
  const nextTitle = isNew ? '' : activeNote?.title || '';
@@ -495,42 +554,23 @@ export default function NotesPage() {
  editor.commands.setContent(activeNote.content || '', { emitUpdate: false });
  }, [editor, editorReady, activeNote, isNew]);
 
- // Cleanup timer
+ // Flush pending edits when leaving the page so nothing typed is lost.
  useEffect(
- () => () => saveTimer.current && clearTimeout(saveTimer.current),
+ () => () => {
+ if (dirtyRef.current && (isNewRef.current || activeIdRef.current)) {
+ commitRef.current({
+ id: activeIdRef.current,
+ isNew: isNewRef.current,
+ title: titleRef.current,
+ html: editorRef.current?.getHTML?.() || '',
+ });
+ }
+ },
  [],
  );
 
- // Save a captured snapshot {id, isNew, title, html}. The note identity and
- // its rendered HTML are fixed when the edit happens, so a debounced save can
- // never be written to a different note that the user switched to while the
- // timer was pending.
- const commitSave = useCallback(
- ({ id, isNew: isNewTarget, title: titleSnapshot, html }) => {
- const finalTitle = (titleSnapshot || '').trim() || 'Untitled';
- if (!html || html === '<p></p>') {
- setSaveState('idle');
- return;
- }
- setSaveState('saving');
- if (isNewTarget || !id) {
- createMut.mutate({ title: finalTitle, content: html });
- } else {
- updateMut.mutate({ id, data: { title: finalTitle, content: html } });
- }
- },
- [createMut, updateMut],
- );
-
- // Always-current reference so stale editor callbacks can reach the latest
- // save logic without closing over an old render.
- const commitRef = useRef(commitSave);
- useEffect(() => {
- commitRef.current = commitSave;
- });
-
- // Image insert (base64 for now; backend persists HTML as-is)
- const addImage = (file, ed) => {
+// Image insert (base64 for now; backend persists HTML as-is)
+  const addImage = (file, ed) => {
  const reader = new FileReader();
  reader.onload = (ev) =>
  ed.chain().focus().setImage({ src: ev.target.result }).run();
@@ -541,6 +581,7 @@ export default function NotesPage() {
  setActiveId(null);
  setIsNew(true);
  setTitle('');
+ dirtyRef.current = false;
  setSaveState('idle');
  setTimeout(() => editor?.commands.focus('end'), 30);
  };
@@ -548,17 +589,12 @@ export default function NotesPage() {
  const openNote = (note) => {
  setIsNew(false);
  setActiveId(note.id);
+ dirtyRef.current = false;
  setSaveState('idle');
  };
 
  const saveNow = () => {
- if (saveTimer.current) clearTimeout(saveTimer.current);
- commitSave({
- id: activeIdRef.current,
- isNew: isNewRef.current,
- title: titleRef.current,
- html: editor?.getHTML?.() || '',
- });
+ saveNowRef.current();
  };
 
  const deleteSelected = (note) => {
@@ -605,7 +641,7 @@ export default function NotesPage() {
  return (
  <AppShell
  title="Notes"
- description="Capture thoughts, lecture summaries, and personal research. Auto-saves as you type."
+ description="Capture thoughts, lecture summaries, and personal research. Save with Ctrl+S, save-on-blur, or the Save button."
  actions={
  <Button
  size="sm"
@@ -743,7 +779,7 @@ export default function NotesPage() {
  </h3>
  <p className="mt-1 max-w-sm text-xs text-muted-foreground">
  Choose a note from the list on the left, or create a new one.
- Notes auto-save as you type.
+ Notes save on blur, on Ctrl+S, or when you switch notes.
  </p>
  <Button
  size="sm"
@@ -754,13 +790,13 @@ export default function NotesPage() {
  </Button>
  </div>
  ) : (
- <form
- onSubmit={(e) => {
- e.preventDefault();
- saveNow();
- }}
- className="flex h-full flex-col"
- >
+<form
+  onSubmit={(e) => {
+    e.preventDefault();
+    saveNow();
+  }}
+  className="flex h-full flex-col"
+>
  {/* Header */}
  <div className="flex items-center justify-between gap-3 border-b px-4 py-2.5">
  <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -771,59 +807,51 @@ export default function NotesPage() {
  <input
  value={title}
  onChange={(e) => {
- const next = e.target.value;
- setTitle(next);
- setSaveState('saving');
- if (saveTimer.current) clearTimeout(saveTimer.current);
- saveTimer.current = setTimeout(() =>
- commitRef.current({
- id: activeIdRef.current,
- isNew: isNewRef.current,
- title: next,
- html: editor?.getHTML?.() || '',
- }),
- 600,
- );
+ setTitle(e.target.value);
+ setSaveState('dirty');
+ dirtyRef.current = true;
+ }}
+ onBlur={() => {
+ if (dirtyRef.current) saveNow();
  }}
  placeholder="Untitled note"
  className="min-w-0 flex-1 border-0 bg-transparent text-[15px] font-semibold tracking-tight shadow-none focus-visible:ring-0"
  />
  </div>
- <div className="flex shrink-0 items-center gap-2">
- <SaveBadge state={saveState} />
- {!isNew && displayNote && (
- <DropdownMenu>
- <DropdownMenuTrigger asChild>
- <Button variant="ghost" size="icon" className="h-7 w-7">
- <MoreVertical className="h-3.5 w-3.5" />
- </Button>
- </DropdownMenuTrigger>
- <DropdownMenuContent align="end" className="w-44">
- <DropdownMenuItem onClick={saveNow}>
- <Pencil className="mr-2 h-3.5 w-3.5" /> Save now
- </DropdownMenuItem>
- <DropdownMenuSeparator />
- <DropdownMenuItem
- className="text-destructive focus:bg-destructive/10 focus:text-destructive"
- onClick={() => deleteSelected(displayNote)}
- >
- <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
- </DropdownMenuItem>
- </DropdownMenuContent>
- </DropdownMenu>
- )}
- {(isNew || !displayNote) && saveState === 'idle' && (
- <Button
- type="submit"
- size="sm"
- className="h-7 px-3 text-xs"
- disabled={!title.trim()}
- >
- Create
- </Button>
- )}
- </div>
- </div>
+<div className="flex shrink-0 items-center gap-2">
+        <SaveBadge state={saveState} />
+        <Button
+          type="submit"
+          size="sm"
+          className="h-7 gap-1.5 px-3 text-xs"
+          disabled={saveState === 'saving' || (isNew && !title.trim())}
+        >
+          {saveState === 'saving' ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          ) : (
+            <Save className="h-3.5 w-3.5" aria-hidden />
+          )}
+          {saveState === 'saving' ? 'Saving…' : isNew ? 'Create' : 'Save'}
+        </Button>
+        {!isNew && displayNote && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                onClick={() => deleteSelected(displayNote)}
+              >
+                <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+    </div>
 
  <EditorToolbar editor={editor} onAddImage={addImage} />
 
@@ -880,6 +908,13 @@ function SaveBadge({ state }) {
  return (
  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
  <Loader2 className="h-2.5 w-2.5 animate-spin" /> Saving
+ </span>
+ );
+ }
+ if (state === 'dirty') {
+ return (
+ <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+ <Pencil className="h-2.5 w-2.5" /> Unsaved
  </span>
  );
  }
