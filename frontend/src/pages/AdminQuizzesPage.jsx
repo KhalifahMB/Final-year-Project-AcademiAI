@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -52,6 +53,7 @@ export default function AdminQuizzesPage() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [quizToDelete, setQuizToDelete] = useState(null);
 
   const quizzes = useQuery({
     queryKey: ['admin-quizzes'],
@@ -578,9 +580,7 @@ export default function AdminQuizzesPage() {
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        if (window.confirm(`Delete “${q.title}”? This cannot be undone.`)) deleteQuiz.mutate(q.id);
-                      }}
+                      onClick={() => setQuizToDelete(q)}
                       className="h-7 w-7 p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                       aria-label="Delete"
                     >
@@ -593,6 +593,16 @@ export default function AdminQuizzesPage() {
           </Table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!quizToDelete}
+        title="Delete quiz?"
+        description={`“${quizToDelete?.title || ''}” and its questions will be permanently deleted. This cannot be undone.`}
+        onCancel={() => setQuizToDelete(null)}
+        onConfirm={() => { const q = quizToDelete; setQuizToDelete(null); deleteQuiz.mutate(q.id); }}
+        confirmLabel="Delete"
+        destructive
+      />
     </AppShell>
   );
 }

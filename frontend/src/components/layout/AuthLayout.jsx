@@ -123,8 +123,8 @@ export default function AuthLayout({
         </div>
       </aside>
 
-      {/* Form panel */}
-      <main className="relative flex flex-col justify-center bg-[var(--bg)] px-5 py-10 sm:px-10 lg:px-16">
+      {/* Form panel — glass-first over ambient canvas */}
+      <main className="app-canvas relative flex flex-col justify-center px-5 py-10 sm:px-10 lg:px-16">
         <div className="absolute right-4 top-4 flex items-center gap-1.5 sm:right-6 sm:top-6">
           <Link
             to="/"
@@ -135,11 +135,12 @@ export default function AuthLayout({
           <ThemeToggle iconOnly />
         </div>
 
-        <div className="mx-auto w-full max-w-[400px]">
+        {/* Glass form card */}
+        <div className="glass-overlay neomorph mx-auto w-full max-w-[440px] rounded-[var(--radius-2xl)] p-7 sm:p-9">
           {/* Mobile brand */}
           <Link
             to="/"
-            className="mb-8 flex w-fit items-center gap-2.5 rounded-md lg:hidden"
+            className="mb-6 flex w-fit items-center gap-2.5 rounded-md lg:hidden"
           >
             <BrandMark size="h-9 w-9" />
             <span className="text-[16px] font-[680] tracking-[-0.02em]">AcademiAI</span>
@@ -154,6 +155,7 @@ export default function AuthLayout({
               <Icon className="h-5 w-5" aria-hidden />
             </div>
           )}
+
           <h1 className="text-[30px] font-[650] leading-[1.1] tracking-[-0.02em]">
             {title}
           </h1>

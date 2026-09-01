@@ -6,6 +6,7 @@ import AppShell from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import StatusBadge from '@/components/shared/StatusBadge';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { cn, formatRelativeTime } from '@/lib/utils';
@@ -38,7 +39,8 @@ export default function QuizTakePage() {
  const [result, setResult] = useState(null);
  const [currentIdx, setCurrentIdx] = useState(0);
  const [flagged, setFlagged] = useState({});
- const [reviewIdx, setReviewIdx] = useState(0);
+  const [reviewIdx, setReviewIdx] = useState(0);
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
 
  const quiz = useQuery({
  queryKey: ['quiz', id],
@@ -263,28 +265,37 @@ export default function QuizTakePage() {
  onJump={setCurrentIdx}
  onAnswer={setAnswer}
  onToggleFlag={toggleFlag}
- onSubmit={() => {
- if (answeredCount < qs.length && !window.confirm(`You've answered ${answeredCount} of ${qs.length}. Submit anyway?`)) return;
- submit.mutate();
- }}
+  onSubmit={() => {
+  if (answeredCount < qs.length) { setConfirmSubmit(true); return; }
+  submit.mutate();
+  }}
  submitting={submit.isPending}
  />
  )}
 
- {/* Results */}
- {showResult && (
- <QuizResults
- result={result}
- qs={qs}
- reviewIdx={reviewIdx}
- setReviewIdx={setReviewIdx}
- retake={retake}
- canRetake={!isStaff}
- onBack={() => navigate('/quizzes')}
- />
- )}
- </AppShell>
- );
+  {/* Results */}
+  {showResult && (
+  <QuizResults
+  result={result}
+  qs={qs}
+  reviewIdx={reviewIdx}
+  setReviewIdx={setReviewIdx}
+  retake={retake}
+  canRetake={!isStaff}
+  onBack={() => navigate('/quizzes')}
+  />
+  )}
+
+  <ConfirmDialog
+  open={confirmSubmit}
+  title="Submit quiz?"
+  description={`You've answered ${answeredCount} of ${qs.length} questions. Unanswered questions will be marked as not attempted.`}
+  onCancel={() => setConfirmSubmit(false)}
+  onConfirm={() => { setConfirmSubmit(false); submit.mutate(); }}
+  confirmLabel="Submit quiz"
+  />
+  </AppShell>
+  );
 }
 
 /* ---------------- Quiz runner (single-question-at-a-time) ---------------- */

@@ -210,16 +210,18 @@ function NavItem({ item, collapsed, active, onNavigate }) {
       aria-current={active ? 'page' : undefined}
       title={collapsed ? item.label : undefined}
       className={cn(
-        'group relative flex items-center gap-2.5 rounded-[var(--radius-md)] text-[13.5px] font-[520] transition-colors duration-150',
+        'nav-item group relative flex items-center gap-2.5 rounded-[var(--radius-md)] text-[13.5px] font-[520] transition-colors duration-150',
         'min-h-[38px]',
         collapsed
           ? 'h-[38px] w-[38px] justify-center mx-auto'
           : 'px-2.5 py-0 mx-1',
         active
-          ? 'bg-[var(--accent-soft)] text-[var(--accent-strong)] font-[600]'
+          ? 'nav-active font-[600]'
           : 'text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]',
+        !collapsed && 'active:scale-[0.985]',
       )}
     >
+      <span className="nav-indicator" aria-hidden />
       <Icon className="h-4 w-4 shrink-0" aria-hidden />
       {!collapsed && (
         <>
@@ -295,7 +297,7 @@ function TenantCard({ user, collapsed }) {
     return (
       <Tooltip delayDuration={250}>
         <TooltipTrigger asChild>
-          <div className="flex h-[38px] w-[38px] items-center justify-center rounded-[var(--radius-md)] bg-[var(--surface-2)] border border-[var(--border)] text-[var(--muted)]">
+          <div className="icon-tile flex h-[38px] w-[38px] items-center justify-center rounded-[var(--radius-md)]">
             <Building2 className="h-4 w-4" aria-hidden />
           </div>
         </TooltipTrigger>
@@ -326,7 +328,8 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[var(--border)] bg-[var(--surface)] transition-[width] duration-200 ease-out lg:flex',
+        'glass fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-[var(--border)] transition-[width] duration-200 ease-out lg:flex',
+        'shadow-[var(--shadow-glass)]',
         collapsed ? 'w-[60px]' : 'w-[var(--sidebar-w)]',
       )}
       style={{ ['--sidebar-w']: '248px' }}
@@ -361,7 +364,7 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
             onClick={onToggleCollapse}
             aria-label="Collapse sidebar"
             title="Collapse sidebar (Ctrl+B)"
-            className="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] text-[var(--muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--fg)]"
+            className="icon-tile ml-auto inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)]"
           >
             <PanelLeftClose className="h-4 w-4" aria-hidden />
           </button>
@@ -406,8 +409,10 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
       >
         {!collapsed ? (
           <div className="space-y-1">
-            <TenantCard user={user} />
-            <UserMenu user={user} />
+            <div className="card-glass relative overflow-hidden rounded-[var(--radius-lg)] p-1.5">
+              <TenantCard user={user} />
+              <UserMenu user={user} />
+            </div>
             <ThemeToggle className="w-full" />
           </div>
         ) : (
@@ -419,7 +424,7 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
                     type="button"
                     onClick={onToggleCollapse}
                     aria-label="Expand sidebar"
-                    className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-[var(--radius-md)] text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"
+                    className="icon-tile inline-flex h-[38px] w-[38px] items-center justify-center rounded-[var(--radius-md)]"
                   >
                     <PanelLeftOpen className="h-4 w-4" aria-hidden />
                   </button>
@@ -430,7 +435,7 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
             <TooltipProvider delayDuration={250}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <ThemeToggle className="h-[38px] w-[38px] justify-center rounded-[var(--radius-md)]" iconOnly />
+                  <ThemeToggle className="icon-tile h-[38px] w-[38px] justify-center rounded-[var(--radius-md)]" iconOnly />
                 </TooltipTrigger>
                 <TooltipContent side="right">Toggle theme</TooltipContent>
               </Tooltip>
@@ -440,9 +445,9 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
                 <TooltipTrigger asChild>
                   <Link
                     to="/settings"
-                    className="mt-1 inline-flex h-[38px] w-[38px] items-center justify-center rounded-[var(--radius-md)] hover:bg-[var(--hover)]"
+                    className="icon-tile mt-1 inline-flex h-[38px] w-[38px] items-center justify-center rounded-[var(--radius-md)]"
                   >
-                    <Avatar user={user} className="h-8 w-8 rounded-full" />
+                    <Avatar user={user} className="h-[26px] w-[26px] rounded-full" />
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="right">
@@ -467,7 +472,7 @@ function MobileDrawer({ open, onClose, sections, onNavigate, activeKey, user }) 
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           onClick={onClose}
         />
-        <aside className="absolute inset-y-0 left-0 flex w-[280px] flex-col bg-[var(--surface)] shadow-[var(--shadow-pop)]">
+        <aside className="glass absolute inset-y-0 left-0 flex w-[280px] flex-col shadow-[var(--shadow-pop)]">
           <div className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--border)] px-4">
             <Link to={user?.is_superuser ? '/platform' : '/dashboard'} onClick={onNavigate} className="flex items-center gap-2.5">
               <BrandMark size="h-7 w-7" />
@@ -585,7 +590,7 @@ export default function AppShell({ title, description, actions, children, fullBl
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
+      <div className="app-canvas min-h-screen text-[var(--fg)]">
         {/* Desktop sidebar */}
         <SidebarDesktop
           sections={sections}
@@ -644,9 +649,9 @@ export default function AppShell({ title, description, actions, children, fullBl
                   const q = searchRef.current?.value.trim() || '';
                   navigate(q ? `/resources?q=${encodeURIComponent(q)}` : '/resources');
                 }}
-                className="flex h-9 w-full min-w-0 max-w-[440px] flex-1 items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-3 transition-colors focus-within:border-[var(--border)] md:max-w-[min(340px,42vw)]"
+                className="search-pill flex h-9 w-full min-w-0 max-w-[440px] flex-1 items-center gap-2 rounded-[var(--radius-md)] px-3 md:max-w-[min(340px,42vw)]"
               >
-                <Search className="h-4 w-4 shrink-0" aria-hidden />
+                <Search className="h-4 w-4 shrink-0 text-[var(--muted)]" aria-hidden />
                 <input
                   ref={searchRef}
                   type="search"
@@ -655,12 +660,22 @@ export default function AppShell({ title, description, actions, children, fullBl
                   aria-label="Search materials"
                   className="h-full w-full min-w-0 bg-transparent text-[13px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
                 />
+                <kbd
+                  onClick={() => setPaletteOpen(true)}
+                  className="pointer-events-none hidden shrink-0 select-none items-center gap-0.5 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 font-mono text-[10px] font-[550] text-[var(--muted)] sm:inline-flex"
+                  title="Open command palette"
+                >
+                  ⌘K
+                </kbd>
               </form>
 
               {/* Title is now inside the content area (page header) */}
               <div className="ml-auto flex items-center gap-1.5">
                 <OnlineStatus className="hidden sm:inline-flex" />
-                <ThemeToggle className="lg:hidden" iconOnly />
+                <ThemeToggle
+                  className="icon-tile h-9 w-9 rounded-[var(--radius-md)] lg:hidden"
+                  iconOnly
+                />
                 <UserMenuSmall user={user} logout={logout} />
               </div>
             </header>
@@ -720,9 +735,9 @@ function UserMenuSmall({ user, logout }) {
         <button
           type="button"
           aria-label="Account menu"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] hover:bg-[var(--hover)]"
+          className="icon-tile inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)]"
         >
-          <Avatar user={user} className="h-[30px] w-[30px] rounded-full" />
+          <Avatar user={user} className="h-[26px] w-[26px] rounded-full" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 rounded-[var(--radius-lg)] p-1 shadow-[var(--shadow-pop)]" sideOffset={8}>

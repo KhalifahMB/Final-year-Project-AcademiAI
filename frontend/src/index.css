@@ -463,16 +463,149 @@ button:active:not(:disabled) { transform: translateY(1px); }
 /* Hairline utility */
 .hairline { box-shadow: inset 0 0 0 0.5px var(--border); }
 
-/* Glass effect for sticky headers */
-.glass {
-  background: color-mix(in oklab, var(--bg) 78%, transparent);
-  backdrop-filter: saturate(180%) blur(12px);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
+/* =========================================================
+   Material system — glass-first premium (world: DESIGN.md)
+   Theme-derived, no hardcoded hues. Both light and dark native.
+   ========================================================= */
+:root {
+  /* Glass material */
+  --glass-shell-tint: color-mix(in oklab, var(--surface) 80%, transparent);
+  --glass-card-tint: color-mix(in oklab, var(--surface) 86%, transparent);
+  --glass-overlay-tint: color-mix(in oklab, var(--surface) 90%, transparent);
+  --glass-blur: 16px;
+  --glass-blur-overlay: 22px;
+  --glass-saturate: 150%;
+  /* Neomorph accent depth (subtle, high-level objects only) */
+  --neo-light: inset 0 1px 0 color-mix(in oklab, var(--fg) 6%, transparent);
+  --neo-dark: inset 0 -1px 0 color-mix(in oklab, var(--fg) 9%, transparent);
+  --neo-drop: 0 1px 2px color-mix(in oklab, var(--fg) 6%, transparent);
+  /* Floating glass shadow (cards above the shell) */
+  --shadow-glass: 0 1px 0 color-mix(in oklab, var(--fg) 4%, transparent) inset,
+                  0 16px 40px -24px color-mix(in oklab, var(--fg) 20%, transparent);
 }
 
-/* Card surface shortcuts — used across rebuilt pages.
-   Hairline-only, no shadow; hover uses subtle border-color lift
-   (not a translate/shadow effect, to respect "no card shadows" rule) */
+/* Glass effect — shell (sidebar, topbar, drawer). Meets the canvas; no drop shadow. */
+.glass {
+  background: var(--glass-shell-tint);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+/* Glass — highest layer (modals, palette, popovers) */
+.glass-overlay {
+  background: var(--glass-overlay-tint);
+  backdrop-filter: blur(var(--glass-blur-overlay)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-overlay)) saturate(var(--glass-saturate));
+}
+
+/* Glass — floating cards (stat cards, dashboard panels, dialogs, hero objects) */
+.card-glass {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-strong);
+  background: var(--glass-card-tint);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--shadow-glass);
+}
+
+/* Neomorph accent — high-level objects only (stat cards, trend panels, hero mock).
+   A whisper of inner light + base shadow; NOT the extruded-pill cliché. */
+.neomorph {
+  box-shadow: var(--neo-light), var(--neo-dark);
+}
+
+/* Ambient app canvas — the color behind the glass. Subtle, accent-derived,
+   both themes equal. Applied once at the shell root so frosted surfaces blur. */
+.app-canvas {
+  background:
+    radial-gradient(1200px 700px at 8% -10%, color-mix(in oklab, var(--accent) 7%, transparent) 0%, transparent 60%),
+    radial-gradient(900px 600px at 100% 0%, color-mix(in oklab, var(--accent) 5%, transparent) 0%, transparent 55%),
+    var(--bg);
+}
+
+/* =========================================================
+   Navigation material — sidebar + topbar (glass-first nav)
+   ========================================================= */
+
+/* Active nav item: accent-tinted glass pill + left indicator + neomorph */
+.nav-item {
+  position: relative;
+  border-radius: var(--radius-md);
+  transition: background-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.nav-item:active:not(:disabled) {
+  transform: translateY(0);
+}
+.nav-item .nav-indicator {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 16px;
+  width: 3px;
+  border-radius: 999px;
+  transform: translateY(-50%) scaleY(0);
+  background: var(--accent);
+  transition: transform .18s cubic-bezier(.2,0,0,1);
+}
+.nav-item.nav-active {
+  background:
+    linear-gradient(120deg, color-mix(in oklab, var(--accent) 14%, transparent), color-mix(in oklab, var(--accent) 4%, transparent)),
+    var(--glass-card-tint);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  color: var(--accent-strong);
+  box-shadow: var(--neo-light), var(--neo-drop);
+}
+.nav-item.nav-active .nav-indicator {
+  transform: translateY(-50%) scaleY(1);
+}
+.nav-item.nav-active svg {
+  color: var(--accent-strong);
+}
+
+/* Glass icon tile for control buttons (topbar, sidebar bottom) */
+.icon-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklab, var(--surface) 70%, transparent);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  color: var(--muted);
+  transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+.icon-tile:hover {
+  color: var(--fg);
+  border-color: var(--border-strong);
+  background: color-mix(in oklab, var(--surface) 90%, var(--accent) 6%);
+}
+
+/* Search pill — glass + neomorph, accent ring on focus */
+.search-pill {
+  background: color-mix(in oklab, var(--surface) 72%, transparent);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  box-shadow: var(--neo-light), var(--neo-drop);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.search-pill:focus-within {
+  border-color: var(--accent-line);
+  box-shadow: var(--neo-light), var(--neo-drop), 0 0 0 2px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+
+/* cmdk command palette surface — treated as an overlay (glass) */
+[cmdk-dialog] {
+  background: var(--glass-overlay-tint);
+  backdrop-filter: blur(var(--glass-blur-overlay)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-overlay)) saturate(var(--glass-saturate));
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-glass);
+}
+
+/* Card surface (opaque) — dense data behind tables, lists, forms, prose only */
 .card-surface {
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
@@ -589,6 +722,269 @@ button:active:not(:disabled) { transform: translateY(1px); }
   border-radius: 50%;
   background: var(--danger);
   outline: 2px solid var(--bg);
+}
+
+/* =========================================================
+   Landing page — scroll-reveal utilities
+   ========================================================= */
+.sr {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.45s cubic-bezier(0.2, 0, 0, 1),
+              transform 0.45s cubic-bezier(0.2, 0, 0, 1);
+}
+.sr--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.sr--delay-1 { transition-delay: 0.08s; }
+.sr--delay-2 { transition-delay: 0.16s; }
+.sr--delay-3 { transition-delay: 0.24s; }
+.sr--delay-4 { transition-delay: 0.32s; }
+
+/* Hero parallax drift */
+@keyframes hero-drift {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.005); }
+}
+.hero-drift {
+  animation: hero-drift 8s ease-in-out infinite;
+}
+
+/* Floating badge bob */
+@keyframes badge-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.badge-bob {
+  animation: badge-bob 3s ease-in-out infinite;
+}
+.badge-bob--delay { animation-delay: 1.5s; }
+
+/* Stats count-up (CSS @property driven) */
+@keyframes count-pulse {
+  0% { opacity: 0; transform: scale(0.8); }
+  60% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.stat-enter {
+  animation: count-pulse 0.5s cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+/* Bento grid */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: auto auto;
+  gap: 1.25rem;
+}
+.bento-grid > :first-child {
+  grid-row: 1 / 3;
+}
+@media (max-width: 768px) {
+  .bento-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+  .bento-grid > :first-child {
+    grid-row: auto;
+  }
+}
+
+/* How-it-works progress line */
+.step-line {
+  position: relative;
+  padding-left: 3rem;
+}
+.step-line::before {
+  content: '';
+  position: absolute;
+  left: 1.375rem;
+  top: 2.75rem;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+.step-line:last-child::before {
+  display: none;
+}
+
+/* Gradient top-border for audience cards */
+.card-accent-top {
+  position: relative;
+  overflow: hidden;
+}
+.card-accent-top::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: var(--card-gradient, linear-gradient(135deg, var(--accent), var(--accent)));
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Animated gradient border for CTA */
+@keyframes gradient-rotate {
+  0% { --gradient-angle: 0deg; }
+  100% { --gradient-angle: 360deg; }
+}
+@property --gradient-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+.cta-glow {
+  position: relative;
+}
+.cta-glow::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--gradient-angle),
+    var(--accent),
+    color-mix(in oklab, var(--accent) 55%, oklch(70% 0.18 300)),
+    var(--accent)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: gradient-rotate 4s linear infinite;
+  pointer-events: none;
+}
+
+/* Knowledge graph hover tilt */
+.tilt-hover {
+  transition: transform 0.4s cubic-bezier(0.2, 0, 0, 1);
+}
+.tilt-hover:hover {
+  transform: perspective(800px) rotateY(-3deg) rotateX(2deg) scale(1.01);
+}
+
+/* Roadmap strip */
+.roadmap-strip {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.roadmap-strip::-webkit-scrollbar { display: none; }
+.roadmap-strip > * {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+  min-width: 220px;
+}
+
+/* =========================================================
+   Landing hero — theme-aware code-drawn app mock
+   Status colors are data; decorative gradients stay token-driven.
+   ========================================================= */
+
+/* Hero entrance (staggered mask-rise for the mock) */
+@keyframes hero-rise {
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.hero-rise {
+  opacity: 0;
+  animation: hero-rise 0.7s cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+.hero-rise--d1 { animation-delay: 0.08s; }
+.hero-rise--d2 { animation-delay: 0.16s; }
+.hero-rise--d3 { animation-delay: 0.24s; }
+.hero-rise--d4 { animation-delay: 0.32s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-rise,
+  .hero-rise--d1,
+  .hero-rise--d2,
+  .hero-rise--d3,
+  .hero-rise--d4 {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+/* AI "cursor" dot that pulses inside the mock's response */
+@keyframes ai-cursor {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.82); }
+}
+.ai-cursor {
+  animation: ai-cursor 1.4s ease-in-out infinite;
+}
+
+/* Soft, token-driven halo behind the hero mock (no hardcoded hue) */
+.hero-glow {
+  background:
+    radial-gradient(120% 120% at 20% 10%, color-mix(in oklab, var(--accent) 16%, transparent) 0%, transparent 55%),
+    radial-gradient(120% 120% at 85% 90%, color-mix(in oklab, var(--accent) 10%, transparent) 0%, transparent 55%);
+}
+
+/* Theme-aware dot grid for the hero backdrop (fg-derived, not white) */
+.hero-dots {
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--fg) 14%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+
+/* Mock window frame — theme-aware "app" surface (glass-first material) */
+.mock-window {
+  background: var(--glass-overlay-tint);
+  border: 1px solid var(--border-strong);
+  backdrop-filter: blur(var(--glass-blur-overlay)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-overlay)) saturate(var(--glass-saturate));
+  box-shadow: var(--shadow-glass), var(--neo-light);
+}
+
+/* Premium slow drift for the hero mock (opposite phase to badge bob) */
+@keyframes mock-drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+.mock-drift { animation: mock-drift 9s ease-in-out infinite; }
+
+/* Motion shimmer for live-updating feel on a cited answer line */
+@keyframes answer-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.answer-line {
+  height: 8px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--fg) 8%, transparent) 20%,
+      color-mix(in oklab, var(--fg) 14%, transparent) 50%,
+      color-mix(in oklab, var(--fg) 8%, transparent) 80%
+    );
+  background-size: 200% 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .answer-line {
+    animation: answer-shimmer 2.2s linear infinite;
+  }
 }
 
 /* Reduced motion */

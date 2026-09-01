@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/services/api';
 import { getFileType, SCOPE_META } from '@/lib/filetypes';
 import StatusBadge from '@/components/shared/StatusBadge';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -38,6 +40,8 @@ export default function ResourceCard({
   className,
 }) {
   const { user } = useAuth();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const ft = getFileType(resource?.title || '', resource?.mime_type);
   const scope = SCOPE_META[resource?.visibility_scope] || SCOPE_META.private;
 
@@ -46,15 +50,17 @@ export default function ResourceCard({
     !!resource &&
     (user.role === 'tenant_admin' || user.is_superuser || resource.uploaded_by === user.id);
 
-  const handleDelete = async (e) => {
-    e.stopPropagation();
-    if (!window.confirm('Delete this resource? This cannot be undone.')) return;
+  const handleDelete = async () => {
+    setDeleting(true);
     try {
       await api.delete(`/resources/${resource.id}/`);
       toast.success('Resource deleted');
+      setDeleteOpen(false);
       if (onDeleted) onDeleted(resource.id);
     } catch (err) {
       toast.error(err.response?.data?.error?.detail || 'Delete failed');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -107,7 +113,7 @@ export default function ResourceCard({
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem
                 className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                onClick={handleDelete}
+                onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }}
               >
                 <Trash2 className="mr-2 h-3.5 w-3.5" />
                 Delete
@@ -183,6 +189,17 @@ export default function ResourceCard({
           {timeAgo(resource?.created_at)}
         </span>
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete resource"
+        description="This cannot be undone. The resource and all its data will be permanently removed."
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteOpen(false)}
+        confirmLabel="Delete"
+        destructive
+        pending={deleting}
+      />
     </article>
   );
 }

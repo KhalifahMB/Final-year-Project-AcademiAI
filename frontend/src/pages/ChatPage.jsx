@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { chatApi } from '@/services/api';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -520,8 +521,9 @@ export default function ChatPage() {
  const [messages, setMessages] = useState([]);
  const [input, setInput] = useState('');
  const [loading, setLoading] = useState(false);
- const [editingTitle, setEditingTitle] = useState(false);
- const [titleDraft, setTitleDraft] = useState('');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [sessionToDelete, setSessionToDelete] = useState(null);
  const activeStream = useRef(null);
  const fileInputRef = useRef(null);
  const [pickerOpen, setPickerOpen] = useState(false);
@@ -784,17 +786,16 @@ export default function ChatPage() {
  }
  };
 
- const deleteSession = async (s) => {
- if (!window.confirm(`Delete"${s.title || 'Untitled chat'}"? This cannot be undone.`)) return;
- try {
- await chatApi.deleteSession(s.id);
- if (s.id === sessionId) startNewChat();
- qc.invalidateQueries({ queryKey: ['chat-sessions'] });
- toast.success('Conversation deleted');
- } catch {
- toast.error('Could not delete conversation');
- }
- };
+  const deleteSession = async (s) => {
+  try {
+  await chatApi.deleteSession(s.id);
+  if (s.id === sessionId) startNewChat();
+  qc.invalidateQueries({ queryKey: ['chat-sessions'] });
+  toast.success('Conversation deleted');
+  } catch {
+  toast.error('Could not delete conversation');
+  }
+  };
 
  const openSourceResource = (resourceId) => {
  setOpenedResourceId(resourceId);
@@ -866,7 +867,7 @@ export default function ChatPage() {
  s={s}
  active={s.id === sessionId}
  onClick={() => openSession(s)}
- onDelete={deleteSession}
+  onDelete={setSessionToDelete}
  />
  ))
  )}
@@ -1195,17 +1196,26 @@ export default function ChatPage() {
  </section>
  </div>
 
- {/* Source resource preview dialog */}
- <ResourceDetailDialog
- resource={
- openedResourceId
- ? { id: openedResourceId } // Dialog will fetch full details via preview API once we have a real object; but dialog expects the whole resource.
- : null
- }
- open={!!openedResourceId}
- onClose={() => setOpenedResourceId(null)}
- />
- </AppShell>
- </TooltipProvider>
- );
+  {/* Source resource preview dialog */}
+  <ResourceDetailDialog
+  resource={
+  openedResourceId
+  ? { id: openedResourceId } // Dialog will fetch full details via preview API once we have a real object; but dialog expects the whole resource.
+  : null
+  }
+  open={!!openedResourceId}
+  onClose={() => setOpenedResourceId(null)}
+  />
+  <ConfirmDialog
+  open={!!sessionToDelete}
+  title="Delete conversation?"
+  description={`"${sessionToDelete?.title || 'Untitled chat'}" will be permanently deleted. This cannot be undone.`}
+  onCancel={() => setSessionToDelete(null)}
+  onConfirm={() => { const s = sessionToDelete; setSessionToDelete(null); deleteSession(s); }}
+  confirmLabel="Delete"
+  destructive
+  />
+  </AppShell>
+  </TooltipProvider>
+  );
 }

@@ -5,6 +5,7 @@ import { platformApi } from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
 import StatusBadge from "@/components/shared/StatusBadge";
 import SkeletonRows from "@/components/shared/SkeletonRows";
+import Pagination from "@/components/shared/Pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -47,6 +48,8 @@ const PLAN_OPTIONS = [
   { value: "enterprise", label: "Enterprise" },
 ];
 
+const PAGE_SIZE = 10;
+
 const STATUS_OPTIONS = [
   { value: "active", label: "Active" },
   { value: "suspended", label: "Suspended" },
@@ -57,6 +60,7 @@ export default function TenantsPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterPlan, setFilterPlan] = useState("all");
+  const [page, setPage] = useState(1);
 
   const tenantsQ = useQuery({
     queryKey: ["platform-tenants"],
@@ -77,6 +81,10 @@ export default function TenantsPage() {
     return list;
   }, [tenantsQ.data, search, filterStatus, filterPlan]);
 
+  const totalPages = Math.max(1, Math.ceil(visibleTenants.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = visibleTenants.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   return (
     <AppShell
       title="Tenants"
@@ -88,18 +96,18 @@ export default function TenantsPage() {
           <Input
             placeholder="Search institutions…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-9"
           />
         </div>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
+        <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); setPage(1); }}>
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filterPlan} onValueChange={setFilterPlan}>
+        <Select value={filterPlan} onValueChange={(v) => { setFilterPlan(v); setPage(1); }}>
           <SelectTrigger className="w-[130px]"><SelectValue placeholder="All plans" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All plans</SelectItem>
@@ -126,7 +134,7 @@ export default function TenantsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {visibleTenants.map((t) => (
+              {paged.map((t) => (
                 <TableRow key={t.id}>
                   <TableCell className="py-3.5 font-medium">
                     <div>
@@ -164,6 +172,10 @@ export default function TenantsPage() {
             </TableBody>
           </Table>
         </div>
+      )}
+
+      {!tenantsQ.isLoading && !tenantsQ.error && visibleTenants.length > PAGE_SIZE && (
+        <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} className="mt-4" />
       )}
     </AppShell>
   );

@@ -10,6 +10,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 import { notesApi } from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -267,6 +268,7 @@ export default function NotesPage() {
  const [activeId, setActiveId] = useState(null);
  const [title, setTitle] = useState('');
  const [isNew, setIsNew] = useState(false);
+ const [noteToDelete, setNoteToDelete] = useState(null);
  const [saveState, setSaveState] = useState('idle'); // idle | saving | saved
  const [slash, setSlash] = useState({
  open: false,
@@ -560,13 +562,13 @@ export default function NotesPage() {
  };
 
  const deleteSelected = (note) => {
- if (
- !window.confirm(
- `Delete"${note.title || 'Untitled'}"? This cannot be undone.`,
- )
- )
- return;
- deleteMut.mutate(note.id);
+ setNoteToDelete(note);
+ };
+
+ const confirmDelete = () => {
+ if (!noteToDelete) return;
+ deleteMut.mutate(noteToDelete.id);
+ setNoteToDelete(null);
  };
 
  const toggleSelect = (id) => {
@@ -855,12 +857,22 @@ export default function NotesPage() {
  const start = from - match[0].length;
  editor.chain().focus().deleteRange({ from: start, to: from }).run();
  }
- cmd.action(editor);
- setSlash({ open: false, query: '', pos: null, active: 0 });
- }}
- />
- </AppShell>
- );
+  cmd.action(editor);
+  setSlash({ open: false, query: '', pos: null, active: 0 });
+  }}
+   />
+
+  <ConfirmDialog
+    open={!!noteToDelete}
+    title="Delete note"
+    description={noteToDelete ? `Delete “${noteToDelete.title || 'Untitled'}”? This cannot be undone.` : ''}
+    onConfirm={confirmDelete}
+    onCancel={() => setNoteToDelete(null)}
+    confirmLabel="Delete"
+    destructive
+  />
+  </AppShell>
+  );
 }
 
 function SaveBadge({ state }) {

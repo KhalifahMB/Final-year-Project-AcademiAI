@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
  */
 export default function StatCard({ icon: Icon, label, value, hint, trend, className }) {
   return (
-    <div className={cn('card p-4', className)}>
+    <div className={cn('card-glass neomorph p-4', className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-[11px] font-[600] uppercase tracking-[0.08em] text-[var(--muted)]">

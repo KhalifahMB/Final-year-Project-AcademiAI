@@ -91,7 +91,7 @@ export default function AdminDashboardPage() {
 
           <div className="mt-6 grid gap-5 lg:grid-cols-2">
             {roleData.length > 0 && (
-              <section className="rounded-2xl border bg-card p-5">
+              <section className="card-glass p-5">
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
                   <Users className="h-4 w-4 text-primary" aria-hidden /> People by role
                 </h2>
@@ -126,7 +126,7 @@ export default function AdminDashboardPage() {
             )}
 
             {pipelineData.length > 0 && (
-              <section className="rounded-2xl border bg-card p-5">
+              <section className="card-glass p-5">
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
                   <TrendingUp className="h-4 w-4 text-primary" aria-hidden /> Material pipeline
                 </h2>
@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
               </section>
             )}
 
-            <section className="rounded-2xl border bg-card p-5 lg:col-span-2">
+            <section className="card-glass p-5 lg:col-span-2">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
                 <Building2 className="h-4 w-4 text-primary" aria-hidden /> Academic structure
               </h2>
@@ -164,7 +164,7 @@ export default function AdminDashboardPage() {
           </div>
 
           {/* Audit analytics */}
-          <section className="mt-6 rounded-2xl border bg-card p-5">
+          <section className="mt-6 card-glass p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -268,7 +268,7 @@ export default function AdminDashboardPage() {
           </section>
 
           {recentResources.length > 0 && (
-            <section className="mt-6 rounded-2xl border bg-card p-5">
+            <section className="mt-6 card-glass p-5">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
                 <FileText className="h-4 w-4 text-primary" aria-hidden /> Recent uploads
               </h2>

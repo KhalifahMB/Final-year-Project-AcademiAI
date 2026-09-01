@@ -4,6 +4,7 @@ import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import EmptyState from '@/components/shared/EmptyState';
+import Pagination from '@/components/shared/Pagination';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,6 +13,8 @@ import {
 import { cn } from '@/lib/utils';
 import { Search, UsersRound } from 'lucide-react';
 import { useState } from 'react';
+
+const PAGE_SIZE = 10;
 
 const ROLE_STYLES = {
   tenant_admin: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20',
@@ -39,6 +42,7 @@ function RoleBadge({ role }) {
 export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [page, setPage] = useState(1);
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
@@ -61,6 +65,10 @@ export default function AdminUsersPage() {
       );
     });
   }, [users, search, roleFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <AppShell
@@ -88,14 +96,14 @@ export default function AdminUsersPage() {
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="relative min-w-[220px] flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search users…" className="h-8 pl-8 text-xs" />
+            <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search users…" className="h-8 pl-8 text-xs" />
           </div>
           <div className="inline-flex rounded-lg border bg-card p-0.5">
             {['all', 'student', 'lecturer', 'tenant_admin'].map((r) => (
               <button
                 key={r}
                 type="button"
-                onClick={() => setRoleFilter(r)}
+                onClick={() => { setRoleFilter(r); setPage(1); }}
                 className={cn(
                   'h-7 rounded-md px-2.5 text-[11px] font-medium transition-colors',
                   roleFilter === r ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -132,7 +140,7 @@ export default function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((u) => (
+              {paged.map((u) => (
                 <TableRow key={u.id} className="h-11">
                   <TableCell className="py-2 pl-4 text-sm font-medium">
                     {[u.first_name, u.last_name].filter(Boolean).join(' ') || '—'}
@@ -144,7 +152,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
+              {paged.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="py-8 text-center text-xs text-muted-foreground">
                     No users match your search.
@@ -154,6 +162,10 @@ export default function AdminUsersPage() {
             </TableBody>
           </Table>
         </div>
+      )}
+
+      {!isLoading && users.length > 0 && filtered.length > PAGE_SIZE && (
+        <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} className="mt-4" />
       )}
     </AppShell>
   );

@@ -6,6 +6,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import EmptyState from '@/components/shared/EmptyState';
+import Pagination from '@/components/shared/Pagination';
 import StatusBadge from '@/components/shared/StatusBadge';
 import ResourceCard from '@/components/resources/ResourceCard';
 import ResourceDetailDialog from '@/components/resources/ResourceDetailDialog';
@@ -55,6 +56,8 @@ import { getFileType, SCOPE_META } from '@/lib/filetypes';
 
 const SCOPES = ['private', 'course', 'programme', 'department', 'faculty', 'institution'];
 
+const PAGE_SIZE = 12;
+
 const STATUS_FILTERS = [
  { value: 'all', label: 'All status' },
  { value: 'ready', label: 'Ready' },
@@ -89,8 +92,9 @@ export default function ResourcesPage() {
  const [scopeFilter, setScopeFilter] = useState('all');
  const [statusFilter, setStatusFilter] = useState('all');
  const [sort, setSort] = useState('newest');
- const [view, setView] = useState('grid');
- const [filtersOpen, setFiltersOpen] = useState(false);
+  const [view, setView] = useState('grid');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
  const { data, isLoading, error: loadError, refetch } = useQuery({
  queryKey: ['resources', user?.role],
@@ -199,13 +203,18 @@ export default function ResourcesPage() {
  return c;
  }, [resources]);
 
- const hasActiveFilters = scopeFilter !== 'all' || statusFilter !== 'all' || sort !== 'newest';
- const resetFilters = () => {
- setScopeFilter('all');
- setStatusFilter('all');
- setSort('newest');
- setSearch('');
- };
+  const hasActiveFilters = scopeFilter !== 'all' || statusFilter !== 'all' || sort !== 'newest';
+  const resetFilters = () => {
+  setScopeFilter('all');
+  setStatusFilter('all');
+  setSort('newest');
+  setSearch('');
+  setPage(1);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
  // Sub-component for a list-item row (alternative to the grid cards)
  const ResourceRow = ({ r }) => (
@@ -372,7 +381,7 @@ export default function ResourcesPage() {
  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
  <Input
  value={search}
- onChange={(e) => setSearch(e.target.value)}
+ onChange={(e) => { setSearch(e.target.value); setPage(1); }}
  placeholder="Search by title or description…"
  aria-label="Search resources"
  className="h-9 pl-8 text-sm"
@@ -380,7 +389,7 @@ export default function ResourcesPage() {
  {search && (
  <button
  type="button"
- onClick={() => setSearch('')}
+ onClick={() => { setSearch(''); setPage(1); }}
  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
  aria-label="Clear search"
  >
@@ -391,12 +400,12 @@ export default function ResourcesPage() {
 
  {/* Scope chips (compact, primary filter) */}
  <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Filter by scope">
- <ScopeChip active={scopeFilter === 'all'} onClick={() => setScopeFilter('all')} label="All" />
+ <ScopeChip active={scopeFilter === 'all'} onClick={() => { setScopeFilter('all'); setPage(1); }} label="All" />
  {SCOPES.map((s) => (
  <ScopeChip
  key={s}
  active={scopeFilter === s}
- onClick={() => setScopeFilter(s)}
+ onClick={() => { setScopeFilter(s); setPage(1); }}
  label={SCOPE_META[s].label}
  />
  ))}
@@ -415,7 +424,7 @@ export default function ResourcesPage() {
  </Button>
 
  {/* Sort */}
- <Select value={sort} onValueChange={setSort}>
+ <Select value={sort} onValueChange={(v) => { setSort(v); setPage(1); }}>
  <SelectTrigger className="h-9 w-[150px] text-xs" aria-label="Sort">
  <SelectValue />
  </SelectTrigger>
@@ -461,7 +470,7 @@ export default function ResourcesPage() {
  <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
  Status
  </label>
- <Select value={statusFilter} onValueChange={setStatusFilter}>
+ <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
  <SelectTrigger className="h-9 text-xs">
  <SelectValue />
  </SelectTrigger>
@@ -484,10 +493,10 @@ export default function ResourcesPage() {
  {hasActiveFilters && (
  <div className="mb-3 flex flex-wrap items-center gap-1.5">
  {statusFilter !== 'all' && (
- <FilterChip label={`Status: ${STATUS_FILTERS.find((s) => s.value === statusFilter)?.label || statusFilter}`} onClear={() => setStatusFilter('all')} />
+ <FilterChip label={`Status: ${STATUS_FILTERS.find((s) => s.value === statusFilter)?.label || statusFilter}`} onClear={() => { setStatusFilter('all'); setPage(1); }} />
  )}
  {sort !== 'newest' && (
- <FilterChip label={`Sort: ${SORT_OPTIONS.find((s) => s.value === sort)?.label || sort}`} onClear={() => setSort('newest')} />
+ <FilterChip label={`Sort: ${SORT_OPTIONS.find((s) => s.value === sort)?.label || sort}`} onClear={() => { setSort('newest'); setPage(1); }} />
  )}
  </div>
  )}
@@ -539,7 +548,7 @@ export default function ResourcesPage() {
  />
  ) : view === 'grid' ? (
  <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
- {filtered.map((r) => (
+ {paged.map((r) => (
  <li key={r.id}>
  <ResourceCard
  resource={r}
@@ -551,10 +560,14 @@ export default function ResourcesPage() {
  </ul>
  ) : (
  <ul className="space-y-1.5">
- {filtered.map((r) => (
+ {paged.map((r) => (
  <li key={r.id}><ResourceRow r={r} /></li>
  ))}
  </ul>
+ )}
+
+ {filtered.length > PAGE_SIZE && (
+ <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} className="mt-4" />
  )}
 
  <ResourceDetailDialog

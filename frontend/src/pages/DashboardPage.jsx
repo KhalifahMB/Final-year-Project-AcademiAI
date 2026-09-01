@@ -305,7 +305,7 @@ export default function DashboardPage() {
                   key={to}
                   to={to}
                   className={cn(
-                    'group flex items-center gap-3 rounded-xl border bg-card p-3.5 transition-all hover:-translate-y-px hover:border-primary/30 hover:shadow-md',
+                    'group flex items-center gap-3 card-glass p-3.5 transition-all hover:-translate-y-px hover:border-primary/30 hover:shadow-md',
                     primary &&
                       'border-primary/25  from-primary/5 via-transparent to-transparent',
                   )}
@@ -339,7 +339,7 @@ export default function DashboardPage() {
 
           {/* Role grid — staff only */}
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <section className="rounded-xl border bg-card p-4 lg:col-span-2">
+            <section className="card-glass p-4 lg:col-span-2">
               <SectionHeader title="Material pipeline" />
               <div className="grid grid-cols-4 gap-2">
                 {(dash.data?.materials_by_status || []).map((s) => (
@@ -391,7 +391,7 @@ export default function DashboardPage() {
               )}
             </section>
 
-            <section className="rounded-xl border bg-card p-4">
+            <section className="card-glass p-4">
               <SectionHeader title="Academic structure" />
               <ul className="space-y-2">
                 {(dash.data?.structure || []).map((s) => (
@@ -410,7 +410,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Staff audit analytics */}
-          <section className="mt-6 rounded-xl border bg-card p-4">
+          <section className="mt-6 card-glass p-4">
             <SectionHeader
               title="Audit & activity"
               description={`${auditSummary.data?.total_events ?? '—'} events in the last ${auditDays} days.`}
