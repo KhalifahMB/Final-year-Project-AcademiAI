@@ -84,6 +84,29 @@ class UserSerializer(serializers.ModelSerializer):
         return bool(obj.avatar_key)
 
 
+class UserAdminUpdateSerializer(serializers.ModelSerializer):
+    """
+    Tenant-admin user management (PATCH). Only a safe allowlist of fields is
+    writable. Security-critical fields — tenant, email, is_superuser, is_staff,
+    is_email_verified — are intentionally NOT exposed here so an admin cannot
+    escalate a user's privileges or reassign tenant.
+    """
+
+    role = serializers.ChoiceField(choices=User.Role.choices, required=False)
+
+    class Meta:
+        model = User
+        fields = (
+            "first_name",
+            "last_name",
+            "role",
+            "is_active",
+            "phone_number",
+            "gender",
+            "avatar_preset",
+        )
+
+
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     """
     Self-service profile updates. Personal data only: name, email, phone,

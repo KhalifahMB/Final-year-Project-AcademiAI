@@ -31,6 +31,22 @@ from .serializers import (
 )
 from . import services
 
+
+def _compute_confidence(chunks: list) -> str:
+    """Derive an answer-confidence label from the retrieved chunks.
+
+    Heuristic (authorisation-first — only chunks the user may see):
+      high   — >= 3 chunks from the authorised resource library
+      medium — 1-2 chunks
+      low    — 0 chunks (answer is from general knowledge, not grounded)
+    """
+    n = len(chunks)
+    if n >= 3:
+        return ChatMessage.Confidence.HIGH
+    if n >= 1:
+        return ChatMessage.Confidence.MEDIUM
+    return ChatMessage.Confidence.LOW
+
 logger = logging.getLogger(__name__)
 
 
@@ -104,6 +120,26 @@ class ChatMessageViewSet(viewsets.ReadOnlyModelViewSet):
             .order_by("created_at")
         )
 
+    @extend_schema(
+        request=ChatMessageCreateSerializer,
+        responses={201: ChatMessageSerializer},
+        summary="Set feedback rating on an assistant message",
+    )
+    @action(detail=True, methods=["post"], url_path="rate")
+    def rate(self, request, pk=None):
+        from rest_framework import serializers as drf_serializers
+
+        class RateIn(drf_serializers.Serializer):
+            rating = drf_serializers.ChoiceField(choices=[1, -1, 0], required=False)
+
+        ser = RateIn(data=request.data)
+        ser.is_valid(raise_exception=True)
+        msg = self.get_object()
+        rating = ser.validated_data.get("rating")
+        msg.rating = rating if rating != 0 else None
+        msg.save(update_fields=["rating"])
+        return Response(ChatMessageSerializer(msg).data)
+
 
 class ChatSendMessageView(APIView):
     """
@@ -120,6 +156,10 @@ class ChatSendMessageView(APIView):
         summary="Send a message (synchronous)",
     )
     def post(self, request, session_id):
+        import hashlib
+
+        from django.core.cache import cache
+
         ser = ChatMessageCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         content = ser.validated_data["content"]
@@ -144,13 +184,21 @@ class ChatSendMessageView(APIView):
         from apps.knowledge.retrieval import hybrid_retrieve
         from apps.common.ai import generate_grounded_answer
 
-        chunks = hybrid_retrieve(
-            query=content,
-            tenant_id=user.tenant_id,
-            user=user,
-            course_offering_id=str(session.course_offering_id) if session.course_offering_id else None,
-            top_k=8,
-        )
+        # Same authorization-first retrieval cache as the streaming endpoint
+        # (keyed by tenant+user+query so private chunks never cross users).
+        cache_key = "rag:" + str(user.tenant_id) + ":" + str(user.id) + ":" + hashlib.sha256(
+            content.encode("utf-8"),
+        ).hexdigest()[:16]
+        chunks = cache.get(cache_key)
+        if chunks is None:
+            chunks = hybrid_retrieve(
+                query=content,
+                tenant_id=user.tenant_id,
+                user=user,
+                course_offering_id=str(session.course_offering_id) if session.course_offering_id else None,
+                top_k=8,
+            )
+            cache.set(cache_key, chunks, 300)
 
         if attached_resource_ids:
             from apps.resources.models import Resource, ResourceChunk
@@ -211,7 +259,9 @@ class ChatSendMessageView(APIView):
                     cid = str(s.get("chunk_id"))
                     if cid in metas:
                         s.update(metas[cid])
-        assistant_msg = services.append_assistant_message(session, answer, source_meta)
+        assistant_msg = services.append_assistant_message(
+            session, answer, source_meta, confidence=_compute_confidence(chunks),
+        )
 
         return Response(
             {
@@ -377,6 +427,7 @@ class ChatStreamMessageView(APIView):
 
     def post(self, request, session_id):
         import hashlib
+        import time
 
         from django.core.cache import cache
         from apps.knowledge.retrieval import hybrid_retrieve
@@ -411,6 +462,7 @@ class ChatStreamMessageView(APIView):
         cache_key = "rag:" + str(user.tenant_id) + ":" + str(user.id) + ":" + hashlib.sha256(
             content.encode("utf-8"),
         ).hexdigest()[:16]
+        retrieval_start = time.monotonic()
         chunks = cache.get(cache_key)
         if chunks is None:
             chunks = hybrid_retrieve(
@@ -419,6 +471,8 @@ class ChatStreamMessageView(APIView):
                 top_k=8,
             )
             cache.set(cache_key, chunks, 300)
+        retrieval_ms = int((time.monotonic() - retrieval_start) * 1000)
+        confidence = _compute_confidence(chunks)
 
         # Fold in explicit user-attached resources: pull the most recent
         # version's top chunks for each attached resource (authorized via
@@ -482,6 +536,8 @@ class ChatStreamMessageView(APIView):
             yield sse_event("user_message", ChatMessageSerializer(user_msg).data)
             yield sse_event("meta", {
                 "chunks_retrieved": len(chunks),
+                "confidence": confidence,
+                "retrieval_ms": retrieval_ms,
                 "model": settings.GEMINI_MODEL if client else "dev-stub",
             })
 
@@ -613,7 +669,7 @@ class ChatStreamMessageView(APIView):
                 # save(update_fields=['updated_at']) works under RLS.
                 session.refresh_from_db()
                 assistant_msg = services.append_assistant_message(
-                    session, answer, sources_meta,
+                    session, answer, sources_meta, confidence=confidence,
                 )
                 payload = ChatMessageSerializer(assistant_msg).data
 

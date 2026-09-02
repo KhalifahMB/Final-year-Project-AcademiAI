@@ -36,11 +36,26 @@ class ChatMessage(TenantScopedModel):
         FORMULA = "formula", "Formula"
         SYSTEM_EVENT = "system_event", "System Event"
 
+    class Confidence(models.TextChoices):
+        HIGH = "high", "High"
+        MEDIUM = "medium", "Medium"
+        LOW = "low", "Low"
+        NONE = "none", "None"
+
     session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name="messages")
     role = models.CharField(max_length=20, choices=Role.choices)
     content = models.TextField()
     content_type = models.CharField(
         max_length=20, choices=ContentType.choices, default=ContentType.MARKDOWN
+    )
+    confidence = models.CharField(
+        max_length=10, choices=Confidence.choices, null=True, blank=True,
+        help_text="Answer confidence based on retrieval quality.",
+    )
+    rating = models.SmallIntegerField(
+        null=True, blank=True,
+        choices=[(1, "Good"), (-1, "Bad")],
+        help_text="User feedback on answer quality (1 = good, -1 = bad).",
     )
 
     class Meta:

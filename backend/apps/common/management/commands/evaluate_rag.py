@@ -28,6 +28,7 @@ claims beyond it.
 """
 import json
 import statistics
+import time
 
 from django.core.management.base import BaseCommand, CommandError
 from pgvector.django import CosineDistance
@@ -85,6 +86,7 @@ class Command(BaseCommand):
             "hybrid": self._run_hybrid,
             "concept": self._run_concept,
         }
+        latencies = {m: [] for m in modes}
 
         for case in cases:
             tenant = Tenant.objects.filter(slug=case["tenant_slug"]).first()
@@ -96,7 +98,9 @@ class Command(BaseCommand):
                 continue
             relevant = case["relevant_chunk_ids"]
             for mode, runner in per_mode_cases.items():
+                start = time.perf_counter()
                 ranked = runner(user, tenant.id, case["query"], case.get("course_offering_id"))
+                latencies[mode].append((time.perf_counter() - start) * 1000)
                 modes[mode].append({
                     "p": _precision_at_k(ranked, relevant, k),
                     "r": _recall_at_k(ranked, relevant, k),
@@ -104,16 +108,18 @@ class Command(BaseCommand):
                 })
 
         self.stdout.write(f"\nRetrieval evaluation @K={k} over {len(cases)} case(s)\n")
-        self.stdout.write(f"{'mode':<10} {'P@K':>8} {'R@K':>8} {'MRR':>8}")
+        self.stdout.write(f"{'mode':<10} {'P@K':>8} {'R@K':>8} {'MRR':>8} {'p95(ms)':>10}")
         for mode, rows in modes.items():
             if not rows:
-                self.stdout.write(f"{mode:<10} {'-':>8} {'-':>8} {'-':>8}")
+                self.stdout.write(f"{mode:<10} {'-':>8} {'-':>8} {'-':>8} {'-':>10}")
                 continue
             p = statistics.mean(row["p"] for row in rows)
             r = statistics.mean(row["r"] for row in rows)
             mrr = statistics.mean(row["mrr"] for row in rows)
+            lats = sorted(latencies[mode])
+            p95 = lats[int(len(lats) * 0.95) - 1] if lats else 0.0
             self.stdout.write(
-                f"{mode:<10} {p:>8.3f} {r:>8.3f} {mrr:>8.3f}"
+                f"{mode:<10} {p:>8.3f} {r:>8.3f} {mrr:>8.3f} {p95:>10.0f}"
             )
         self.stdout.write(
             "\nNote: numbers are measurements of the supplied labelled set only."

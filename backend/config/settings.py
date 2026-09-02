@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     "apps.learning",
     "apps.audit",
     "apps.platform",
+    "apps.logs",
+    "apps.agent",
 ]
 
 MIDDLEWARE = [
@@ -63,6 +65,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "apps.common.middleware.TenantContextMiddleware",
+    "apps.logs.middleware.TenantLoggingMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -229,6 +232,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "Administration", "description": "Audit logs and operational data (admins)"},
         {"name": "Platform", "description": "Platform-wide management for superusers (tenants, analytics, health, announcements)"},
         {"name": "System", "description": "Health and background-job status"},
+        {"name": "Agent", "description": "AI agent streaming, tool listing, and session tracking"},
     ],
     "ENUM_NAME_OVERRIDES": {
         "UserRoleEnum": "apps.accounts.models.User.Role",
@@ -301,6 +305,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 GEMINI_EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL", "text-embedding-004")
 EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "768"))
+# Cache single-query embedding vectors in Redis for this many seconds (300 = 5 min).
+# Retrieval re-embeds the same query text repeatedly; this avoids redundant API calls.
+EMB_CACHE_TTL = int(os.getenv("EMB_CACHE_TTL", "300"))
 
 # Auth tokens / codes
 AUTH_VERIFICATION_CODE_EXPIRY_MINUTES = int(os.getenv("AUTH_VERIFICATION_CODE_EXPIRY_MINUTES", "15"))

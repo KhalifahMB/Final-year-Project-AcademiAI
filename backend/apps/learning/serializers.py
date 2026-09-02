@@ -3,7 +3,11 @@ from rest_framework import serializers
 
 from apps.resources.models import Resource
 
-from .models import Note, Bookmark, ProgressRecord
+from .models import (
+    Note, Bookmark, ProgressRecord,
+    ResourceReadingPosition, StudySession, ConceptInteraction,
+    Plan, PlanMilestone, PlanTask, PlanTemplate,
+)
 
 
 def _resource_visible_to_user(resource, user) -> bool:
@@ -77,4 +81,99 @@ class ProgressRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProgressRecord
         fields = ("id", "concept", "progress_value", "last_seen_at", "user", "tenant")
-        read_only_fields = ("id", "user", "tenant", "last_seen_at")
+        read_only_fields = ("id", "user", "tenant", "last_seen_at", "progress_value")
+
+
+class ResourceReadingPositionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResourceReadingPosition
+        fields = [
+            "id", "resource", "resource_version", "section",
+            "scroll_percentage", "last_read_at",
+        ]
+        read_only_fields = ["id", "last_read_at"]
+
+
+class StudySessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StudySession
+        fields = [
+            "id", "course_offering", "started_at", "ended_at",
+            "duration_seconds", "activity_type",
+        ]
+        read_only_fields = ["id", "started_at"]
+
+
+class ConceptInteractionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConceptInteraction
+        fields = [
+            "id", "concept", "interaction_type", "timestamp", "context",
+        ]
+        read_only_fields = ["id", "timestamp"]
+
+
+class PlanTaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlanTask
+        fields = [
+            "id", "title", "description", "estimated_minutes",
+            "status", "completed_at", "resource",
+        ]
+        read_only_fields = ["id", "completed_at"]
+
+
+class PlanMilestoneSerializer(serializers.ModelSerializer):
+    tasks = PlanTaskSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = PlanMilestone
+        fields = [
+            "id", "title", "description", "due_date", "status",
+            "order", "progress_value", "tasks",
+        ]
+        read_only_fields = ["id"]
+
+
+class PlanSerializer(serializers.ModelSerializer):
+    milestones = PlanMilestoneSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Plan
+        fields = [
+            "id", "title", "description", "plan_type", "status",
+            "start_date", "target_date", "milestones",
+        ]
+        read_only_fields = ["id"]
+
+
+class PlanListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for plan list views (no nested milestones)."""
+    milestone_count = serializers.SerializerMethodField()
+    task_count = serializers.SerializerMethodField()
+    completed_task_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Plan
+        fields = [
+            "id", "title", "description", "plan_type", "status",
+            "start_date", "target_date", "milestone_count", "task_count",
+            "completed_task_count", "updated_at",
+        ]
+        read_only_fields = ["id", "updated_at"]
+
+    def get_milestone_count(self, obj):
+        return obj.milestones.count() if hasattr(obj, 'milestones') else 0
+
+    def get_task_count(self, obj):
+        return PlanTask.objects.filter(milestone__plan=obj).count() if hasattr(obj, 'milestones') else 0
+
+    def get_completed_task_count(self, obj):
+        return PlanTask.objects.filter(milestone__plan=obj, status="done").count() if hasattr(obj, 'milestones') else 0
+
+
+class PlanTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PlanTemplate
+        fields = ["id", "name", "description", "plan_type", "template_data"]
+        read_only_fields = ["id"]

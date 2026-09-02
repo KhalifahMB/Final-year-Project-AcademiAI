@@ -1,6 +1,6 @@
 import logging
 
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -361,23 +361,35 @@ class ResourceViewSet(TenantModelViewSet):
                 {"success": False, "error": {"detail": "storage_key does not belong to this resource."}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        last = resource.versions.order_by("-version_number").first()
-        next_ver = (last.version_number + 1) if last else 1
-        # The presign flow may have recorded the declared content type; allow
-        # the completion call to (re)state it for clients that skipped that.
+        # Reject an arbitrary client-supplied content type (MIME spoofing).
         declared_ct = request.data.get("content_type")
-        if declared_ct and declared_ct != "application/octet-stream":
-            resource.mime_type = declared_ct
-        version = ResourceVersion.objects.create(
-            tenant=resource.tenant,
-            resource=resource,
-            version_number=next_ver,
-            storage_key=storage_key,
-            created_by=request.user,
-        )
-        resource.storage_key = storage_key
-        resource.processing_status = resource.ProcessingStatus.PENDING
-        resource.save(update_fields=["storage_key", "processing_status", "mime_type", "updated_at"])
+        if declared_ct and declared_ct != "application/octet-stream" and not _content_type_allowed(declared_ct):
+            return Response(
+                {"success": False, "error": {"detail": f"Unsupported content type: {declared_ct}"}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        with transaction.atomic():
+            # Row-lock the resource so concurrent complete_upload calls cannot
+            # race on version numbering.
+            resource = self.get_object()
+            resource = type(resource).objects.select_for_update().get(pk=resource.pk)
+            last = resource.versions.order_by("-version_number").first()
+            next_ver = (last.version_number + 1) if last else 1
+            # The presign flow may have recorded the declared content type;
+            # allow the completion call to (re)state it (validated above).
+            if declared_ct and declared_ct != "application/octet-stream":
+                resource.mime_type = declared_ct
+            version = ResourceVersion.objects.create(
+                tenant=resource.tenant,
+                resource=resource,
+                version_number=next_ver,
+                storage_key=storage_key,
+                created_by=request.user,
+            )
+            resource.storage_key = storage_key
+            resource.processing_status = resource.ProcessingStatus.PENDING
+            resource.save(update_fields=["storage_key", "processing_status", "mime_type", "updated_at"])
+
         from .tasks import process_resource_ingestion
         task = process_resource_ingestion.delay(
             str(resource.id), str(version.id), str(resource.tenant_id)
@@ -577,12 +589,13 @@ class ResourceVersionViewSet(TenantModelViewSet):
 
     def _parent_resource(self):
         from django.shortcuts import get_object_or_404
+        # Always apply the visibility map (:func:`_authorized_resources_q`).
+        # Private materials remain owner-only even for admins; admins may see
+        # all non-private resources in the tenant. Using Q() for admins here
+        # would leak other users' private materials, contradicting the intent.
         return get_object_or_404(
             Resource.objects.filter(
-                _authorized_resources_q(self.request.user)
-                if not (getattr(self.request.user, "is_superuser", False)
-                        or getattr(self.request.user, "is_tenant_admin", False))
-                else Q(),
+                _authorized_resources_q(self.request.user),
                 tenant=self.request.user.tenant,
             ),
             id=self.kwargs.get("resource_pk"),

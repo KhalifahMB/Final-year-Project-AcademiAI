@@ -1,4 +1,5 @@
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -96,6 +97,15 @@ class QuizQuestionViewSet(TenantModelViewSet):
             return [IsLecturerOrAdmin()] + perms
         return perms
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        # Students must not see the questions of draft/archived quizzes — even
+        # if they know the quiz UUID — only published ones.
+        user = self.request.user
+        if getattr(user, "role", None) == "student":
+            qs = qs.filter(quiz__status=Quiz.Status.PUBLISHED)
+        return qs
+
 
 @extend_schema(tags=["Quiz Attempts"])
 class QuizAttemptViewSet(TenantModelViewSet):
@@ -135,40 +145,45 @@ class QuizAttemptViewSet(TenantModelViewSet):
     @action(detail=True, methods=["post"])
     def submit(self, request, pk=None):
         """Submit answers; scores are computed server-side and are final."""
-        attempt = self.get_object()
-        if attempt.student_id != request.user.id:
-            return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
-        if attempt.submitted_at:
-            return Response({"detail": "Already submitted"}, status=status.HTTP_409_CONFLICT)
-        ser = QuizSubmitSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        answers = ser.validated_data["answers"]
+        # Lock the attempt row for the duration of scoring so two concurrent
+        # submissions can't both pass the submitted_at guard and double-score
+        # the attempt.
+        with transaction.atomic():
+            attempt = (
+                QuizAttempt.objects.select_for_update()
+                .select_related("quiz")
+                .get(pk=self.get_object().pk)
+            )
+            if attempt.student_id != request.user.id:
+                return Response({"detail": "Forbidden"}, status=status.HTTP_403_FORBIDDEN)
+            if attempt.submitted_at:
+                return Response({"detail": "Already submitted"}, status=status.HTTP_409_CONFLICT)
+            ser = QuizSubmitSerializer(data=request.data)
+            ser.is_valid(raise_exception=True)
+            answers = ser.validated_data["answers"]
 
-        def _norm(value):
-            # Text answers are compared case-insensitively; non-string
-            # answers (option indexes) compare as-is.
-            return value.strip().lower() if isinstance(value, str) else value
+            def _norm(value):
+                # Text answers are compared case-insensitively; non-string
+                # answers (option indexes) compare as-is.
+                return value.strip().lower() if isinstance(value, str) else value
 
-        questions = {str(q.id): q for q in attempt.quiz.questions.all()}
-        correct = 0
-        total = len(questions) or 1
-        for qid, q in questions.items():
-            user_ans = answers.get(qid)
-            # Unanswered questions are never correct, even when the question
-            # has no correct_answer configured ({} default) — otherwise
-            # _norm(None) == _norm(None) would wrongly score it as correct.
-            if user_ans is None:
-                continue
-            ca = q.correct_answer or {}
-            if (
-                user_ans == ca
-                or _norm(user_ans) == _norm(ca.get("index"))
-                or _norm(user_ans) == _norm(ca.get("value"))
-            ):
-                correct += 1
-        score = round(100.0 * correct / total, 2)
-        attempt.answers = answers
-        attempt.score = score
-        attempt.submitted_at = timezone.now()
-        attempt.save(update_fields=["answers", "score", "submitted_at"])
-        return Response(QuizAttemptSerializer(attempt).data)
+            questions = {str(q.id): q for q in attempt.quiz.questions.all()}
+            correct = 0
+            total = len(questions) or 1
+            for qid, q in questions.items():
+                user_ans = answers.get(qid)
+                if user_ans is None:
+                    continue
+                ca = q.correct_answer or {}
+                if (
+                    user_ans == ca
+                    or _norm(user_ans) == _norm(ca.get("index"))
+                    or _norm(user_ans) == _norm(ca.get("value"))
+                ):
+                    correct += 1
+            score = round(100.0 * correct / total, 2)
+            attempt.answers = answers
+            attempt.score = score
+            attempt.submitted_at = timezone.now()
+            attempt.save(update_fields=["answers", "score", "submitted_at"])
+            return Response(QuizAttemptSerializer(attempt).data)
