@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { getFileType, SCOPE_META } from '@/lib/filetypes';
 import {
   ArrowLeft,
+  BookmarkCheck,
   Download,
   Loader2,
   Maximize2,
@@ -23,6 +24,7 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react';
+import { useReadingPosition } from '@/hooks/useReadingPosition';
 
 const SUMMARIES_QUERY_KEY = (resourceId) => ['resource-summaries', resourceId];
 const EPHEMERAL_PREFIX = 'ephemeral-';
@@ -91,6 +93,11 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
   const [workerOutdatedWarned, setWorkerOutdatedWarned] = useState(false);
   const warnOnceRef = useRef(false);
 
+  // Reading position tracking (text resources only)
+  const previewScrollRef = useRef(null);
+  const previewKindRef = useRef(null);
+  const { savedPosition, isResuming, save: saveReadPosition, restore: restoreReadPosition, dismissResume } = useReadingPosition(open ? resource?.id : null);
+
   // Collapse sidebar when entering focus mode
   useEffect(() => {
     if (!open) return;
@@ -125,9 +132,18 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
+      // Save reading position on close (text resources)
+      if (previewScrollRef.current && previewKindRef.current === 'text') {
+        const el = previewScrollRef.current;
+        const total = el.scrollHeight - el.clientHeight;
+        if (total > 0) {
+          const pct = (el.scrollTop / total) * 100;
+          if (pct > 1) saveReadPosition(pct);
+        }
+      }
     }
     return () => { document.body.style.overflow = ''; };
-  }, [open, resource?.id, resource?.latest_summary]);
+  }, [open, resource?.id, resource?.latest_summary, saveReadPosition]);
 
   // ESC closes dialog / exits expanded
   useEffect(() => {
@@ -324,6 +340,11 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
     },
     enabled: open && !!resource,
   });
+
+  // Track preview kind in ref for use in close handler (can't use preview in deps above)
+  useEffect(() => {
+    previewKindRef.current = preview?.kind || null;
+  }, [preview?.kind]);
 
   const { data: bookmarks } = useQuery({
     queryKey: ['bookmarks'],
@@ -569,10 +590,48 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
                   Could not load the preview.
                 </div>
               ) : preview?.kind === 'text' ? (
-                <pre className="h-full overflow-auto whitespace-pre-wrap p-6 font-mono text-[12.5px] leading-relaxed">
-                  {preview.content}
-                  {preview.truncated && '\n\n… (truncated at 512 KB — download for full file)'}
-                </pre>
+                <>
+                  {isResuming && (
+                    <div className="flex items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[12px] text-amber-700 dark:text-amber-400">
+                      <BookmarkCheck className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <span>
+                        You were {Math.round(savedPosition?.scroll_percentage || 0)}% through this document.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          restoreReadPosition(previewScrollRef);
+                        }}
+                        className="ml-1 font-semibold underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-300"
+                      >
+                        Resume
+                      </button>
+                      <button
+                        type="button"
+                        onClick={dismissResume}
+                        className="ml-auto rounded p-0.5 hover:bg-amber-500/20"
+                        aria-label="Dismiss"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                  <pre
+                    ref={previewScrollRef}
+                    data-testid="resource-preview-text"
+                    className="h-full overflow-auto whitespace-pre-wrap p-6 font-mono text-[12.5px] leading-relaxed"
+                    onScroll={(e) => {
+                      const el = e.currentTarget;
+                      const total = el.scrollHeight - el.clientHeight;
+                      if (total > 0) {
+                        saveReadPosition((el.scrollTop / total) * 100);
+                      }
+                    }}
+                  >
+                    {preview.content}
+                    {preview.truncated && '\n\n… (truncated at 512 KB — download for full file)'}
+                  </pre>
+                </>
               ) : preview?.kind === 'pdf' ? (
                 <iframe
                   src={preview.preview_url}

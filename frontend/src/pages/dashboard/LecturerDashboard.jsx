@@ -13,6 +13,7 @@
  * Backend contract: apps/common/dashboard.py#LecturerDashboardView
  */
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowRight,
@@ -34,6 +35,8 @@ import {
 
 import { TimeAgo } from './DashboardPage.helpers';
 import { greeting } from '@/lib/utils';
+import { dashboardApi } from '@/services/api';
+import AiInsightCard from '@/components/shared/AiInsightCard';
 
 /* ---------------------------------------------------------------- */
 /* Small atoms                                                       */
@@ -338,6 +341,13 @@ export default function LecturerDashboard({ dash, firstName }) {
   const pipeline = dash?.pipeline || {};
   const workspace = dash?.workspace || 'LECTURER WORKSPACE';
 
+  const { data: aiGreeting } = useQuery({
+    queryKey: ['ai-greeting'],
+    queryFn: dashboardApi.aiGreeting,
+    staleTime: 3600000, // 1 hour
+    retry: 1,
+  });
+
   const kpis = [
     { icon: GraduationCap,      label: 'Active courses',     value: k.active_courses ?? 0,    hint: 'Assigned this term' },
     { icon: Users,              label: 'Students enrolled',  value: k.students_enrolled ?? 0, hint: 'Across your courses' },
@@ -357,8 +367,8 @@ export default function LecturerDashboard({ dash, firstName }) {
             {workspace}
           </p>
           <h1 className="mt-1 text-[30px] font-[650] leading-[1.08] tracking-[-0.02em]">
-            {greeting()}, {firstName}
-            <span className="text-[var(--muted)] font-[450]"> — here’s your cohort.</span>
+            {aiGreeting?.greeting || greeting()}, {firstName}
+            <span className="text-[var(--muted)] font-[450]"> — here's your cohort.</span>
           </h1>
           <p className="mt-1 text-[13.5px] text-[var(--muted)]">
             {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} · {students.length} student{students.length === 1 ? '' : 's'} flagged · {k.ai_answers_today ?? 0} AI answers today
@@ -372,6 +382,8 @@ export default function LecturerDashboard({ dash, firstName }) {
           Upload material
         </Link>
       </div>
+
+      <AiInsightCard dashboardType="lecturer" className="mb-6" />
 
       {/* KPI grid */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

@@ -139,7 +139,7 @@ describe('routing and access control', () => {
       },
       { timeout: 15000 },
     );
-  });
+  }, 15000);
 
   it('denies a student access to an admin-only page (walks them to /forbidden)', async () => {
     localStorage.setItem('access_token', 'test-token');

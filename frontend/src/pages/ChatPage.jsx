@@ -12,10 +12,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { getFileType } from '@/lib/filetypes';
 import ResourceDetailDialog from '@/components/resources/ResourceDetailDialog';
+import SourceDetailDialog from '@/components/chat/SourceDetailDialog';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github-dark.css';
 import { toast } from 'sonner';
 import {
  ArrowUp,
@@ -153,11 +156,11 @@ function MarkdownContent({ content, sources, onSourceClick }) {
  }, [sources, onSourceClick]);
 
  return (
- <ReactMarkdown
- remarkPlugins={[remarkMath]}
- rehypePlugins={[rehypeKatex]}
- components={components}
- >
+  <ReactMarkdown
+  remarkPlugins={[remarkMath]}
+  rehypePlugins={[rehypeKatex, rehypeHighlight]}
+  components={components}
+  >
  {content}
  </ReactMarkdown>
  );
@@ -165,44 +168,57 @@ function MarkdownContent({ content, sources, onSourceClick }) {
 
 /* ---------------- Source chip in sources rail ---------------- */
 
-function SourceCard({ source, active, onClick, onOpenResource }) {
+function SourceCard({ source, active, onClick, onOpenResource, onDetailClick }) {
  const meta = getFileType(source.resource_title || '', source.mime_type || '');
  const FileIcon = meta.icon;
  return (
  <button
- type="button"
- onClick={onClick}
- className={cn(
- 'group flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-all',
- active
- ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/20'
- : 'border-border/60 bg-background/60 hover:border-primary/30 hover:bg-accent/30',
- )}
+  type="button"
+  onClick={onClick}
+  className={cn(
+   'group flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-all',
+   active
+    ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/20'
+    : 'border-border/60 bg-background/60 hover:border-primary/30 hover:bg-accent/30',
+  )}
  >
  <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold', meta.tint)}>
- {source.rank}
+  {source.rank}
  </span>
  <div className="min-w-0 flex-1">
- <p className="line-clamp-2 text-[12.5px] font-medium leading-snug">{source.resource_title || source.title || `Source ${source.rank}`}</p>
- <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
- <FileIcon className="h-3 w-3" aria-hidden />
- <span className="uppercase tracking-wide">{meta.label}</span>
- {source.version_number && <span>· v{source.version_number}</span>}
- {source.similarity_score != null && (
- <span>· {Math.round(Number(source.similarity_score) * 100)}% match</span>
- )}
- </div>
- <div className="mt-1.5 flex items-center gap-1">
- <button
- type="button"
- onClick={(e) => { e.stopPropagation(); if (onOpenResource && source.resource_id) onOpenResource(source.resource_id); }}
- className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/10"
- disabled={!source.resource_id}
- >
- <Link2 className="h-2.5 w-2.5" aria-hidden /> Open
- </button>
- <span className="text-[10px] text-muted-foreground/70">· {source.retrieval_method || 'hybrid'}</span>
- </div>
+  <p className="line-clamp-2 text-[12.5px] font-medium leading-snug">{source.resource_title || source.title || `Source ${source.rank}`}</p>
+  {source.chunk_text && (
+   <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground/70">
+    {source.chunk_text.slice(0, 150)}…
+   </p>
+  )}
+  <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+   <FileIcon className="h-3 w-3" aria-hidden />
+   <span className="uppercase tracking-wide">{meta.label}</span>
+   {source.version_number && <span>· v{source.version_number}</span>}
+   {source.similarity_score != null && (
+    <span>· {Math.round(Number(source.similarity_score) * 100)}% match</span>
+   )}
+  </div>
+  <div className="mt-1.5 flex items-center gap-1">
+   <button
+    type="button"
+    onClick={(e) => { e.stopPropagation(); if (onDetailClick) onDetailClick(source); }}
+    className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/10"
+   >
+    <Link2 className="h-2.5 w-2.5" aria-hidden /> View details
+   </button>
+   {source.resource_id && (
+    <button
+     type="button"
+     onClick={(e) => { e.stopPropagation(); if (onOpenResource) onOpenResource(source.resource_id); }}
+     className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+    >
+     Open resource
+    </button>
+   )}
+   <span className="text-[10px] text-muted-foreground/70">· {source.retrieval_method || 'hybrid'}</span>
+  </div>
  </div>
  </button>
  );
@@ -210,9 +226,26 @@ function SourceCard({ source, active, onClick, onOpenResource }) {
 
 /* ---------------- Message actions ---------------- */
 
-function MessageActions({ content, onRegenerate, isLastAssistant }) {
+function ConfidenceBadge({ confidence, retrieval_ms }) {
+  if (!confidence || confidence === 'none') return null;
+  const map = {
+  high: { label: 'Grounded', cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', icon: '●' },
+  medium: { label: 'Partial', cls: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', icon: '◐' },
+  low: { label: 'Ungrounded', cls: 'bg-red-500/10 text-red-600 dark:text-red-400', icon: '○' },
+  };
+  const { label, cls, icon } = map[confidence] || map.medium;
+  return (
+  <span className={cn('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium', cls)}>
+  <span aria-hidden>{icon}</span>
+  {label}
+  {retrieval_ms != null && <span className="opacity-60">· {retrieval_ms}ms</span>}
+  </span>
+  );
+}
+
+function MessageActions({ content, onRegenerate, isLastAssistant, messageId, initialRating }) {
  const [copied, setCopied] = useState(false);
- const [reaction, setReaction] = useState(null);
+ const [reaction, setReaction] = useState(initialRating === 1 ? 'up' : initialRating === -1 ? 'down' : null);
 
  const copy = async () => {
  try {
@@ -220,6 +253,15 @@ function MessageActions({ content, onRegenerate, isLastAssistant }) {
  setCopied(true);
  setTimeout(() => setCopied(false), 1500);
  } catch {}
+ };
+
+ const setRating = async (val) => {
+ const next = reaction === val ? null : val;
+ setReaction(next);
+ if (!messageId) return;
+ try {
+ await chatApi.rateMessage(messageId, next === 'up' ? 1 : next === 'down' ? -1 : 0);
+ } catch { /* feedback is optimistic; ignore failure */ }
  };
 
  return (
@@ -256,7 +298,7 @@ function MessageActions({ content, onRegenerate, isLastAssistant }) {
  <TooltipTrigger asChild>
  <button
  type="button"
- onClick={() => setReaction((r) => (r === 'up' ? null : 'up'))}
+ onClick={() => setRating('up')}
  className={cn('rounded-md p-1.5 transition-colors hover:bg-muted', reaction === 'up' ? 'text-[var(--success)]' : 'text-muted-foreground hover:text-foreground')}
  aria-label="Good response"
  >
@@ -269,7 +311,7 @@ function MessageActions({ content, onRegenerate, isLastAssistant }) {
  <TooltipTrigger asChild>
  <button
  type="button"
- onClick={() => setReaction((r) => (r === 'down' ? null : 'down'))}
+ onClick={() => setRating('down')}
  className={cn('rounded-md p-1.5 transition-colors hover:bg-muted', reaction === 'down' ? 'text-red-500' : 'text-muted-foreground hover:text-foreground')}
  aria-label="Bad response"
  >
@@ -345,8 +387,11 @@ function MessageBubble({ msg, isLastAssistant, onSourceClick, _onOpenSourceResou
  {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
  </span>
  )}
+ {!isUser && !isStreaming && (
+ <ConfidenceBadge confidence={msg.confidence} retrieval_ms={msg.retrieval_ms} />
+ )}
  {!isUser && (
- <MessageActions content={msg.content} isLastAssistant={isLastAssistant} onRegenerate={onRegenerate} />
+ <MessageActions content={msg.content} isLastAssistant={isLastAssistant} onRegenerate={onRegenerate} messageId={msg.id} initialRating={msg.rating} />
  )}
  </div>
  </div>
@@ -512,6 +557,31 @@ function HistoryItem({ s, active, onClick, onDelete }) {
 
 /* ---------------- Page ---------------- */
 
+const CHAT_SNAPSHOT_KEY = 'academiai:chat-snapshot';
+
+function saveSnapshot({ sessionId, sessionTitle, messages, input }) {
+  try {
+    if (!sessionId) {
+      window.sessionStorage.removeItem(CHAT_SNAPSHOT_KEY);
+      return;
+    }
+    const payload = { sessionId, sessionTitle, messages, input, savedAt: Date.now() };
+    window.sessionStorage.setItem(CHAT_SNAPSHOT_KEY, JSON.stringify(payload));
+  } catch {
+    /* storage unavailable — ignore */
+  }
+}
+
+function loadSnapshot() {
+  try {
+    const raw = window.sessionStorage.getItem(CHAT_SNAPSHOT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 export default function ChatPage() {
  const isMobile = useIsMobile();
  const [searchParams, setSearchParams] = useSearchParams();
@@ -538,7 +608,8 @@ export default function ChatPage() {
  // Sources rail state
  const [sourcesRailOpen, setSourcesRailOpen] = useState(!isMobile);
  const [activeSourceRank, setActiveSourceRank] = useState(null);
- const [openedResourceId, setOpenedResourceId] = useState(null);
+  const [openedResourceId, setOpenedResourceId] = useState(null);
+  const [sourceDetail, setSourceDetail] = useState(null);
  const [historyOpen, setHistoryOpen] = useState(!isMobile);
  const [historyQuery, setHistoryQuery] = useState('');
 
@@ -573,15 +644,39 @@ export default function ChatPage() {
  endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
  }, [messages, loading]);
 
- // Deep-link session via ?session=
- useEffect(() => {
- const sid = searchParams.get('session');
- if (sid && !sessionId && sessions.length) {
- const existing = sessions.find((s) => s.id === sid);
- if (existing) openSession(existing);
- }
- // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [sessions.length, searchParams]);
+  // Deep-link session via ?session=
+  useEffect(() => {
+  const sid = searchParams.get('session');
+  if (sid && !sessionId && sessions.length) {
+  const existing = sessions.find((s) => s.id === sid);
+  if (existing) openSession(existing);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions.length, searchParams]);
+
+  // Restore the in-progress conversation from sessionStorage when the page is
+  // (re)mounted — e.g. after switching sidebar tabs in the same browser tab.
+  // This is what keeps the chat alive across tab switches instead of resetting.
+  useEffect(() => {
+  const snap = loadSnapshot();
+  if (!snap || !snap.sessionId) return;
+  // Only restore if there is no explicit ?session= deep link (which wins).
+  const sid = searchParams.get('session');
+  if (sid) return;
+  setSessionId(snap.sessionId);
+  setSessionTitle(snap.sessionTitle || 'Conversation');
+  setTitleDraft(snap.sessionTitle || '');
+  if (Array.isArray(snap.messages)) setMessages(snap.messages);
+  if (typeof snap.input === 'string') setInput(snap.input);
+  if (snap.sessionId) setSearchParams({ session: snap.sessionId }, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist the active conversation so it survives page unmounts between tabs.
+  useEffect(() => {
+  saveSnapshot({ sessionId, sessionTitle, messages, input });
+  }, [sessionId, sessionTitle, messages, input]);
+
 
  // Auto-grow textarea
  useEffect(() => {
@@ -734,16 +829,21 @@ export default function ChatPage() {
  let fullContent = '';
  let currentSources = [];
 
- const ctrl = chatApi.stream(sid, userContent, {
- resourceIds,
- onMeta: (meta) => {
- if (meta?.user_message) {
- setMessages((prev) => prev.map((m) => (m.id === localId ? meta.user_message : m)));
- }
- if (!sessionTitle || sessionTitle === 'New chat') {
- setSessionTitle(userContent.slice(0, 60));
- }
- },
+  const ctrl = chatApi.stream(sid, userContent, {
+  resourceIds,
+  onMeta: (meta) => {
+  if (meta?.user_message) {
+  setMessages((prev) => prev.map((m) => (m.id === localId ? meta.user_message : m)));
+  }
+  if (meta?.confidence || meta?.retrieval_ms != null) {
+  setMessages((prev) => prev.map((m) => (m.id === assistantLocalId
+   ? { ...m, confidence: meta.confidence, retrieval_ms: meta.retrieval_ms }
+   : m)));
+  }
+  if (!sessionTitle || sessionTitle === 'New chat') {
+  setSessionTitle(userContent.slice(0, 60));
+  }
+  },
  onToken: (tok) => {
  fullContent += tok;
  setMessages((prev) => prev.map((m) => (m.id === assistantLocalId ? { ...m, content: fullContent } : m)));
@@ -1066,11 +1166,12 @@ export default function ChatPage() {
  <div className="space-y-1.5">
  {currentSources.map((s) => (
  <SourceCard
- key={s.chunk_id || s.id || s.rank}
- source={s}
- active={activeSourceRank === s.rank}
- onClick={() => setActiveSourceRank((r) => (r === s.rank ? null : s.rank))}
- onOpenResource={openSourceResource}
+  key={s.chunk_id || s.id || s.rank}
+  source={s}
+  active={activeSourceRank === s.rank}
+  onClick={() => setActiveSourceRank((r) => (r === s.rank ? null : s.rank))}
+  onOpenResource={openSourceResource}
+  onDetailClick={(src) => setSourceDetail(src)}
  />
  ))}
  </div>
@@ -1159,31 +1260,33 @@ export default function ChatPage() {
  <Textarea
  ref={textareaRef}
  value={input}
- onChange={(e) => setInput(e.target.value)}
- onKeyDown={(e) => {
- if (e.key === 'Enter' && !e.shiftKey) {
- e.preventDefault();
- if (!loading) send();
- }
- }}
- placeholder={
- attachedResources.length
- ? `Ask about ${attachedResources.length} attached file${attachedResources.length === 1 ? '' : 's'}… (Enter to send, Shift+Enter for newline)`
- : 'Ask anything about your courses… (Enter to send, Shift+Enter for newline)'
- }
- rows={1}
- disabled={loading}
- aria-label="Message"
- className="max-h-48 min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[14px] leading-relaxed shadow-none focus-visible:ring-0"
- />
- <Tooltip>
- <TooltipTrigger asChild>
- <Button
- type="submit"
- size="icon"
- disabled={loading ? false : (!input.trim() && attachedResources.length === 0) || uploadingFiles}
- aria-label={loading ? 'Stop generating' : 'Send message'}
- className={cn(
+  onChange={(e) => setInput(e.target.value)}
+  onKeyDown={(e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+  e.preventDefault();
+  if (!loading) send();
+  }
+  }}
+  placeholder={
+  attachedResources.length
+  ? `Ask about ${attachedResources.length} attached file${attachedResources.length === 1 ? '' : 's'}… (Enter to send, Shift+Enter for newline)`
+  : 'Ask anything about your courses… (Enter to send, Shift+Enter for newline)'
+  }
+  rows={1}
+  disabled={loading}
+  aria-label="Message"
+  data-testid="chat-input"
+  className="max-h-48 min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[14px] leading-relaxed shadow-none focus-visible:ring-0"
+  />
+  <Tooltip>
+  <TooltipTrigger asChild>
+  <Button
+  type="submit"
+  size="icon"
+  disabled={loading ? false : (!input.trim() && attachedResources.length === 0) || uploadingFiles}
+  aria-label={loading ? 'Stop generating' : 'Send message'}
+  data-testid="chat-send"
+  className={cn(
  'h-9 w-9 shrink-0 rounded-xl transition-transform hover:scale-[1.02] active:scale-[0.98]',
  loading && 'bg-destructive hover:bg-destructive/90',
  )}
@@ -1218,6 +1321,12 @@ export default function ChatPage() {
   }
   open={!!openedResourceId}
   onClose={() => setOpenedResourceId(null)}
+  />
+  <SourceDetailDialog
+   source={sourceDetail}
+   open={!!sourceDetail}
+   onClose={() => setSourceDetail(null)}
+   onOpenResource={openSourceResource}
   />
   <ConfirmDialog
   open={!!sessionToDelete}

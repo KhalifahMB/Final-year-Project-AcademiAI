@@ -12,6 +12,7 @@
  * Backend contracts stay intact — reads the same aggregate payload.
  */
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   Area,
   AreaChart,
@@ -37,6 +38,8 @@ import {
 
 import { TimeAgo } from './DashboardPage.helpers';
 import { greeting } from '@/lib/utils';
+import { dashboardApi } from '@/services/api';
+import AiInsightCard from '@/components/shared/AiInsightCard';
 
 /* ---------------------------------------------------------------- */
 /* Small atoms                                                       */
@@ -486,6 +489,13 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
   const timeline = studentActivity?.timeline || [];
   const chartData = buildTotalSeries(timeline);
 
+  const { data: aiGreeting } = useQuery({
+    queryKey: ['ai-greeting'],
+    queryFn: dashboardApi.aiGreeting,
+    staleTime: 3600000, // 1 hour
+    retry: 1,
+  });
+
   // KPI strip
   const kpis = [
     { icon: GraduationCap, label: 'Enrolled', value: counts.enrollments ?? 0, hint: 'courses' },
@@ -497,11 +507,11 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
   return (
     <>
       {/* Greeting */}
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3" data-testid="student-dashboard">
         <div className="min-w-0">
           <p className="eyebrow flex items-center gap-1.5">
             <Flame className="h-3 w-3 text-[var(--warn)]" aria-hidden />
-            {greeting()}
+            {aiGreeting?.greeting || greeting()}
           </p>
           <h1 className="mt-1 text-[30px] font-[650] leading-[1.08] tracking-[-0.02em]">
             Hi {firstName}
@@ -515,12 +525,15 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
         </div>
         <Link
           to="/chat"
+          data-testid="dashboard-ask-ai"
           className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--accent)] px-4 text-[13px] font-[620] text-[var(--on-accent)] transition-colors hover:bg-[var(--accent-strong)]"
         >
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
           Ask the AI tutor
         </Link>
       </div>
+
+      <AiInsightCard dashboardType="student" className="mb-6" data-testid="ai-insight-card" />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

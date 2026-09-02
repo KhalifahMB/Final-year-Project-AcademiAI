@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useTheme } from '@/hooks/useTheme';
+import AgentSettings from '@/components/agent/AgentSettings';
 import AvatarPicker from '@/components/shared/AvatarPicker';
 import Avatar from '@/components/shared/Avatar';
 import { useAuth } from '@/hooks/useAuth';
@@ -565,6 +566,7 @@ export default function ProfilePage() {
 
  {user?.tenant && <InstitutionCard user={user} />}
  <AppearanceCard />
+ <AgentSettings />
  </div>
  </div>
  </div>

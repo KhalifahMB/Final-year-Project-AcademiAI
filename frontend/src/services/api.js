@@ -84,6 +84,8 @@ export const dashboardApi = {
     api.get('/dashboard/student/activity/', { params: { range } }).then((r) => r.data),
   adminAuditSummary: (days = 14) =>
     api.get('/dashboard/admin/audit-summary/', { params: { days } }).then((r) => r.data),
+  aiGreeting: () => api.get('/dashboard/ai-greeting/').then(r => r.data),
+  aiInsight: (dashboardType) => api.post('/dashboard/ai-insight/', { dashboard_type: dashboardType }).then(r => r.data),
 };
 
 export const notesApi = {
@@ -128,6 +130,7 @@ export const chatApi = {
   createSession: (payload = {}) => api.post('/chat/sessions/', payload),
   renameSession: (id, title) => api.patch(`/chat/sessions/${id}/rename/`, { title }),
   deleteSession: (id) => api.delete(`/chat/sessions/${id}/`),
+  rateMessage: (id, rating) => api.post(`/chat/messages/${id}/rate/`, { rating }),
   send: (sessionId, content, resourceIds = []) =>
     api.post(`/chat/sessions/${sessionId}/messages/`, { content, resource_ids: resourceIds }),
   /**
@@ -210,5 +213,32 @@ export const chatApi = {
     })();
     return ctrl;
   },
+};
+
+export const plansApi = {
+  list: (params) => api.get('/plans/', { params }).then(r => r.data),
+  get: (id) => api.get(`/plans/${id}/`).then(r => r.data),
+  create: (data) => api.post('/plans/', data).then(r => r.data),
+  update: (id, data) => api.patch(`/plans/${id}/`, data).then(r => r.data),
+  delete: (id) => api.delete(`/plans/${id}/`),
+  listTemplates: () => api.get('/plan-templates/').then(r => r.data),
+  // Milestones
+  createMilestone: (data) => api.post('/plan-milestones/', data).then(r => r.data),
+  updateMilestone: (id, data) => api.patch(`/plan-milestones/${id}/`, data).then(r => r.data),
+  deleteMilestone: (id) => api.delete(`/plan-milestones/${id}/`),
+  // Tasks
+  createTask: (data) => api.post('/plan-tasks/', data).then(r => r.data),
+  updateTask: (id, data) => api.patch(`/plan-tasks/${id}/`, data).then(r => r.data),
+  completeTask: (id) => api.post(`/plan-tasks/${id}/complete/`).then(r => r.data),
+  deleteTask: (id) => api.delete(`/plan-tasks/${id}/`),
+};
+
+export const readingApi = {
+  getPosition: (resourceId) => api.get(`/reading-positions/?resource=${resourceId}`).then(r => {
+    const results = r.data.results || r.data;
+    return Array.isArray(results) && results.length > 0 ? results[0] : null;
+  }),
+  savePosition: (resourceId, data) => api.post('/reading-positions/', { resource: resourceId, ...data }).then(r => r.data),
+  updatePosition: (id, data) => api.patch(`/reading-positions/${id}/`, data).then(r => r.data),
 };
 

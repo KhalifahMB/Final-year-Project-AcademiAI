@@ -16,6 +16,7 @@ import BrandMark from '@/components/shared/BrandMark';
 import Avatar from '@/components/shared/Avatar';
 import OnlineStatus from '@/components/shared/OnlineStatus';
 import CommandPalette from '@/components/common/CommandPalette';
+import FloatingAgent from '@/components/agent/FloatingAgent';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
 import { cn } from '@/lib/utils';
@@ -43,10 +44,12 @@ import {
   Search,
   Settings,
   StickyNote,
+  Target,
   TrendingUp,
   Upload,
   UserRound,
   Users,
+  Shield,
   X,
 } from 'lucide-react';
 
@@ -113,6 +116,7 @@ const ADMIN_NAV = [
       { to: '/notes', label: 'Notes', icon: StickyNote },
       { to: '/bookmarks', label: 'Bookmarks', icon: Bookmark },
       { to: '/progress', label: 'Progress', icon: TrendingUp },
+      { to: '/plans', label: 'Plans', icon: Target },
       { to: '/settings', label: 'Settings', icon: Settings },
     ],
   },
@@ -124,6 +128,7 @@ const ADMIN_NAV = [
       { to: '/admin/tenant', label: 'Structure', icon: Building2 },
       { to: '/admin/courses', label: 'Manage Courses', icon: BookOpen },
       { to: '/admin/audit', label: 'Audit Logs', icon: ScrollText },
+      { to: '/admin/logs', label: 'Logs', icon: Shield },
     ],
   },
 ];
@@ -153,6 +158,7 @@ const LECTURER_NAV = [
       { to: '/notes', label: 'Notes', icon: StickyNote },
       { to: '/bookmarks', label: 'Bookmarks', icon: Bookmark },
       { to: '/progress', label: 'Progress', icon: TrendingUp },
+      { to: '/plans', label: 'Plans', icon: Target },
       { to: '/settings', label: 'Settings', icon: Settings },
     ],
   },
@@ -182,6 +188,7 @@ const STUDENT_NAV = [
       { to: '/notes', label: 'Notes', icon: StickyNote },
       { to: '/bookmarks', label: 'Bookmarks', icon: Bookmark },
       { to: '/progress', label: 'Progress', icon: TrendingUp },
+      { to: '/plans', label: 'Plans', icon: Target },
       { to: '/settings', label: 'Settings', icon: Settings },
     ],
   },
@@ -325,6 +332,28 @@ function TenantCard({ user, collapsed }) {
 }
 
 function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, activeKey, user }) {
+  const sidebarScrollRef = useRef(null);
+  const SCROLL_KEY = 'academiai:sidebar-scroll';
+
+  // Restore sidebar scroll on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(SCROLL_KEY);
+    if (saved && sidebarScrollRef.current) {
+      sidebarScrollRef.current.scrollTop = parseInt(saved, 10) || 0;
+    }
+  }, []);
+
+  // Save sidebar scroll on scroll (debounced)
+  const scrollTimeoutRef = useRef(null);
+  const saveSidebarScroll = useMemo(() => {
+    return (e) => {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => {
+        localStorage.setItem(SCROLL_KEY, String(e.target.scrollTop));
+      }, 300);
+    };
+  }, []);
+
   return (
     <aside
       className={cn(
@@ -373,6 +402,8 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
 
       {/* Nav (scrollable) */}
       <nav
+        ref={sidebarScrollRef}
+        onScroll={saveSidebarScroll}
         className={cn(
           'flex-1 overflow-y-auto py-3',
           collapsed ? 'px-2' : 'px-2',
@@ -728,6 +759,7 @@ export default function AppShell({ title, description, actions, children, fullBl
         </div>
       </div>
       <CommandPalette open={paletteOpen} onOpen={setPaletteOpen} />
+      <FloatingAgent />
     </TooltipProvider>
   );
 }

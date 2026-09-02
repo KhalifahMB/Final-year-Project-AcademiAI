@@ -32,6 +32,7 @@ import {
 
 import StudentDashboard from './dashboard/StudentDashboard';
 import LecturerDashboard from './dashboard/LecturerDashboard';
+import AiInsightCard from '@/components/shared/AiInsightCard';
 
 function TimeAgo({ iso }) {
   return <span title={iso}>{formatRelativeTime(iso)}</span>;
@@ -295,6 +296,8 @@ export default function DashboardPage() {
               />
             ))}
           </div>
+
+          <AiInsightCard dashboardType="admin" className="mb-6" />
 
           {/* Quick actions */}
           <section className="mt-6">

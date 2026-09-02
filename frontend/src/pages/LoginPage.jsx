@@ -68,7 +68,7 @@ export default function LoginPage() {
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" data-testid="login-form">
           <FormField
             control={form.control}
             name="email"
@@ -81,6 +81,7 @@ export default function LoginPage() {
                     autoComplete="email"
                     placeholder="you@university.edu"
                     className="h-10"
+                    data-testid="login-email"
                     {...field}
                   />
                 </FormControl>
@@ -107,6 +108,7 @@ export default function LoginPage() {
                     autoComplete="current-password"
                     placeholder="Enter your password"
                     className="h-10"
+                    data-testid="login-password"
                     {...field}
                   />
                 </FormControl>
@@ -124,6 +126,7 @@ export default function LoginPage() {
             type="submit"
             disabled={form.formState.isSubmitting}
             className="h-10 w-full gap-2 text-[14px] font-semibold"
+            data-testid="login-submit"
           >
             {form.formState.isSubmitting ? (
               <>

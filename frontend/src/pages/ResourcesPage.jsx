@@ -368,7 +368,7 @@ export default function ResourcesPage() {
  }
  >
  {/* Stats strip */}
- <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+  <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4" data-testid="resources-stats">
  <StatTile label="Total materials" value={counts.all} />
  <StatTile label="Ready" value={counts.ready} tone="emerald" icon={Sparkles} />
  <StatTile label="Processing" value={counts.processing + counts.pending} tone="sky" />
@@ -547,7 +547,7 @@ export default function ResourcesPage() {
  actionTo={!search && !hasActiveFilters ? '/resources/upload' : undefined}
  />
  ) : view === 'grid' ? (
- <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+  <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="resources-grid">
  {paged.map((r) => (
  <li key={r.id}>
  <ResourceCard

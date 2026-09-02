@@ -28,6 +28,7 @@ const AssignedCoursesPage = lazy(() => import('@/pages/AssignedCoursesPage'));
 const NotesPage = lazy(() => import('@/pages/NotesPage'));
 const BookmarksPage = lazy(() => import('@/pages/BookmarksPage'));
 const ProgressPage = lazy(() => import('@/pages/ProgressPage'));
+const PlansPage = lazy(() => import('@/pages/PlansPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const RequestInstitutionPage = lazy(() => import('@/pages/RequestInstitutionPage'));
 
@@ -40,6 +41,7 @@ const FacultyDetailPage = lazy(() => import('@/pages/admin/FacultyDetailPage'));
 const DepartmentDetailPage = lazy(() => import('@/pages/admin/DepartmentDetailPage'));
 const CourseManagePage = lazy(() => import('@/pages/admin/CourseManagePage'));
 const AdminCoursesPage = lazy(() => import('@/pages/admin/AdminCoursesPage'));
+const TenantLogsPage = lazy(() => import('@/pages/TenantLogsPage'));
 
 const PlatformConsolePage = lazy(() => import('@/pages/PlatformConsolePage'));
 const PlatformTenantsPage = lazy(() => import('@/pages/platform/TenantsPage'));
@@ -170,6 +172,10 @@ export default function App() {
             path="/admin/courses/:id"
             element={<Guard roles={TENANT_ADMIN_ONLY}><CourseManagePage /></Guard>}
           />
+          <Route
+            path="/admin/logs"
+            element={<Guard roles={TENANT_ADMIN_ONLY}><TenantLogsPage /></Guard>}
+          />
 
           {/* Platform (superuser) */}
           <Route
@@ -208,6 +214,7 @@ export default function App() {
           <Route path="/notes" element={<Guard roles={EVERYONE}><NotesPage /></Guard>} />
           <Route path="/bookmarks" element={<Guard roles={EVERYONE}><BookmarksPage /></Guard>} />
           <Route path="/progress" element={<Guard roles={EVERYONE}><ProgressPage /></Guard>} />
+          <Route path="/plans" element={<Guard roles={EVERYONE}><PlansPage /></Guard>} />
           <Route path="/settings" element={<Guard roles={EVERYONE}><ProfilePage /></Guard>} />
           <Route path="/profile" element={<Navigate to="/settings" replace />} />
 
