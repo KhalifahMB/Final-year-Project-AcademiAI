@@ -104,7 +104,9 @@ export default function DashboardPage() {
         ? dashboardApi.lecturer
         : dashboardApi.student;
   const dash = useQuery({
-    queryKey: [isStaff ? 'dash-admin' : isLecturer ? 'dash-lecturer' : 'dash-student'],
+    queryKey: [
+      isStaff ? 'dash-admin' : isLecturer ? 'dash-lecturer' : 'dash-student',
+    ],
     queryFn: endpoint,
     staleTime: 60_000,
     retry: 1,
@@ -267,7 +269,10 @@ export default function DashboardPage() {
               </p>
               <h1 className="mt-0.5 text-[22px] font-semibold leading-tight tracking-tight sm:text-2xl">
                 {firstName}
-                <span className="text-muted-foreground"> — institution overview.</span>
+                <span className="text-muted-foreground">
+                  {' '}
+                  — institution overview.
+                </span>
               </h1>
               <p className="mt-0.5 text-[13px] text-muted-foreground">
                 Here&apos;s what&apos;s happening across your institution today.
@@ -433,6 +438,19 @@ export default function DashboardPage() {
             />
             {auditSummary.isLoading ? (
               <div className="h-56 animate-pulse rounded-lg bg-muted/40" />
+            ) : auditSummary.isError ? (
+              <div className="flex h-56 flex-col items-center justify-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 text-center">
+                <p className="text-sm font-medium text-destructive">
+                  Audit activity could not be loaded.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => auditSummary.refetch()}
+                  className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
+                >
+                  Retry
+                </button>
+              </div>
             ) : (
               <div className="grid gap-5 lg:grid-cols-3">
                 <div className="h-56 lg:col-span-2">

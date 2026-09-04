@@ -14,6 +14,9 @@ class UserSerializer(serializers.ModelSerializer):
 
     full_name = serializers.CharField(read_only=True)
     has_custom_avatar = serializers.SerializerMethodField()
+    # Nested tenant summary for display. `tenant` stays the raw PK so older
+    # clients/guards keep working; new UI should read `tenant_detail`.
+    tenant_detail = serializers.SerializerMethodField()
     # Academic profile derived from the user's role-linked profile.
     # Students inherit from their programme (programme → department → faculty);
     # lecturers from their assigned department. Admins/platform users: None.
@@ -34,6 +37,7 @@ class UserSerializer(serializers.ModelSerializer):
             "is_email_verified",
             "is_superuser",
             "tenant",
+            "tenant_detail",
             "programme_id",
             "department_id",
             "department_name",
@@ -82,6 +86,24 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_has_custom_avatar(self, obj):
         return bool(obj.avatar_key)
+
+    def get_tenant_detail(self, obj):
+        tenant = getattr(obj, "tenant", None)
+        # `tenant` may be a bare PK (no cached relation); resolve it.
+        if tenant is not None and not hasattr(tenant, "name"):
+            from apps.tenants.models import Tenant
+
+            try:
+                tenant = Tenant.objects.filter(pk=tenant).first()
+            except Exception:
+                tenant = None
+        if tenant is None:
+            return None
+        return {
+            "id": str(tenant.id),
+            "name": tenant.name,
+            "slug": tenant.slug,
+        }
 
 
 class UserAdminUpdateSerializer(serializers.ModelSerializer):
@@ -148,6 +170,9 @@ class SignupSerializer(serializers.Serializer):
     # Optional programme (students) — builds the academic profile used to
     # scope institution structure and course enrolment.
     programme = serializers.UUIDField(required=False, allow_null=True)
+    # Optional department (lecturers attach here; students use it to scope
+    # the programme picker and it is cross-checked against the programme).
+    department = serializers.UUIDField(required=False, allow_null=True)
     gender = serializers.ChoiceField(
         choices=User.Gender.choices, required=False, allow_blank=True
     )

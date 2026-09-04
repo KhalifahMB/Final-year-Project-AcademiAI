@@ -95,6 +95,14 @@ class TenantRequestCreateSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class TenantRequestEmailCheckSerializer(serializers.Serializer):
+    """Step-1 gate for the institution-request wizard: is this email free?"""
+    requester_email = serializers.EmailField()
+
+    def validate_requester_email(self, value):
+        return value.lower().strip()
+
+
 class TenantRequestReviewSerializer(serializers.Serializer):
     """Superuser approval/rejection."""
     action = serializers.ChoiceField(choices=["approve", "reject"])

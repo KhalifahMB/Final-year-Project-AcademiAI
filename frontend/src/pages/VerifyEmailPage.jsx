@@ -163,6 +163,7 @@ export default function VerifyEmailPage() {
   return (
     <AuthLayout
       icon={MailCheck}
+      eyebrow="Email verification"
       title="Verify your email"
       subtitle={
         initialEmail
@@ -174,7 +175,7 @@ export default function VerifyEmailPage() {
           Back to{" "}
           <Link
             to="/login"
-            className="font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring rounded-sm"
+            className="landing-text-link font-medium"
           >
             sign in
           </Link>
@@ -182,12 +183,12 @@ export default function VerifyEmailPage() {
       }
     >
       {error ? (
-        <Alert variant="destructive" className="mb-5">
+        <Alert variant="destructive" role="alert" className="mb-5">
           <AlertDescription>{String(error)}</AlertDescription>
         </Alert>
       ) : null}
       {ok ? (
-        <Alert className="mb-5 border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)]">
+        <Alert role="status" className="mb-5 border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)]">
           <AlertDescription>{ok}</AlertDescription>
         </Alert>
       ) : null}

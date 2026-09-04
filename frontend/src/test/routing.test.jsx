@@ -218,7 +218,7 @@ describe('routing and access control', () => {
     navigate('/dashboard');
     render(<App />, { wrapper: Wrapper });
     expect(
-      await screen.findByText(/get your institution on academiai/i, {}, { timeout: 15000 }),
+      await screen.findByText(/start with your work email/i, {}, { timeout: 15000 }),
     ).toBeInTheDocument();
     await waitFor(() => expect(api.get).not.toHaveBeenCalled());
   });

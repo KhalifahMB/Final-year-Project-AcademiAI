@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AcademiAI / Campus atlas</title>
+    <style>
+      :root {
+        --ink: #20252a;
+        --muted: #687079;
+        --paper: #f7f8f6;
+        --white: #fff;
+        --line: #d9dedb;
+        --blue: #2856c6;
+        --orange: #d56c31;
+        --mint: #5a9c83;
+        font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
+        color: var(--ink);
+        background: var(--paper);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+      }
+      a {
+        color: inherit;
+      }
+      .wrap {
+        width: min(1200px, calc(100% - 64px));
+        margin: auto;
+      }
+      nav {
+        height: 74px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line);
+      }
+      .brand {
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        text-decoration: none;
+        font-size: 15px;
+        font-weight: 750;
+        letter-spacing: -0.04em;
+      }
+      .mark {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        background: var(--blue);
+        color: white;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .navlinks {
+        display: flex;
+        gap: 24px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .navlinks a {
+        text-decoration: none;
+      }
+      .button {
+        padding: 11px 16px;
+        color: white;
+        background: var(--blue);
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: 700;
+        transition:
+          background 0.2s ease,
+          transform 0.2s ease;
+      }
+      .button:hover,
+      .button:focus-visible {
+        background: #1d3f98;
+        transform: translateY(-2px);
+        outline: none;
+      }
+      .hero {
+        padding: 88px 0 96px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8vw;
+        align-items: end;
+        border-bottom: 1px solid var(--line);
+      }
+      .eyebrow {
+        color: var(--blue);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-weight: 800;
+      }
+      h1 {
+        font-size: clamp(55px, 7vw, 96px);
+        max-width: 7ch;
+        line-height: 0.9;
+        letter-spacing: -0.085em;
+        margin: 16px 0 28px;
+      }
+      .lede {
+        max-width: 44ch;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.65;
+      }
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-top: 29px;
+      }
+      .quiet-link {
+        color: var(--blue);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .map {
+        display: grid;
+        grid-template-columns: 1.4fr 0.8fr;
+        grid-template-rows: 160px 110px;
+        gap: 8px;
+      }
+      .map-block {
+        background: var(--white);
+        border: 1px solid var(--line);
+        padding: 16px;
+        position: relative;
+        overflow: hidden;
+      }
+      .map-block:after {
+        content: '';
+        position: absolute;
+        width: 160px;
+        height: 160px;
+        border: 1px solid #2856c633;
+        border-radius: 50%;
+        right: -75px;
+        bottom: -85px;
+      }
+      .map-block.blue {
+        background: var(--blue);
+        color: white;
+        border-color: var(--blue);
+        grid-row: span 2;
+      }
+      .map-block.orange {
+        background: #f3e1d5;
+      }
+      .map-block.mint {
+        background: #dfece5;
+      }
+      .map-label {
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 800;
+      }
+      .map-block strong {
+        display: block;
+        max-width: 8ch;
+        font-size: 29px;
+        line-height: 1;
+        letter-spacing: -0.07em;
+        margin-top: 45px;
+      }
+      .map-block:not(.blue) strong {
+        margin-top: 25px;
+        color: var(--ink);
+      }
+      .stats {
+        border-bottom: 1px solid var(--line);
+      }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .stat {
+        padding: 24px 20px 24px 0;
+        border-right: 1px solid var(--line);
+      }
+      .stat:not(:first-child) {
+        padding-left: 20px;
+      }
+      .stat:last-child {
+        border: 0;
+      }
+      .stat strong {
+        display: block;
+        color: var(--blue);
+        font-size: 28px;
+        letter-spacing: -0.07em;
+      }
+      .stat span {
+        color: var(--muted);
+        display: block;
+        font-size: 11px;
+        margin-top: 4px;
+      }
+      .live {
+        color: var(--mint) !important;
+        font-weight: 750;
+      }
+      .section {
+        padding: 96px 0;
+      }
+      .section-head {
+        display: grid;
+        grid-template-columns: 0.8fr 1.2fr;
+        gap: 8vw;
+        align-items: end;
+        margin-bottom: 40px;
+      }
+      h2 {
+        font-size: clamp(35px, 4vw, 58px);
+        line-height: 0.94;
+        letter-spacing: -0.075em;
+        margin: 13px 0 0;
+        max-width: 10ch;
+      }
+      .section-head p {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.65;
+        max-width: 46ch;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .card {
+        background: var(--white);
+        border: 1px solid var(--line);
+        padding: 25px;
+        min-height: 235px;
+        transition:
+          transform 0.25s ease,
+          border-color 0.25s ease;
+      }
+      .card:hover {
+        transform: translateY(-5px);
+        border-color: var(--blue);
+      }
+      .card-number {
+        color: var(--orange);
+        font:
+          12px ui-monospace,
+          monospace;
+      }
+      .card h3 {
+        font-size: 22px;
+        letter-spacing: -0.06em;
+        margin: 62px 0 12px;
+      }
+      .card p {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+        margin: 0;
+      }
+      .directory {
+        padding: 72px 0;
+        background: var(--ink);
+        color: white;
+      }
+      .directory-layout {
+        display: grid;
+        grid-template-columns: 0.75fr 1.25fr;
+        gap: 8vw;
+      }
+      .directory h2 {
+        color: white;
+      }
+      .directory-copy {
+        color: #aeb7bc;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      #directory {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .institution-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        background: #2a3034;
+        border: 1px solid #3b4448;
+        text-decoration: none;
+        min-width: 0;
+      }
+      .institution-row:hover {
+        border-color: var(--mint);
+      }
+      .institution-mark {
+        width: 31px;
+        height: 31px;
+        display: grid;
+        place-items: center;
+        flex: none;
+        background: var(--mint);
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .institution-row span:nth-child(2) {
+        min-width: 0;
+        flex: 1;
+      }
+      .institution-row b,
+      .institution-row small {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .institution-row b {
+        font-size: 12px;
+      }
+      .institution-row small {
+        color: #aeb7bc;
+        font-size: 10px;
+        margin-top: 3px;
+      }
+      .institution-row i {
+        color: var(--mint);
+        font-size: 11px;
+        font-style: normal;
+      }
+      .data-empty,
+      .data-error {
+        color: #aeb7bc;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      footer {
+        padding: 25px 0 38px;
+        display: flex;
+        justify-content: space-between;
+        color: #aeb7bc;
+        font-size: 11px;
+      }
+      @media (max-width: 760px) {
+        .wrap {
+          width: min(100% - 40px, 1200px);
+        }
+        .navlinks a:not(.button) {
+          display: none;
+        }
+        .hero,
+        .directory-layout,
+        .section-head {
+          grid-template-columns: 1fr;
+        }
+        .hero {
+          padding: 56px 0 72px;
+        }
+        h1 {
+          font-size: clamp(58px, 17vw, 88px);
+        }
+        .map {
+          margin-top: 8px;
+          grid-template-rows: 145px 95px;
+        }
+        .stats-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+        .stat,
+        .stat:not(:first-child) {
+          padding: 18px 12px 18px 0;
+          border-bottom: 1px solid var(--line);
+        }
+        .stat:nth-child(even) {
+          padding-left: 12px;
+          border-right: 0;
+        }
+        .cards,
+        #directory {
+          grid-template-columns: 1fr;
+        }
+        footer {
+          display: block;
+        }
+        footer span:last-child {
+          display: block;
+          margin-top: 9px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *:before,
+        *:after {
+          animation: none !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <a class="brand" href="/"><span class="mark">A</span>AcademiAI</a>
+        <div class="navlinks">
+          <a href="#model">The model</a><a href="#institutions">Directory</a
+          ><a class="button" href="/signup">Join the atlas</a>
+        </div>
+      </nav>
+      <main>
+        <section class="hero">
+          <div>
+            <div class="eyebrow">A shared academic map</div>
+            <h1>Make the campus searchable.</h1>
+            <p class="lede">
+              AcademiAI connects course material, practice, and progress without
+              losing the structure of the institution behind it.
+            </p>
+            <div class="actions">
+              <a class="button" href="/signup">Enter AcademiAI</a
+              ><a class="quiet-link" href="#model">Explore the model →</a>
+            </div>
+          </div>
+          <div class="map" aria-label="AcademiAI product areas">
+            <div class="map-block blue">
+              <span class="map-label">01 / Ask</span
+              ><strong>Cited answers from course material.</strong>
+            </div>
+            <div class="map-block orange">
+              <span class="map-label">02 / Practice</span
+              ><strong>Quizzes for the gaps.</strong>
+            </div>
+            <div class="map-block mint">
+              <span class="map-label">03 / Govern</span
+              ><strong>Signals for the people steering learning.</strong>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <section class="stats">
+      <div class="wrap stats-grid">
+        <div class="stat">
+          <strong data-institution-count>—</strong
+          ><span>active institutions in the live directory</span>
+        </div>
+        <div class="stat">
+          <strong>RLS</strong><span>tenant isolation at database level</span>
+        </div>
+        <div class="stat">
+          <strong class="live" data-live-status>Connecting…</strong
+          ><span>directory status</span>
+        </div>
+        <div class="stat">
+          <strong>3</strong><span>role-specific workspaces</span>
+        </div>
+      </div>
+    </section>
+    <section class="wrap section" id="model">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">The model</div>
+          <h2>A platform that respects the hierarchy.</h2>
+        </div>
+        <p>
+          Students need clarity, lecturers need signal, and administrators need
+          control. Each role gets a focused path through the same trusted
+          institutional knowledge base.
+        </p>
+      </div>
+      <div class="cards">
+        <article class="card">
+          <span class="card-number">STUDENTS</span>
+          <h3>Learn with receipts.</h3>
+          <p>
+            Ask, review, save, and track progress with answers that point back
+            to the material.
+          </p>
+        </article>
+        <article class="card">
+          <span class="card-number">LECTURERS</span>
+          <h3>See the signal early.</h3>
+          <p>
+            Turn authorised materials into practice and spot concepts that need
+            another explanation.
+          </p>
+        </article>
+        <article class="card">
+          <span class="card-number">ADMINISTRATORS</span>
+          <h3>Keep the map yours.</h3>
+          <p>
+            Manage structure, roles, resources, and audit trails within the
+            institution boundary.
+          </p>
+        </article>
+      </div>
+    </section>
+    <section class="directory" id="institutions">
+      <div class="wrap directory-layout">
+        <div>
+          <div class="eyebrow">Live institution index</div>
+          <h2>Find your place on the map.</h2>
+          <p class="directory-copy">
+            Institutions are loaded from the backend directory. This concept
+            contains no embedded tenant data.
+          </p>
+        </div>
+        <div id="directory">
+          <p class="data-empty">Loading active institutions…</p>
+        </div>
+      </div>
+    </section>
+    <div class="wrap">
+      <footer>
+        <span>AcademiAI / Campus atlas</span
+        ><span>Grounded learning, institution by institution.</span>
+      </footer>
+    </div>
+    <script src="/design-variants/shared.js"></script>
+  </body>
+</html>

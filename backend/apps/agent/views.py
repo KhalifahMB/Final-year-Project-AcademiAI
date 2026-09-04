@@ -48,7 +48,13 @@ def _stream_events(client, user, message, context_type, session):
 
     full_response = ""
     for event_type, data in run_agent_turn(
-        client, settings.GEMINI_MODEL, user, message, context_type,
+        client,
+        settings.GEMINI_MODEL,
+        user,
+        message,
+        context_type,
+        history=getattr(session, "recent_messages", None) or [],
+        session=session,
     ):
         if event_type == "token":
             full_response += data.get("text", "")

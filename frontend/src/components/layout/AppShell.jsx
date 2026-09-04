@@ -10,7 +10,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import ThemeToggle from '@/components/shared/ThemeToggle';
 import BrandMark from '@/components/shared/BrandMark';
 import Avatar from '@/components/shared/Avatar';
@@ -19,6 +25,7 @@ import CommandPalette from '@/components/common/CommandPalette';
 import FloatingAgent from '@/components/agent/FloatingAgent';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
+import { getTenantInfo } from '@/lib/tenant';
 import { cn } from '@/lib/utils';
 import {
   Activity,
@@ -77,8 +84,17 @@ const SUPERUSER_NAV = [
     items: [
       { to: '/platform', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/platform/tenants', label: 'Tenants', icon: Building2 },
-      { to: '/platform/requests', label: 'Requests', icon: Inbox, badge: 'new' },
-      { to: '/platform/announcements', label: 'Announcements', icon: Megaphone },
+      {
+        to: '/platform/requests',
+        label: 'Requests',
+        icon: Inbox,
+        badge: 'new',
+      },
+      {
+        to: '/platform/announcements',
+        label: 'Announcements',
+        icon: Megaphone,
+      },
     ],
   },
   {
@@ -123,7 +139,11 @@ const ADMIN_NAV = [
   {
     section: 'Admin',
     items: [
-      { to: '/admin/dashboard', label: 'Institution dashboard', icon: LayoutDashboard },
+      {
+        to: '/admin/dashboard',
+        label: 'Institution dashboard',
+        icon: LayoutDashboard,
+      },
       { to: '/admin/users', label: 'Users', icon: Users },
       { to: '/admin/tenant', label: 'Structure', icon: Building2 },
       { to: '/admin/courses', label: 'Manage Courses', icon: BookOpen },
@@ -246,9 +266,16 @@ function NavItem({ item, collapsed, active, onNavigate }) {
     return (
       <Tooltip delayDuration={250}>
         <TooltipTrigger asChild>{node}</TooltipTrigger>
-        <TooltipContent side="right" className="flex items-center gap-2 text-xs">
+        <TooltipContent
+          side="right"
+          className="flex items-center gap-2 text-xs"
+        >
           {item.label}
-          {item.badge && <span className="rounded bg-[var(--accent-soft)] px-1 text-[10px] text-[var(--accent-strong)]">{item.badge}</span>}
+          {item.badge && (
+            <span className="rounded bg-[var(--accent-soft)] px-1 text-[10px] text-[var(--accent-strong)]">
+              {item.badge}
+            </span>
+          )}
         </TooltipContent>
       </Tooltip>
     );
@@ -257,8 +284,9 @@ function NavItem({ item, collapsed, active, onNavigate }) {
 }
 
 function UserMenu({ user }) {
-  const displayName =
-    user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.email;
+  const displayName = user?.first_name
+    ? `${user.first_name} ${user.last_name || ''}`.trim()
+    : user?.email;
 
   return (
     <DropdownMenu>
@@ -273,15 +301,27 @@ function UserMenu({ user }) {
             <p className="truncate text-[13px] font-[600] leading-tight text-[var(--fg)]">
               {displayName}
             </p>
-            <p className="truncate text-[11px] capitalize text-[var(--muted)]">{roleLabel(user)}</p>
+            <p className="truncate text-[11px] capitalize text-[var(--muted)]">
+              {roleLabel(user)}
+            </p>
           </div>
-          <ChevronRight className="h-3.5 w-3.5 -rotate-90 text-[var(--muted)] transition-transform group-data-[state=open]:rotate-0" aria-hidden />
+          <ChevronRight
+            className="h-3.5 w-3.5 -rotate-90 text-[var(--muted)] transition-transform group-data-[state=open]:rotate-0"
+            aria-hidden
+          />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side="top" className="w-64 rounded-[var(--radius-lg)] p-1 shadow-[var(--shadow-pop)]" sideOffset={8}>
+      <DropdownMenuContent
+        align="end"
+        side="top"
+        className="w-64 rounded-[var(--radius-lg)] p-1 shadow-[var(--shadow-pop)]"
+        sideOffset={8}
+      >
         <DropdownMenuLabel className="flex flex-col gap-0.5 px-2 py-1.5">
           <span className="truncate text-sm font-[600]">{displayName}</span>
-          <span className="truncate text-[11px] font-normal text-[var(--muted)]">{user?.email}</span>
+          <span className="truncate text-[11px] font-normal text-[var(--muted)]">
+            {user?.email}
+          </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild className="rounded-[var(--radius-sm)] h-9">
@@ -300,6 +340,8 @@ function UserMenu({ user }) {
 }
 
 function TenantCard({ user, collapsed }) {
+  const info = getTenantInfo(user);
+  const name = info?.name || 'Your institution';
   if (collapsed) {
     return (
       <Tooltip delayDuration={250}>
@@ -309,7 +351,7 @@ function TenantCard({ user, collapsed }) {
           </div>
         </TooltipTrigger>
         <TooltipContent side="right" className="text-xs">
-          {user?.tenant?.name || 'Institution'}
+          {name}
         </TooltipContent>
       </Tooltip>
     );
@@ -321,7 +363,7 @@ function TenantCard({ user, collapsed }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-[600] leading-tight text-[var(--fg)]">
-          {user?.tenant?.name || 'Institution'}
+          {name}
         </p>
         <p className="truncate text-[11px] text-[var(--muted)]">
           {user?.first_name || user?.email} · {roleLabel(user)}
@@ -331,7 +373,14 @@ function TenantCard({ user, collapsed }) {
   );
 }
 
-function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, activeKey, user }) {
+function SidebarDesktop({
+  sections,
+  collapsed,
+  onToggleCollapse,
+  onNavigate,
+  activeKey,
+  user,
+}) {
   const sidebarScrollRef = useRef(null);
   const SCROLL_KEY = 'academiai:sidebar-scroll';
 
@@ -416,9 +465,19 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
                 {section.section}
               </p>
             )}
-            <ul className={cn('space-y-0.5', collapsed && 'flex flex-col items-center')}>
+            <ul
+              className={cn(
+                'space-y-0.5',
+                collapsed && 'flex flex-col items-center',
+              )}
+            >
               {section.items.map((item) => (
-                <li key={item.to} className={cn(collapsed ? 'w-full flex justify-center' : 'w-full')}>
+                <li
+                  key={item.to}
+                  className={cn(
+                    collapsed ? 'w-full flex justify-center' : 'w-full',
+                  )}
+                >
                   <NavItem
                     item={item}
                     collapsed={collapsed}
@@ -432,16 +491,12 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
         ))}
       </nav>
 
-      {/* Bottom: tenant + user + theme */}
-      <div
-        className={cn(
-          'shrink-0 border-t border-[var(--border)] p-2',
-        )}
-      >
+      {/* Bottom: tenant + user + theme (tenant card hidden for platform operators) */}
+      <div className={cn('shrink-0 border-t border-[var(--border)] p-2')}>
         {!collapsed ? (
           <div className="space-y-1">
             <div className="card-glass relative overflow-hidden rounded-[var(--radius-lg)] p-1.5">
-              <TenantCard user={user} />
+              {!user?.is_superuser && <TenantCard user={user} />}
               <UserMenu user={user} />
             </div>
             <ThemeToggle className="w-full" />
@@ -460,13 +515,18 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
                     <PanelLeftOpen className="h-4 w-4" aria-hidden />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Expand sidebar (Ctrl+B)</TooltipContent>
+                <TooltipContent side="right">
+                  Expand sidebar (Ctrl+B)
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
             <TooltipProvider delayDuration={250}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <ThemeToggle className="icon-tile h-[38px] w-[38px] justify-center rounded-[var(--radius-md)]" iconOnly />
+                  <ThemeToggle
+                    className="icon-tile h-[38px] w-[38px] justify-center rounded-[var(--radius-md)]"
+                    iconOnly
+                  />
                 </TooltipTrigger>
                 <TooltipContent side="right">Toggle theme</TooltipContent>
               </Tooltip>
@@ -478,7 +538,10 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
                     to="/settings"
                     className="icon-tile mt-1 inline-flex h-[38px] w-[38px] items-center justify-center rounded-[var(--radius-md)]"
                   >
-                    <Avatar user={user} className="h-[26px] w-[26px] rounded-full" />
+                    <Avatar
+                      user={user}
+                      className="h-[26px] w-[26px] rounded-full"
+                    />
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="right">
@@ -493,21 +556,29 @@ function SidebarDesktop({ sections, collapsed, onToggleCollapse, onNavigate, act
   );
 }
 
-function MobileDrawer({ open, onClose, sections, onNavigate, activeKey, user }) {
+function MobileDrawer({
+  open,
+  onClose,
+  sections,
+  onNavigate,
+  activeKey,
+  user,
+}) {
   return (
-    open && (
-      <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
-        <button
-          type="button"
-          aria-label="Close menu"
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          onClick={onClose}
-        />
-        <aside className="glass absolute inset-y-0 left-0 flex w-[280px] flex-col shadow-[var(--shadow-pop)]">
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent className="fixed inset-y-0 left-0 top-0 h-full w-[280px] max-w-none translate-x-0 translate-y-0 rounded-none border-r border-[var(--border)] p-0 shadow-[var(--shadow-pop)] [&>button]:hidden">
+        <DialogTitle className="sr-only">AcademiAI navigation</DialogTitle>
+        <aside className="glass flex h-full flex-col">
           <div className="flex h-14 shrink-0 items-center justify-between border-b border-[var(--border)] px-4">
-            <Link to={user?.is_superuser ? '/platform' : '/dashboard'} onClick={onNavigate} className="flex items-center gap-2.5">
+            <Link
+              to={user?.is_superuser ? '/platform' : '/dashboard'}
+              onClick={onNavigate}
+              className="flex items-center gap-2.5"
+            >
               <BrandMark size="h-7 w-7" />
-              <span className="text-[16px] font-[680] tracking-[-0.02em] text-[var(--fg)]">AcademiAI</span>
+              <span className="text-[16px] font-[680] tracking-[-0.02em] text-[var(--fg)]">
+                AcademiAI
+              </span>
             </Link>
             <button
               type="button"
@@ -527,7 +598,12 @@ function MobileDrawer({ open, onClose, sections, onNavigate, activeKey, user }) 
                 <ul className="space-y-0.5">
                   {section.items.map((item) => (
                     <li key={item.to}>
-                      <NavItem item={item} collapsed={false} active={activeKey === item.to} onNavigate={onNavigate} />
+                      <NavItem
+                        item={item}
+                        collapsed={false}
+                        active={activeKey === item.to}
+                        onNavigate={onNavigate}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -535,19 +611,26 @@ function MobileDrawer({ open, onClose, sections, onNavigate, activeKey, user }) 
             ))}
           </nav>
           <div className="shrink-0 space-y-1 border-t border-[var(--border)] p-2">
-            <TenantCard user={user} />
+            {/* No ThemeToggle here: the topbar already carries one on mobile,
+                and a second toggle in the drawer caused the reported double-toggle. */}
+            {!user?.is_superuser && <TenantCard user={user} />}
             <UserMenu user={user} />
-            <ThemeToggle className="w-full" />
           </div>
         </aside>
-      </div>
-    )
+      </DialogContent>
+    </Dialog>
   );
 }
 
 /* ============================================================= */
 
-export default function AppShell({ title, description, actions, children, fullBleed = false }) {
+export default function AppShell({
+  title,
+  description,
+  actions,
+  children,
+  fullBleed = false,
+}) {
   const { user, logout } = useAuth();
   const loc = useLocation();
   const isMobile = useIsMobile();
@@ -567,7 +650,10 @@ export default function AppShell({ title, description, actions, children, fullBl
 
   useEffect(() => {
     try {
-      window.localStorage.setItem('academiai:sidebar-collapsed', collapsed ? '1' : '0');
+      window.localStorage.setItem(
+        'academiai:sidebar-collapsed',
+        collapsed ? '1' : '0',
+      );
     } catch {
       /* ignore */
     }
@@ -585,7 +671,8 @@ export default function AppShell({ title, description, actions, children, fullBl
   useEffect(() => {
     const handler = () => setPaletteOpen(true);
     window.addEventListener('academiai:open-command-palette', handler);
-    return () => window.removeEventListener('academiai:open-command-palette', handler);
+    return () =>
+      window.removeEventListener('academiai:open-command-palette', handler);
   }, []);
 
   // External components can request sidebar state via CustomEvent.
@@ -595,7 +682,8 @@ export default function AppShell({ title, description, actions, children, fullBl
       if (typeof want === 'boolean') setCollapsed(want);
     };
     window.addEventListener('academiai:request-sidebar', onRequest);
-    return () => window.removeEventListener('academiai:request-sidebar', onRequest);
+    return () =>
+      window.removeEventListener('academiai:request-sidebar', onRequest);
   }, []);
 
   // Full-bleed pages (e.g. chat) have no header, so they can ask to open the
@@ -603,7 +691,8 @@ export default function AppShell({ title, description, actions, children, fullBl
   useEffect(() => {
     const onOpenMenu = () => setMobileOpen(true);
     window.addEventListener('academiai:open-mobile-menu', onOpenMenu);
-    return () => window.removeEventListener('academiai:open-mobile-menu', onOpenMenu);
+    return () =>
+      window.removeEventListener('academiai:open-mobile-menu', onOpenMenu);
   }, []);
 
   // Close mobile drawer on route change (adjust state during render so the
@@ -620,8 +709,15 @@ export default function AppShell({ title, description, actions, children, fullBl
     const exact = flat.find((i) => i.to === loc.pathname);
     if (exact) return exact.to;
     const prefix = flat
-      .filter((i) => i.to !== '/dashboard' && i.to !== '/admin/dashboard' && i.to !== '/platform')
-      .find((i) => loc.pathname.startsWith(i.to + '/') || loc.pathname === i.to);
+      .filter(
+        (i) =>
+          i.to !== '/dashboard' &&
+          i.to !== '/admin/dashboard' &&
+          i.to !== '/platform',
+      )
+      .find(
+        (i) => loc.pathname.startsWith(i.to + '/') || loc.pathname === i.to,
+      );
     return prefix?.to || (user?.is_superuser ? '/platform' : '/dashboard');
   }, [flat, loc.pathname, user]);
 
@@ -653,9 +749,7 @@ export default function AppShell({ title, description, actions, children, fullBl
         {/* Main column */}
         <div className={cn('flex min-h-screen flex-col', contentPadding)}>
           {!fullBleed && (
-            <header
-              className="glass sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-[var(--border)] px-4 sm:px-7"
-            >
+            <header className="glass sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-[var(--border)] px-4 sm:px-7">
               <Button
                 type="button"
                 variant="ghost"
@@ -686,11 +780,16 @@ export default function AppShell({ title, description, actions, children, fullBl
                 onSubmit={(e) => {
                   e.preventDefault();
                   const q = searchRef.current?.value.trim() || '';
-                  navigate(q ? `/resources?q=${encodeURIComponent(q)}` : '/resources');
+                  navigate(
+                    q ? `/resources?q=${encodeURIComponent(q)}` : '/resources',
+                  );
                 }}
                 className="search-pill flex h-9 w-full min-w-0 flex-1 items-center gap-2 rounded-[var(--radius-md)] px-3"
               >
-                <Search className="h-4 w-4 shrink-0 text-[var(--muted)]" aria-hidden />
+                <Search
+                  className="h-4 w-4 shrink-0 text-[var(--muted)]"
+                  aria-hidden
+                />
                 <input
                   ref={searchRef}
                   type="search"
@@ -721,7 +820,9 @@ export default function AppShell({ title, description, actions, children, fullBl
           )}
 
           {fullBleed ? (
-            <main className="flex h-screen w-full flex-col overflow-hidden">{children}</main>
+            <main className="flex h-screen w-full flex-col overflow-hidden">
+              {children}
+            </main>
           ) : (
             <main
               className={cn(
@@ -766,8 +867,9 @@ export default function AppShell({ title, description, actions, children, fullBl
 
 /* Avatar-only trigger for the topbar with a compact account menu */
 function UserMenuSmall({ user, logout }) {
-  const displayName =
-    user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.email;
+  const displayName = user?.first_name
+    ? `${user.first_name} ${user.last_name || ''}`.trim()
+    : user?.email;
 
   return (
     <DropdownMenu>
@@ -780,10 +882,16 @@ function UserMenuSmall({ user, logout }) {
           <Avatar user={user} className="h-[26px] w-[26px] rounded-full" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 rounded-[var(--radius-lg)] p-1 shadow-[var(--shadow-pop)]" sideOffset={8}>
+      <DropdownMenuContent
+        align="end"
+        className="w-56 rounded-[var(--radius-lg)] p-1 shadow-[var(--shadow-pop)]"
+        sideOffset={8}
+      >
         <DropdownMenuLabel className="flex flex-col gap-0.5 px-2 py-1.5">
           <span className="truncate text-sm font-[600]">{displayName}</span>
-          <span className="truncate text-[11px] font-normal text-[var(--muted)]">{user?.email}</span>
+          <span className="truncate text-[11px] font-normal text-[var(--muted)]">
+            {user?.email}
+          </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild className="rounded-[var(--radius-sm)] h-9">
@@ -792,7 +900,10 @@ function UserMenuSmall({ user, logout }) {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout} className="rounded-[var(--radius-sm)] h-9 text-[var(--danger)] focus:text-[var(--danger)]">
+        <DropdownMenuItem
+          onClick={logout}
+          className="rounded-[var(--radius-sm)] h-9 text-[var(--danger)] focus:text-[var(--danger)]"
+        >
           <LogOut className="mr-2 h-3.5 w-3.5" /> Log out
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -12,6 +12,8 @@ export const signupSchema = z.object({
   last_name: z.string().optional().or(z.literal("")),
   tenant_slug: z.string().min(1, "Select your institution"),
   role: z.enum(["student", "lecturer"]).optional(),
+  faculty: z.string().optional().or(z.literal("")),
+  department: z.string().optional().or(z.literal("")),
   programme: z.string().optional().or(z.literal("")),
   gender: z
     .enum(["male", "female", "other", "unspecified"])

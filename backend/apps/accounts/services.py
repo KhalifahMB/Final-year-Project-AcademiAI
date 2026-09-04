@@ -89,6 +89,7 @@ def signup_user(
     role="student",
     tenant_slug=None,
     programme_id=None,
+    department_id=None,
     gender="",
     avatar_preset="",
 ):
@@ -115,11 +116,22 @@ def signup_user(
     # Anonymous signup requests carry no tenant context; academic tables are
     # RLS-protected, so resolve + write inside an explicit scope.
     programme = None
+    department = None
     if tenant is not None:
         from apps.common.db import tenant_scope
         from django.db import transaction
 
         with tenant_scope(str(tenant.id)), transaction.atomic():
+            if department_id:
+                from apps.academics.models import Department
+
+                # Same tenant-scoping discipline as programmes below: a
+                # cross-tenant department id must resolve to None so it can
+                # never be attached to another institution's profile.
+                department = Department.objects.filter(
+                    id=department_id, tenant=tenant
+                ).first()
+
             if programme_id:
                 from apps.academics.models import Programme
 
@@ -131,6 +143,13 @@ def signup_user(
                 programme = Programme.objects.filter(
                     id=programme_id, tenant=tenant
                 ).first()
+                if programme is not None and department is not None:
+                    # The picker scopes programmes to the chosen department;
+                    # reject a mismatched pair instead of silently keeping it.
+                    if programme.department_id != department.id:
+                        raise ValueError(
+                            "The selected programme does not belong to the selected department."
+                        )
 
             user = User.objects.create_user(
                 email=email,
@@ -149,7 +168,7 @@ def signup_user(
             if role == User.Role.STUDENT:
                 StudentProfile.objects.create(user=user, tenant=tenant, programme=programme)
             elif role == User.Role.LECTURER:
-                LecturerProfile.objects.create(user=user, tenant=tenant)
+                LecturerProfile.objects.create(user=user, tenant=tenant, department=department)
     else:
         user = User.objects.create_user(
             email=email,

@@ -47,6 +47,7 @@ export default function LoginPage() {
   return (
     <AuthLayout
       icon={LogIn}
+      eyebrow="Sign in to your workspace"
       title="Welcome back"
       subtitle="Sign in to continue to your AcademiAI workspace."
       footer={
@@ -54,7 +55,7 @@ export default function LoginPage() {
           New to AcademiAI?{' '}
           <Link
             to="/signup"
-            className="font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring rounded-sm"
+            className="landing-text-link font-semibold"
           >
             Create an account
           </Link>
@@ -62,7 +63,7 @@ export default function LoginPage() {
       }
     >
       {error && (
-        <Alert variant="destructive" className="mb-4">
+        <Alert variant="destructive" role="alert" className="mb-4">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -98,7 +99,7 @@ export default function LoginPage() {
                   <FormLabel className="text-[12px] font-medium">Password</FormLabel>
                   <Link
                     to="/password-reset"
-                    className="text-[12px] font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring rounded-sm"
+                    className="landing-text-link text-[12px] font-medium"
                   >
                     Forgot?
                   </Link>

@@ -25,9 +25,11 @@ import { cn } from '@/lib/utils';
  description="Course offerings you are teaching this session."
  >
  {error && (
- <Alert variant="destructive" className="mb-4">
+ <Alert variant="destructive" role="alert" className="mb-4">
  <div className="flex w-full items-center justify-between gap-3">
- <AlertDescription className="text-xs">Failed to load assignments</AlertDescription>
+ <AlertDescription className="text-xs">
+ Failed to load assignments{error?.response?.data?.detail ? `: ${error.response.data.detail}` : ''}
+ </AlertDescription>
  <Button type="button" variant="outline" size="sm" onClick={() => refetch()} className="shrink-0 h-7 text-[11px]">
  Retry
  </Button>
@@ -52,7 +54,7 @@ import { cn } from '@/lib/utils';
  <li key={a.id}>
  <Link
  to={`/courses/${a.course_offering}`}
- className="group flex items-center gap-3 rounded-xl border bg-card p-3.5 transition-all transition-colors hover:border-[var(--border-strong)]"
+ className="group flex items-center gap-3 rounded-xl border bg-card p-3.5 transition-colors hover:border-[var(--border-strong)]"
  >
  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-strong)] transition-colors group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)]">
  <BookOpen className="h-[18px] w-[18px]" aria-hidden />
@@ -70,7 +72,7 @@ import { cn } from '@/lib/utils';
  <span className={cn(
  'rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize',
  a.assignment_role === 'primary'
- ? 'border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)] '
+ ? 'border-transparent bg-[var(--accent-soft)] text-[var(--accent-strong)]'
  : 'border-muted-foreground/20 bg-muted text-muted-foreground',
  )}>
  {a.assignment_role || 'Lecturer'}

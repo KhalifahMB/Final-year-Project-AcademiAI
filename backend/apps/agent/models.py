@@ -18,6 +18,7 @@ class AgentSession(TenantScopedModel):
         ],
         default="dashboard",
     )
+    recent_messages = models.JSONField(default=list, blank=True)
     started_at = models.DateTimeField(auto_now_add=True)
     last_active_at = models.DateTimeField(auto_now=True)
     message_count = models.IntegerField(default=0)

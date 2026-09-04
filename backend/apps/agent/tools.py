@@ -186,6 +186,7 @@ def get_quiz_results(user, params=None) -> dict:
 def get_deadlines(user, params=None) -> dict:
     """Return upcoming deadlines (quiz due dates, plan targets)."""
     from django.utils import timezone
+    from apps.academics.models import CourseEnrollment, LecturerCourseAssignment
     from apps.learning.models import Plan
     from apps.assessments.models import Quiz
 
@@ -202,6 +203,35 @@ def get_deadlines(user, params=None) -> dict:
             "title": p.title,
             "date": str(p.target_date),
         })
+
+    if user.role == "student":
+        offering_ids = CourseEnrollment.objects.filter(
+            tenant=user.tenant, student=user,
+            status=CourseEnrollment.Status.ENROLLED,
+        ).values_list("course_offering_id", flat=True)
+    elif user.role == "lecturer":
+        offering_ids = LecturerCourseAssignment.objects.filter(
+            tenant=user.tenant, lecturer=user,
+        ).values_list("course_offering_id", flat=True)
+    else:
+        offering_ids = []
+
+    quizzes = Quiz.objects.filter(
+        tenant=user.tenant,
+        course_offering_id__in=offering_ids,
+        status=Quiz.Status.PUBLISHED,
+        due_date__isnull=False,
+        due_date__gte=timezone.now(),
+    ).select_related("course_offering__course").order_by("due_date")[:10]
+    for quiz in quizzes:
+        deadlines.append({
+            "type": "quiz",
+            "title": quiz.title,
+            "date": quiz.due_date.isoformat(),
+            "course_code": quiz.course_offering.course.code if quiz.course_offering else None,
+        })
+
+    deadlines.sort(key=lambda deadline: deadline["date"])
 
     return {"deadlines": deadlines, "count": len(deadlines)}
 

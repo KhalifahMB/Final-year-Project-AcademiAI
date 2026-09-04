@@ -58,7 +58,7 @@ def build_agent_prompt(user, context_type, history):
     return AGENT_SYSTEM_PROMPT + context_section
 
 
-def run_agent_turn(client, model_name, user, message, context_type, history=None):
+def run_agent_turn(client, model_name, user, message, context_type, history=None, session=None):
     """
     Execute a single agent turn with tool-use loop.
     Yields (event_type, data) tuples for SSE streaming.
@@ -70,19 +70,37 @@ def run_agent_turn(client, model_name, user, message, context_type, history=None
     - ("done", {"response": "..."})
     - ("error", {"message": "..."})
     """
+    from apps.agent.models import AgentToolExecution
     from .tools import TOOL_DEFINITIONS, execute_tool
 
-    history = history or []
+    history = list(history or [])
+    if session is not None:
+        stored_history = getattr(session, "recent_messages", None) or []
+        if stored_history:
+            history = list(stored_history)
     system_prompt = build_agent_prompt(user, context_type, history)
 
     # Build conversation
     contents = []
     for msg in history:
-        contents.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
+        role = msg.get("role") if isinstance(msg, dict) else None
+        content = msg.get("content") if isinstance(msg, dict) else None
+        if role and content is not None:
+            contents.append({"role": role, "parts": [{"text": content}]})
     contents.append({"role": "user", "parts": [{"text": message}]})
 
     max_iterations = 5
     full_response = ""
+
+    def persist_session_history(final_text: str = "") -> None:
+        if session is None:
+            return
+        session_history = list(history)
+        session_history.append({"role": "user", "content": message})
+        if final_text:
+            session_history.append({"role": "assistant", "content": final_text})
+        session.recent_messages = session_history[-20:]
+        session.save(update_fields=["recent_messages", "last_active_at"])
 
     for iteration in range(max_iterations):
         try:
@@ -96,7 +114,6 @@ def run_agent_turn(client, model_name, user, message, context_type, history=None
                 },
             )
 
-            # Check if the model wants to call tools
             function_calls = []
             text_parts = []
 
@@ -106,14 +123,13 @@ def run_agent_turn(client, model_name, user, message, context_type, history=None
                 elif hasattr(part, "text") and part.text:
                     text_parts.append(part.text)
 
-            # If no function calls, we have a final text response
             if not function_calls:
                 final_text = "".join(text_parts).strip()
                 full_response += final_text
                 yield ("token", {"text": final_text})
+                persist_session_history(full_response)
                 break
 
-            # Execute tool calls
             tool_results = []
             for fc in function_calls:
                 tool_name = fc.name
@@ -122,6 +138,16 @@ def run_agent_turn(client, model_name, user, message, context_type, history=None
                 yield ("tool_call", {"tool": tool_name, "params": tool_params})
 
                 result = execute_tool(tool_name, user, tool_params)
+                if session is not None:
+                    AgentToolExecution.objects.create(
+                        tenant=session.tenant,
+                        session=session,
+                        tool_name=tool_name,
+                        input_params=tool_params,
+                        output_summary=json.dumps(result.get("result", result), default=str)[:2000],
+                        execution_time_ms=result.get("execution_time_ms"),
+                        success=result.get("success", True),
+                    )
                 tool_results.append({
                     "function_response": {
                         "name": tool_name,
@@ -131,13 +157,13 @@ def run_agent_turn(client, model_name, user, message, context_type, history=None
 
                 yield ("tool_result", {"tool": tool_name, "result": result.get("result", {})})
 
-            # Add model response and tool results to conversation for next iteration
             contents.append({"role": "model", "parts": response.candidates[0].content.parts})
             contents.append({"role": "user", "parts": tool_results})
 
-        except Exception as e:
+        except Exception:
             logger.exception("Agent turn failed at iteration %d", iteration)
             yield ("error", {"message": "I encountered an error processing your request. Please try again."})
+            persist_session_history(full_response)
             return
 
     yield ("done", {"response": full_response})

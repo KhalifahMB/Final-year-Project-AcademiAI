@@ -125,14 +125,26 @@ class PlanTaskSerializer(serializers.ModelSerializer):
 
 class PlanMilestoneSerializer(serializers.ModelSerializer):
     tasks = PlanTaskSerializer(many=True, read_only=True)
+    plan = serializers.PrimaryKeyRelatedField(
+        queryset=Plan.objects.none(), write_only=True,
+    )
 
     class Meta:
         model = PlanMilestone
         fields = [
-            "id", "title", "description", "due_date", "status",
+            "id", "plan", "title", "description", "due_date", "status",
             "order", "progress_value", "tasks",
         ]
         read_only_fields = ["id"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user and user.is_authenticated:
+            self.fields["plan"].queryset = Plan.objects.filter(
+                tenant=user.tenant, user=user,
+            )
 
 
 class PlanSerializer(serializers.ModelSerializer):

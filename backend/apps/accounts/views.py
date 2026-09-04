@@ -75,6 +75,7 @@ class SignupView(APIView):
                 role=role,
                 tenant_slug=data.get("tenant_slug"),
                 programme_id=data.get("programme"),
+                department_id=data.get("department"),
                 gender=data.get("gender", ""),
                 avatar_preset=data.get("avatar_preset", ""),
             )
@@ -575,7 +576,7 @@ class UserAdminViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return User.objects.none()
-        return User.objects.filter(tenant=self.request.user.tenant).order_by("email")
+        return User.objects.filter(tenant=self.request.user.tenant).select_related("tenant").order_by("email")
 
     def perform_update(self, serializer):
         old_role = serializer.instance.role

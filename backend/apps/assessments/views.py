@@ -136,6 +136,17 @@ class QuizAttemptViewSet(TenantModelViewSet):
         quiz_id = serializer.validated_data.get("quiz")
         if quiz_id is None or quiz_id.status != Quiz.Status.PUBLISHED:
             raise PermissionDenied("This quiz is not open for attempts.")
+        if quiz_id.course_offering_id is not None:
+            from apps.academics.models import CourseEnrollment
+
+            enrolled = CourseEnrollment.objects.filter(
+                tenant=user.tenant,
+                student=user,
+                course_offering_id=quiz_id.course_offering_id,
+                status=CourseEnrollment.Status.ENROLLED,
+            ).exists()
+            if not enrolled:
+                raise PermissionDenied("You are not enrolled in this course.")
         serializer.save(
             tenant=user.tenant,
             student=user,

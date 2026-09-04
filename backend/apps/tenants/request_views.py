@@ -18,9 +18,48 @@ from apps.common.permissions import IsSuperuser
 from .models import Tenant, TenantRequest
 from .serializers import (
     TenantRequestCreateSerializer,
+    TenantRequestEmailCheckSerializer,
     TenantRequestReviewSerializer,
     TenantRequestSerializer,
 )
+
+
+@extend_schema(
+    tags=["Tenants"],
+    summary="Check requester email availability (public)",
+    description=(
+        "Public step-1 gate for the institution-request wizard. Returns "
+        "whether the address is already attached to an account. "
+        "Rate-limited via the tenant_request throttle."
+    ),
+)
+class TenantRequestEmailCheckView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_scope = "tenant_request"
+
+    def post(self, request):
+        from apps.accounts.models import User
+
+        ser = TenantRequestEmailCheckSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        email = ser.validated_data["requester_email"]
+        taken = User.objects.filter(email__iexact=email).exists()
+        if taken:
+            return Response(
+                {
+                    "success": True,
+                    "available": False,
+                    "detail": "An account with this email already exists. Please sign in instead.",
+                }
+            )
+        return Response(
+            {
+                "success": True,
+                "available": True,
+                "detail": "Email is available.",
+            }
+        )
 
 
 @extend_schema(

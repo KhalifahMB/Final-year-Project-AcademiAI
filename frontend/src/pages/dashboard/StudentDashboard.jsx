@@ -36,28 +36,14 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-import { TimeAgo } from './DashboardPage.helpers';
+import { TimeAgo, Meter } from './DashboardPage.helpers';
 import { greeting } from '@/lib/utils';
 import { dashboardApi } from '@/services/api';
 import AiInsightCard from '@/components/shared/AiInsightCard';
 
 /* ---------------------------------------------------------------- */
-/* Small atoms                                                       */
+/* Sections                                                          */
 /* ---------------------------------------------------------------- */
-
-function Meter({ pct, tone = 'accent' }) {
-  const toneColor = {
-    accent: 'bg-[var(--accent)]',
-    ok: 'bg-[var(--success)]',
-    warn: 'bg-[var(--warn)]',
-    bad: 'bg-[var(--danger)]',
-  }[tone];
-  return (
-    <span className="meter" aria-label={`${pct}%`}>
-      <span className={toneColor} style={{ width: `${Math.max(4, Math.min(100, pct))}%` }} />
-    </span>
-  );
-}
 
 function Pill({ children, tone = 'soft' }) {
   const tones = {
@@ -107,12 +93,13 @@ function UpNext({ items }) {
         </div>
       ) : (
         <ul className="-mx-2 space-y-1">
-          {items.slice(0, 5).map((it) => (
-            <li key={it.id}>
-              <Link
-                to={it.kind === 'quiz' ? `/quizzes/${it.id}` : '#'}
-                className="group flex items-center gap-3 rounded-[var(--radius-md)] px-2 py-2 transition-colors hover:bg-[var(--hover)]"
-              >
+          {items.slice(0, 5).map((it) => {
+            // Quizzes open directly in the take flow (/quizzes/:id/take is
+            // the only quiz-detail route). Unknown kinds render as a static
+            // row — never a dead "#" link.
+            const to = it.kind === 'quiz' && it.id ? `/quizzes/${it.id}/take` : null;
+            const Row = (
+              <>
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
                   {it.kind === 'quiz' ? (
                     <ClipboardList className="h-[16px] w-[16px]" aria-hidden />
@@ -131,9 +118,25 @@ function UpNext({ items }) {
                 <Pill tone={it.status === 'due_soon' ? 'warn' : 'accent'}>
                   {it.status === 'due_soon' ? 'Due soon' : 'Available'}
                 </Pill>
-              </Link>
-            </li>
-          ))}
+              </>
+            );
+            return (
+              <li key={it.id}>
+                {to ? (
+                  <Link
+                    to={to}
+                    className="group flex items-center gap-3 rounded-[var(--radius-md)] px-2 py-2 transition-colors hover:bg-[var(--hover)]"
+                  >
+                    {Row}
+                  </Link>
+                ) : (
+                  <div className="flex items-center gap-3 rounded-[var(--radius-md)] px-2 py-2">
+                    {Row}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
@@ -207,8 +210,8 @@ function ContinueLearning({ courses }) {
                 className="group rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)]/40 p-4 transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)]"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex h-8 min-w-0 items-center rounded-[var(--radius-sm)] bg-[var(--accent-soft)] px-2 font-mono text-[11px] font-[650] text-[var(--accent-strong)]">
-                    {c.code}
+                  <span className="inline-flex h-8 min-w-0 max-w-full items-center overflow-hidden rounded-[var(--radius-sm)] bg-[var(--accent-soft)] px-2 font-mono text-[11px] font-[650] text-[var(--accent-strong)]">
+                    <span className="truncate">{c.code}</span>
                   </span>
                   <Pill tone={tone}>
                     {c.status === 'on_track' ? 'On track' : 'Behind'}
@@ -254,7 +257,11 @@ function StudyActivity({ chartData, range, onChangeRange, loading, statsRow }) {
             Your week, at a glance
           </h3>
         </div>
-        <div className="inline-flex rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-0.5 text-[11.5px]">
+        <div
+          className="inline-flex rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] p-0.5 text-[11.5px]"
+          role="group"
+          aria-label="Activity range"
+        >
           {[
             { id: 'day', label: 'Day' },
             { id: 'week', label: 'Week' },
@@ -264,6 +271,7 @@ function StudyActivity({ chartData, range, onChangeRange, loading, statsRow }) {
               key={o.id}
               type="button"
               onClick={() => onChangeRange(o.id)}
+              aria-pressed={range === o.id}
               className={`rounded-[var(--radius-sm)] px-2.5 py-1 font-[600] transition-colors ${
                 range === o.id
                   ? 'bg-[var(--surface)] text-[var(--fg)]'
@@ -306,8 +314,13 @@ function StudyActivity({ chartData, range, onChangeRange, loading, statsRow }) {
             Start a chat or take a quiz to see your study patterns.
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 10, right: 6, left: -22, bottom: 0 }}>
+          <figure className="h-full">
+            <p className="sr-only">
+              Study activity chart: {chartData.reduce((a, p) => a + (p.total || 0), 0)} total
+              events across {chartData.length} {range === 'day' ? 'hours' : range === 'week' ? 'days' : 'weeks'}.
+            </p>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 10, right: 6, left: -22, bottom: 0 }}>
               <defs>
                 <linearGradient id="studyFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.28} />
@@ -353,6 +366,7 @@ function StudyActivity({ chartData, range, onChangeRange, loading, statsRow }) {
               />
             </AreaChart>
           </ResponsiveContainer>
+          </figure>
         )}
       </div>
     </section>

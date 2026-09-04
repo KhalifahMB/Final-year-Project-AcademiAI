@@ -2,7 +2,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 from .views import (
     FacultyViewSet, DepartmentViewSet, ProgrammeViewSet,
-    ProgrammeDirectoryView,
+    FacultyDirectoryView, DepartmentDirectoryView, ProgrammeDirectoryView,
     AcademicSessionViewSet, SemesterViewSet, CourseViewSet,
     CourseOfferingViewSet, LecturerAssignmentViewSet, CourseEnrollmentViewSet,
     CurriculumCourseViewSet,
@@ -21,7 +21,17 @@ router.register("course-enrollments", CourseEnrollmentViewSet, basename="course-
 router.register("curriculum", CurriculumCourseViewSet, basename="curriculum")
 
 urlpatterns = [
-    # Before the router so "programme-directory" is not parsed as a pk.
+    # Before the router so "*-directory" is not parsed as a pk.
+    path(
+        "faculty-directory/",
+        FacultyDirectoryView.as_view(),
+        name="faculty-directory",
+    ),
+    path(
+        "department-directory/",
+        DepartmentDirectoryView.as_view(),
+        name="department-directory",
+    ),
     path(
         "programme-directory/",
         ProgrammeDirectoryView.as_view(),

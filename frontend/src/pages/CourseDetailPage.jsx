@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 
 const UPLOAD_ACCEPT = '.txt,.md,.pdf,.docx,.pptx,.json,.csv,.xlsx,.ppt,.doc,.xls';
+const UPLOAD_EXTENSIONS = UPLOAD_ACCEPT.split(',').map((s) => s.trim().toLowerCase());
 const UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
 const UPLOAD_MAX_FILES = 20;
 
@@ -56,21 +57,27 @@ export default function CourseDetailPage() {
  const [isDragging, setIsDragging] = useState(false);
 
  const addFiles = (list) => {
-  setUploadError('');
-  const next = [];
-  for (const f of list) {
-  if (!f) continue;
-  if (f.size > UPLOAD_MAX_BYTES) {
-  setUploadError(`“${f.name}” exceeds the 25 MB limit (${formatBytes(f.size)}).`);
-  continue;
-  }
-  if (files.length + next.length >= UPLOAD_MAX_FILES) {
-  setUploadError(`You can upload up to ${UPLOAD_MAX_FILES} files at once.`);
-  break;
-  }
-  next.push(f);
-  }
-  if (next.length) setFiles((prev) => [...prev, ...next]);
+ setUploadError('');
+ const next = [];
+ for (const f of list) {
+ if (!f) continue;
+ const dot = f.name.lastIndexOf('.');
+ const ext = dot >= 0 ? f.name.slice(dot).toLowerCase() : '';
+ if (ext && !UPLOAD_EXTENSIONS.includes(ext)) {
+ setUploadError(`“${f.name}” is not a supported type. Use PDF, DOCX, PPTX, TXT, MD, CSV or JSON.`);
+ continue;
+ }
+ if (f.size > UPLOAD_MAX_BYTES) {
+ setUploadError(`“${f.name}” exceeds the 25 MB limit (${formatBytes(f.size)}).`);
+ continue;
+ }
+ if (files.length + next.length >= UPLOAD_MAX_FILES) {
+ setUploadError(`You can upload up to ${UPLOAD_MAX_FILES} files at once.`);
+ break;
+ }
+ next.push(f);
+ }
+ if (next.length) setFiles((prev) => [...prev, ...next]);
  };
 
  const uploadAll = useMutation({
@@ -182,15 +189,19 @@ export default function CourseDetailPage() {
  const isLoading = offering.isLoading || course.isLoading;
  const code = offering.data?.course_code || course.data?.code || '—';
  const title = offering.data?.course_title || course.data?.title || 'Course Offering';
+ // Lecturers/admins arrive from the catalogue or assigned courses — sending
+ // them "back to my courses" would drop them on a student-only route.
+ const backTo = role === 'student' ? '/my-courses' : role === 'lecturer' ? '/assigned-courses' : '/courses';
+ const backLabel = role === 'tenant_admin' ? 'Back to catalogue' : 'Back to my courses';
 
  return (
  <AppShell title={title} description="Detailed information and resources for this course offering.">
  <Link
- to="/my-courses"
+ to={backTo}
  className="mb-4 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
  >
  <ArrowLeft className="h-3.5 w-3.5" />
- Back to my courses
+ {backLabel}
  </Link>
 
  {isLoading ? (
@@ -279,7 +290,7 @@ export default function CourseDetailPage() {
   </p>
   </div>
   {l.role === 'coordinator' ? (
-  <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium capitalize text-amber-700 dark:text-amber-300">
+  <span className="shrink-0 rounded-full border border-[var(--warn)]/30 bg-[var(--warn-soft)] px-2 py-0.5 text-[10px] font-medium capitalize text-[var(--warn)]">
   Coordinator
   </span>
   ) : null}
@@ -310,7 +321,7 @@ export default function CourseDetailPage() {
   </DialogDescription>
   </DialogHeader>
   {uploadError && (
-  <Alert variant="destructive">
+  <Alert variant="destructive" role="alert">
   <AlertDescription className="text-xs">{String(uploadError)}</AlertDescription>
   </Alert>
   )}
