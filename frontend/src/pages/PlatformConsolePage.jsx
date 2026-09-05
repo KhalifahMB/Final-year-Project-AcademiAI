@@ -181,6 +181,10 @@ export default function PlatformConsolePage() {
                   <Users className="h-4 w-4 text-primary" aria-hidden /> User
                   signups (30 days)
                 </h2>
+                <p className="sr-only">
+                  User signups over the last 30 days, {stats.trends.user_signups.length} data points,
+                  latest: {stats.trends.user_signups[stats.trends.user_signups.length - 1]?.count ?? 0} signups.
+                </p>
                 <div className="mt-4 h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={stats.trends.user_signups}>
@@ -340,11 +344,18 @@ export default function PlatformConsolePage() {
                 </h2>
                 <div className="mt-4 space-y-2.5">
                   {stats.top_tenants.slice(0, 6).map((t, i) => (
-                    <div key={i} className="flex items-center gap-3">
+                    <div key={`${t.tenant__name}-${i}`} className="flex items-center gap-3">
                       <span className="w-32 truncate text-xs text-muted-foreground">
                         {t.tenant__name}
                       </span>
-                      <div className="flex-1">
+                      <div
+                        className="flex-1"
+                        role="progressbar"
+                        aria-valuenow={t.user_count}
+                        aria-valuemin={0}
+                        aria-valuemax={stats.top_tenants[0]?.user_count || 1}
+                        aria-label={`${t.tenant__name} users ${t.user_count}`}
+                      >
                         <div className="h-2 rounded-full bg-muted">
                           <div
                             className="h-2 rounded-full bg-primary/70"

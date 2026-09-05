@@ -75,7 +75,7 @@ export default function LoginPage() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-[12px] font-medium">Email</FormLabel>
+                <FormLabel className="text-xs font-semibold tracking-tight">Email</FormLabel>
                 <FormControl>
                   <Input
                     type="email"
@@ -96,10 +96,10 @@ export default function LoginPage() {
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center justify-between">
-                  <FormLabel className="text-[12px] font-medium">Password</FormLabel>
+                  <FormLabel className="text-xs font-semibold tracking-tight">Password</FormLabel>
                   <Link
                     to="/password-reset"
-                    className="landing-text-link text-[12px] font-medium"
+                    className="landing-text-link text-xs font-medium"
                   >
                     Forgot?
                   </Link>

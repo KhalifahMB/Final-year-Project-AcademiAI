@@ -27,9 +27,9 @@ function formatBytes(bytes) {
 }
 
 const ROLE_STYLES = {
-  tenant_admin: "bg-violet-500/12 text-violet-700 dark:text-violet-300 border-violet-500/25",
-  lecturer: "bg-sky-500/12 text-sky-700 dark:text-sky-300 border-sky-500/25",
-  student: "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300 border-indigo-500/25",
+  tenant_admin: "bg-[var(--accent-soft)] text-[var(--accent-strong)] border-[var(--accent)]/25",
+  lecturer: "bg-[var(--info-soft)] text-[var(--info)] border-[var(--info)]/25",
+  student: "bg-[var(--surface-2)] text-[var(--fg-soft)] border-[var(--border)]",
 };
 
 const ROLE_LABELS = {
@@ -126,7 +126,14 @@ export default function TenantDetailPage() {
       {detailQ.isLoading ? (
         <SkeletonRows rows={6} />
       ) : detailQ.error ? (
-        <Alert variant="destructive"><AlertDescription>Failed to load tenant details.</AlertDescription></Alert>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription className="flex w-full items-center justify-between gap-3">
+            <span>Failed to load tenant details.</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => detailQ.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : data ? (
         <div className="space-y-6">
           {/* ── Header Card ─────────────────────────────────────── */}

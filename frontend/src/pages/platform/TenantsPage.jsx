@@ -6,8 +6,7 @@ import AppShell from "@/components/layout/AppShell";
 import StatusBadge from "@/components/shared/StatusBadge";
 import SkeletonRows from "@/components/shared/SkeletonRows";
 import Pagination from "@/components/shared/Pagination";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -95,20 +94,21 @@ export default function TenantsPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input
             placeholder="Search institutions…"
+            aria-label="Search institutions by name or slug"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-9"
           />
         </div>
         <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); setPage(1); }}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by status" className="w-[140px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={filterPlan} onValueChange={(v) => { setFilterPlan(v); setPage(1); }}>
-          <SelectTrigger className="w-[130px]"><SelectValue placeholder="All plans" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by plan" className="w-[130px]"><SelectValue placeholder="All plans" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All plans</SelectItem>
             {PLAN_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
@@ -117,11 +117,18 @@ export default function TenantsPage() {
       </div>
 
       {tenantsQ.error ? (
-        <Alert variant="destructive"><AlertDescription>Failed to load institutions — superuser access required.</AlertDescription></Alert>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription className="flex w-full items-center justify-between gap-3">
+            <span>Failed to load institutions — superuser access required.</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => tenantsQ.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : tenantsQ.isLoading ? (
         <SkeletonRows rows={5} />
       ) : (
-        <div className="overflow-hidden rounded-xl card-surface">
+        <div className="overflow-x-auto rounded-xl card-surface">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">

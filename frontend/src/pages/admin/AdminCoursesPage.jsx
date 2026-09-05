@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import EmptyState from '@/components/shared/EmptyState';
 import SkeletonRows from '@/components/shared/SkeletonRows';
 import { BookOpen, ChevronRight, Plus } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const toList = (d) => d?.results || d || [];
 
@@ -32,7 +33,7 @@ export default function AdminCoursesPage() {
   const deptQ = useQuery({
     queryKey: ['departments'],
     queryFn: async () => toList((await api.get('/departments/?page_size=200')).data),
-    enabled: addOpen,
+    staleTime: 60_000,
   });
 
   const deptName = (id) => (deptQ.data || []).find((d) => d.id === id)?.name || '—';
@@ -67,6 +68,17 @@ export default function AdminCoursesPage() {
         <CardContent className="p-0">
           {coursesQ.isLoading ? (
             <div className="p-4"><SkeletonRows rows={4} /></div>
+          ) : coursesQ.error ? (
+            <div className="p-4">
+              <Alert variant="destructive" role="alert">
+                <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+                  <span>Failed to load courses</span>
+                  <Button type="button" variant="outline" size="sm" onClick={() => coursesQ.refetch()} className="h-7 shrink-0 text-[11px]">
+                    Retry
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            </div>
           ) : (coursesQ.data || []).length === 0 ? (
             <div className="p-4">
               <EmptyState

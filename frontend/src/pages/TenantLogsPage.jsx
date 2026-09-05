@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import EmptyState from '@/components/shared/EmptyState';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -27,10 +29,21 @@ const CATEGORIES = [
 ];
 
 const levelConfig = {
-  info: { icon: Info, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  warning: { icon: AlertTriangle, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-  error: { icon: Bug, color: 'text-red-500', bg: 'bg-red-500/10' },
+  info: { icon: Info, color: 'text-[var(--info)]', bg: 'bg-[var(--info-soft)]' },
+  warning: { icon: AlertTriangle, color: 'text-[var(--warn)]', bg: 'bg-[var(--warn-soft)]' },
+  error: { icon: Bug, color: 'text-[var(--danger)]', bg: 'bg-[var(--danger-soft)]' },
 };
+
+function safeTimeAgo(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return formatDistanceToNow(d, { addSuffix: true });
+  } catch {
+    return '';
+  }
+}
 
 export default function TenantLogsPage() {
   const [level, setLevel] = useState('');
@@ -38,7 +51,7 @@ export default function TenantLogsPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['tenant-logs', level, category, search, page],
     queryFn: async () => {
       const params = { page, page_size: 50 };
@@ -53,16 +66,18 @@ export default function TenantLogsPage() {
 
   const logs = data?.results || data || [];
   const count = data?.count || logs.length;
+  const totalPages = Math.max(1, Math.ceil(count / 50));
 
   return (
     <AppShell title="Tenant Logs" description="Monitor system activity and API access for your institution.">
       {/* Filters */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Filter className="h-4 w-4 text-muted-foreground" aria-hidden />
           <select
             value={level}
             onChange={(e) => { setLevel(e.target.value); setPage(1); }}
+            aria-label="Filter by level"
             className="h-8 rounded-md border bg-background px-2 text-xs"
           >
             {LEVELS.map((l) => (
@@ -72,6 +87,7 @@ export default function TenantLogsPage() {
           <select
             value={category}
             onChange={(e) => { setCategory(e.target.value); setPage(1); }}
+            aria-label="Filter by category"
             className="h-8 rounded-md border bg-background px-2 text-xs"
           >
             {CATEGORIES.map((c) => (
@@ -80,16 +96,28 @@ export default function TenantLogsPage() {
           </select>
         </div>
         <div className="relative flex-1 max-w-xs">
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <input
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             placeholder="Search logs…"
+            aria-label="Search logs"
             className="h-8 w-full rounded-md border bg-background pl-8 pr-2 text-xs"
           />
         </div>
         <span className="text-xs text-muted-foreground">{count} entries</span>
       </div>
+
+      {error ? (
+        <Alert variant="destructive" role="alert" className="mb-4">
+          <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+            <span>Failed to load logs{error?.response?.data?.detail ? `: ${error.response.data.detail}` : ''}</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {/* Log entries */}
       {isLoading ? (
@@ -124,9 +152,9 @@ export default function TenantLogsPage() {
                     {log.response_status_code && (
                       <span className={cn(
                         'rounded px-1.5 py-0.5 text-[10px] font-semibold',
-                        log.response_status_code >= 500 ? 'bg-red-500/10 text-red-500' :
-                        log.response_status_code >= 400 ? 'bg-amber-500/10 text-amber-500' :
-                        'bg-green-500/10 text-green-500'
+                        log.response_status_code >= 500 ? 'bg-[var(--danger-soft)] text-[var(--danger)]' :
+                        log.response_status_code >= 400 ? 'bg-[var(--warn-soft)] text-[var(--warn)]' :
+                        'bg-[var(--success-soft)] text-[var(--success)]'
                       )}>
                         {log.response_status_code}
                       </span>
@@ -140,7 +168,7 @@ export default function TenantLogsPage() {
                   <div className="mt-1 flex items-center gap-3 text-[11px] text-muted-foreground">
                     {log.actor_email && <span>{log.actor_email}</span>}
                     {log.ip_address && <span>{log.ip_address}</span>}
-                    <span title={log.timestamp}>{formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}</span>
+                    <span title={log.timestamp}>{safeTimeAgo(log.timestamp)}</span>
                   </div>
                 </div>
               </div>
@@ -160,11 +188,11 @@ export default function TenantLogsPage() {
           >
             Previous
           </button>
-          <span className="text-xs text-muted-foreground">Page {page}</span>
+          <span className="text-xs text-muted-foreground" aria-live="polite">Page {page} of {totalPages}</span>
           <button
             type="button"
             onClick={() => setPage((p) => p + 1)}
-            disabled={logs.length < 50}
+            disabled={page >= totalPages || logs.length < 50}
             className="rounded-md border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent disabled:opacity-50"
           >
             Next

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
+import StatTile from '@/components/shared/StatTile';
 import EmptyState from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -92,13 +93,13 @@ export default function QuizzesPage() {
  </Link>
  </Button>
  ) : (
- <Button
- type="button"
- size="sm"
- onClick={() => gen.mutate()}
- disabled={generating}
- className="h-8 gap-1.5 bg-[var(--accent)] px-3 text-xs text-white hover:bg-[var(--accent-strong)]"
- >
+  <Button
+  type="button"
+  size="sm"
+  onClick={() => gen.mutate()}
+  disabled={generating}
+  className="h-8 gap-1.5 bg-[var(--accent)] px-3 text-xs text-[var(--on-accent)] hover:bg-[var(--accent-strong)]"
+  >
  {generating ? (
  <Loader2 className="h-3.5 w-3.5 animate-spin" />
  ) : (
@@ -110,8 +111,8 @@ export default function QuizzesPage() {
  }
  >
  {/* AI generation banner (students only while generating) */}
- {generating && !isStaff && (
- <div className="mb-4 flex items-center gap-3 rounded-xl border border-primary/30  var(--accent-soft) p-3.5">
+  {generating && !isStaff && (
+  <div role="status" className="mb-4 flex items-center gap-3 rounded-xl border border-primary/30 bg-[var(--accent-soft)] p-3.5">
  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent)] text-[var(--on-accent)]">
  <BrainCircuit className="h-4 w-4" aria-hidden />
  </span>
@@ -123,11 +124,11 @@ export default function QuizzesPage() {
  </div>
  )}
 
- {error ? (
- <Alert variant="destructive" className="mb-4">
- <AlertDescription className="text-xs">Failed to load quizzes</AlertDescription>
- </Alert>
- ) : null}
+  {error ? (
+  <Alert variant="destructive" role="alert" className="mb-4">
+  <AlertDescription className="text-xs">Failed to load quizzes{error?.response?.data?.detail ? `: ${error.response.data.detail}` : ''}</AlertDescription>
+  </Alert>
+  ) : null}
 
  {/* Stats strip */}
  {!isLoading && (data || []).length > 0 && (
@@ -139,15 +140,16 @@ export default function QuizzesPage() {
  </div>
  )}
 
- {/* Filter chips */}
- {!isLoading && (data || []).length > 0 && (
- <div className="mb-3 flex flex-wrap items-center gap-1">
- {STATUSES.map((s) => (
- <button
- key={s}
- type="button"
- onClick={() => setStatusFilter(s)}
- className={cn(
+  {/* Filter chips */}
+  {!isLoading && (data || []).length > 0 && (
+  <div className="mb-3 flex flex-wrap items-center gap-1" role="group" aria-label="Filter quizzes by status">
+  {STATUSES.map((s) => (
+  <button
+  key={s}
+  type="button"
+  onClick={() => setStatusFilter(s)}
+  aria-pressed={statusFilter === s}
+  className={cn(
  'inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium capitalize transition-colors',
  statusFilter === s
  ? 'bg-primary/10 text-primary'
@@ -189,13 +191,13 @@ export default function QuizzesPage() {
  ? 'Create a quiz from the manager or generate one with AI.'
  : 'Generate a practice quiz with AI, or wait for your lecturer to publish one.'
  }
- action={
- !isStaff && statusFilter === 'all' ? 'Generate practice quiz' : undefined
- }
- actionTo={
- !isStaff && statusFilter === 'all' ? undefined : undefined
- }
- />
+  action={
+  !isStaff && statusFilter === 'all' ? 'Generate practice quiz' : undefined
+  }
+  onAction={
+  !isStaff && statusFilter === 'all' ? () => gen.mutate() : undefined
+  }
+  />
  ) : (
  <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
  {quizzes.map((q) => (
@@ -207,26 +209,8 @@ export default function QuizzesPage() {
  ))}
  </ul>
  )}
- </AppShell>
- );
-}
-
-function StatTile({ label, value, suffix = '', icon: Icon, tone = 'indigo' }) {
- const tones = {
- indigo: 'text-primary bg-primary/10',
- emerald: 'text-[var(--success)] bg-[var(--success-soft)] ',
- amber: 'text-amber-600 bg-[var(--warn-soft)] dark:text-amber-400',
- violet: 'text-[var(--accent-strong)] bg-[var(--accent-soft)] ',
- };
- return (
- <div className="flex items-center gap-3 rounded-xl border bg-card/60 px-4 py-3">
- {Icon && <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg', tones[tone])}><Icon className="h-4 w-4" aria-hidden /></span>}
- <div className="min-w-0">
- <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
- <p className="text-xl font-semibold tabular-nums tracking-tight">{value ?? 0}{suffix}</p>
- </div>
- </div>
- );
+  </AppShell>
+  );
 }
 
 function QuizCard({ q, isStaff }) {

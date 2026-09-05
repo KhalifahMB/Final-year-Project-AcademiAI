@@ -19,12 +19,13 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import {
- StickyNote,
- Plus,
- Save,
- Trash2,
- Search,
- Bold,
+  StickyNote,
+  Plus,
+  Save,
+  Trash2,
+  Search,
+  Bold,
+  ChevronLeft,
  Italic,
  Underline as UnderlineIcon,
  Strikethrough,
@@ -53,18 +54,20 @@ DropdownMenuItem,
 
 /* ---------------- Toolbar ---------------- */
 
-function ToolbarBtn({ active, onClick, icon: Icon, title }) {
+function ToolbarBtn({ active, onClick, icon: Icon, title, label }) {
  return (
  <button
  type="button"
  title={title}
+ aria-label={label || title}
+ aria-pressed={active}
  onClick={onClick}
  className={cn(
  'inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
  active && 'bg-primary/10 text-primary',
  )}
  >
- <Icon className="h-3.5 w-3.5" />
+ <Icon className="h-3.5 w-3.5" aria-hidden />
  </button>
  );
 }
@@ -77,33 +80,38 @@ function EditorToolbar({ editor, onAddImage }) {
  const fileRef = useRef(null);
  if (!editor) return null;
  return (
- <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/30 px-2 py-1.5">
+ <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/30 px-2 py-1.5" role="toolbar" aria-label="Note formatting">
  <ToolbarBtn
  title="Bold (⌘B)"
+ label="Bold"
  icon={Bold}
  active={editor.isActive('bold')}
  onClick={() => editor.chain().focus().toggleBold().run()}
  />
  <ToolbarBtn
  title="Italic (⌘I)"
+ label="Italic"
  icon={Italic}
  active={editor.isActive('italic')}
  onClick={() => editor.chain().focus().toggleItalic().run()}
  />
  <ToolbarBtn
  title="Underline (⌘U)"
+ label="Underline"
  icon={UnderlineIcon}
  active={editor.isActive('underline')}
  onClick={() => editor.chain().focus().toggleUnderline().run()}
  />
  <ToolbarBtn
  title="Strikethrough"
+ label="Strikethrough"
  icon={Strikethrough}
  active={editor.isActive('strike')}
  onClick={() => editor.chain().focus().toggleStrike().run()}
  />
  <ToolbarBtn
  title="Highlight"
+ label="Highlight"
  icon={Highlighter}
  active={editor.isActive('highlight')}
  onClick={() => editor.chain().focus().toggleHighlight().run()}
@@ -111,18 +119,21 @@ function EditorToolbar({ editor, onAddImage }) {
  <Divider />
  <ToolbarBtn
  title="Heading 1"
+ label="Heading 1"
  icon={Heading1}
  active={editor.isActive('heading', { level: 1 })}
  onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
  />
  <ToolbarBtn
  title="Heading 2"
+ label="Heading 2"
  icon={Heading2}
  active={editor.isActive('heading', { level: 2 })}
  onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
  />
  <ToolbarBtn
  title="Heading 3"
+ label="Heading 3"
  icon={Heading3}
  active={editor.isActive('heading', { level: 3 })}
  onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
@@ -130,24 +141,28 @@ function EditorToolbar({ editor, onAddImage }) {
  <Divider />
  <ToolbarBtn
  title="Bullet list"
+ label="Bullet list"
  icon={List}
  active={editor.isActive('bulletList')}
  onClick={() => editor.chain().focus().toggleBulletList().run()}
  />
  <ToolbarBtn
  title="Ordered list"
+ label="Numbered list"
  icon={ListOrdered}
  active={editor.isActive('orderedList')}
  onClick={() => editor.chain().focus().toggleOrderedList().run()}
  />
  <ToolbarBtn
  title="Blockquote"
+ label="Blockquote"
  icon={Quote}
  active={editor.isActive('blockquote')}
  onClick={() => editor.chain().focus().toggleBlockquote().run()}
  />
  <ToolbarBtn
  title="Code block"
+ label="Code block"
  icon={Code}
  active={editor.isActive('codeBlock')}
  onClick={() => editor.chain().focus().toggleCodeBlock().run()}
@@ -155,6 +170,7 @@ function EditorToolbar({ editor, onAddImage }) {
  <Divider />
  <ToolbarBtn
  title="Link"
+ label="Insert link"
  icon={LinkIcon}
  active={editor.isActive('link')}
  onClick={() => {
@@ -165,10 +181,11 @@ function EditorToolbar({ editor, onAddImage }) {
  <button
  type="button"
  title="Insert image"
+ aria-label="Insert image"
  onClick={() => fileRef.current?.click()}
  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
  >
- <ImageIcon className="h-3.5 w-3.5" />
+ <ImageIcon className="h-3.5 w-3.5" aria-hidden />
  </button>
  <input
  ref={fileRef}
@@ -230,10 +247,12 @@ function SlashMenu({ pos, items, activeIdx, onPick }) {
  if (!pos) return null;
  return (
  <div
+ role="listbox"
+ aria-label="Block commands"
  className="fixed z-50 w-56 overflow-hidden rounded-lg border bg-popover py-1"
  style={{ top: pos.top, left: pos.left }}
  >
- <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+ <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" aria-hidden>
  Blocks
  </p>
  {items.map((it, i) => {
@@ -242,6 +261,8 @@ function SlashMenu({ pos, items, activeIdx, onPick }) {
  <button
  key={it.title}
  type="button"
+ role="option"
+ aria-selected={i === activeIdx}
  onMouseDown={(e) => {
  e.preventDefault();
  onPick(i);
@@ -269,7 +290,8 @@ export default function NotesPage() {
  const [activeId, setActiveId] = useState(null);
  const [title, setTitle] = useState('');
  const [isNew, setIsNew] = useState(false);
- const [noteToDelete, setNoteToDelete] = useState(null);
+  const [noteToDelete, setNoteToDelete] = useState(null);
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
  const [saveState, setSaveState] = useState('idle'); // idle | saving | saved
  const [slash, setSlash] = useState({
  open: false,
@@ -357,14 +379,18 @@ onSuccess: (res) => {
  },
  });
 
- const bulkDeleteMut = useMutation({
- mutationFn: (ids) => notesApi.bulkDelete(ids),
- onSuccess: () => {
- toast.success(`${selectedNotes.size} notes deleted`);
- qc.invalidateQueries({ queryKey: ['notes'] });
- setSelectedNotes(new Set());
- },
- });
+  const bulkDeleteMut = useMutation({
+  mutationFn: (ids) => notesApi.bulkDelete(ids),
+  onSuccess: () => {
+  toast.success(`${selectedNotes.size} notes deleted`);
+  qc.invalidateQueries({ queryKey: ['notes'] });
+  setSelectedNotes(new Set());
+  setBulkConfirmOpen(false);
+  },
+  onError: () => {
+  toast.error('Could not delete notes');
+  },
+  });
 
  const editor = useEditor({
  extensions: [
@@ -569,13 +595,24 @@ const commitSave = useCallback(
  [],
  );
 
-// Image insert (base64 for now; backend persists HTML as-is)
+// Image insert (base64 for now; backend persists HTML as-is). Images only,
+// capped at 5 MB — anything else would silently bloat the note document.
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
   const addImage = (file, ed) => {
- const reader = new FileReader();
- reader.onload = (ev) =>
- ed.chain().focus().setImage({ src: ev.target.result }).run();
- reader.readAsDataURL(file);
- };
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+  toast.error('Only image files can be inserted.');
+  return;
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+  toast.error(`Image exceeds the 5 MB limit (${(file.size / 1024 / 1024).toFixed(1)} MB).`);
+  return;
+  }
+  const reader = new FileReader();
+  reader.onload = (ev) =>
+  ed.chain().focus().setImage({ src: ev.target.result }).run();
+  reader.readAsDataURL(file);
+  };
 
  const createNew = () => {
  setActiveId(null);
@@ -652,37 +689,37 @@ const commitSave = useCallback(
  </Button>
  }
  >
- <div className="flex h-[calc(100vh-9rem)] gap-0 overflow-hidden rounded-xl border bg-card">
- {/* List */}
- <aside className="flex w-full shrink-0 flex-col border-r md:w-72 lg:w-80">
- <div className="border-b p-3">
+  <div className="flex h-[calc(100vh-9rem)] gap-0 overflow-hidden rounded-xl border bg-card">
+  {/* List — on small screens it yields to the editor with a Back button
+  to return, otherwise the editor would be unreachable on mobile. */}
+  <aside className={cn('shrink-0 flex-col border-r md:flex md:w-72 lg:w-80', showingEditor ? 'hidden w-full' : 'flex w-full')}>
+  <div className="border-b p-3">
  <div className="relative">
  <Search
  className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
  aria-hidden
  />
- <Input
- placeholder="Search notes…"
- className="h-8 pl-8 pr-2 text-xs"
- value={search}
- onChange={(e) => setSearch(e.target.value)}
- />
+  <Input
+  placeholder="Search notes…"
+  aria-label="Search notes by title or content"
+  className="h-8 pl-8 pr-2 text-xs"
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+  />
  </div>
  {selectedNotes.size > 0 && (
  <div className="mt-2 flex items-center justify-between rounded-md bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">
  <span>{selectedNotes.size} selected</span>
- <Button
- variant="ghost"
- size="sm"
- className="h-6 px-2 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive"
- onClick={() =>
- bulkDeleteMut.mutate(Array.from(selectedNotes))
- }
- disabled={bulkDeleteMut.isPending}
- >
- <Trash2 className="mr-1 h-3 w-3" />
- Delete
- </Button>
+  <Button
+  variant="ghost"
+  size="sm"
+  className="h-6 px-2 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive"
+  onClick={() => setBulkConfirmOpen(true)}
+  disabled={bulkDeleteMut.isPending}
+  >
+  <Trash2 className="mr-1 h-3 w-3" />
+  Delete
+  </Button>
  </div>
  )}
  </div>
@@ -706,62 +743,63 @@ const commitSave = useCallback(
  <p className="text-xs font-medium">
  {search ? 'No matching notes' : 'No notes yet'}
  </p>
- <p className="mt-0.5 text-[11px] text-muted-foreground">
- {search
- ? 'Try a different search.'
- : 'Press"New note" to start writing.'}
- </p>
+  <p className="mt-0.5 text-[11px] text-muted-foreground">
+  {search
+  ? 'Try a different search.'
+  : 'Press "New note" to start writing.'}
+  </p>
  </div>
  ) : (
  <ul className="space-y-0.5">
- {filtered.map((note) => {
- const isActive = isNew ? false : activeId === note.id;
- const isSelected = selectedNotes.has(note.id);
- return (
- <li key={note.id}>
- <button
- type="button"
- onClick={() => openNote(note)}
- className={cn(
- 'group flex w-full items-start gap-2 rounded-lg p-2.5 text-left transition-colors',
- isActive ? 'bg-primary/10' : 'hover:bg-muted/60',
- )}
- >
- <span
- onClick={(e) => e.stopPropagation()}
- className="mt-0.5 shrink-0"
- >
- <Checkbox
- checked={isSelected}
- onCheckedChange={() => toggleSelect(note.id)}
- />
- </span>
- <div className="min-w-0 flex-1">
- <div className="flex items-start justify-between gap-1">
- <p
- className={cn(
- 'truncate text-[13px] font-medium',
- isActive && 'text-primary',
- )}
- >
- {note.title || 'Untitled'}
- </p>
- </div>
- <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
- {preview(note.content)}
- </p>
- {note.updated_at && (
- <p className="mt-1 text-[10px] text-muted-foreground/70">
- {formatDistanceToNow(new Date(note.updated_at), {
- addSuffix: true,
- })}
- </p>
- )}
- </div>
- </button>
- </li>
- );
- })}
+  {filtered.map((note) => {
+  const isActive = isNew ? false : activeId === note.id;
+  const isSelected = selectedNotes.has(note.id);
+  return (
+  // Checkbox and opener are siblings — a checkbox nested inside the
+  // open-note button would be invalid interactive nesting.
+  <li key={note.id} className={cn(
+  'group flex w-full items-start gap-1 rounded-lg p-1.5 text-left transition-colors',
+  isActive ? 'bg-primary/10' : 'hover:bg-muted/60',
+  )}>
+  <span className="mt-1.5 shrink-0">
+  <Checkbox
+  checked={isSelected}
+  onCheckedChange={() => toggleSelect(note.id)}
+  aria-label={`Select note ${note.title || 'Untitled'}`}
+  />
+  </span>
+  <button
+  type="button"
+  onClick={() => openNote(note)}
+  aria-current={isActive ? 'true' : undefined}
+  className="min-w-0 flex-1 rounded-sm p-1 text-left focus-visible:outline-2 focus-visible:outline-ring"
+  >
+  <div className="min-w-0 flex-1">
+  <div className="flex items-start justify-between gap-1">
+  <p
+  className={cn(
+  'truncate text-[13px] font-medium',
+  isActive && 'text-primary',
+  )}
+  >
+  {note.title || 'Untitled'}
+  </p>
+  </div>
+  <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+  {preview(note.content)}
+  </p>
+  {note.updated_at && (
+  <p className="mt-1 text-[10px] text-muted-foreground/70">
+  {formatDistanceToNow(new Date(note.updated_at), {
+  addSuffix: true,
+  })}
+  </p>
+  )}
+  </div>
+  </button>
+  </li>
+  );
+  })}
  </ul>
  )}
  </div>
@@ -797,34 +835,49 @@ const commitSave = useCallback(
   }}
   className="flex h-full flex-col"
 >
- {/* Header */}
- <div className="flex items-center justify-between gap-3 border-b px-4 py-2.5">
- <div className="flex min-w-0 flex-1 items-center gap-2">
- <FileText
- className="h-4 w-4 shrink-0 text-primary"
- aria-hidden
- />
- <input
- value={title}
- onChange={(e) => {
- setTitle(e.target.value);
- setSaveState('dirty');
- dirtyRef.current = true;
- }}
- onBlur={() => {
- if (dirtyRef.current) saveNow();
- }}
- placeholder="Untitled note"
- className="min-w-0 flex-1 border-0 bg-transparent text-[15px] font-semibold tracking-tight shadow-none focus-visible:ring-0"
- />
- </div>
+  {/* Header */}
+  <div className="flex items-center justify-between gap-3 border-b px-4 py-2.5">
+  <div className="flex min-w-0 flex-1 items-center gap-2">
+  <Button
+  type="button"
+  variant="ghost"
+  size="icon"
+  className="h-7 w-7 shrink-0 md:hidden"
+  aria-label="Back to notes list"
+  onClick={() => {
+  if (dirtyRef.current) saveNow();
+  setIsNew(false);
+  setActiveId(null);
+  }}
+  >
+  <ChevronLeft className="h-4 w-4" aria-hidden />
+  </Button>
+  <FileText
+  className="h-4 w-4 shrink-0 text-primary"
+  aria-hidden
+  />
+  <input
+  value={title}
+  onChange={(e) => {
+  setTitle(e.target.value);
+  setSaveState('dirty');
+  dirtyRef.current = true;
+  }}
+  onBlur={() => {
+  if (dirtyRef.current) saveNow();
+  }}
+  placeholder="Untitled note"
+  aria-label="Note title"
+  className="min-w-0 flex-1 border-0 bg-transparent text-[15px] font-semibold tracking-tight shadow-none focus-visible:ring-0"
+  />
+  </div>
 <div className="flex shrink-0 items-center gap-2">
         <SaveBadge state={saveState} />
         <Button
           type="submit"
           size="sm"
           className="h-7 gap-1.5 px-3 text-xs"
-          disabled={saveState === 'saving' || (isNew && !title.trim())}
+          disabled={saveState === 'saving'}
         >
           {saveState === 'saving' ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -836,7 +889,7 @@ const commitSave = useCallback(
         {!isNew && displayNote && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Note options">
                 <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -899,6 +952,16 @@ const commitSave = useCallback(
     confirmLabel="Delete"
     destructive
   />
+  <ConfirmDialog
+    open={bulkConfirmOpen}
+    title={`Delete ${selectedNotes.size} note${selectedNotes.size === 1 ? '' : 's'}?`}
+    description="The selected notes will be permanently deleted. This cannot be undone."
+    onConfirm={() => bulkDeleteMut.mutate(Array.from(selectedNotes))}
+    onCancel={() => setBulkConfirmOpen(false)}
+    confirmLabel="Delete all"
+    destructive
+    pending={bulkDeleteMut.isPending}
+  />
   </AppShell>
   );
 }
@@ -913,7 +976,7 @@ function SaveBadge({ state }) {
  }
  if (state === 'dirty') {
  return (
- <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+ <span className="inline-flex items-center gap-1 rounded-full bg-[var(--warn-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--warn)]">
  <Pencil className="h-2.5 w-2.5" /> Unsaved
  </span>
  );

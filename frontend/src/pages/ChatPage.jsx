@@ -171,56 +171,64 @@ function MarkdownContent({ content, sources, onSourceClick }) {
 function SourceCard({ source, active, onClick, onOpenResource, onDetailClick }) {
  const meta = getFileType(source.resource_title || '', source.mime_type || '');
  const FileIcon = meta.icon;
+ // No nested buttons: the header row is the select toggle, the detail
+ // actions sit beneath it as siblings.
  return (
- <button
-  type="button"
-  onClick={onClick}
+ <div
   className={cn(
-   'group flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-all',
+   'group w-full rounded-lg border p-2.5 text-left transition-colors',
    active
     ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/20'
     : 'border-border/60 bg-background/60 hover:border-primary/30 hover:bg-accent/30',
   )}
  >
+ <button
+  type="button"
+  onClick={onClick}
+  aria-pressed={active}
+  aria-label={`${active ? 'Deselect' : 'Select'} source ${source.rank}: ${source.resource_title || source.title || ''}`}
+  className="flex w-full items-start gap-2.5 rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+ >
  <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold', meta.tint)}>
   {source.rank}
  </span>
  <div className="min-w-0 flex-1">
-  <p className="line-clamp-2 text-[12.5px] font-medium leading-snug">{source.resource_title || source.title || `Source ${source.rank}`}</p>
-  {source.chunk_text && (
-   <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground/70">
-    {source.chunk_text.slice(0, 150)}…
-   </p>
-  )}
-  <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
-   <FileIcon className="h-3 w-3" aria-hidden />
-   <span className="uppercase tracking-wide">{meta.label}</span>
-   {source.version_number && <span>· v{source.version_number}</span>}
-   {source.similarity_score != null && (
-    <span>· {Math.round(Number(source.similarity_score) * 100)}% match</span>
-   )}
-  </div>
-  <div className="mt-1.5 flex items-center gap-1">
-   <button
-    type="button"
-    onClick={(e) => { e.stopPropagation(); if (onDetailClick) onDetailClick(source); }}
-    className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/10"
-   >
-    <Link2 className="h-2.5 w-2.5" aria-hidden /> View details
-   </button>
-   {source.resource_id && (
-    <button
-     type="button"
-     onClick={(e) => { e.stopPropagation(); if (onOpenResource) onOpenResource(source.resource_id); }}
-     className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-    >
-     Open resource
-    </button>
-   )}
-   <span className="text-[10px] text-muted-foreground/70">· {source.retrieval_method || 'hybrid'}</span>
-  </div>
+ <p className="line-clamp-2 text-[12.5px] font-medium leading-snug">{source.resource_title || source.title || `Source ${source.rank}`}</p>
+ {source.chunk_text && (
+ <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground/70">
+ {source.chunk_text.slice(0, 150)}…
+ </p>
+ )}
+ <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
+ <FileIcon className="h-3 w-3" aria-hidden />
+ <span className="uppercase tracking-wide">{meta.label}</span>
+ {source.version_number && <span>· v{source.version_number}</span>}
+ {source.similarity_score != null && (
+ <span>· {Math.round(Number(source.similarity_score) * 100)}% match</span>
+ )}
+ </div>
  </div>
  </button>
+ <div className="mt-1.5 flex items-center gap-1">
+ <button
+ type="button"
+ onClick={(e) => { e.stopPropagation(); if (onDetailClick) onDetailClick(source); }}
+ className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/10"
+ >
+ <Link2 className="h-2.5 w-2.5" aria-hidden /> View details
+ </button>
+ {source.resource_id && (
+ <button
+ type="button"
+ onClick={(e) => { e.stopPropagation(); if (onOpenResource) onOpenResource(source.resource_id); }}
+ className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+ >
+ Open resource
+ </button>
+ )}
+ <span className="text-[10px] text-muted-foreground/70">· {source.retrieval_method || 'hybrid'}</span>
+ </div>
+ </div>
  );
 }
 
@@ -229,9 +237,9 @@ function SourceCard({ source, active, onClick, onOpenResource, onDetailClick }) 
 function ConfidenceBadge({ confidence, retrieval_ms }) {
   if (!confidence || confidence === 'none') return null;
   const map = {
-  high: { label: 'Grounded', cls: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', icon: '●' },
-  medium: { label: 'Partial', cls: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', icon: '◐' },
-  low: { label: 'Ungrounded', cls: 'bg-red-500/10 text-red-600 dark:text-red-400', icon: '○' },
+  high: { label: 'Grounded', cls: 'bg-[var(--success-soft)] text-[var(--success)]', icon: '●' },
+  medium: { label: 'Partial', cls: 'bg-[var(--warn-soft)] text-[var(--warn)]', icon: '◐' },
+  low: { label: 'Ungrounded', cls: 'bg-[var(--danger-soft)] text-[var(--danger)]', icon: '○' },
   };
   const { label, cls, icon } = map[confidence] || map.medium;
   return (
@@ -264,9 +272,11 @@ function MessageActions({ content, onRegenerate, isLastAssistant, messageId, ini
  } catch { /* feedback is optimistic; ignore failure */ }
  };
 
- return (
- <div className="mt-2 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
- <Tooltip>
+  return (
+  // Hover-only actions strand touch + keyboard users: reveal on
+  // focus-within everywhere and keep visible on coarse pointers.
+  <div className="mt-2 flex items-center gap-0.5 transition-opacity focus-within:opacity-100 max-md:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+  <Tooltip>
  <TooltipTrigger asChild>
  <button
  type="button"
@@ -299,8 +309,9 @@ function MessageActions({ content, onRegenerate, isLastAssistant, messageId, ini
  <button
  type="button"
  onClick={() => setRating('up')}
- className={cn('rounded-md p-1.5 transition-colors hover:bg-muted', reaction === 'up' ? 'text-[var(--success)]' : 'text-muted-foreground hover:text-foreground')}
- aria-label="Good response"
+  className={cn('rounded-md p-1.5 transition-colors hover:bg-muted', reaction === 'up' ? 'text-[var(--success)]' : 'text-muted-foreground hover:text-foreground')}
+  aria-label="Good response"
+  aria-pressed={reaction === 'up'}
  >
  <ThumbsUp className="h-3.5 w-3.5" />
  </button>
@@ -312,8 +323,9 @@ function MessageActions({ content, onRegenerate, isLastAssistant, messageId, ini
  <button
  type="button"
  onClick={() => setRating('down')}
- className={cn('rounded-md p-1.5 transition-colors hover:bg-muted', reaction === 'down' ? 'text-red-500' : 'text-muted-foreground hover:text-foreground')}
- aria-label="Bad response"
+  className={cn('rounded-md p-1.5 transition-colors hover:bg-muted', reaction === 'down' ? 'text-[var(--danger)]' : 'text-muted-foreground hover:text-foreground')}
+  aria-label="Bad response"
+  aria-pressed={reaction === 'down'}
  >
  <ThumbsDown className="h-3.5 w-3.5" />
  </button>
@@ -542,13 +554,13 @@ function HistoryItem({ s, active, onClick, onDelete }) {
  {s.message_count != null && <span>· {s.message_count} msgs</span>}
  </span>
  </button>
- <button
- type="button"
- onClick={(e) => { e.stopPropagation(); if (onDelete) onDelete(s); }}
- className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
- aria-label="Delete conversation"
- title="Delete"
- >
+  <button
+  type="button"
+  onClick={(e) => { e.stopPropagation(); if (onDelete) onDelete(s); }}
+  className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 max-md:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+  aria-label={`Delete conversation ${s.title || 'Untitled chat'}`}
+  title="Delete"
+  >
  <Trash2 className="h-3 w-3" />
  </button>
  </div>
@@ -601,9 +613,16 @@ export default function ChatPage() {
  const [attachedResources, setAttachedResources] = useState([]);
  const [uploadingFiles, setUploadingFiles] = useState(false);
  const [error, setError] = useState('');
- const endRef = useRef(null);
- const textareaRef = useRef(null);
- const localIdCounter = useRef(0);
+  const endRef = useRef(null);
+  const textareaRef = useRef(null);
+  const localIdCounter = useRef(0);
+  // Only auto-scroll when the reader is already near the bottom — never
+  // yank them away from history they scrolled up to read.
+  const scrollBoxRef = useRef(null);
+  const stuckToBottomRef = useRef(true);
+  const [reducedMotion] = useState(
+  () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  );
 
  // Sources rail state
  const [sourcesRailOpen, setSourcesRailOpen] = useState(!isMobile);
@@ -639,10 +658,16 @@ export default function ChatPage() {
  if (currentSources.length > 0 && !isMobile) setSourcesRailOpen(true);
  }, [currentSources.length, isMobile]);
 
- // Scroll to bottom on new messages
- useEffect(() => {
- endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
- }, [messages, loading]);
+  // Scroll to bottom on new messages — only when already near it.
+  useEffect(() => {
+  if (!stuckToBottomRef.current) return;
+  endRef.current?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'end' });
+  }, [messages, loading, reducedMotion]);
+
+  const onMessagesScroll = (e) => {
+  const el = e.currentTarget;
+  stuckToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
 
   // Deep-link session via ?session=
   useEffect(() => {
@@ -808,9 +833,10 @@ export default function ChatPage() {
  };
 
  const send = async (textOverride) => {
- const content = (textOverride ?? input).trim();
- if ((!content && attachedResources.length === 0) || loading) return;
- setError('');
+  const content = (textOverride ?? input).trim();
+  if ((!content && attachedResources.length === 0) || loading) return;
+  stuckToBottomRef.current = true;
+  setError('');
  setLoading(true);
  const localId = `local-${++localIdCounter.current}`;
  const assistantLocalId = `asst-${++localIdCounter.current}`;
@@ -922,20 +948,24 @@ export default function ChatPage() {
  aria-hidden
  />
  )}
- <aside
- className={cn(
- 'flex shrink-0 flex-col border-r bg-sidebar',
- isMobile
- ? 'fixed inset-y-0 left-0 z-50 w-72 animate-slide-right'
- : 'w-64',
- )}
- >
+  <aside
+  role={isMobile ? 'dialog' : undefined}
+  aria-modal={isMobile ? true : undefined}
+  aria-label="Chat history"
+  onKeyDown={isMobile ? (e) => { if (e.key === 'Escape') setHistoryOpen(false); } : undefined}
+  className={cn(
+  'flex shrink-0 flex-col border-r bg-sidebar',
+  isMobile
+  ? 'fixed inset-y-0 left-0 z-50 w-72 animate-slide-right'
+  : 'w-64',
+  )}
+  >
  <div className="border-b p-3">
  <Button
  size="sm"
  onClick={startNewChat}
- className="h-8 w-full gap-1.5 bg-[var(--accent)] text-xs text-white hover:bg-[var(--accent-strong)]"
- >
+  className="h-8 w-full gap-1.5 bg-[var(--accent)] text-xs text-[var(--on-accent)] hover:bg-[var(--accent-strong)]"
+  >
  <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden />
  New chat
  </Button>
@@ -943,12 +973,13 @@ export default function ChatPage() {
  <div className="border-b px-3 py-2">
  <div className="relative">
  <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" aria-hidden />
- <input
- value={historyQuery}
- onChange={(e) => setHistoryQuery(e.target.value)}
- placeholder="Search history…"
- className="h-7 w-full rounded-md border bg-background pl-7 pr-2 text-[11px] focus-visible:outline-2 focus-visible:outline-ring"
- />
+  <input
+  value={historyQuery}
+  onChange={(e) => setHistoryQuery(e.target.value)}
+  placeholder="Search history…"
+  aria-label="Search chat history"
+  className="h-7 w-full rounded-md border bg-background pl-7 pr-2 text-[11px] focus-visible:outline-2 focus-visible:outline-ring"
+  />
  </div>
  </div>
  <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted">
@@ -1031,9 +1062,9 @@ export default function ChatPage() {
  maxLength={255}
  />
  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={renameSession}>Save</Button>
- <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditingTitle(false)}>
- <X className="h-3.5 w-3.5" />
- </Button>
+  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditingTitle(false)} aria-label="Cancel rename">
+  <X className="h-3.5 w-3.5" />
+  </Button>
  </div>
  ) : (
  <>
@@ -1080,9 +1111,14 @@ export default function ChatPage() {
  </div>
  </header>
 
- {/* Messages */}
- <div className="relative flex min-h-0 flex-1 overflow-hidden">
- <div className="flex-1 overflow-y-auto">
+  {/* Messages */}
+  <div className="relative flex min-h-0 flex-1 overflow-hidden">
+  <div ref={scrollBoxRef} onScroll={onMessagesScroll} className="flex-1 overflow-y-auto">
+  {/* Streaming announces one concise status instead of every token:
+  the full log stays out of the live region to avoid SR spam. */}
+  <p role="status" className="sr-only">
+  {loading ? 'Assistant is responding…' : ''}
+  </p>
  {messages.length === 0 ? (
  <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-6 p-6 text-center sm:p-8">
  {/* Empty hero */}
@@ -1107,8 +1143,8 @@ export default function ChatPage() {
  type="button"
  onClick={() => { setInput(s.prompt); setTimeout(() => send(s.prompt), 0); }}
  disabled={loading}
- className="group flex items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition-all transition-colors hover:border-[var(--border-strong)] "
- >
+  className="group flex items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition-colors hover:border-[var(--border-strong)]"
+  >
  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
  <Icon className="h-4 w-4" aria-hidden />
  </span>
@@ -1123,9 +1159,9 @@ export default function ChatPage() {
  })}
  </div>
  </div>
- ) : (
- <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6" role="log" aria-live="polite">
- {messages.map((msg, idx) => (
+  ) : (
+  <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6" aria-label="Conversation messages">
+  {messages.map((msg, idx) => (
  <MessageBubble
  key={msg.id}
  msg={msg}

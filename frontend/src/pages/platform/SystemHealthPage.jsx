@@ -10,9 +10,9 @@ import { Activity, CheckCircle, Database, HardDrive, MessageSquareText, RefreshC
 function StatusIndicator({ status }) {
   const config = {
     healthy: { color: "bg-[var(--success)]", label: "Healthy", icon: CheckCircle },
-    degraded: { color: "bg-amber-500", label: "Degraded", icon: Activity },
+    degraded: { color: "bg-[var(--warn)]", label: "Degraded", icon: Activity },
     unhealthy: { color: "bg-[var(--danger)]", label: "Unhealthy", icon: XCircle },
-    no_workers: { color: "bg-amber-500", label: "No workers", icon: Activity },
+    no_workers: { color: "bg-[var(--warn)]", label: "No workers", icon: Activity },
   };
   const c = config[status] || config.unhealthy;
   const Icon = c.icon;
@@ -54,7 +54,7 @@ export default function SystemHealthPage() {
       {healthQ.isLoading ? (
         <SkeletonRows rows={4} />
       ) : healthQ.error ? (
-        <Alert variant="destructive"><AlertDescription>Failed to load system health — superuser access required.</AlertDescription></Alert>
+        <Alert variant="destructive" role="alert"><AlertDescription>Failed to load system health — superuser access required.</AlertDescription></Alert>
       ) : health ? (
         <>
           {/* ── Overall Status Banner ──────────────────────────── */}
@@ -62,15 +62,15 @@ export default function SystemHealthPage() {
             health.overall === "healthy"
               ? "border-[var(--success)]/30 bg-[var(--success)]/5"
               : health.overall === "degraded"
-              ? "border-amber-500/30 bg-amber-500/5"
-              : "border-red-500/30 bg-[var(--danger)]/5"
+              ? "border-[var(--warn)]/30 bg-[var(--warn-soft)]"
+              : "border-[var(--danger)]/30 bg-[var(--danger)]/5"
           }`}>
             {health.overall === "healthy" ? (
               <CheckCircle className="h-5 w-5 text-[var(--success)] " aria-hidden />
             ) : health.overall === "degraded" ? (
-              <Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden />
+              <Activity className="h-5 w-5 text-[var(--warn)]" aria-hidden />
             ) : (
-              <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" aria-hidden />
+              <XCircle className="h-5 w-5 text-[var(--danger)]" aria-hidden />
             )}
             <div>
               <p className="text-sm font-semibold capitalize">{health.overall}</p>
@@ -116,7 +116,7 @@ export default function SystemHealthPage() {
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground space-y-1">
                 {health.redis?.latency_ms != null && <p>Latency: {health.redis.latency_ms}ms</p>}
-                {health.redis?.detail && <p className="text-amber-600">{health.redis.detail}</p>}
+                {health.redis?.detail && <p className="text-[var(--warn)]">{health.redis.detail}</p>}
                 {health.redis?.error && <p className="text-destructive">Error: {health.redis.error}</p>}
               </CardContent>
             </Card>
@@ -196,9 +196,9 @@ export default function SystemHealthPage() {
                   <table className="w-full text-left text-xs">
                     <thead className="bg-muted/50">
                       <tr>
-                        <th className="px-3 py-2 font-semibold">Queue</th>
-                        <th className="px-3 py-2 font-semibold text-right">Messages</th>
-                        <th className="px-3 py-2 font-semibold text-right">Consumers</th>
+                        <th scope="col" className="px-3 py-2 font-semibold">Queue</th>
+                        <th scope="col" className="px-3 py-2 font-semibold text-right">Messages</th>
+                        <th scope="col" className="px-3 py-2 font-semibold text-right">Consumers</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -210,7 +210,7 @@ export default function SystemHealthPage() {
                             <td className="px-3 py-2 flex items-center gap-2">
                               <span className="font-medium">{q.name}</span>
                               {isDlq && (
-                                <span className="rounded bg-[var(--danger)]/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-400">
+                                <span className="rounded bg-[var(--danger-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--danger)]">
                                   DLQ
                                 </span>
                               )}

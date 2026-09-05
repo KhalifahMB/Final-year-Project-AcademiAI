@@ -116,7 +116,7 @@ export default function AuthLayout({
 
           <div className="landing-auth__cardwrap">
             <section
-              className="landing-auth__card"
+              className="landing-auth__card card-glass"
               aria-label={typeof title === 'string' ? title : 'Account form'}
             >
               {Icon && (

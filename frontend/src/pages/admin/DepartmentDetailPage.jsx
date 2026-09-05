@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import EmptyState from "@/components/shared/EmptyState";
 import SkeletonRows from "@/components/shared/SkeletonRows";
 import { toast } from "sonner";
-import { BookOpen, ChevronRight, GraduationCap, Pencil, Plus, Trash2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { BookOpen, ChevronRight, GraduationCap, Pencil, Plus, Trash2, ArrowLeft } from "lucide-react";
 
 const toList = (d) => d?.results || d || [];
 
@@ -98,7 +99,9 @@ export default function DepartmentDetailPage() {
     onSuccess: () => {
       toast.success("Department deleted");
       qc.invalidateQueries({ queryKey: ["faculties"] });
-      navigate(-1);
+      // Stay inside the app: back to the parent faculty when known.
+      const parentId = dept?.faculty;
+      navigate(parentId ? `/admin/faculties/${parentId}` : "/admin/tenant", { replace: true });
     },
     onError: (e) => toast.error(errText(e, "Delete failed — remove its courses/programmes first")),
   });
@@ -118,7 +121,7 @@ export default function DepartmentDetailPage() {
             type="button"
             variant="outline"
             size="sm"
-            className="border-red-500/40 text-red-700 hover:bg-[var(--danger)]/10 dark:text-red-400"
+            className="border-[var(--danger)]/40 text-[var(--danger)] hover:bg-[var(--danger-soft)]"
             onClick={() => setConfirmDelete(true)}
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Delete
@@ -127,10 +130,20 @@ export default function DepartmentDetailPage() {
       }
     >
       {dept?.faculty && (
-        <Link to={`/admin/faculties/${dept.faculty}`} className="mb-4 inline-block text-sm text-primary hover:underline">
-          ← Faculty
+        <Link to={`/admin/faculties/${dept.faculty}`} className="mb-4 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Faculty
         </Link>
       )}
+      {deptQ.error ? (
+        <Alert variant="destructive" role="alert" className="mb-4">
+          <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+            <span>Failed to load department</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => deptQ.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <div className="space-y-6">
         {/* Courses */}
@@ -147,6 +160,15 @@ export default function DepartmentDetailPage() {
           <CardContent>
             {coursesQ.isLoading ? (
               <SkeletonRows rows={3} />
+            ) : coursesQ.error ? (
+              <Alert variant="destructive" role="alert">
+                <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+                  <span>Failed to load courses</span>
+                  <Button type="button" variant="outline" size="sm" onClick={() => coursesQ.refetch()} className="h-7 shrink-0 text-[11px]">
+                    Retry
+                  </Button>
+                </AlertDescription>
+              </Alert>
             ) : (coursesQ.data || []).length === 0 ? (
               <EmptyState icon={BookOpen} title="No courses yet" description="Add the first course for this department." />
             ) : (
@@ -189,6 +211,15 @@ export default function DepartmentDetailPage() {
           <CardContent>
             {programmesQ.isLoading ? (
               <SkeletonRows rows={2} />
+            ) : programmesQ.error ? (
+              <Alert variant="destructive" role="alert">
+                <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+                  <span>Failed to load programmes</span>
+                  <Button type="button" variant="outline" size="sm" onClick={() => programmesQ.refetch()} className="h-7 shrink-0 text-[11px]">
+                    Retry
+                  </Button>
+                </AlertDescription>
+              </Alert>
             ) : (programmesQ.data || []).length === 0 ? (
               <EmptyState icon={GraduationCap} title="No programmes yet" description="e.g. BSc Computer Science." />
             ) : (

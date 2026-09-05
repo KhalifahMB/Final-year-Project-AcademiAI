@@ -16,9 +16,11 @@ export default function BrandMark({
   wordmarkClassName = '',
 }) {
   const { dark } = useTheme();
-  const isOnDark = variant === 'dark'; // rendered on a dark surface
-  const isOnLight = variant === 'light'; // rendered on a light surface
-  // variant === 'auto' — adapts to theme
+  const isCurrentDark = variant === 'auto' ? dark : variant === 'dark';
+  const isOnDark = isCurrentDark;
+  // const isOnLight = !isCurrentDark;
+
+  console.log('CuureentDark', isCurrentDark);
 
   const alt = 'AcademiAI';
 
@@ -45,7 +47,7 @@ export default function BrandMark({
   ) : (
     <span
       className={[
-        'inline-grid shrink-0 place-items-center',
+        'inline-grid shrink-0 place-items-center rounded-[8px] p-[3px] shadow-[0_1px_0_rgba(255,255,255,0.08)]',
         size,
         className,
       ].join(' ')}
@@ -59,7 +61,6 @@ export default function BrandMark({
       />
     </span>
   );
-
   if (showWordmark) {
     return (
       <span className="inline-flex items-center gap-2.5">

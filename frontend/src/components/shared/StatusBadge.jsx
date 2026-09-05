@@ -1,17 +1,17 @@
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLES = {
-  ready: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 border-emerald-500/25",
-  pending: "bg-amber-500/12 text-amber-700 dark:text-amber-400 border-amber-500/25",
-  processing: "bg-sky-500/12 text-sky-700 dark:text-sky-400 border-sky-500/25",
-  failed: "bg-red-500/12 text-red-700 dark:text-red-400 border-red-500/25",
-  published: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 border-emerald-500/25",
-  draft: "bg-zinc-500/12 text-zinc-600 dark:text-zinc-300 border-zinc-500/25",
-  archived: "bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 border-zinc-500/20",
-  enrolled: "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300 border-indigo-500/25",
-  completed: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 border-emerald-500/25",
-  dropped: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20",
-  active: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400 border-emerald-500/25",
+  ready: "bg-[var(--success-soft)] text-[var(--success)] border-[var(--success)]/25",
+  pending: "bg-[var(--warn-soft)] text-[var(--warn)] border-[var(--warn)]/25",
+  processing: "bg-[var(--info-soft)] text-[var(--info)] border-[var(--info)]/25",
+  failed: "bg-[var(--danger-soft)] text-[var(--danger)] border-[var(--danger)]/25",
+  published: "bg-[var(--success-soft)] text-[var(--success)] border-[var(--success)]/25",
+  draft: "bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]",
+  archived: "bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]",
+  enrolled: "bg-[var(--accent-soft)] text-[var(--accent-strong)] border-[var(--accent)]/25",
+  completed: "bg-[var(--success-soft)] text-[var(--success)] border-[var(--success)]/25",
+  dropped: "bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]",
+  active: "bg-[var(--success-soft)] text-[var(--success)] border-[var(--success)]/25",
 };
 
 export default function StatusBadge({ status, className }) {

@@ -8,6 +8,7 @@ import AppShell from '@/components/layout/AppShell';
 import EmptyState from '@/components/shared/EmptyState';
 import Pagination from '@/components/shared/Pagination';
 import StatusBadge from '@/components/shared/StatusBadge';
+import StatTile from '@/components/shared/StatTile';
 import ResourceCard from '@/components/resources/ResourceCard';
 import ResourceDetailDialog from '@/components/resources/ResourceDetailDialog';
 import { Button } from '@/components/ui/button';
@@ -203,8 +204,8 @@ export default function ResourcesPage() {
  return c;
  }, [resources]);
 
-  const hasActiveFilters = scopeFilter !== 'all' || statusFilter !== 'all' || sort !== 'newest';
-  const resetFilters = () => {
+   const hasActiveFilters = scopeFilter !== 'all' || statusFilter !== 'all' || sort !== 'newest' || search.trim() !== '';
+   const resetFilters = () => {
   setScopeFilter('all');
   setStatusFilter('all');
   setSort('newest');
@@ -216,12 +217,13 @@ export default function ResourcesPage() {
   const safePage = Math.min(page, totalPages);
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
- // Sub-component for a list-item row (alternative to the grid cards)
- const ResourceRow = ({ r }) => (
- <div
- role="button"
- tabIndex={0}
- onClick={() => setSelected(r)}
+  // Sub-component for a list-item row (alternative to the grid cards)
+  const ResourceRow = ({ r }) => (
+  <div
+  role="button"
+  tabIndex={0}
+  aria-label={`Open ${r.title || 'resource'}`}
+  onClick={() => setSelected(r)}
  onKeyDown={(e) => {
  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(r); }
  }}
@@ -420,7 +422,7 @@ export default function ResourcesPage() {
  >
  <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
  Filters
- {hasActiveFilters && <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">•</span>}
+  {hasActiveFilters && <span aria-hidden className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">•</span>}
  </Button>
 
  {/* Sort */}
@@ -445,12 +447,13 @@ export default function ResourcesPage() {
  const Icon = v.icon;
  const active = view === v.value;
  return (
- <button
- key={v.value}
- type="button"
- onClick={() => setView(v.value)}
- aria-pressed={active}
- title={v.label}
+  <button
+  key={v.value}
+  type="button"
+  onClick={() => setView(v.value)}
+  aria-pressed={active}
+  aria-label={`${v.label} view`}
+  title={v.label}
  className={cn(
  'inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors',
  active ? 'bg-accent text-foreground' : 'hover:bg-muted hover:text-foreground',
@@ -490,9 +493,12 @@ export default function ResourcesPage() {
  )}
 
  {/* Active filter chips */}
- {hasActiveFilters && (
- <div className="mb-3 flex flex-wrap items-center gap-1.5">
- {statusFilter !== 'all' && (
+  {hasActiveFilters && (
+  <div className="mb-3 flex flex-wrap items-center gap-1.5">
+  {search.trim() !== '' && (
+  <FilterChip label={`Search: ${search.trim().slice(0, 32)}`} onClear={() => { setSearch(''); setPage(1); }} />
+  )}
+  {statusFilter !== 'all' && (
  <FilterChip label={`Status: ${STATUS_FILTERS.find((s) => s.value === statusFilter)?.label || statusFilter}`} onClear={() => { setStatusFilter('all'); setPage(1); }} />
  )}
  {sort !== 'newest' && (
@@ -580,28 +586,6 @@ export default function ResourcesPage() {
 }
 
 /* ------- Small internal pieces ------- */
-
-function StatTile({ label, value, tone = 'indigo', icon: Icon }) {
- const tones = {
- indigo: 'text-primary',
- emerald: 'text-[var(--success)] ',
- sky: 'text-[var(--info)] ',
- red: 'text-[var(--danger)]',
- };
- return (
- <div className="flex items-center gap-3 rounded-xl border bg-card/60 px-4 py-3">
- {Icon && (
- <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted', tones[tone])}>
- <Icon className="h-4 w-4" aria-hidden />
- </span>
- )}
- <div className="min-w-0">
- <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
- <p className={cn('text-xl font-semibold tabular-nums tracking-tight', tones[tone])}>{value ?? 0}</p>
- </div>
- </div>
- );
-}
 
 function ScopeChip({ active, onClick, label }) {
  return (

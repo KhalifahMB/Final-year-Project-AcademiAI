@@ -188,7 +188,7 @@ export default function ResourceSidePanel({
                         'group flex items-start gap-2 rounded-md px-2 py-1.5 text-[12px] transition-colors',
                         String(s.id) === String(activeSummary?.id) && showSummary
                           ? 'bg-primary/10 ring-1 ring-primary/20'
-                          : 'hover:bg-black/5 dark:hover:bg-white/10',
+                          : 'hover:bg-[var(--hover)]',
                       )}
                     >
                       <button
@@ -202,7 +202,7 @@ export default function ResourceSidePanel({
                             {(s.summary || '').split('\n')[0]?.slice(0, 70) || '(empty)'}
                           </span>
                           {s.ephemeral && (
-                            <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-medium uppercase text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+                            <span className="shrink-0 rounded-full bg-[var(--warn-soft)] px-1.5 py-0.5 text-[9px] font-medium uppercase text-[var(--warn)]">
                               unsaved
                             </span>
                           )}
@@ -217,7 +217,7 @@ export default function ResourceSidePanel({
                           type="button"
                           onClick={(e) => { e.stopPropagation(); onDeleteSummary(s.id); }}
                           disabled={deletingId === s.id}
-                          className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100 disabled:opacity-50"
+                          className="shrink-0 rounded p-1 text-muted-foreground transition-opacity hover:bg-[var(--danger-soft)] hover:text-[var(--danger)] focus-visible:opacity-100 disabled:opacity-50 max-md:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
                           aria-label={s.ephemeral ? 'Dismiss' : 'Delete summary'}
                           title={s.ephemeral ? 'Dismiss' : 'Delete summary'}
                         >
@@ -235,7 +235,7 @@ export default function ResourceSidePanel({
                   <button
                     type="button"
                     onClick={onToggleShowSummary}
-                    className="mt-1 w-full rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10"
+                    className="mt-1 w-full rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-[var(--hover)]"
                   >
                     Hide summary panel
                   </button>

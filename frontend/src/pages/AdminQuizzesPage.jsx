@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
+import SearchableSelect from '@/components/shared/SearchableSelect';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -253,7 +254,7 @@ export default function AdminQuizzesPage() {
             <DialogTitle className="text-sm">{editingQuiz ? 'Edit quiz' : 'New quiz'}</DialogTitle>
           </DialogHeader>
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" role="alert">
               <AlertDescription className="text-xs">{String(error)}</AlertDescription>
             </Alert>
           )}
@@ -288,20 +289,28 @@ export default function AdminQuizzesPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-xs">Course offering</FormLabel>
-                      <Select value={field.value || undefined} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger className="h-8 w-full text-sm">
-                            <SelectValue placeholder="None" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {(offerings.data || []).map((o) => (
-                            <SelectItem key={o.id} value={o.id} className="text-sm">
-                              {o.course_code ? `${o.course_code} — ${o.course_title}` : o.id}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <SearchableSelect
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          aria-label="Course offering"
+                          options={(offerings.data || []).map((o) => ({
+                            value: o.id,
+                            label: o.course_code ? `${o.course_code} — ${o.course_title || ''}` : o.id,
+                          }))}
+                          loading={offerings.isLoading}
+                          placeholder={
+                            offerings.isLoading
+                              ? 'Loading offerings…'
+                              : (offerings.data || []).length === 0
+                                ? 'No offerings available'
+                                : 'Select offering'
+                          }
+                          searchPlaceholder="Search offerings…"
+                          emptyText="No offering matches that search."
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -349,7 +358,7 @@ export default function AdminQuizzesPage() {
             </DialogTitle>
           </DialogHeader>
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" role="alert">
               <AlertDescription className="text-xs">{String(error)}</AlertDescription>
             </Alert>
           )}
@@ -371,6 +380,7 @@ export default function AdminQuizzesPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => deleteQuestion.mutate(q.id)}
+                  aria-label={`Delete question: ${(q.question_text || '').slice(0, 60)}`}
                   className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -479,8 +489,13 @@ export default function AdminQuizzesPage() {
       </Dialog>
 
       {quizzes.error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription className="text-xs">Failed to load quizzes</AlertDescription>
+        <Alert variant="destructive" role="alert" className="mb-4">
+          <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+            <span>Failed to load quizzes{quizzes.error?.response?.data?.detail ? `: ${quizzes.error.response.data.detail}` : ''}</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => quizzes.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -492,15 +507,17 @@ export default function AdminQuizzesPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search quizzes…"
+            aria-label="Search quizzes by title or description"
             className="h-8 pl-8 text-xs"
           />
         </div>
-        <div className="inline-flex rounded-lg border bg-card p-0.5">
+        <div className="inline-flex rounded-lg border bg-card p-0.5" role="group" aria-label="Filter by status">
           {['all', 'draft', 'published', 'archived'].map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setStatusFilter(s)}
+              aria-pressed={statusFilter === s}
               className={cn(
                 'h-7 rounded-md px-2.5 text-[11px] font-medium capitalize transition-colors',
                 statusFilter === s ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -530,7 +547,7 @@ export default function AdminQuizzesPage() {
           </Button>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl card-surface">
+        <div className="overflow-x-auto rounded-xl card-surface">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -573,7 +590,7 @@ export default function AdminQuizzesPage() {
                         Publish
                       </Button>
                     )}
-                    <Button type="button" variant="ghost" size="sm" onClick={() => openEdit(q)} className="h-7 w-7 p-0" aria-label="Edit">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => openEdit(q)} className="h-7 w-7 p-0" aria-label={`Edit quiz ${q.title || ''}`}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
@@ -582,7 +599,7 @@ export default function AdminQuizzesPage() {
                       size="sm"
                       onClick={() => setQuizToDelete(q)}
                       className="h-7 w-7 p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      aria-label="Delete"
+                      aria-label={`Delete quiz ${q.title || ''}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>

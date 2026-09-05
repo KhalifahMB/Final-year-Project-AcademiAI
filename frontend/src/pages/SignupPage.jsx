@@ -213,7 +213,7 @@ export default function SignupPage() {
                 name={name}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[12px] font-medium">
+                    <FormLabel className="text-xs font-semibold tracking-tight">
                       {name === 'first_name' ? 'First name' : 'Last name'}
                     </FormLabel>
                     <FormControl>
@@ -236,7 +236,7 @@ export default function SignupPage() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-[12px] font-medium">Institutional email</FormLabel>
+                <FormLabel className="text-xs font-semibold tracking-tight">Institutional email</FormLabel>
                 <FormControl>
                   <Input
                     type="email"
@@ -256,7 +256,7 @@ export default function SignupPage() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-[12px] font-medium">Password</FormLabel>
+                <FormLabel className="text-xs font-semibold tracking-tight">Password</FormLabel>
                 <FormControl>
                   <PasswordInput
                     className="h-9"
@@ -270,13 +270,13 @@ export default function SignupPage() {
             )}
           />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormField
               control={form.control}
               name="tenant_slug"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[12px] font-medium">Institution</FormLabel>
+                  <FormLabel className="text-xs font-semibold tracking-tight">Institution</FormLabel>
                   <FormControl>
                     <SearchableSelect
                       value={field.value || ''}
@@ -306,7 +306,7 @@ export default function SignupPage() {
               name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[12px] font-medium">I am a</FormLabel>
+                  <FormLabel className="text-xs font-semibold tracking-tight">I am a</FormLabel>
                   <Select
                     value={field.value}
                     onValueChange={(v) => {

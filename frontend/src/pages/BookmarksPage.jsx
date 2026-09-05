@@ -28,9 +28,13 @@ export default function BookmarksPage() {
   });
 
   const bookmarks = data || [];
-  const totalPages = Math.max(1, Math.ceil(bookmarks.length / PAGE_SIZE));
+  // Skip bookmarks whose resource was deleted (no detail payload) so they
+  // don't leave holes in the grid — and show the empty state when nothing
+  // viewable remains.
+  const visible = bookmarks.filter((b) => b.resource_detail);
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const paged = bookmarks.slice(
+  const paged = visible.slice(
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE,
   );
@@ -53,9 +57,9 @@ export default function BookmarksPage() {
       description="Materials you've saved for quick access."
     >
       {error ? (
-        <Alert variant="destructive" className="mb-4">
+        <Alert variant="destructive" role="alert" className="mb-4">
           <AlertDescription className="text-xs">
-            Failed to load bookmarks
+            Failed to load bookmarks{error?.response?.data?.detail ? `: ${error.response.data.detail}` : ''}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -70,7 +74,7 @@ export default function BookmarksPage() {
             />
           ))}
         </div>
-      ) : bookmarks.length === 0 ? (
+      ) : visible.length === 0 ? (
         <EmptyState
           icon={Bookmark}
           title="No bookmarks yet"
@@ -80,7 +84,6 @@ export default function BookmarksPage() {
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {paged.map((b) => {
             const r = b.resource_detail;
-            if (!r) return null;
             return (
               <li key={b.id} className="group relative">
                 <ResourceCard
@@ -97,8 +100,8 @@ export default function BookmarksPage() {
                     setRemoveId(b.id);
                   }}
                   disabled={removeMutation.isPending && removeId === b.id}
-                  className="absolute right-2.5 top-2.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-card/90 text-primary opacity-0 backdrop-blur transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Remove bookmark"
+                  className="absolute right-2.5 top-2.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-card/90 text-primary backdrop-blur transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 disabled:cursor-not-allowed disabled:opacity-50 max-md:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                  aria-label={`Remove bookmark: ${r.title || 'material'}`}
                   title="Remove bookmark"
                 >
                   {removeMutation.isPending && removeId === b.id ? (
@@ -116,7 +119,7 @@ export default function BookmarksPage() {
         </ul>
       )}
 
-      {bookmarks.length > PAGE_SIZE && (
+      {visible.length > PAGE_SIZE && (
         <Pagination
           page={safePage}
           totalPages={totalPages}

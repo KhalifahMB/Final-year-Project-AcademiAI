@@ -156,8 +156,13 @@ export default function TenantStructurePage() {
       {tenantQ.isLoading ? (
         <SkeletonRows rows={3} />
       ) : tenantQ.error ? (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>Failed to load institution data</AlertDescription>
+        <Alert variant="destructive" role="alert" className="mb-4">
+          <AlertDescription className="flex w-full items-center justify-between gap-3">
+            <span>Failed to load institution data</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => tenantQ.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
         </Alert>
       ) : (
         <div className="space-y-6">
@@ -203,6 +208,15 @@ export default function TenantStructurePage() {
             <CardContent>
               {sessionsQ.isLoading ? (
                 <SkeletonRows rows={2} />
+              ) : sessionsQ.error ? (
+                <Alert variant="destructive" role="alert">
+                  <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+                    <span>Failed to load sessions</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => sessionsQ.refetch()} className="h-7 shrink-0 text-[11px]">
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                </Alert>
               ) : (sessionsQ.data || []).length === 0 ? (
                 <EmptyState icon={CalendarRange} title="No sessions yet" description="Add your first academic session, e.g. 2025/2026." />
               ) : (
@@ -286,6 +300,15 @@ export default function TenantStructurePage() {
             <CardContent>
               {facultiesQ.isLoading ? (
                 <SkeletonRows rows={3} />
+              ) : facultiesQ.error ? (
+                <Alert variant="destructive" role="alert">
+                  <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+                    <span>Failed to load faculties</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => facultiesQ.refetch()} className="h-7 shrink-0 text-[11px]">
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                </Alert>
               ) : (facultiesQ.data || []).length === 0 ? (
                 <EmptyState
                   icon={Building2}

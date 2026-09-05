@@ -15,7 +15,9 @@ import { Building2, Check, XCircle, Mail, User, Phone, Users } from 'lucide-reac
 
 function timeAgo(iso) {
   if (!iso) return '';
-  const d = (Date.now() - new Date(iso).getTime()) / 1000;
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return '';
+  const d = (Date.now() - t) / 1000;
   if (d < 60) return 'just now';
   if (d < 3600) return `${Math.floor(d / 60)}m ago`;
   if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
@@ -24,8 +26,8 @@ function timeAgo(iso) {
 
 const STATUS_STYLES = {
   pending: 'bg-[var(--warn-soft)] text-[var(--warn)] border-[var(--warn)]/30',
-  approved: 'bg-[var(--success)]/15 text-[var(--success)]  border-[var(--success)]/30',
-  rejected: 'bg-[var(--danger)]/15 text-red-700 dark:text-red-400 border-red-500/30',
+  approved: 'bg-[var(--success-soft)] text-[var(--success)] border-[var(--success)]/30',
+  rejected: 'bg-[var(--danger-soft)] text-[var(--danger)] border-[var(--danger)]/30',
 };
 
 export default function PlatformRequestsPage() {
@@ -70,7 +72,7 @@ export default function PlatformRequestsPage() {
     >
       <div className="mb-4 flex items-center gap-3">
         <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Filter" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter requests by status" className="w-[180px]"><SelectValue placeholder="Filter" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="pending">Pending review</SelectItem>
             <SelectItem value="approved">Approved</SelectItem>
@@ -84,7 +86,14 @@ export default function PlatformRequestsPage() {
       {reqsQ.isLoading ? (
         <SkeletonRows rows={5} />
       ) : reqsQ.error ? (
-        <Alert variant="destructive"><AlertDescription>Failed to load requests.</AlertDescription></Alert>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription className="flex w-full items-center justify-between gap-3">
+            <span>Failed to load requests.</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => reqsQ.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : list.length === 0 ? (
         <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
           {filter === 'pending' ? 'No pending requests. Great job!' : 'No requests to show.'}
@@ -106,8 +115,8 @@ export default function PlatformRequestsPage() {
                     Submitted {timeAgo(r.created_at)} · {r.institution_type} {r.institution_domain && `· ${r.institution_domain}`}
                   </p>
                 </div>
-                {r.status === 'pending' && !reviewing && (
-                  <Button size="sm" onClick={() => setReviewId(r.id)}>Review</Button>
+                {r.status === 'pending' && reviewing?.id !== r.id && (
+                  <Button size="sm" onClick={() => { setReviewId(r.id); setReviewNotes(''); setReviewPlan('standard'); }}>Review</Button>
                 )}
                 {r.provisioned_tenant_name && (
                   <span className="text-xs text-[var(--success)] font-medium">Provisioned: {r.provisioned_tenant_name}</span>
@@ -131,9 +140,9 @@ export default function PlatformRequestsPage() {
                   <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                     <div className="flex gap-3">
                       <div className="flex-1">
-                        <label className="text-xs font-medium">Plan</label>
+                        <label htmlFor={`review-plan-${r.id}`} className="text-xs font-medium">Plan</label>
                         <Select value={reviewPlan} onValueChange={setReviewPlan}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger id={`review-plan-${r.id}`}><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="standard">Standard</SelectItem>
                             <SelectItem value="pro">Pro</SelectItem>
@@ -143,8 +152,8 @@ export default function PlatformRequestsPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs font-medium">Review notes (optional)</label>
-                      <Textarea rows={2} value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder="Reason for decision, plan limits, next steps…" />
+                      <label htmlFor={`review-notes-${r.id}`} className="text-xs font-medium">Review notes (optional)</label>
+                      <Textarea id={`review-notes-${r.id}`} rows={2} value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder="Reason for decision, plan limits, next steps…" />
                     </div>
                     <div className="flex justify-end gap-2">
                       <Button size="sm" variant="outline" onClick={() => setReviewId(null)}>Cancel</Button>

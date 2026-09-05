@@ -12,7 +12,7 @@ import EmptyState from "@/components/shared/EmptyState";
 import SkeletonRows from "@/components/shared/SkeletonRows";
 import { toast } from "sonner";
 import {
-  Building2, ChevronRight, Pencil, Plus, Trash2,
+  Building2, ChevronRight, Pencil, Plus, Trash2, ArrowLeft,
 } from "lucide-react";
 
 const toList = (d) => d?.results || d || [];
@@ -91,7 +91,7 @@ export default function FacultyDetailPage() {
             type="button"
             variant="outline"
             size="sm"
-            className="border-red-500/40 text-red-700 hover:bg-[var(--danger)]/10 dark:text-red-400"
+            className="border-[var(--danger)]/40 text-[var(--danger)] hover:bg-[var(--danger-soft)]"
             onClick={() => setConfirmDelete(true)}
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Delete
@@ -99,9 +99,20 @@ export default function FacultyDetailPage() {
         </>
       }
     >
-      <Link to="/admin/tenant" className="mb-4 inline-block text-sm text-primary hover:underline">
-        ← Institution
+      <Link to="/admin/tenant" className="mb-4 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+        <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Institution
       </Link>
+
+      {facultyQ.error ? (
+        <Alert variant="destructive" role="alert" className="mb-4">
+          <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+            <span>Failed to load faculty</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => facultyQ.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {/* Departments */}
       <Card>

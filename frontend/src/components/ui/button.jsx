@@ -32,7 +32,10 @@ function Button({
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(
+        'transition-all duration-160 ease-out active:scale-[0.97]',
+        buttonVariants({ variant, size, className }),
+      )}
       {...props}
     >
       {children}

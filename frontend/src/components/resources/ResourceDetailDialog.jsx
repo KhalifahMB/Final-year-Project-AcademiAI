@@ -156,14 +156,46 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
         else onClose();
         e.preventDefault();
       }
-      if (e.key === 'f' || e.key === 'F') {
-        setExpanded((v) => !v);
-        e.preventDefault();
-      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, expanded, onClose]);
+
+  // Focus trap + focus restore. This is a hand-rolled portal (not Radix),
+  // so Tab must cycle inside the dialog and focus must return to the
+  // invoking element on close.
+  const dialogRef = useRef(null);
+  const invokerRef = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    invokerRef.current = document.activeElement;
+    // Focus the dialog heading region on open.
+    dialogRef.current?.querySelector('[data-autofocus]')?.focus?.();
+    return () => {
+      if (invokerRef.current && document.contains(invokerRef.current)) {
+        invokerRef.current.focus?.();
+      }
+    };
+  }, [open]);
+  const onTrapKeyDown = (e) => {
+    if (e.key !== 'Tab') return;
+    const root = dialogRef.current;
+    if (!root) return;
+    const focusables = root.querySelectorAll(
+      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
+    );
+    const list = [...focusables].filter((el) => el.offsetParent !== null);
+    if (list.length === 0) return;
+    const first = list[0];
+    const last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
 
   // Saved summaries
   const {
@@ -469,6 +501,8 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
 
   const content = (
     <div
+      ref={dialogRef}
+      onKeyDown={onTrapKeyDown}
       className="fixed inset-0 z-[100] flex flex-col bg-background"
       role="dialog"
       aria-modal="true"
@@ -479,6 +513,7 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
         <div className="flex min-w-0 items-center gap-2.5">
           <button
             type="button"
+            data-autofocus
             onClick={onClose}
             aria-label="Back to resources"
             title="Back"
@@ -513,7 +548,7 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
             size="icon"
             variant="ghost"
             onClick={() => setExpanded((v) => !v)}
-            title={expanded ? 'Exit focus mode' : 'Focus mode (F)'}
+            title={expanded ? 'Exit focus mode' : 'Focus mode'}
             aria-label={expanded ? 'Exit focus mode' : 'Focus mode'}
             className="h-8 w-8"
           >
@@ -567,7 +602,7 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
                     </AlertDescription>
                   </Alert>
                   {isOwnerOrAdmin && (
-                    <Button type="button" size="sm" variant="outline" onClick={retry} disabled={retrying} className="border-amber-500/40 text-amber-700 hover:bg-amber-500/10 dark:text-amber-400">
+                    <Button type="button" size="sm" variant="outline" onClick={retry} disabled={retrying} className="border-[var(--warn)]/40 text-[var(--warn)] hover:bg-[var(--warn-soft)]">
                       <RefreshCw className={cn('mr-2 h-3.5 w-3.5', retrying && 'animate-spin')} aria-hidden />
                       {retrying ? 'Restarting…' : 'Retry processing'}
                     </Button>
@@ -592,7 +627,7 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
               ) : preview?.kind === 'text' ? (
                 <>
                   {isResuming && (
-                    <div className="flex items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[12px] text-amber-700 dark:text-amber-400">
+                    <div className="flex items-center gap-2 border-b border-[var(--warn)]/30 bg-[var(--warn-soft)] px-4 py-2 text-[12px] text-[var(--warn)]">
                       <BookmarkCheck className="h-3.5 w-3.5 shrink-0" aria-hidden />
                       <span>
                         You were {Math.round(savedPosition?.scroll_percentage || 0)}% through this document.
@@ -602,14 +637,14 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
                         onClick={() => {
                           restoreReadPosition(previewScrollRef);
                         }}
-                        className="ml-1 font-semibold underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-300"
+                        className="ml-1 font-semibold underline underline-offset-2 hover:opacity-80"
                       >
                         Resume
                       </button>
                       <button
                         type="button"
                         onClick={dismissResume}
-                        className="ml-auto rounded p-0.5 hover:bg-amber-500/20"
+                        className="ml-auto rounded p-0.5 hover:bg-[var(--warn)]/20"
                         aria-label="Dismiss"
                       >
                         <X className="h-3 w-3" />

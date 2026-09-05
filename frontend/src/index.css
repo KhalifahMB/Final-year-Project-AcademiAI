@@ -67,10 +67,12 @@
     'Geist Variable', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
     'SF Pro Text', 'Inter', ui-sans-serif, system-ui, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
+  --font-serif:
+    'Instrument Serif', 'Georgia', serif;
   --font-mono:
     ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono',
     monospace;
-  --font-display: var(--font-sans);
+  --font-display: var(--font-serif);
 
   /* Custom animations */
   --animate-shimmer: shimmer 2s linear infinite;
@@ -265,7 +267,7 @@ h1,
 h2,
 h3,
 h4 {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   color: var(--fg);
   margin: 0;
   font-weight: 650;
@@ -653,7 +655,9 @@ button:active:not(:disabled) {
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur))
     saturate(var(--glass-saturate));
-  box-shadow: var(--shadow-glass);
+  box-shadow: 
+    var(--shadow-glass),
+    inset 0 0 0 0.5px color-mix(in oklab, var(--fg) 10%, transparent);
 }
 
 /* Neomorph accent — high-level objects only (stat cards, trend panels, hero mock).

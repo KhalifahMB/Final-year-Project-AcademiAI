@@ -62,8 +62,15 @@ export default function FloatingAgent() {
     }
   });
   const dragStartRef = useRef(null);
+  const dragMovedRef = useRef(false);
+  const orbRef = useRef(null);
   const endRef = useRef(null);
   const inputRef = useRef(null);
+  const [reducedMotion] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  );
 
   const enabled = settings.enabled !== false;
 
@@ -76,13 +83,21 @@ export default function FloatingAgent() {
   }, [settings]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    endRef.current?.scrollIntoView({
+      behavior: reducedMotion ? 'auto' : 'smooth',
+    });
+  }, [messages, reducedMotion]);
 
+  const wasOpenRef = useRef(isOpen);
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
+    } else if (wasOpenRef.current) {
+      // Return focus to the launcher, but only when the panel actually
+      // closes (not on first mount).
+      orbRef.current?.focus?.();
     }
+    wasOpenRef.current = isOpen;
   }, [isOpen]);
 
   useEffect(() => {
@@ -93,14 +108,20 @@ export default function FloatingAgent() {
     return () => window.removeEventListener('academiai:agent-settings-changed', handler);
   }, []);
 
-  const handleDragStart = useCallback(
+  // Unified pointer drag (mouse + touch). A drag that actually moves never
+  // toggles the panel: only a near-stationary press counts as a click.
+  const handleOrbPointerDown = useCallback(
     (e) => {
-      e.preventDefault();
-      setIsDragging(true);
+      dragMovedRef.current = false;
       dragStartRef.current = {
-        x: e.clientX - position.x,
-        y: e.clientY - position.y,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        origX: position.x,
+        origY: position.y,
       };
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      setIsDragging(true);
     },
     [position],
   );
@@ -109,14 +130,18 @@ export default function FloatingAgent() {
     if (!isDragging) return;
 
     const handleMove = (e) => {
-      if (!dragStartRef.current) return;
+      const s = dragStartRef.current;
+      if (!s) return;
+      if (Math.abs(e.clientX - s.startX) + Math.abs(e.clientY - s.startY) > 5) {
+        dragMovedRef.current = true;
+      }
       const newX = Math.max(
         0,
-        Math.min(window.innerWidth - 60, e.clientX - dragStartRef.current.x),
+        Math.min(window.innerWidth - 60, s.origX + (e.clientX - s.startX)),
       );
       const newY = Math.max(
         0,
-        Math.min(window.innerHeight - 60, e.clientY - dragStartRef.current.y),
+        Math.min(window.innerHeight - 60, s.origY + (e.clientY - s.startY)),
       );
       setPosition({ x: newX, y: newY });
     };
@@ -126,13 +151,25 @@ export default function FloatingAgent() {
       dragStartRef.current = null;
     };
 
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    window.addEventListener('pointercancel', handleUp);
     return () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('pointercancel', handleUp);
     };
   }, [isDragging]);
+
+  const handleOrbClick = useCallback(() => {
+    // A real drag ends with a click — swallow it so dragging never
+    // opens/closes the panel by accident.
+    if (dragMovedRef.current) {
+      dragMovedRef.current = false;
+      return;
+    }
+    toggleOpen();
+  }, [toggleOpen]);
 
   const handleSend = useCallback(() => {
     if (!input.trim() || loading) return;
@@ -160,17 +197,19 @@ export default function FloatingAgent() {
         style={{ left: position.x, top: position.y }}
       >
         <button
+          ref={orbRef}
           type="button"
-          onClick={toggleOpen}
-          onMouseDown={handleDragStart}
+          onClick={handleOrbClick}
+          onPointerDown={handleOrbPointerDown}
           className={cn(
             'group flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all',
-            'bg-gradient-to-br from-primary to-primary/80 text-primary-foreground',
+            'bg-primary text-primary-foreground',
             'hover:shadow-xl hover:scale-105 active:scale-95',
             'focus-visible:outline-2 focus-visible:outline-ring',
             isOpen && 'bg-muted text-muted-foreground hover:bg-muted/80',
           )}
           aria-label={isOpen ? 'Close AI agent' : 'Open AI agent'}
+          aria-expanded={isOpen}
           title="AI Agent — drag to move"
         >
           {isOpen ? (
@@ -180,7 +219,7 @@ export default function FloatingAgent() {
           )}
         </button>
         {!isOpen && (
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--success)] text-[8px] font-bold text-white">
+          <span aria-hidden className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--success)] text-[8px] font-bold text-[var(--bg)]">
             AI
           </span>
         )}
@@ -188,6 +227,12 @@ export default function FloatingAgent() {
 
       {isOpen && (
         <div
+          role="dialog"
+          aria-modal="false"
+          aria-label="AI agent"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') toggleOpen();
+          }}
           className="fixed z-50 flex w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border bg-background/95 shadow-2xl backdrop-blur-xl"
           style={{
             right: Math.max(16, window.innerWidth - position.x - 400),
@@ -215,6 +260,7 @@ export default function FloatingAgent() {
                 <button
                   type="button"
                   onClick={clearMessages}
+                  aria-label="Clear agent chat"
                   className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                   title="Clear chat"
                 >
@@ -224,6 +270,7 @@ export default function FloatingAgent() {
               <button
                 type="button"
                 onClick={toggleOpen}
+                aria-label="Minimize agent"
                 className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                 title="Minimize"
               >
@@ -295,7 +342,7 @@ export default function FloatingAgent() {
                                 className={cn(
                                   'h-2.5 w-2.5',
                                   tc.result
-                                    ? 'text-green-500'
+                                    ? 'text-[var(--success)]'
                                     : 'animate-spin text-primary',
                                 )}
                               />
@@ -332,6 +379,7 @@ export default function FloatingAgent() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask the agent…"
+                aria-label="Ask the agent"
                 rows={1}
                 className="max-h-24 min-h-[32px] flex-1 resize-none border-0 bg-transparent px-2 py-1.5 text-[13px] leading-relaxed shadow-none focus-visible:ring-0"
               />
@@ -339,6 +387,7 @@ export default function FloatingAgent() {
                 type="button"
                 onClick={loading ? stopStreaming : handleSend}
                 disabled={!loading && !input.trim()}
+                aria-label={loading ? 'Stop generating' : 'Send message'}
                 className={cn(
                   'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
                   loading

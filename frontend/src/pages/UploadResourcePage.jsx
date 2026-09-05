@@ -33,7 +33,8 @@ import {
  X,
 } from 'lucide-react';
 
-const ACCEPT = '.txt,.md,.pdf,.docx,.pptx,.json,.csv,.xlsx,.pptx,.ppt,.doc,.xls';
+const ACCEPT = '.txt,.md,.pdf,.docx,.pptx,.json,.csv,.xlsx,.ppt,.doc,.xls';
+const ACCEPT_EXTENSIONS = ACCEPT.split(',').map((s) => s.trim().toLowerCase());
 const ACCEPT_HINT = 'PDF, DOCX, PPTX, XLSX, TXT, MD, CSV, JSON';
 const MAX_BYTES = 25 * 1024 * 1024;
 const SCOPES = ['private', 'course', 'programme', 'department', 'faculty', 'institution'];
@@ -118,6 +119,12 @@ export default function UploadResourcePage() {
  const setFileWithValidation = useCallback((f) => {
  setError('');
  if (!f) { setFile(null); return; }
+ const dot = f.name.lastIndexOf('.');
+ const ext = dot >= 0 ? f.name.slice(dot).toLowerCase() : '';
+ if (ext && !ACCEPT_EXTENSIONS.includes(ext)) {
+ setError(`“${f.name}” is not a supported type. Use ${ACCEPT_HINT}.`);
+ return;
+ }
  if (f.size > MAX_BYTES) {
  setError(`File exceeds the 25 MB limit (${formatBytes(f.size)}).`);
  return;
@@ -205,37 +212,27 @@ export default function UploadResourcePage() {
  {/* LEFT: form */}
  <div className="space-y-5">
  {error ? (
- <Alert variant="destructive">
+ <Alert variant="destructive" role="alert">
  <AlertDescription className="text-xs">{String(error)}</AlertDescription>
  </Alert>
  ) : null}
 
- {/* Dropzone */}
+ {/* Dropzone — the empty state is a <label> for the file input; once a
+ file is chosen the panel becomes a plain <div> so the Replace/Remove
+ buttons are never nested inside a label (which would re-trigger the
+ file dialog on activation). */}
  <div className="rounded-xl border bg-card p-1">
- <label
- htmlFor="file"
+ {file ? (
+ <div
  onDragOver={onDragOver}
  onDragLeave={onDragLeave}
  onDrop={onDrop}
  className={cn(
- 'relative flex cursor-pointer flex-col items-center justify-center rounded-lg px-6 py-12 text-center transition-all',
- 'border-2 border-dashed',
- isDragging
- ? 'border-primary/60 bg-primary/5'
- : 'border-border/70 hover:border-primary/40 hover:bg-accent/20',
- file && 'border-primary/30 bg-primary/[0.03]',
+ 'relative flex flex-col items-center justify-center rounded-lg px-6 py-12 text-center transition-all',
+ 'border-2 border-dashed border-primary/30 bg-primary/[0.03]',
+ isDragging && 'border-primary/60 bg-primary/5',
  )}
  >
- <input
- ref={inputRef}
- id="file"
- type="file"
- accept={ACCEPT}
- className="sr-only"
- onChange={(e) => setFileWithValidation(e.target.files?.[0] || null)}
- />
- {file ? (
- <div className="flex w-full max-w-md flex-col items-center gap-3">
  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
  {fileType ? <fileType.icon className="h-6 w-6" aria-hidden /> : <FileText className="h-6 w-6" aria-hidden />}
  </span>
@@ -251,7 +248,7 @@ export default function UploadResourcePage() {
  variant="secondary"
  size="sm"
  className="h-8 gap-1.5 text-xs"
- onClick={(e) => { e.preventDefault(); inputRef.current?.click(); }}
+ onClick={() => inputRef.current?.click()}
  >
  <FileUp className="h-3.5 w-3.5" aria-hidden />
  Replace file
@@ -261,7 +258,7 @@ export default function UploadResourcePage() {
  variant="ghost"
  size="sm"
  className="h-8 gap-1.5 text-xs text-muted-foreground"
- onClick={(e) => { e.preventDefault(); setFile(null); }}
+ onClick={() => setFile(null)}
  >
  <X className="h-3.5 w-3.5" aria-hidden />
  Remove
@@ -269,7 +266,19 @@ export default function UploadResourcePage() {
  </div>
  </div>
  ) : (
- <>
+ <label
+ htmlFor="file"
+ onDragOver={onDragOver}
+ onDragLeave={onDragLeave}
+ onDrop={onDrop}
+ className={cn(
+ 'relative flex cursor-pointer flex-col items-center justify-center rounded-lg px-6 py-12 text-center transition-all',
+ 'border-2 border-dashed',
+ isDragging
+ ? 'border-primary/60 bg-primary/5'
+ : 'border-border/70 hover:border-primary/40 hover:bg-accent/20',
+ )}
+ >
  <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent-strong)]">
  <UploadCloud className="h-7 w-7" aria-hidden />
  </span>
@@ -290,15 +299,22 @@ export default function UploadResourcePage() {
  Auto-indexed for AI
  </span>
  </div>
- </>
- )}
  </label>
+ )}
+ <input
+ ref={inputRef}
+ id="file"
+ type="file"
+ accept={ACCEPT}
+ className="sr-only"
+ onChange={(e) => setFileWithValidation(e.target.files?.[0] || null)}
+ />
  </div>
 
  {/* Metadata */}
  <div className="rounded-xl border bg-card p-5">
  <div className="mb-3 flex items-center gap-2">
- <span className="h-5 w-1 rounded-full bg- var(--accent)" />
+ <span className="h-5 w-1 rounded-full bg-[var(--accent)]" />
  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
  Metadata
  </h3>
@@ -337,7 +353,7 @@ export default function UploadResourcePage() {
  <SelectContent>
  {SCOPES.map((s) => (
  <SelectItem key={s} value={s} className="text-sm">
- <span className={cn('mr-2 inline-block h-2 w-2 rounded-full align-middle', SCOPE_META[s].tint.split(' ')[0].replace('bg-', 'bg-'))} />
+ <span className={cn('mr-2 inline-block h-2 w-2 rounded-full align-middle', SCOPE_META[s].dot)} />
  {SCOPE_META[s].label}
  </SelectItem>
  ))}
@@ -391,7 +407,7 @@ export default function UploadResourcePage() {
  By uploading you confirm you have the right to share this material.
  </p>
  {upload.isPending ? (
- <div className="flex items-center gap-2.5 rounded-lg border bg-accent/40 px-4 py-2 text-xs">
+ <div role="status" className="flex items-center gap-2.5 rounded-lg border bg-accent/40 px-4 py-2 text-xs">
  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" aria-hidden />
  {STEPS[Math.min(step, STEPS.length - 1)].label}…
  </div>
@@ -412,7 +428,7 @@ export default function UploadResourcePage() {
  const doneStep = i < step;
  const active = i === step;
  return (
- <li key={s.label} className="flex items-center gap-3">
+ <li key={s.label} className="flex items-center gap-3" aria-current={active ? 'step' : undefined}>
  <span
  className={cn(
  'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold',
@@ -439,7 +455,7 @@ export default function UploadResourcePage() {
  </div>
 
  {/* RIGHT: info sidebar */}
- <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+ <aside className="space-y-4 lg:sticky lg:top-[68px] lg:self-start">
  <div className="rounded-xl border bg-[var(--surface-2)] p-5">
  <div className="flex items-center gap-2">
  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/60 text-primary dark:bg-white/10">

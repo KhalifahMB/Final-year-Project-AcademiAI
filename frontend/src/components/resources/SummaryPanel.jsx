@@ -134,7 +134,7 @@ export default function SummaryPanel({
                       type="button"
                       onClick={() => onDeleteSummary(activeSummary.id)}
                       disabled={deletingId === activeSummary.id}
-                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-red-600 transition-colors hover:bg-red-500/10 disabled:opacity-50 dark:text-red-400"
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger-soft)] disabled:opacity-50"
                       title={activeSummary.ephemeral ? 'Dismiss' : 'Delete this summary'}
                     >
                       {deletingId === activeSummary.id ? (

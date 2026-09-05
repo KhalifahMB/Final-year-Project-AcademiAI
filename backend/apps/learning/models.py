@@ -205,7 +205,13 @@ class PlanTask(TenantScopedModel):
 
 
 class PlanTemplate(TenantScopedModel):
-    """Reusable plan template created by admins."""
+    """Reusable plan template.
+
+    Public templates are visible to every member of the tenant; private
+    templates are visible only to their creator (`created_by`). Anyone in the
+    tenant may create a template; only its creator (or a tenant admin for
+    public templates) may edit or delete it.
+    """
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, default="")
     plan_type = models.CharField(
@@ -218,6 +224,11 @@ class PlanTemplate(TenantScopedModel):
         default="study",
     )
     template_data = models.JSONField(default=dict, blank=True)
+    is_public = models.BooleanField(
+        default=False,
+        help_text="Public templates are visible to the whole institution; "
+                  "private templates are visible only to their creator.",
+    )
     created_by = models.ForeignKey(
         "accounts.User", on_delete=models.SET_NULL, null=True, blank=True,
         related_name="plan_templates",

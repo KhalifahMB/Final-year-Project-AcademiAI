@@ -1,9 +1,10 @@
 from drf_spectacular.utils import extend_schema
-from rest_framework import viewsets
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.common.permissions import IsTenantMember
 from apps.common.viewsets import TenantModelViewSet
 from .models import (
     Note, Bookmark, ProgressRecord,
@@ -14,7 +15,7 @@ from .serializers import (
     NoteSerializer, BookmarkSerializer, ProgressRecordSerializer,
     ResourceReadingPositionSerializer, StudySessionSerializer, ConceptInteractionSerializer,
     PlanSerializer, PlanListSerializer, PlanMilestoneSerializer, PlanTaskSerializer,
-    PlanTemplateSerializer,
+    PlanTemplateSerializer, _normalize_template_data,
 )
 
 
@@ -184,12 +185,121 @@ class PlanTaskViewSet(viewsets.ModelViewSet):
         return Response(PlanTaskSerializer(task).data)
 
 
-class PlanTemplateViewSet(viewsets.ReadOnlyModelViewSet):
+class PlanTemplateViewSet(viewsets.ModelViewSet):
     serializer_class = PlanTemplateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsTenantMember]
 
     def get_queryset(self):
+        # Anyone in the tenant sees public templates plus their own private
+        # ones; private templates are never exposed to other users. Drives
+        # list, retrieve AND instantiate (which resolve through get_object()).
+        user = self.request.user
         from django.db import models as django_models
         return PlanTemplate.objects.filter(
-            django_models.Q(tenant=self.request.user.tenant) | django_models.Q(tenant__isnull=True),
+            tenant=user.tenant,
+        ).filter(
+            django_models.Q(is_public=True) | django_models.Q(created_by=user),
         )
+
+    def _can_modify(self, obj):
+        """Only the creator may edit/delete a template — or a tenant admin
+        for public (institution) templates. Never a peer on another user's
+        private template."""
+        user = self.request.user
+        return obj.created_by_id == user.id or (
+            obj.is_public and getattr(user, "is_tenant_admin", False)
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(
+            tenant=self.request.user.tenant,
+            created_by=self.request.user,
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not self._can_modify(instance):
+            return Response(
+                {"error": {"detail": "You can only delete templates you own."}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if not self._can_modify(instance):
+            return Response(
+                {"error": {"detail": "You can only edit templates you own."}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        partial = kwargs.pop("partial", False)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    @extend_schema(
+        tags=["Plans"],
+        summary="Start a plan from a template",
+        description=(
+            "Creates a personal plan (plus its milestones and tasks) from this "
+            "template's `template_data`. Only templates visible to the caller "
+            "can be instantiated."
+        ),
+        responses={201: PlanSerializer},
+    )
+    @action(detail=True, methods=["post"], url_path="instantiate")
+    def instantiate(self, request, pk=None):
+        from django.db import transaction
+        from django.utils import timezone
+
+        template = self.get_object()
+        title = (request.data.get("title") or "").strip() or template.name
+        if len(title) > 255:
+            return Response(
+                {"error": {"detail": "Title must be 255 characters or fewer."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            spec = _normalize_template_data(template.template_data)
+        except ValueError as e:
+            return Response(
+                {"error": {"detail": str(e)}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        today = timezone.now().date()
+        with transaction.atomic():
+            plan = Plan.objects.create(
+                tenant=request.user.tenant,
+                user=request.user,
+                title=title,
+                description=template.description or "",
+                plan_type=template.plan_type,
+                status="active",
+            )
+            for order, ms in enumerate(spec):
+                due = (
+                    today + timezone.timedelta(days=ms["due_in_days"])
+                    if ms["due_in_days"] is not None
+                    else None
+                )
+                milestone = PlanMilestone.objects.create(
+                    tenant=request.user.tenant,
+                    plan=plan,
+                    title=ms["title"],
+                    description=ms["description"],
+                    due_date=due,
+                    status="pending",
+                    order=order,
+                )
+                for task in ms["tasks"]:
+                    PlanTask.objects.create(
+                        tenant=request.user.tenant,
+                        milestone=milestone,
+                        title=task["title"],
+                        description=task["description"],
+                        estimated_minutes=task["estimated_minutes"],
+                        status="todo",
+                    )
+        return Response(PlanSerializer(plan).data, status=status.HTTP_201_CREATED)

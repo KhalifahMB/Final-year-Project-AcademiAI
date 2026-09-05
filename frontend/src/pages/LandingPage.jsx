@@ -85,10 +85,10 @@ function Reveal({ children, className = '', delay = 0 }) {
   return (
     <motion.div
       className={className}
-      initial={reduceMotion ? false : { opacity: 0, y: 22 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 12 }}
       whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.18 }}
-      transition={{ duration: 0.55, delay, ease: [0.2, 0, 0, 1] }}
+      transition={{ duration: 0.22, delay, ease: [0.23, 1, 0.32, 1] }}
     >
       {children}
     </motion.div>
@@ -265,7 +265,7 @@ export default function LandingPage() {
                 <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Academic
                 intelligence, with provenance
               </p>
-              <h1>Study from what your university knows.</h1>
+              <h1 className="text-wrap-balance">Study from what your university knows.</h1>
               <p className="landing-lede">
                 AcademiAI turns authorised course material into a tutor,
                 practice room, and progress signal your institution can trust.
@@ -297,7 +297,10 @@ export default function LandingPage() {
               className="landing-reveal landing-reveal--delay"
               delay={0.12}
             >
-              <TutorPanel />
+              <div className="relative">
+                <TutorPanel />
+                <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-accent/10 blur-3xl rounded-full -z-10" />
+              </div>
             </Reveal>
           </div>
         </section>
@@ -347,10 +350,10 @@ export default function LandingPage() {
                 <motion.article
                   key={label}
                   className="landing-principle"
-                  initial={{ opacity: 0, y: 18 }}
+                  initial={{ opacity: 0, y: 12 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.2 }}
-                  transition={{ duration: 0.45, delay: index * 0.08 }}
+                  transition={{ duration: 0.22, delay: index * 0.06, ease: [0.23, 1, 0.32, 1] }}
                 >
                   <div className="landing-principle__top">
                     <span>{label}</span>
@@ -386,10 +389,10 @@ export default function LandingPage() {
                 <motion.article
                   key={label}
                   className="landing-audience"
-                  initial={{ opacity: 0, y: 18 }}
+                  initial={{ opacity: 0, y: 12 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, amount: 0.2 }}
-                  transition={{ duration: 0.45, delay: index * 0.08 }}
+                  transition={{ duration: 0.22, delay: index * 0.06, ease: [0.23, 1, 0.32, 1] }}
                 >
                   <div className="landing-audience__top">
                     <span>{label}</span>

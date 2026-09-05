@@ -4,11 +4,14 @@ import { cn } from '@/lib/utils';
  * StatTile — compact stat for catalogue-style pages (courses, enrollments).
  * Plain bordered tile (not the glass/neomorph dashboard StatCard).
  */
-export default function StatTile({ label, value, icon: Icon, tone = 'indigo' }) {
+export default function StatTile({ label, value, suffix = '', icon: Icon, tone = 'indigo' }) {
   const tones = {
     indigo: 'text-primary bg-primary/10',
     emerald: 'text-[var(--success)] bg-[var(--success-soft)]',
     violet: 'text-[var(--accent-strong)] bg-[var(--accent-soft)]',
+    sky: 'text-[var(--info)] bg-[var(--info-soft)]',
+    red: 'text-[var(--danger)] bg-[var(--danger-soft)]',
+    amber: 'text-[var(--warn)] bg-[var(--warn-soft)]',
   };
   return (
     <div className="flex items-center gap-3 rounded-xl border bg-card/60 px-4 py-3">
@@ -27,7 +30,7 @@ export default function StatTile({ label, value, icon: Icon, tone = 'indigo' }) 
           {label}
         </p>
         <p className="text-xl font-semibold tabular-nums tracking-tight">
-          {value ?? 0}
+          {value ?? 0}{suffix}
         </p>
       </div>
     </div>

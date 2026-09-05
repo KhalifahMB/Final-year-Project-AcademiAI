@@ -232,12 +232,12 @@ export default function QuizTakePage() {
  You'll get {qs.length} question{qs.length === 1 ? '' : 's'}. Take your time — answers are saved as you go and submitted when you click Finish.
  </p>
  <div className="mt-5 flex items-center justify-center gap-2">
- <Button
- type="button"
- size="sm"
- onClick={() => start.mutate()}
- disabled={start.isPending || qs.length === 0}
- className="h-9 gap-1.5 bg-[var(--accent)] px-5 text-xs text-white hover:bg-[var(--accent-strong)]"
+  <Button
+  type="button"
+  size="sm"
+  onClick={() => start.mutate()}
+  disabled={start.isPending || qs.length === 0}
+  className="h-9 gap-1.5 bg-[var(--accent)] px-5 text-xs text-[var(--on-accent)] hover:bg-[var(--accent-strong)]"
  >
  {start.isPending ? 'Starting…' : attempts.data?.length ? 'Start new attempt' : 'Start attempt'}
  <ChevronRight className="h-3.5 w-3.5" aria-hidden />
@@ -310,11 +310,14 @@ function QuizRunner({
  const currentAnswer = answers[q?.id];
  const isFlagged = !!flagged[q?.id];
 
- useEffect(() => {
- // Scroll to top when changing questions
- const el = document.getElementById('quiz-question-area');
- if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
- }, [currentIdx]);
+  useEffect(() => {
+  // Scroll to top when changing questions (instant under reduced motion)
+  const el = document.getElementById('quiz-question-area');
+  if (!el) return;
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (el.scrollTo) el.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+  else el.scrollTop = 0;
+  }, [currentIdx]);
 
  if (loading || !q) {
  return (
@@ -352,17 +355,17 @@ function QuizRunner({
  <HelpCircle className="h-3 w-3" aria-hidden />
  {q.question_type?.replace('_', ' ') || 'question'}
  </span>
- <button
- type="button"
- onClick={() => onToggleFlag(q.id)}
- className={cn(
- 'inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-medium transition-colors',
- isFlagged
- ? 'border-amber-400/40 bg-[var(--warn-soft)] text-[var(--warn)]'
- : 'text-muted-foreground hover:bg-muted hover:text-foreground',
- )}
- aria-pressed={isFlagged}
- >
+  <button
+  type="button"
+  onClick={() => onToggleFlag(q.id)}
+  className={cn(
+  'inline-flex h-7 items-center gap-1 rounded-full border px-2 text-[11px] font-medium transition-colors',
+  isFlagged
+  ? 'border-[var(--warn)]/40 bg-[var(--warn-soft)] text-[var(--warn)]'
+  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+  )}
+  aria-pressed={isFlagged}
+  >
  <Flag className="h-3 w-3" aria-hidden />
  {isFlagged ? 'Flagged' : 'Flag'}
  </button>
@@ -372,15 +375,17 @@ function QuizRunner({
  {currentIdx + 1}. {q.question_text}
  </h2>
 
- <div className="mt-5 space-y-2">
- {isMultiChoice ? options.map((opt, i) => {
- const val = typeof opt === 'string' ? opt : opt.text || opt.id || String(opt);
- const selected = currentAnswer === i || currentAnswer === val;
- return (
- <button
- key={i}
- type="button"
- onClick={() => onAnswer(q.id, i)}
+  <div className="mt-5 space-y-2" role="radiogroup" aria-label={`Question ${currentIdx + 1} options`}>
+  {isMultiChoice ? options.map((opt, i) => {
+  const val = typeof opt === 'string' ? opt : opt.text || opt.id || String(opt);
+  const selected = currentAnswer === i || currentAnswer === val;
+  return (
+  <button
+  key={i}
+  type="button"
+  role="radio"
+  aria-checked={selected}
+  onClick={() => onAnswer(q.id, i)}
  className={cn(
  'group flex w-full items-start gap-3 rounded-xl border p-3.5 text-left transition-all',
  selected
@@ -402,13 +407,14 @@ function QuizRunner({
  </button>
  );
  }) : (
- <textarea
- value={currentAnswer || ''}
- onChange={(e) => onAnswer(q.id, e.target.value)}
- rows={4}
- placeholder="Type your answer…"
- className="w-full rounded-xl border bg-background p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring"
- />
+  <textarea
+  value={currentAnswer || ''}
+  onChange={(e) => onAnswer(q.id, e.target.value)}
+  rows={4}
+  placeholder="Type your answer…"
+  aria-label={`Answer for question ${currentIdx + 1}`}
+  className="w-full rounded-xl border bg-background p-3 text-sm focus-visible:outline-2 focus-visible:outline-ring"
+  />
  )}
  </div>
  </div>
@@ -435,13 +441,13 @@ function QuizRunner({
  Next <ChevronRight className="h-3.5 w-3.5" />
  </Button>
  ) : (
- <Button
- type="button"
- size="sm"
- onClick={onSubmit}
- disabled={submitting}
- className="h-8 gap-1.5  [var(--success)] px-4 text-xs text-white hover:opacity-90"
- >
+  <Button
+  type="button"
+  size="sm"
+  onClick={onSubmit}
+  disabled={submitting}
+  className="h-8 gap-1.5 bg-[var(--success)] px-4 text-xs text-[var(--bg)] hover:opacity-90"
+  >
  {submitting ? 'Submitting…' : <>Finish quiz <CheckCircle2 className="h-3.5 w-3.5" /></>}
  </Button>
  )}
@@ -457,20 +463,22 @@ function QuizRunner({
  const isCur = i === currentIdx;
  const isFl = !!flagged[qq.id];
  return (
- <button
- key={qq.id}
- type="button"
- onClick={() => onJump(i)}
- className={cn(
- 'relative flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition-all',
- isCur && 'ring-2 ring-primary/40',
- answered
- ? 'border-primary/40 bg-primary/10 text-primary'
- : 'border-border bg-background text-muted-foreground hover:bg-muted',
- isFl && !answered && 'border-amber-400/50 bg-[var(--warn)]/5 text-amber-600',
- )}
- title={`Question ${i + 1}${answered ? ' · answered' : ''}${isFl ? ' · flagged' : ''}`}
- >
+  <button
+  key={qq.id}
+  type="button"
+  onClick={() => onJump(i)}
+  aria-label={`Go to question ${i + 1}${answered ? ', answered' : ', unanswered'}${isFl ? ', flagged' : ''}`}
+  aria-current={isCur ? 'true' : undefined}
+  className={cn(
+  'relative flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition-colors',
+  isCur && 'ring-2 ring-primary/40',
+  answered
+  ? 'border-primary/40 bg-primary/10 text-primary'
+  : 'border-border bg-background text-muted-foreground hover:bg-muted',
+  isFl && !answered && 'border-[var(--warn)]/50 bg-[var(--warn)]/5 text-[var(--warn)]',
+  )}
+  title={`Question ${i + 1}${answered ? ' · answered' : ''}${isFl ? ' · flagged' : ''}`}
+  >
  {i + 1}
  {isFl && <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[var(--warn)]" aria-hidden />}
  </button>
@@ -558,11 +566,11 @@ function QuizResults({ result, _qs, reviewIdx, setReviewIdx, retake, canRetake, 
  </div>
  </div>
  <div className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
- {canRetake && (
- <Button size="sm" onClick={retake} className="h-8 gap-1.5 bg-[var(--accent)] px-4 text-xs text-white hover:bg-[var(--accent-strong)]">
- <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Retake quiz
- </Button>
- )}
+  {canRetake && (
+  <Button size="sm" onClick={retake} className="h-8 gap-1.5 bg-[var(--accent)] px-4 text-xs text-[var(--on-accent)] hover:bg-[var(--accent-strong)]">
+  <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Retake quiz
+  </Button>
+  )}
  <Button type="button" variant="outline" size="sm" onClick={onBack} className="h-8 gap-1.5 px-4 text-xs">
  <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Back to quizzes
  </Button>
@@ -581,22 +589,27 @@ function QuizResults({ result, _qs, reviewIdx, setReviewIdx, retake, canRetake, 
  </div>
  </div>
 
- <div key={reviewIdx} className={cn(
- 'rounded-2xl border-l-4 border bg-card p-5 animate-slide-up',
- current.is_correct ? 'border-l-[var(--success)]' : 'border-l-[var(--danger)]',
- )}>
- <div className="flex items-start gap-2.5">
- {current.is_correct ? (
- <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--success)]" aria-hidden />
- ) : (
- <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-500" aria-hidden />
- )}
- <div className="min-w-0 flex-1">
- <p className="text-sm font-semibold leading-snug">
- {reviewIdx + 1}. {current.question_text}
- </p>
- </div>
- </div>
+  <div key={reviewIdx} className="rounded-2xl border bg-card p-5 animate-slide-up">
+  <div className="flex items-start gap-2.5">
+  {current.is_correct ? (
+  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--success)]" aria-hidden />
+  ) : (
+  <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--danger)]" aria-hidden />
+  )}
+  <div className="min-w-0 flex-1">
+  <p className="text-sm font-semibold leading-snug">
+  {reviewIdx + 1}. {current.question_text}
+  </p>
+  <p className={cn(
+  'mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
+  current.is_correct
+  ? 'bg-[var(--success-soft)] text-[var(--success)]'
+  : 'bg-[var(--danger-soft)] text-[var(--danger)]',
+  )}>
+  {current.is_correct ? 'Correct' : 'Incorrect'}
+  </p>
+  </div>
+  </div>
 
  <div className="mt-4 space-y-1.5">
  {Array.isArray(current.options) && current.options.length > 0 ? (
@@ -608,13 +621,13 @@ function QuizResults({ result, _qs, reviewIdx, setReviewIdx, retake, canRetake, 
  <div
  key={oi}
  className={cn(
- 'flex items-start gap-2.5 rounded-xl border px-3.5 py-2 text-sm',
- isCorrect && 'border-[var(--success)]/40 bg-[var(--success-soft)] text-[var(--success)] ',
- isUser && !isCorrect && 'border-red-500/40 bg-[var(--danger)]/8 text-red-700 dark:text-red-400',
- !isUser && !isCorrect && 'border-border/60 text-muted-foreground',
- )}
- >
- <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-black/5 text-[11px] font-semibold dark:bg-white/10">
+  'flex items-start gap-2.5 rounded-xl border px-3.5 py-2 text-sm',
+  isCorrect && 'border-[var(--success)]/40 bg-[var(--success-soft)] text-[var(--success)] ',
+  isUser && !isCorrect && 'border-[var(--danger)]/40 bg-[var(--danger-soft)] text-[var(--danger)]',
+  !isUser && !isCorrect && 'border-border/60 text-muted-foreground',
+  )}
+  >
+  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--surface-2)] text-[11px] font-semibold">
  {LETTERS[oi]}
  </span>
  <span className="pt-0.5 leading-relaxed">

@@ -2,11 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import EmptyState from '@/components/shared/EmptyState';
+import StatTile from '@/components/shared/StatTile';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BrainCircuit, TrendingUp } from 'lucide-react';
 
 export default function ProgressPage() {
- const { data, isLoading } = useQuery({
+ const { data, isLoading, error, refetch } = useQuery({
  queryKey: ['progress'],
  queryFn: async () => {
  const { data } = await api.get('/progress/');
@@ -30,6 +33,15 @@ export default function ProgressPage() {
  <div key={i} className="skeleton h-[100px] rounded-xl" style={{ animationDelay: `${i * 70}ms` }} />
  ))}
  </div>
+ ) : error ? (
+ <Alert variant="destructive" role="alert">
+ <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+ <span>Could not load progress{error?.response?.data?.detail ? `: ${error.response.data.detail}` : ''}</span>
+ <Button type="button" variant="outline" size="sm" onClick={() => refetch()} className="h-7 shrink-0 text-[11px]">
+ Retry
+ </Button>
+ </AlertDescription>
+ </Alert>
  ) : list.length === 0 ? (
  <EmptyState
  icon={BrainCircuit}
@@ -71,12 +83,17 @@ export default function ProgressPage() {
  <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
  <div
  className={cn(
- 'h-full rounded-full transition-all',
+ 'h-full rounded-full',
  tone === 'emerald' && 'bg-[var(--success)]',
  tone === 'amber' && 'bg-[var(--warn)]',
  tone === 'red' && 'bg-[var(--danger)]',
  )}
  style={{ width: `${Math.min(100, value)}%` }}
+ role="progressbar"
+ aria-valuenow={Math.round(Math.min(100, value))}
+ aria-valuemin={0}
+ aria-valuemax={100}
+ aria-label={`${p.concept} mastery ${Math.round(Math.min(100, value))} percent`}
  />
  </div>
  </div>
@@ -87,24 +104,5 @@ export default function ProgressPage() {
  </>
  )}
  </AppShell>
- );
-}
-
-function StatTile({ label, value, icon: Icon, tone = 'indigo' }) {
- const tones = {
- indigo: 'text-primary bg-primary/10',
- emerald: 'text-[var(--success)] bg-[var(--success-soft)] ',
- amber: 'text-amber-600 bg-[var(--warn-soft)] dark:text-amber-400',
- violet: 'text-[var(--accent-strong)] bg-[var(--accent-soft)] ',
- red: 'text-red-600 bg-[var(--danger-soft)] dark:text-red-400',
- };
- return (
- <div className="flex items-center gap-3 rounded-xl border bg-card/60 px-4 py-3">
- {Icon && <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg', tones[tone])}><Icon className="h-4 w-4" aria-hidden /></span>}
- <div className="min-w-0">
- <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
- <p className="text-xl font-semibold tabular-nums tracking-tight">{value ?? 0}</p>
- </div>
- </div>
  );
 }

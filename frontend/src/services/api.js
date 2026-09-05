@@ -259,6 +259,12 @@ export const plansApi = {
   update: (id, data) => api.patch(`/plans/${id}/`, data).then((r) => r.data),
   delete: (id) => api.delete(`/plans/${id}/`),
   listTemplates: () => api.get('/plan-templates/').then((r) => r.data),
+  getTemplate: (id) => api.get(`/plan-templates/${id}/`).then((r) => r.data),
+  createTemplate: (data) => api.post('/plan-templates/', data).then((r) => r.data),
+  updateTemplate: (id, data) => api.patch(`/plan-templates/${id}/`, data).then((r) => r.data),
+  deleteTemplate: (id) => api.delete(`/plan-templates/${id}/`),
+  instantiateTemplate: (id, payload = {}) =>
+    api.post(`/plan-templates/${id}/instantiate/`, payload).then((r) => r.data),
   // Milestones
   createMilestone: (data) =>
     api.post('/plan-milestones/', data).then((r) => r.data),

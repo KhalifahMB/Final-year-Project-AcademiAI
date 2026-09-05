@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -41,8 +42,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { profileSchema, passwordChangeSchema } from '@/lib/validations';
 import api, { platformApi, authApi } from '@/services/api';
 import { getTenantInfo } from '@/lib/tenant';
-import { toast } from 'sonner';
-import {
+import { toast } from 'sonner';import {
   Building2,
   Check,
   KeyRound,
@@ -52,6 +52,16 @@ import {
   ShieldCheck,
   Sun,
   UserRound,
+  GraduationCap,
+  LayoutDashboard,
+  LayoutTemplate,
+  Users,
+  BookOpen,
+  ClipboardPlus,
+  Upload,
+  ArrowRight,
+  LogOut,
+  Mail,
 } from 'lucide-react';
 
 const GENDERS = [
@@ -59,6 +69,14 @@ const GENDERS = [
   { value: 'male', label: 'Male' },
   { value: 'female', label: 'Female' },
   { value: 'other', label: 'Other' },
+];
+
+const SECTIONS = [
+  { id: 'profile', label: 'Profile', hint: 'Picture & personal details', icon: UserRound },
+  { id: 'security', label: 'Account & security', hint: 'Email, password, sessions', icon: ShieldCheck },
+  { id: 'appearance', label: 'Appearance', hint: 'Theme', icon: Sun },
+  { id: 'notifications', label: 'Notifications', hint: 'Email preferences', icon: Megaphone },
+  { id: 'workspace', label: 'Workspace', hint: 'Institution & shortcuts', icon: LayoutDashboard },
 ];
 
 function AppearanceCard() {
@@ -220,6 +238,215 @@ function InstitutionCard({ user }) {
   );
 }
 
+function useAcademicProfile(user) {
+  const programmeId = user?.role === 'student' ? user?.programme_id : null;
+  const departmentId = user?.department_id || null;
+  const programmeQ = useQuery({
+    queryKey: ['academic-profile-programme', programmeId],
+    queryFn: async () => (await api.get(`/programmes/${programmeId}/`)).data,
+    enabled: !!programmeId,
+    staleTime: 5 * 60_000,
+  });
+  const departmentQ = useQuery({
+    queryKey: ['academic-profile-department', departmentId],
+    queryFn: async () => (await api.get(`/departments/${departmentId}/`)).data,
+    enabled: !!departmentId,
+    staleTime: 5 * 60_000,
+  });
+  const facultyId = departmentQ.data?.faculty || null;
+  const facultyQ = useQuery({
+    queryKey: ['academic-profile-faculty', facultyId],
+    queryFn: async () => (await api.get(`/faculties/${facultyId}/`)).data,
+    enabled: !!facultyId,
+    staleTime: 5 * 60_000,
+  });
+  return {
+    programme: programmeQ.data || null,
+    department: departmentQ.data || null,
+    faculty: facultyQ.data || null,
+    loading: programmeQ.isLoading || departmentQ.isLoading || facultyQ.isLoading,
+  };
+}
+
+function AcademicCard({ user }) {
+  const { programme, department, faculty, loading } = useAcademicProfile(user);
+  const isStudent = user?.role === 'student';
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <GraduationCap className="h-4 w-4 text-primary" aria-hidden /> Academic profile
+        </CardTitle>
+        <CardDescription>
+          {isStudent
+            ? 'Your programme, department and faculty — maintained by your institution.'
+            : 'Your home department — maintained by your institution.'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        {loading ? (
+          <div className="space-y-2">
+            {[0, 1].map((i) => (
+              <div key={i} className="skeleton h-9 rounded-md" />
+            ))}
+          </div>
+        ) : (
+          <>
+            {isStudent && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">Programme</span>
+                <span className="font-medium">
+                  {programme
+                    ? `${programme.code ? `${programme.code} — ` : ''}${programme.name}`
+                    : 'Not attached yet'}
+                </span>
+              </div>
+            )}
+            {isStudent && <Separator />}
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Department</span>
+              <span className="font-medium">{department?.name || '—'}</span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Faculty</span>
+              <span className="font-medium">{faculty?.name || '—'}</span>
+            </div>
+            <Button asChild variant="outline" size="sm" className="mt-1 h-8 gap-1.5 text-xs">
+              <Link to={isStudent ? '/my-programme' : '/assigned-courses'}>
+                {isStudent ? 'View my programme' : 'View my courses'}
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const WORKSPACE_LINKS = {
+  student: [
+    { to: '/my-courses', label: 'My courses', desc: 'Enrollments this session', icon: BookOpen },
+    { to: '/my-programme', label: 'My programme', desc: 'Academic profile', icon: GraduationCap },
+    { to: '/progress', label: 'My progress', desc: 'Concept mastery', icon: Check },
+  ],
+  lecturer: [
+    { to: '/assigned-courses', label: 'My courses', desc: 'Offerings you teach', icon: BookOpen },
+    { to: '/admin/quizzes', label: 'Quiz manager', desc: 'Author assessments', icon: ClipboardPlus },
+    { to: '/resources/upload', label: 'Upload material', desc: 'Share resources', icon: Upload },
+  ],
+  tenant_admin: [
+    { to: '/admin/dashboard', label: 'Institution dashboard', desc: 'Users & activity', icon: LayoutDashboard },
+    { to: '/admin/users', label: 'Manage users', desc: 'Roles & access', icon: Users },
+    { to: '/admin/tenant', label: 'Institution structure', desc: 'Faculties & calendar', icon: Building2 },
+    { to: '/admin/templates', label: 'Plan templates', desc: 'Reusable study plans', icon: LayoutTemplate },
+  ],
+};
+
+const PLATFORM_LINKS = [
+  { to: '/platform', label: 'Platform console', desc: 'Overview & stats', icon: LayoutDashboard },
+  { to: '/platform/requests', label: 'Institution requests', desc: 'Review onboarding', icon: Check },
+  { to: '/platform/announcements', label: 'Announcements', desc: 'Broadcast updates', icon: Megaphone },
+];
+
+function WorkspaceShortcutsCard({ user }) {
+  const links = user?.is_superuser
+    ? PLATFORM_LINKS
+    : WORKSPACE_LINKS[user?.role] || WORKSPACE_LINKS.student;
+  const title = user?.is_superuser ? 'Platform shortcuts' : 'Workspace shortcuts';
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <LayoutDashboard className="h-4 w-4 text-primary" aria-hidden /> {title}
+        </CardTitle>
+        <CardDescription>
+          {user?.is_superuser
+            ? 'Jump to the platform areas you manage.'
+            : 'Jump to the areas you use most.'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ul className="grid gap-2 sm:grid-cols-3">
+          {links.map(({ to, label, desc, icon: Icon }) => (
+            <li key={to}>
+              <Link
+                to={to}
+                className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)]"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+                  <Icon className="h-4 w-4" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold">{label}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">{desc}</span>
+                </span>
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SecuritySessionCard() {
+  const { logout } = useAuth();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <KeyRound className="h-4 w-4 text-primary" aria-hidden /> Sessions
+        </CardTitle>
+        <CardDescription>
+          You are signed in on this device. Signing out ends this session immediately.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 gap-2 text-[13px] text-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
+          onClick={logout}
+        >
+          <LogOut className="h-4 w-4" aria-hidden /> Sign out of this device
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EmailStatusCard({ user }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Mail className="h-4 w-4 text-primary" aria-hidden /> Email address
+        </CardTitle>
+        <CardDescription>
+          Used for sign-in, verification and notifications.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{user?.email || '—'}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {user?.is_email_verified
+              ? 'Verified. Changing it below (Personal information) resets verification and sends a new code.'
+              : 'Not verified yet — check your inbox for the 6-digit code.'}
+          </p>
+        </div>
+        <Badge variant={user?.is_email_verified ? 'default' : 'secondary'}>
+          {user?.is_email_verified ? 'Verified' : 'Not verified'}
+        </Badge>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ProfileHeader({ user }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border bg-[var(--accent)] p-6 text-white sm:p-8">
@@ -247,7 +474,7 @@ function ProfileHeader({ user }) {
               {user?.is_superuser ? 'Platform Operator' : user?.role}
             </span>
             {user?.is_email_verified && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/25 px-2.5 py-0.5 text-xs font-medium backdrop-blur">
+              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--success-soft)] px-2.5 py-0.5 text-xs font-medium text-[var(--success)] backdrop-blur">
                 <ShieldCheck className="h-3 w-3" aria-hidden /> Verified
               </span>
             )}
@@ -362,14 +589,92 @@ export default function ProfilePage() {
     }
   };
 
+  const isSuper = !!user?.is_superuser;
+  const showAcademic = !isSuper && (user?.role === 'student' || user?.role === 'lecturer');
+
+  // Section navigation (?section= deep-linkable, Linear/Vercel-style).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialSection = searchParams.get('section');
+  const [section, setSection] = useState(
+    SECTIONS.some((s) => s.id === initialSection) ? initialSection : 'profile',
+  );
+  const pickSection = (id) => {
+    setSection(id);
+    setSearchParams(id === 'profile' ? {} : { section: id }, { replace: true });
+  };
+  const activeSection = SECTIONS.find((s) => s.id === section) || SECTIONS[0];
+
   return (
     <AppShell
       title="Settings"
-      description="Manage your personal profile, security, and appearance."
+      description="Profile, security, appearance, notifications and workspace — one section at a time."
     >
-      <div className="mx-auto max-w-4xl space-y-6">
+      <div className="mx-auto max-w-5xl space-y-6">
         <ProfileHeader user={user} />
 
+        {/* Mobile section nav — horizontal chips */}
+        <nav aria-label="Settings sections" className="lg:hidden">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {SECTIONS.map((s) => {
+              const Icon = s.icon;
+              const active = section === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => pickSection(s.id)}
+                  aria-current={active ? 'page' : undefined}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                    active
+                      ? 'border-[var(--accent)]/40 bg-[var(--accent-soft)] text-[var(--accent-strong)]'
+                      : 'border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+
+        <div className="lg:grid lg:grid-cols-[230px_minmax(0,1fr)] lg:items-start lg:gap-6">
+          {/* Desktop section nav — sticky sidebar */}
+          <nav aria-label="Settings sections" className="sticky top-20 hidden lg:block">
+            <ul className="space-y-1 rounded-xl border bg-card p-2">
+              {SECTIONS.map((s) => {
+                const Icon = s.icon;
+                const active = section === s.id;
+                return (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      onClick={() => pickSection(s.id)}
+                      aria-current={active ? 'page' : undefined}
+                      className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left transition-colors ${
+                        active
+                          ? 'bg-[var(--accent-soft)] text-[var(--accent-strong)]'
+                          : 'text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden />
+                      <span className="min-w-0">
+                        <span className="block truncate text-[13px] font-semibold">{s.label}</span>
+                        <span className="block truncate text-[11px] opacity-80">{s.hint}</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+
+          <div className="min-w-0">
+            <h2 className="mb-1 text-lg font-semibold tracking-tight">{activeSection.label}</h2>
+            <p className="mb-5 text-[13px] text-muted-foreground">{activeSection.hint}</p>
+
+        {section === 'profile' && (
+          <div className="max-w-2xl space-y-6">
         {/* Profile picture */}
         <Card>
           <CardHeader>
@@ -380,7 +685,7 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {avatarError && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" role="alert">
                 <AlertDescription>{avatarError}</AlertDescription>
               </Alert>
             )}
@@ -411,10 +716,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <AnnouncementPreferencesCard />
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Personal info */}
+        {/* Personal info */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -425,7 +727,7 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent>
               {profileError && (
-                <Alert variant="destructive" className="mb-3">
+                <Alert variant="destructive" role="alert" className="mb-3">
                   <AlertDescription>{String(profileError)}</AlertDescription>
                 </Alert>
               )}
@@ -471,6 +773,9 @@ export default function ProfilePage() {
                         <FormControl>
                           <Input type="email" autoComplete="email" {...field} />
                         </FormControl>
+                        <p className="text-[11px] text-muted-foreground">
+                          Changing your email resets verification — a new 6-digit code will be sent.
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -535,8 +840,12 @@ export default function ProfilePage() {
               </Form>
             </CardContent>
           </Card>
+          </div>
+        )}
 
-          <div className="space-y-6">
+        {section === 'security' && (
+          <div className="max-w-2xl space-y-6">
+            <EmailStatusCard user={user} />
             {/* Password */}
             <Card>
               <CardHeader>
@@ -547,7 +856,7 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent>
                 {pwError && (
-                  <Alert variant="destructive" className="mb-3">
+                  <Alert variant="destructive" role="alert" className="mb-3">
                     <AlertDescription>{String(pwError)}</AlertDescription>
                   </Alert>
                 )}
@@ -595,10 +904,30 @@ export default function ProfilePage() {
                 </Form>
               </CardContent>
             </Card>
+            <SecuritySessionCard />
+          </div>
+        )}
 
-            {user?.tenant || user?.tenant_detail ? <InstitutionCard user={user} /> : null}
+        {section === 'appearance' && (
+          <div className="max-w-2xl space-y-6">
             <AppearanceCard />
+          </div>
+        )}
+
+        {section === 'notifications' && (
+          <div className="max-w-2xl space-y-6">
+            <AnnouncementPreferencesCard />
+          </div>
+        )}
+
+        {section === 'workspace' && (
+          <div className="max-w-2xl space-y-6">
+            <WorkspaceShortcutsCard user={user} />
+            {(user?.tenant || user?.tenant_detail) && !isSuper ? <InstitutionCard user={user} /> : null}
+            {showAcademic ? <AcademicCard user={user} /> : null}
             <AgentSettings />
+          </div>
+        )}
           </div>
         </div>
       </div>
