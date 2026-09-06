@@ -47,6 +47,7 @@ export default function LoginPage() {
   return (
     <AuthLayout
       icon={LogIn}
+      eyebrow="Sign in to your workspace"
       title="Welcome back"
       subtitle="Sign in to continue to your AcademiAI workspace."
       footer={
@@ -54,7 +55,7 @@ export default function LoginPage() {
           New to AcademiAI?{' '}
           <Link
             to="/signup"
-            className="font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring rounded-sm"
+            className="landing-text-link font-semibold"
           >
             Create an account
           </Link>
@@ -62,25 +63,26 @@ export default function LoginPage() {
       }
     >
       {error && (
-        <Alert variant="destructive" className="mb-4">
+        <Alert variant="destructive" role="alert" className="mb-4">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" data-testid="login-form">
           <FormField
             control={form.control}
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-[12px] font-medium">Email</FormLabel>
+                <FormLabel className="text-xs font-semibold tracking-tight">Email</FormLabel>
                 <FormControl>
                   <Input
                     type="email"
                     autoComplete="email"
                     placeholder="you@university.edu"
                     className="h-10"
+                    data-testid="login-email"
                     {...field}
                   />
                 </FormControl>
@@ -94,10 +96,10 @@ export default function LoginPage() {
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center justify-between">
-                  <FormLabel className="text-[12px] font-medium">Password</FormLabel>
+                  <FormLabel className="text-xs font-semibold tracking-tight">Password</FormLabel>
                   <Link
                     to="/password-reset"
-                    className="text-[12px] font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring rounded-sm"
+                    className="landing-text-link text-xs font-medium"
                   >
                     Forgot?
                   </Link>
@@ -107,6 +109,7 @@ export default function LoginPage() {
                     autoComplete="current-password"
                     placeholder="Enter your password"
                     className="h-10"
+                    data-testid="login-password"
                     {...field}
                   />
                 </FormControl>
@@ -124,6 +127,7 @@ export default function LoginPage() {
             type="submit"
             disabled={form.formState.isSubmitting}
             className="h-10 w-full gap-2 text-[14px] font-semibold"
+            data-testid="login-submit"
           >
             {form.formState.isSubmitting ? (
               <>

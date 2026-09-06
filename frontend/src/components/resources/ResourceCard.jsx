@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import api from '@/services/api';
 import { getFileType, SCOPE_META } from '@/lib/filetypes';
 import StatusBadge from '@/components/shared/StatusBadge';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -38,6 +40,8 @@ export default function ResourceCard({
   className,
 }) {
   const { user } = useAuth();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const ft = getFileType(resource?.title || '', resource?.mime_type);
   const scope = SCOPE_META[resource?.visibility_scope] || SCOPE_META.private;
 
@@ -46,15 +50,17 @@ export default function ResourceCard({
     !!resource &&
     (user.role === 'tenant_admin' || user.is_superuser || resource.uploaded_by === user.id);
 
-  const handleDelete = async (e) => {
-    e.stopPropagation();
-    if (!window.confirm('Delete this resource? This cannot be undone.')) return;
+  const handleDelete = async () => {
+    setDeleting(true);
     try {
       await api.delete(`/resources/${resource.id}/`);
       toast.success('Resource deleted');
+      setDeleteOpen(false);
       if (onDeleted) onDeleted(resource.id);
     } catch (err) {
       toast.error(err.response?.data?.error?.detail || 'Delete failed');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -65,28 +71,14 @@ export default function ResourceCard({
   const FileIcon = ft.icon;
   const interactive = !!onOpen;
 
+  // No button-inside-button nesting: the card itself is inert; the title
+  // is the open control and the menu is its sibling.
   return (
     <article
-      role={interactive ? 'button' : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      onClick={interactive ? () => onOpen(resource) : undefined}
-      onKeyDown={
-        interactive
-          ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onOpen(resource);
-              }
-            }
-          : undefined
-      }
       className={cn(
         'group relative flex h-full flex-col rounded-xl border bg-card p-4',
         'transition-all duration-150 ease-out',
-        interactive
-          ? 'cursor-pointer hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_4px_16px_-8px_color-mix(in_oklab,var(--primary)_35%,transparent)]'
-          : 'cursor-default',
-        interactive && 'focus-visible:outline-2 focus-visible:outline-ring focus-visible:-translate-y-0.5',
+        interactive && 'hover:border-primary/40 hover:shadow-[0_4px_16px_-8px_color-mix(in_oklab,var(--primary)_35%,transparent)]',
         className,
       )}
     >
@@ -98,16 +90,16 @@ export default function ResourceCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100 hover:bg-muted hover:text-foreground"
+                className="h-7 w-7 text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100 max-md:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
               >
                 <MoreVertical className="h-3.5 w-3.5" />
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">Open menu for {resource?.title}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem
                 className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                onClick={handleDelete}
+                onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }}
               >
                 <Trash2 className="mr-2 h-3.5 w-3.5" />
                 Delete
@@ -129,12 +121,24 @@ export default function ResourceCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <h2
-              className="truncate text-sm font-semibold leading-snug"
-              title={resource?.title}
-            >
-              {resource?.title}
-            </h2>
+            {interactive ? (
+              <button
+                type="button"
+                onClick={() => onOpen(resource)}
+                className="min-w-0 flex-1 truncate rounded-sm text-left text-sm font-semibold leading-snug transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <span className="block truncate" title={resource?.title}>
+                  {resource?.title}
+                </span>
+              </button>
+            ) : (
+              <h2
+                className="truncate text-sm font-semibold leading-snug"
+                title={resource?.title}
+              >
+                {resource?.title}
+              </h2>
+            )}
           </div>
           <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
             <span className="font-medium uppercase tracking-wide">{ft.label}</span>
@@ -156,7 +160,7 @@ export default function ResourceCard({
 
       {/* Processing error */}
       {failed && resource?.processing_error ? (
-        <p className="mt-2.5 line-clamp-2 rounded-md border border-red-500/20 bg-red-500/8 px-2.5 py-1.5 text-[11px] leading-snug text-red-700 dark:text-red-400">
+        <p className="mt-2.5 line-clamp-2 rounded-md border border-[var(--danger)]/20 bg-[var(--danger-soft)] px-2.5 py-1.5 text-[11px] leading-snug text-[var(--danger)]">
           {resource.processing_error}
         </p>
       ) : null}
@@ -178,11 +182,22 @@ export default function ResourceCard({
             Summary
           </span>
         )}
-        <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground/70 opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground/70">
           <Clock className="h-2.5 w-2.5" aria-hidden />
           {timeAgo(resource?.created_at)}
         </span>
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete resource"
+        description="This cannot be undone. The resource and all its data will be permanently removed."
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteOpen(false)}
+        confirmLabel="Delete"
+        destructive
+        pending={deleting}
+      />
     </article>
   );
 }

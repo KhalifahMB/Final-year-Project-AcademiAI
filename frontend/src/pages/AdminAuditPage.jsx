@@ -4,6 +4,7 @@ import api, { dashboardApi } from "@/services/api";
 import AppShell from "@/components/layout/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import {
@@ -58,8 +59,13 @@ export default function AdminAuditPage() {
       description="Security events and user activity across your institution. Use the charts to spot trends, and the table below to drill into individual events."
     >
       {logs.error && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>Could not load audit logs.</AlertDescription>
+        <Alert variant="destructive" role="alert" className="mb-4">
+          <AlertDescription className="flex w-full items-center justify-between gap-3">
+            <span>Could not load audit logs{logs.error?.response?.data?.detail ? `: ${logs.error.response.data.detail}` : ''}</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => logs.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -78,7 +84,7 @@ export default function AdminAuditPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--warn-soft)] text-amber-600">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--warn-soft)] text-[var(--warn)]">
               <ShieldAlert className="h-5 w-5" />
             </span>
             <div>
@@ -106,11 +112,12 @@ export default function AdminAuditPage() {
           <CardTitle className="flex items-center gap-2 text-base">
             <ScrollText className="h-4 w-4" /> Activity over time
           </CardTitle>
-          <div className="inline-flex rounded-lg border bg-muted/50 p-0.5 text-xs">
+          <div className="inline-flex rounded-lg border bg-muted/50 p-0.5 text-xs" role="group" aria-label="Activity window">
             {[7, 14, 30, 90].map((d) => (
               <button
                 key={d}
                 onClick={() => setDays(d)}
+                aria-pressed={days === d}
                 className={cn(
                   "rounded-md px-3 py-1 transition-colors",
                   days === d
@@ -126,6 +133,15 @@ export default function AdminAuditPage() {
         <CardContent>
           {summary.isLoading ? (
             <div className="h-56 animate-pulse rounded-lg bg-muted/40" />
+          ) : summary.error ? (
+            <Alert variant="destructive" role="alert">
+              <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+                <span>Could not load activity summary</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => summary.refetch()} className="h-7 shrink-0 text-[11px]">
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
           ) : timeline.length === 0 ? (
             <p className="flex h-40 items-center justify-center text-sm text-muted-foreground">
               No events in this window.
@@ -211,6 +227,7 @@ export default function AdminAuditPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search actions, actors, entities…"
+              aria-label="Search audit events"
               className="h-9 pl-9"
             />
           </div>

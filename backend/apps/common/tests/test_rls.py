@@ -82,9 +82,16 @@ def rls_enabled(transactional_db):
         for table in RLS_TABLES:
             cursor.execute(f"DROP POLICY IF EXISTS tenant_isolation ON {table}")
             cursor.execute(f"ALTER TABLE IF EXISTS {table} DISABLE ROW LEVEL SECURITY")
-        # Drop the role (must drop owned objects first).
-        cursor.execute(f'DROP OWNED BY "{RLS_ROLE}"')
-        cursor.execute(f'DROP ROLE IF EXISTS "{RLS_ROLE}"')
+        try:
+            # Reassign ownership before dropping the temporary role. In the
+            # ephemeral pytest databases used by xdist, some objects may still
+            # be attached to this role when teardown runs. Treat this as a
+            # best-effort cleanup because the per-worker test DB is discarded.
+            cursor.execute(f'REASSIGN OWNED BY "{RLS_ROLE}" TO CURRENT_USER')
+            cursor.execute(f'DROP OWNED BY "{RLS_ROLE}"')
+            cursor.execute(f'DROP ROLE IF EXISTS "{RLS_ROLE}"')
+        except Exception:
+            pass
 
 
 def _set_tenant(tenant_id):

@@ -6,6 +6,8 @@ from .dashboard import (
     StudentActivityView,
     AdminAuditSummaryView,
     LecturerDashboardView,
+    AiGreetingView,
+    AiInsightView,
 )
 
 urlpatterns = [
@@ -30,4 +32,6 @@ urlpatterns = [
         LecturerDashboardView.as_view(),
         name="dashboard-lecturer",
     ),
+    path("dashboard/ai-greeting/", AiGreetingView.as_view(), name="dashboard-ai-greeting"),
+    path("dashboard/ai-insight/", AiInsightView.as_view(), name="dashboard-ai-insight"),
 ]

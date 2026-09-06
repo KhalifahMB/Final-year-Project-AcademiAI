@@ -31,7 +31,9 @@ export default function TenantStructurePage() {
   const qc = useQueryClient();
   const [addFaculty, setAddFaculty] = useState(false);
   const [addSession, setAddSession] = useState(false);
+  const [editSession, setEditSession] = useState(null); // session object
   const [addSemester, setAddSemester] = useState(null); // session object
+  const [editSemester, setEditSemester] = useState(null); // semester object
   const [modalError, setModalError] = useState("");
 
   const tenantQ = useQuery({
@@ -101,6 +103,28 @@ export default function TenantStructurePage() {
     onError: (e) => setModalError(errText(e, "Could not add semester")),
   });
 
+  const updateSession = useMutation({
+    mutationFn: ({ id, ...payload }) => api.patch(`/academic-sessions/${id}/`, payload),
+    onSuccess: () => {
+      toast.success("Session updated");
+      setEditSession(null);
+      setModalError("");
+      qc.invalidateQueries({ queryKey: ["academic-sessions"] });
+    },
+    onError: (e) => setModalError(errText(e, "Could not update session")),
+  });
+
+  const updateSemester = useMutation({
+    mutationFn: ({ id, ...payload }) => api.patch(`/semesters/${id}/`, payload),
+    onSuccess: () => {
+      toast.success("Semester updated");
+      setEditSemester(null);
+      setModalError("");
+      qc.invalidateQueries({ queryKey: ["semesters"] });
+    },
+    onError: (e) => setModalError(errText(e, "Could not update semester")),
+  });
+
   const setCurrentSession = useMutation({
     mutationFn: (s) => api.patch(`/academic-sessions/${s.id}/`, { is_current: true }),
     onSuccess: () => {
@@ -132,8 +156,13 @@ export default function TenantStructurePage() {
       {tenantQ.isLoading ? (
         <SkeletonRows rows={3} />
       ) : tenantQ.error ? (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>Failed to load institution data</AlertDescription>
+        <Alert variant="destructive" role="alert" className="mb-4">
+          <AlertDescription className="flex w-full items-center justify-between gap-3">
+            <span>Failed to load institution data</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => tenantQ.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
         </Alert>
       ) : (
         <div className="space-y-6">
@@ -179,6 +208,15 @@ export default function TenantStructurePage() {
             <CardContent>
               {sessionsQ.isLoading ? (
                 <SkeletonRows rows={2} />
+              ) : sessionsQ.error ? (
+                <Alert variant="destructive" role="alert">
+                  <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+                    <span>Failed to load sessions</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => sessionsQ.refetch()} className="h-7 shrink-0 text-[11px]">
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                </Alert>
               ) : (sessionsQ.data || []).length === 0 ? (
                 <EmptyState icon={CalendarRange} title="No sessions yet" description="Add your first academic session, e.g. 2025/2026." />
               ) : (
@@ -202,6 +240,9 @@ export default function TenantStructurePage() {
                               Set current
                             </Button>
                           )}
+                          <Button type="button" variant="outline" size="sm" onClick={() => { setModalError(""); setEditSession(s); }}>
+                            Edit
+                          </Button>
                           <Button type="button" variant="outline" size="sm" onClick={() => { setModalError(""); setAddSemester(s); }}>
                             <Plus className="mr-1 h-3.5 w-3.5" aria-hidden /> Semester
                           </Button>
@@ -224,6 +265,13 @@ export default function TenantStructurePage() {
                                     set current
                                   </button>
                                 )}
+                                <button
+                                  type="button"
+                                  onClick={() => { setModalError(""); setEditSemester(m); }}
+                                  className="text-[11px] font-medium text-muted-foreground hover:text-primary hover:underline"
+                                >
+                                  edit
+                                </button>
                               </span>
                             ))}
                           </div>
@@ -252,6 +300,15 @@ export default function TenantStructurePage() {
             <CardContent>
               {facultiesQ.isLoading ? (
                 <SkeletonRows rows={3} />
+              ) : facultiesQ.error ? (
+                <Alert variant="destructive" role="alert">
+                  <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+                    <span>Failed to load faculties</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => facultiesQ.refetch()} className="h-7 shrink-0 text-[11px]">
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                </Alert>
               ) : (facultiesQ.data || []).length === 0 ? (
                 <EmptyState
                   icon={Building2}
@@ -327,6 +384,34 @@ export default function TenantStructurePage() {
         error={modalError}
         onClose={() => setAddSemester(null)}
         onSubmit={(payload) => createSemester.mutate({ ...payload, academic_session: addSemester?.id })}
+      />
+      <EntityDialog
+        open={!!editSession}
+        title={`Edit session — ${editSession?.name || ""}`}
+        fields={[
+          { name: "name", label: "Session name", required: true, placeholder: "e.g. 2025/2026" },
+          { name: "start_date", label: "Start date", type: "date", required: true },
+          { name: "end_date", label: "End date", type: "date", required: true },
+        ]}
+        initial={editSession || undefined}
+        pending={updateSession.isPending}
+        error={modalError}
+        onClose={() => setEditSession(null)}
+        onSubmit={(payload) => updateSession.mutate({ id: editSession?.id, ...payload })}
+      />
+      <EntityDialog
+        open={!!editSemester}
+        title={`Edit semester — ${editSemester?.name || ""}`}
+        fields={[
+          { name: "name", label: "Semester name", required: true, placeholder: "e.g. First Semester" },
+          { name: "start_date", label: "Start date", type: "date", required: true },
+          { name: "end_date", label: "End date", type: "date", required: true },
+        ]}
+        initial={editSemester || undefined}
+        pending={updateSemester.isPending}
+        error={modalError}
+        onClose={() => setEditSemester(null)}
+        onSubmit={(payload) => updateSemester.mutate({ id: editSemester?.id, ...payload })}
       />
     </AppShell>
   );

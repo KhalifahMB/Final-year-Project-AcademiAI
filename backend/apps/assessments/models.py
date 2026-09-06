@@ -25,6 +25,7 @@ class Quiz(TenantScopedModel):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    due_date = models.DateTimeField(null=True, blank=True)
     generation_job_id = models.CharField(max_length=64, blank=True)  # Celery task id if AI-generated
 
     class Meta:

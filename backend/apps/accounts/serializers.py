@@ -14,6 +14,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     full_name = serializers.CharField(read_only=True)
     has_custom_avatar = serializers.SerializerMethodField()
+    # Nested tenant summary for display. `tenant` stays the raw PK so older
+    # clients/guards keep working; new UI should read `tenant_detail`.
+    tenant_detail = serializers.SerializerMethodField()
+    # Academic profile derived from the user's role-linked profile.
+    # Students inherit from their programme (programme → department → faculty);
+    # lecturers from their assigned department. Admins/platform users: None.
+    programme_id = serializers.SerializerMethodField()
+    department_id = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -24,9 +33,14 @@ class UserSerializer(serializers.ModelSerializer):
             "last_name",
             "full_name",
             "role",
+            "is_active",
             "is_email_verified",
             "is_superuser",
             "tenant",
+            "tenant_detail",
+            "programme_id",
+            "department_id",
+            "department_name",
             "phone_number",
             "gender",
             "avatar_preset",
@@ -35,8 +49,84 @@ class UserSerializer(serializers.ModelSerializer):
         )
         read_only_fields = fields
 
+    def _profile(self, obj):
+        role = getattr(obj, "role", None)
+        if role == "student":
+            return getattr(obj, "student_profile", None)
+        if role == "lecturer":
+            return getattr(obj, "lecturer_profile", None)
+        return None
+
+    def get_programme_id(self, obj):
+        profile = self._profile(obj)
+        programme = getattr(profile, "programme", None)
+        return str(programme.id) if programme else None
+
+    def get_department_id(self, obj):
+        profile = self._profile(obj)
+        if profile is None:
+            return None
+        if getattr(obj, "role", None) == "student":
+            programme = getattr(profile, "programme", None)
+            dept = getattr(programme, "department", None)
+        else:
+            dept = getattr(profile, "department", None)
+        return str(dept.id) if dept else None
+
+    def get_department_name(self, obj):
+        profile = self._profile(obj)
+        if profile is None:
+            return None
+        if getattr(obj, "role", None) == "student":
+            programme = getattr(profile, "programme", None)
+            dept = getattr(programme, "department", None)
+        else:
+            dept = getattr(profile, "department", None)
+        return dept.name if dept else None
+
     def get_has_custom_avatar(self, obj):
         return bool(obj.avatar_key)
+
+    def get_tenant_detail(self, obj):
+        tenant = getattr(obj, "tenant", None)
+        # `tenant` may be a bare PK (no cached relation); resolve it.
+        if tenant is not None and not hasattr(tenant, "name"):
+            from apps.tenants.models import Tenant
+
+            try:
+                tenant = Tenant.objects.filter(pk=tenant).first()
+            except Exception:
+                tenant = None
+        if tenant is None:
+            return None
+        return {
+            "id": str(tenant.id),
+            "name": tenant.name,
+            "slug": tenant.slug,
+        }
+
+
+class UserAdminUpdateSerializer(serializers.ModelSerializer):
+    """
+    Tenant-admin user management (PATCH). Only a safe allowlist of fields is
+    writable. Security-critical fields — tenant, email, is_superuser, is_staff,
+    is_email_verified — are intentionally NOT exposed here so an admin cannot
+    escalate a user's privileges or reassign tenant.
+    """
+
+    role = serializers.ChoiceField(choices=User.Role.choices, required=False)
+
+    class Meta:
+        model = User
+        fields = (
+            "first_name",
+            "last_name",
+            "role",
+            "is_active",
+            "phone_number",
+            "gender",
+            "avatar_preset",
+        )
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
@@ -80,6 +170,9 @@ class SignupSerializer(serializers.Serializer):
     # Optional programme (students) — builds the academic profile used to
     # scope institution structure and course enrolment.
     programme = serializers.UUIDField(required=False, allow_null=True)
+    # Optional department (lecturers attach here; students use it to scope
+    # the programme picker and it is cross-checked against the programme).
+    department = serializers.UUIDField(required=False, allow_null=True)
     gender = serializers.ChoiceField(
         choices=User.Gender.choices, required=False, allow_blank=True
     )

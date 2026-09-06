@@ -38,9 +38,10 @@ def append_user_message(session, content: str) -> ChatMessage:
     )
 
 
-def append_assistant_message(session, content: str, sources: list) -> ChatMessage:
+def append_assistant_message(session, content: str, sources: list, confidence: str | None = None) -> ChatMessage:
     """
     sources: list of dicts with keys chunk_id, rank, similarity_score, retrieval_method
+    confidence: one of "high", "medium", "low", "none" (or None)
 
     Caller MUST run this inside a tenant-scoped transaction (middleware's
     atomic block, or tenant_scope()) so that RLS policies can see
@@ -51,6 +52,7 @@ def append_assistant_message(session, content: str, sources: list) -> ChatMessag
         session=session,
         role=ChatMessage.Role.ASSISTANT,
         content=content,
+        confidence=confidence,
     )
     for s in sources:
         chunk_id = s.get("chunk_id")

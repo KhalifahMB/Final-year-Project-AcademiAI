@@ -1,0 +1,39 @@
+{% extends "emails/base_email.html" %}
+
+{% block subject %}{{ product_name }} — Mail delivery test{% endblock %}
+{% block preheader %}This is a test email to confirm your {{ product_name }} mail pipeline is working.{% endblock %}
+{% block masthead %}
+  <tr>
+    <td class="email-pad" style="padding:8px 40px 6px 40px;">
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:{{ brand_main }}; margin-bottom:8px;">Delivery test</div>
+      <h1 style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:26px; font-weight:700; color:{{ text_primary }}; letter-spacing:-0.02em; line-height:1.2;">Hello {{ first_name | default:"there" }} — this is a test</h1>
+    </td>
+  </tr>
+{% endblock %}
+{% block body %}
+  <p style="margin:0 0 16px 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:15px; line-height:1.6; color:{{ text_primary }};">
+    This email confirms that transactional mail from your institution's
+    {{ product_name }} workspace is being delivered correctly — including the
+    branded HTML template, your institution's logo, and the updates below.
+  </p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 4px 0; background-color:{{ page_bg }}; border:1px solid {{ border }}; border-radius:12px;">
+    <tr><td style="padding:16px 20px;">
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:14px; font-weight:600; color:{{ text_primary }}; margin-bottom:4px;">What's working</div>
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; line-height:1.6; color:{{ text_muted }};">
+        ✓ SMTP delivery to {{ support_email }}<br>
+        ✓ Branded HTML template with embedded logo<br>
+        ✓ Plain-text fallback for email clients that only show text
+      </div>
+    </td></tr>
+  </table>
+
+  <p style="margin:18px 0 0 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; line-height:1.6; color:{{ text_muted }};">
+    You're receiving this because you're an active member of your institution's
+    {{ product_name }} workspace. No action is needed on your part.
+  </p>
+{% endblock %}
+
+{% block cta_url %}{{ dashboard_url | default:frontend_url }}{% endblock %}
+{% block cta_label %}Open your dashboard{% endblock %}
+{% block cta_hint %}You can safely ignore this test email.{% endblock %}

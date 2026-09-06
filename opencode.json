@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "terminal.execute": "allow",
+    "package.install": "allow",
+    "file.write": "allow",
+    "websearch": "allow",
+    "webfetch": "allow"
+  }
+}

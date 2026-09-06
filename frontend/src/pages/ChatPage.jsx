@@ -5,16 +5,20 @@ import { formatDistanceToNow } from 'date-fns';
 import { chatApi } from '@/services/api';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { getFileType } from '@/lib/filetypes';
 import ResourceDetailDialog from '@/components/resources/ResourceDetailDialog';
+import SourceDetailDialog from '@/components/chat/SourceDetailDialog';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github-dark.css';
 import { toast } from 'sonner';
 import {
  ArrowUp,
@@ -33,6 +37,7 @@ import {
  Link2,
  Loader2,
  MessageSquarePlus,
+  Menu,
  PanelRightClose,
  PanelRightOpen,
  Pencil,
@@ -151,11 +156,11 @@ function MarkdownContent({ content, sources, onSourceClick }) {
  }, [sources, onSourceClick]);
 
  return (
- <ReactMarkdown
- remarkPlugins={[remarkMath]}
- rehypePlugins={[rehypeKatex]}
- components={components}
- >
+  <ReactMarkdown
+  remarkPlugins={[remarkMath]}
+  rehypePlugins={[rehypeKatex, rehypeHighlight]}
+  components={components}
+  >
  {content}
  </ReactMarkdown>
  );
@@ -163,25 +168,37 @@ function MarkdownContent({ content, sources, onSourceClick }) {
 
 /* ---------------- Source chip in sources rail ---------------- */
 
-function SourceCard({ source, active, onClick, onOpenResource }) {
+function SourceCard({ source, active, onClick, onOpenResource, onDetailClick }) {
  const meta = getFileType(source.resource_title || '', source.mime_type || '');
  const FileIcon = meta.icon;
+ // No nested buttons: the header row is the select toggle, the detail
+ // actions sit beneath it as siblings.
  return (
+ <div
+  className={cn(
+   'group w-full rounded-lg border p-2.5 text-left transition-colors',
+   active
+    ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/20'
+    : 'border-border/60 bg-background/60 hover:border-primary/30 hover:bg-accent/30',
+  )}
+ >
  <button
- type="button"
- onClick={onClick}
- className={cn(
- 'group flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left transition-all',
- active
- ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/20'
- : 'border-border/60 bg-background/60 hover:border-primary/30 hover:bg-accent/30',
- )}
+  type="button"
+  onClick={onClick}
+  aria-pressed={active}
+  aria-label={`${active ? 'Deselect' : 'Select'} source ${source.rank}: ${source.resource_title || source.title || ''}`}
+  className="flex w-full items-start gap-2.5 rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
  >
  <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold', meta.tint)}>
- {source.rank}
+  {source.rank}
  </span>
  <div className="min-w-0 flex-1">
  <p className="line-clamp-2 text-[12.5px] font-medium leading-snug">{source.resource_title || source.title || `Source ${source.rank}`}</p>
+ {source.chunk_text && (
+ <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground/70">
+ {source.chunk_text.slice(0, 150)}…
+ </p>
+ )}
  <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground">
  <FileIcon className="h-3 w-3" aria-hidden />
  <span className="uppercase tracking-wide">{meta.label}</span>
@@ -190,27 +207,53 @@ function SourceCard({ source, active, onClick, onOpenResource }) {
  <span>· {Math.round(Number(source.similarity_score) * 100)}% match</span>
  )}
  </div>
+ </div>
+ </button>
  <div className="mt-1.5 flex items-center gap-1">
  <button
  type="button"
- onClick={(e) => { e.stopPropagation(); if (onOpenResource && source.resource_id) onOpenResource(source.resource_id); }}
+ onClick={(e) => { e.stopPropagation(); if (onDetailClick) onDetailClick(source); }}
  className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/10"
- disabled={!source.resource_id}
  >
- <Link2 className="h-2.5 w-2.5" aria-hidden /> Open
+ <Link2 className="h-2.5 w-2.5" aria-hidden /> View details
  </button>
+ {source.resource_id && (
+ <button
+ type="button"
+ onClick={(e) => { e.stopPropagation(); if (onOpenResource) onOpenResource(source.resource_id); }}
+ className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+ >
+ Open resource
+ </button>
+ )}
  <span className="text-[10px] text-muted-foreground/70">· {source.retrieval_method || 'hybrid'}</span>
  </div>
  </div>
- </button>
  );
 }
 
 /* ---------------- Message actions ---------------- */
 
-function MessageActions({ content, onRegenerate, isLastAssistant }) {
+function ConfidenceBadge({ confidence, retrieval_ms }) {
+  if (!confidence || confidence === 'none') return null;
+  const map = {
+  high: { label: 'Grounded', cls: 'bg-[var(--success-soft)] text-[var(--success)]', icon: '●' },
+  medium: { label: 'Partial', cls: 'bg-[var(--warn-soft)] text-[var(--warn)]', icon: '◐' },
+  low: { label: 'Ungrounded', cls: 'bg-[var(--danger-soft)] text-[var(--danger)]', icon: '○' },
+  };
+  const { label, cls, icon } = map[confidence] || map.medium;
+  return (
+  <span className={cn('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium', cls)}>
+  <span aria-hidden>{icon}</span>
+  {label}
+  {retrieval_ms != null && <span className="opacity-60">· {retrieval_ms}ms</span>}
+  </span>
+  );
+}
+
+function MessageActions({ content, onRegenerate, isLastAssistant, messageId, initialRating }) {
  const [copied, setCopied] = useState(false);
- const [reaction, setReaction] = useState(null);
+ const [reaction, setReaction] = useState(initialRating === 1 ? 'up' : initialRating === -1 ? 'down' : null);
 
  const copy = async () => {
  try {
@@ -220,9 +263,20 @@ function MessageActions({ content, onRegenerate, isLastAssistant }) {
  } catch {}
  };
 
- return (
- <div className="mt-2 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
- <Tooltip>
+ const setRating = async (val) => {
+ const next = reaction === val ? null : val;
+ setReaction(next);
+ if (!messageId) return;
+ try {
+ await chatApi.rateMessage(messageId, next === 'up' ? 1 : next === 'down' ? -1 : 0);
+ } catch { /* feedback is optimistic; ignore failure */ }
+ };
+
+  return (
+  // Hover-only actions strand touch + keyboard users: reveal on
+  // focus-within everywhere and keep visible on coarse pointers.
+  <div className="mt-2 flex items-center gap-0.5 transition-opacity focus-within:opacity-100 max-md:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+  <Tooltip>
  <TooltipTrigger asChild>
  <button
  type="button"
@@ -254,9 +308,10 @@ function MessageActions({ content, onRegenerate, isLastAssistant }) {
  <TooltipTrigger asChild>
  <button
  type="button"
- onClick={() => setReaction((r) => (r === 'up' ? null : 'up'))}
- className={cn('rounded-md p-1.5 transition-colors hover:bg-muted', reaction === 'up' ? 'text-[var(--success)]' : 'text-muted-foreground hover:text-foreground')}
- aria-label="Good response"
+ onClick={() => setRating('up')}
+  className={cn('rounded-md p-1.5 transition-colors hover:bg-muted', reaction === 'up' ? 'text-[var(--success)]' : 'text-muted-foreground hover:text-foreground')}
+  aria-label="Good response"
+  aria-pressed={reaction === 'up'}
  >
  <ThumbsUp className="h-3.5 w-3.5" />
  </button>
@@ -267,9 +322,10 @@ function MessageActions({ content, onRegenerate, isLastAssistant }) {
  <TooltipTrigger asChild>
  <button
  type="button"
- onClick={() => setReaction((r) => (r === 'down' ? null : 'down'))}
- className={cn('rounded-md p-1.5 transition-colors hover:bg-muted', reaction === 'down' ? 'text-red-500' : 'text-muted-foreground hover:text-foreground')}
- aria-label="Bad response"
+ onClick={() => setRating('down')}
+  className={cn('rounded-md p-1.5 transition-colors hover:bg-muted', reaction === 'down' ? 'text-[var(--danger)]' : 'text-muted-foreground hover:text-foreground')}
+  aria-label="Bad response"
+  aria-pressed={reaction === 'down'}
  >
  <ThumbsDown className="h-3.5 w-3.5" />
  </button>
@@ -343,8 +399,11 @@ function MessageBubble({ msg, isLastAssistant, onSourceClick, _onOpenSourceResou
  {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
  </span>
  )}
+ {!isUser && !isStreaming && (
+ <ConfidenceBadge confidence={msg.confidence} retrieval_ms={msg.retrieval_ms} />
+ )}
  {!isUser && (
- <MessageActions content={msg.content} isLastAssistant={isLastAssistant} onRegenerate={onRegenerate} />
+ <MessageActions content={msg.content} isLastAssistant={isLastAssistant} onRegenerate={onRegenerate} messageId={msg.id} initialRating={msg.rating} />
  )}
  </div>
  </div>
@@ -495,13 +554,13 @@ function HistoryItem({ s, active, onClick, onDelete }) {
  {s.message_count != null && <span>· {s.message_count} msgs</span>}
  </span>
  </button>
- <button
- type="button"
- onClick={(e) => { e.stopPropagation(); if (onDelete) onDelete(s); }}
- className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
- aria-label="Delete conversation"
- title="Delete"
- >
+  <button
+  type="button"
+  onClick={(e) => { e.stopPropagation(); if (onDelete) onDelete(s); }}
+  className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 max-md:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+  aria-label={`Delete conversation ${s.title || 'Untitled chat'}`}
+  title="Delete"
+  >
  <Trash2 className="h-3 w-3" />
  </button>
  </div>
@@ -509,6 +568,31 @@ function HistoryItem({ s, active, onClick, onDelete }) {
 }
 
 /* ---------------- Page ---------------- */
+
+const CHAT_SNAPSHOT_KEY = 'academiai:chat-snapshot';
+
+function saveSnapshot({ sessionId, sessionTitle, messages, input }) {
+  try {
+    if (!sessionId) {
+      window.sessionStorage.removeItem(CHAT_SNAPSHOT_KEY);
+      return;
+    }
+    const payload = { sessionId, sessionTitle, messages, input, savedAt: Date.now() };
+    window.sessionStorage.setItem(CHAT_SNAPSHOT_KEY, JSON.stringify(payload));
+  } catch {
+    /* storage unavailable — ignore */
+  }
+}
+
+function loadSnapshot() {
+  try {
+    const raw = window.sessionStorage.getItem(CHAT_SNAPSHOT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
 
 export default function ChatPage() {
  const isMobile = useIsMobile();
@@ -520,22 +604,31 @@ export default function ChatPage() {
  const [messages, setMessages] = useState([]);
  const [input, setInput] = useState('');
  const [loading, setLoading] = useState(false);
- const [editingTitle, setEditingTitle] = useState(false);
- const [titleDraft, setTitleDraft] = useState('');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [sessionToDelete, setSessionToDelete] = useState(null);
  const activeStream = useRef(null);
  const fileInputRef = useRef(null);
  const [pickerOpen, setPickerOpen] = useState(false);
  const [attachedResources, setAttachedResources] = useState([]);
  const [uploadingFiles, setUploadingFiles] = useState(false);
  const [error, setError] = useState('');
- const endRef = useRef(null);
- const textareaRef = useRef(null);
- const localIdCounter = useRef(0);
+  const endRef = useRef(null);
+  const textareaRef = useRef(null);
+  const localIdCounter = useRef(0);
+  // Only auto-scroll when the reader is already near the bottom — never
+  // yank them away from history they scrolled up to read.
+  const scrollBoxRef = useRef(null);
+  const stuckToBottomRef = useRef(true);
+  const [reducedMotion] = useState(
+  () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  );
 
  // Sources rail state
  const [sourcesRailOpen, setSourcesRailOpen] = useState(!isMobile);
  const [activeSourceRank, setActiveSourceRank] = useState(null);
- const [openedResourceId, setOpenedResourceId] = useState(null);
+  const [openedResourceId, setOpenedResourceId] = useState(null);
+  const [sourceDetail, setSourceDetail] = useState(null);
  const [historyOpen, setHistoryOpen] = useState(!isMobile);
  const [historyQuery, setHistoryQuery] = useState('');
 
@@ -565,20 +658,50 @@ export default function ChatPage() {
  if (currentSources.length > 0 && !isMobile) setSourcesRailOpen(true);
  }, [currentSources.length, isMobile]);
 
- // Scroll to bottom on new messages
- useEffect(() => {
- endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
- }, [messages, loading]);
+  // Scroll to bottom on new messages — only when already near it.
+  useEffect(() => {
+  if (!stuckToBottomRef.current) return;
+  endRef.current?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'end' });
+  }, [messages, loading, reducedMotion]);
 
- // Deep-link session via ?session=
- useEffect(() => {
- const sid = searchParams.get('session');
- if (sid && !sessionId && sessions.length) {
- const existing = sessions.find((s) => s.id === sid);
- if (existing) openSession(existing);
- }
- // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [sessions.length, searchParams]);
+  const onMessagesScroll = (e) => {
+  const el = e.currentTarget;
+  stuckToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
+
+  // Deep-link session via ?session=
+  useEffect(() => {
+  const sid = searchParams.get('session');
+  if (sid && !sessionId && sessions.length) {
+  const existing = sessions.find((s) => s.id === sid);
+  if (existing) openSession(existing);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions.length, searchParams]);
+
+  // Restore the in-progress conversation from sessionStorage when the page is
+  // (re)mounted — e.g. after switching sidebar tabs in the same browser tab.
+  // This is what keeps the chat alive across tab switches instead of resetting.
+  useEffect(() => {
+  const snap = loadSnapshot();
+  if (!snap || !snap.sessionId) return;
+  // Only restore if there is no explicit ?session= deep link (which wins).
+  const sid = searchParams.get('session');
+  if (sid) return;
+  setSessionId(snap.sessionId);
+  setSessionTitle(snap.sessionTitle || 'Conversation');
+  setTitleDraft(snap.sessionTitle || '');
+  if (Array.isArray(snap.messages)) setMessages(snap.messages);
+  if (typeof snap.input === 'string') setInput(snap.input);
+  if (snap.sessionId) setSearchParams({ session: snap.sessionId }, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist the active conversation so it survives page unmounts between tabs.
+  useEffect(() => {
+  saveSnapshot({ sessionId, sessionTitle, messages, input });
+  }, [sessionId, sessionTitle, messages, input]);
+
 
  // Auto-grow textarea
  useEffect(() => {
@@ -710,9 +833,10 @@ export default function ChatPage() {
  };
 
  const send = async (textOverride) => {
- const content = (textOverride ?? input).trim();
- if ((!content && attachedResources.length === 0) || loading) return;
- setError('');
+  const content = (textOverride ?? input).trim();
+  if ((!content && attachedResources.length === 0) || loading) return;
+  stuckToBottomRef.current = true;
+  setError('');
  setLoading(true);
  const localId = `local-${++localIdCounter.current}`;
  const assistantLocalId = `asst-${++localIdCounter.current}`;
@@ -731,16 +855,21 @@ export default function ChatPage() {
  let fullContent = '';
  let currentSources = [];
 
- const ctrl = chatApi.stream(sid, userContent, {
- resourceIds,
- onMeta: (meta) => {
- if (meta?.user_message) {
- setMessages((prev) => prev.map((m) => (m.id === localId ? meta.user_message : m)));
- }
- if (!sessionTitle || sessionTitle === 'New chat') {
- setSessionTitle(userContent.slice(0, 60));
- }
- },
+  const ctrl = chatApi.stream(sid, userContent, {
+  resourceIds,
+  onMeta: (meta) => {
+  if (meta?.user_message) {
+  setMessages((prev) => prev.map((m) => (m.id === localId ? meta.user_message : m)));
+  }
+  if (meta?.confidence || meta?.retrieval_ms != null) {
+  setMessages((prev) => prev.map((m) => (m.id === assistantLocalId
+   ? { ...m, confidence: meta.confidence, retrieval_ms: meta.retrieval_ms }
+   : m)));
+  }
+  if (!sessionTitle || sessionTitle === 'New chat') {
+  setSessionTitle(userContent.slice(0, 60));
+  }
+  },
  onToken: (tok) => {
  fullContent += tok;
  setMessages((prev) => prev.map((m) => (m.id === assistantLocalId ? { ...m, content: fullContent } : m)));
@@ -784,17 +913,16 @@ export default function ChatPage() {
  }
  };
 
- const deleteSession = async (s) => {
- if (!window.confirm(`Delete"${s.title || 'Untitled chat'}"? This cannot be undone.`)) return;
- try {
- await chatApi.deleteSession(s.id);
- if (s.id === sessionId) startNewChat();
- qc.invalidateQueries({ queryKey: ['chat-sessions'] });
- toast.success('Conversation deleted');
- } catch {
- toast.error('Could not delete conversation');
- }
- };
+  const deleteSession = async (s) => {
+  try {
+  await chatApi.deleteSession(s.id);
+  if (s.id === sessionId) startNewChat();
+  qc.invalidateQueries({ queryKey: ['chat-sessions'] });
+  toast.success('Conversation deleted');
+  } catch {
+  toast.error('Could not delete conversation');
+  }
+  };
 
  const openSourceResource = (resourceId) => {
  setOpenedResourceId(resourceId);
@@ -820,20 +948,24 @@ export default function ChatPage() {
  aria-hidden
  />
  )}
- <aside
- className={cn(
- 'flex shrink-0 flex-col border-r bg-sidebar',
- isMobile
- ? 'fixed inset-y-0 left-0 z-50 w-72 animate-slide-right'
- : 'w-64',
- )}
- >
+  <aside
+  role={isMobile ? 'dialog' : undefined}
+  aria-modal={isMobile ? true : undefined}
+  aria-label="Chat history"
+  onKeyDown={isMobile ? (e) => { if (e.key === 'Escape') setHistoryOpen(false); } : undefined}
+  className={cn(
+  'flex shrink-0 flex-col border-r bg-sidebar',
+  isMobile
+  ? 'fixed inset-y-0 left-0 z-50 w-72 animate-slide-right'
+  : 'w-64',
+  )}
+  >
  <div className="border-b p-3">
  <Button
  size="sm"
  onClick={startNewChat}
- className="h-8 w-full gap-1.5 bg-[var(--accent)] text-xs text-white hover:bg-[var(--accent-strong)]"
- >
+  className="h-8 w-full gap-1.5 bg-[var(--accent)] text-xs text-[var(--on-accent)] hover:bg-[var(--accent-strong)]"
+  >
  <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden />
  New chat
  </Button>
@@ -841,12 +973,13 @@ export default function ChatPage() {
  <div className="border-b px-3 py-2">
  <div className="relative">
  <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" aria-hidden />
- <input
- value={historyQuery}
- onChange={(e) => setHistoryQuery(e.target.value)}
- placeholder="Search history…"
- className="h-7 w-full rounded-md border bg-background pl-7 pr-2 text-[11px] focus-visible:outline-2 focus-visible:outline-ring"
- />
+  <input
+  value={historyQuery}
+  onChange={(e) => setHistoryQuery(e.target.value)}
+  placeholder="Search history…"
+  aria-label="Search chat history"
+  className="h-7 w-full rounded-md border bg-background pl-7 pr-2 text-[11px] focus-visible:outline-2 focus-visible:outline-ring"
+  />
  </div>
  </div>
  <p className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted">
@@ -866,7 +999,7 @@ export default function ChatPage() {
  s={s}
  active={s.id === sessionId}
  onClick={() => openSession(s)}
- onDelete={deleteSession}
+  onDelete={setSessionToDelete}
  />
  ))
  )}
@@ -878,8 +1011,20 @@ export default function ChatPage() {
  {/* Conversation column */}
  <section className="flex min-w-0 flex-1 flex-col">
  {/* Header */}
- <header className="glass flex h-12 shrink-0 items-center justify-between gap-2 border-b px-3 sm:px-4">
- <div className="flex min-w-0 items-center gap-1.5">
+<header className="glass flex h-12 shrink-0 items-center justify-between gap-2 border-b px-3 sm:px-4">
+  <Button
+  variant="ghost"
+  size="icon"
+  className="h-7 w-7 text-muted-foreground lg:hidden"
+  onClick={() =>
+  window.dispatchEvent(new CustomEvent('academiai:open-mobile-menu'))
+  }
+  aria-label="Open menu"
+  title="Open menu"
+  >
+  <Menu className="h-4 w-4" aria-hidden />
+  </Button>
+  <div className="flex min-w-0 items-center gap-1.5">
  {!historyOpen && (
  <Button
  variant="ghost"
@@ -917,9 +1062,9 @@ export default function ChatPage() {
  maxLength={255}
  />
  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={renameSession}>Save</Button>
- <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditingTitle(false)}>
- <X className="h-3.5 w-3.5" />
- </Button>
+  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => setEditingTitle(false)} aria-label="Cancel rename">
+  <X className="h-3.5 w-3.5" />
+  </Button>
  </div>
  ) : (
  <>
@@ -966,14 +1111,19 @@ export default function ChatPage() {
  </div>
  </header>
 
- {/* Messages */}
- <div className="relative flex min-h-0 flex-1 overflow-hidden">
- <div className="flex-1 overflow-y-auto">
+  {/* Messages */}
+  <div className="relative flex min-h-0 flex-1 overflow-hidden">
+  <div ref={scrollBoxRef} onScroll={onMessagesScroll} className="flex-1 overflow-y-auto">
+  {/* Streaming announces one concise status instead of every token:
+  the full log stays out of the live region to avoid SR spam. */}
+  <p role="status" className="sr-only">
+  {loading ? 'Assistant is responding…' : ''}
+  </p>
  {messages.length === 0 ? (
  <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-6 p-6 text-center sm:p-8">
  {/* Empty hero */}
  <div className="flex flex-col items-center gap-3">
- <span className="flex h-14 w-14 items-center justify-center rounded-2xl  var(--accent-soft) text-primary">
+ <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-primary">
  <Sparkles className="h-7 w-7" aria-hidden />
  </span>
  <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
@@ -993,8 +1143,8 @@ export default function ChatPage() {
  type="button"
  onClick={() => { setInput(s.prompt); setTimeout(() => send(s.prompt), 0); }}
  disabled={loading}
- className="group flex items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition-all transition-colors hover:border-[var(--border-strong)] "
- >
+  className="group flex items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition-colors hover:border-[var(--border-strong)]"
+  >
  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
  <Icon className="h-4 w-4" aria-hidden />
  </span>
@@ -1009,9 +1159,9 @@ export default function ChatPage() {
  })}
  </div>
  </div>
- ) : (
- <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6" role="log" aria-live="polite">
- {messages.map((msg, idx) => (
+  ) : (
+  <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6" aria-label="Conversation messages">
+  {messages.map((msg, idx) => (
  <MessageBubble
  key={msg.id}
  msg={msg}
@@ -1052,11 +1202,12 @@ export default function ChatPage() {
  <div className="space-y-1.5">
  {currentSources.map((s) => (
  <SourceCard
- key={s.chunk_id || s.id || s.rank}
- source={s}
- active={activeSourceRank === s.rank}
- onClick={() => setActiveSourceRank((r) => (r === s.rank ? null : s.rank))}
- onOpenResource={openSourceResource}
+  key={s.chunk_id || s.id || s.rank}
+  source={s}
+  active={activeSourceRank === s.rank}
+  onClick={() => setActiveSourceRank((r) => (r === s.rank ? null : s.rank))}
+  onOpenResource={openSourceResource}
+  onDetailClick={(src) => setSourceDetail(src)}
  />
  ))}
  </div>
@@ -1145,31 +1296,33 @@ export default function ChatPage() {
  <Textarea
  ref={textareaRef}
  value={input}
- onChange={(e) => setInput(e.target.value)}
- onKeyDown={(e) => {
- if (e.key === 'Enter' && !e.shiftKey) {
- e.preventDefault();
- if (!loading) send();
- }
- }}
- placeholder={
- attachedResources.length
- ? `Ask about ${attachedResources.length} attached file${attachedResources.length === 1 ? '' : 's'}… (Enter to send, Shift+Enter for newline)`
- : 'Ask anything about your courses… (Enter to send, Shift+Enter for newline)'
- }
- rows={1}
- disabled={loading}
- aria-label="Message"
- className="max-h-48 min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[14px] leading-relaxed shadow-none focus-visible:ring-0"
- />
- <Tooltip>
- <TooltipTrigger asChild>
- <Button
- type="submit"
- size="icon"
- disabled={loading ? false : (!input.trim() && attachedResources.length === 0) || uploadingFiles}
- aria-label={loading ? 'Stop generating' : 'Send message'}
- className={cn(
+  onChange={(e) => setInput(e.target.value)}
+  onKeyDown={(e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+  e.preventDefault();
+  if (!loading) send();
+  }
+  }}
+  placeholder={
+  attachedResources.length
+  ? `Ask about ${attachedResources.length} attached file${attachedResources.length === 1 ? '' : 's'}… (Enter to send, Shift+Enter for newline)`
+  : 'Ask anything about your courses… (Enter to send, Shift+Enter for newline)'
+  }
+  rows={1}
+  disabled={loading}
+  aria-label="Message"
+  data-testid="chat-input"
+  className="max-h-48 min-h-[36px] flex-1 resize-none border-0 bg-transparent px-1 py-2 text-[14px] leading-relaxed shadow-none focus-visible:ring-0"
+  />
+  <Tooltip>
+  <TooltipTrigger asChild>
+  <Button
+  type="submit"
+  size="icon"
+  disabled={loading ? false : (!input.trim() && attachedResources.length === 0) || uploadingFiles}
+  aria-label={loading ? 'Stop generating' : 'Send message'}
+  data-testid="chat-send"
+  className={cn(
  'h-9 w-9 shrink-0 rounded-xl transition-transform hover:scale-[1.02] active:scale-[0.98]',
  loading && 'bg-destructive hover:bg-destructive/90',
  )}
@@ -1195,17 +1348,32 @@ export default function ChatPage() {
  </section>
  </div>
 
- {/* Source resource preview dialog */}
- <ResourceDetailDialog
- resource={
- openedResourceId
- ? { id: openedResourceId } // Dialog will fetch full details via preview API once we have a real object; but dialog expects the whole resource.
- : null
- }
- open={!!openedResourceId}
- onClose={() => setOpenedResourceId(null)}
- />
- </AppShell>
- </TooltipProvider>
- );
+  {/* Source resource preview dialog */}
+  <ResourceDetailDialog
+  resource={
+  openedResourceId
+  ? { id: openedResourceId } // Dialog will fetch full details via preview API once we have a real object; but dialog expects the whole resource.
+  : null
+  }
+  open={!!openedResourceId}
+  onClose={() => setOpenedResourceId(null)}
+  />
+  <SourceDetailDialog
+   source={sourceDetail}
+   open={!!sourceDetail}
+   onClose={() => setSourceDetail(null)}
+   onOpenResource={openSourceResource}
+  />
+  <ConfirmDialog
+  open={!!sessionToDelete}
+  title="Delete conversation?"
+  description={`"${sessionToDelete?.title || 'Untitled chat'}" will be permanently deleted. This cannot be undone.`}
+  onCancel={() => setSessionToDelete(null)}
+  onConfirm={() => { const s = sessionToDelete; setSessionToDelete(null); deleteSession(s); }}
+  confirmLabel="Delete"
+  destructive
+  />
+  </AppShell>
+  </TooltipProvider>
+  );
 }

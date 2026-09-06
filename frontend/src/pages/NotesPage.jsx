@@ -10,6 +10,8 @@ import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 import { notesApi } from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,11 +19,13 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import {
- StickyNote,
- Plus,
- Trash2,
- Search,
- Bold,
+  StickyNote,
+  Plus,
+  Save,
+  Trash2,
+  Search,
+  Bold,
+  ChevronLeft,
  Italic,
  Underline as UnderlineIcon,
  Strikethrough,
@@ -44,25 +48,26 @@ import {
 import {
  DropdownMenu,
  DropdownMenuContent,
- DropdownMenuItem,
- DropdownMenuTrigger,
- DropdownMenuSeparator,
+DropdownMenuItem,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
 /* ---------------- Toolbar ---------------- */
 
-function ToolbarBtn({ active, onClick, icon: Icon, title }) {
+function ToolbarBtn({ active, onClick, icon: Icon, title, label }) {
  return (
  <button
  type="button"
  title={title}
+ aria-label={label || title}
+ aria-pressed={active}
  onClick={onClick}
  className={cn(
  'inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
  active && 'bg-primary/10 text-primary',
  )}
  >
- <Icon className="h-3.5 w-3.5" />
+ <Icon className="h-3.5 w-3.5" aria-hidden />
  </button>
  );
 }
@@ -75,33 +80,38 @@ function EditorToolbar({ editor, onAddImage }) {
  const fileRef = useRef(null);
  if (!editor) return null;
  return (
- <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/30 px-2 py-1.5">
+ <div className="flex flex-wrap items-center gap-0.5 border-b bg-muted/30 px-2 py-1.5" role="toolbar" aria-label="Note formatting">
  <ToolbarBtn
  title="Bold (⌘B)"
+ label="Bold"
  icon={Bold}
  active={editor.isActive('bold')}
  onClick={() => editor.chain().focus().toggleBold().run()}
  />
  <ToolbarBtn
  title="Italic (⌘I)"
+ label="Italic"
  icon={Italic}
  active={editor.isActive('italic')}
  onClick={() => editor.chain().focus().toggleItalic().run()}
  />
  <ToolbarBtn
  title="Underline (⌘U)"
+ label="Underline"
  icon={UnderlineIcon}
  active={editor.isActive('underline')}
  onClick={() => editor.chain().focus().toggleUnderline().run()}
  />
  <ToolbarBtn
  title="Strikethrough"
+ label="Strikethrough"
  icon={Strikethrough}
  active={editor.isActive('strike')}
  onClick={() => editor.chain().focus().toggleStrike().run()}
  />
  <ToolbarBtn
  title="Highlight"
+ label="Highlight"
  icon={Highlighter}
  active={editor.isActive('highlight')}
  onClick={() => editor.chain().focus().toggleHighlight().run()}
@@ -109,18 +119,21 @@ function EditorToolbar({ editor, onAddImage }) {
  <Divider />
  <ToolbarBtn
  title="Heading 1"
+ label="Heading 1"
  icon={Heading1}
  active={editor.isActive('heading', { level: 1 })}
  onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
  />
  <ToolbarBtn
  title="Heading 2"
+ label="Heading 2"
  icon={Heading2}
  active={editor.isActive('heading', { level: 2 })}
  onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
  />
  <ToolbarBtn
  title="Heading 3"
+ label="Heading 3"
  icon={Heading3}
  active={editor.isActive('heading', { level: 3 })}
  onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
@@ -128,24 +141,28 @@ function EditorToolbar({ editor, onAddImage }) {
  <Divider />
  <ToolbarBtn
  title="Bullet list"
+ label="Bullet list"
  icon={List}
  active={editor.isActive('bulletList')}
  onClick={() => editor.chain().focus().toggleBulletList().run()}
  />
  <ToolbarBtn
  title="Ordered list"
+ label="Numbered list"
  icon={ListOrdered}
  active={editor.isActive('orderedList')}
  onClick={() => editor.chain().focus().toggleOrderedList().run()}
  />
  <ToolbarBtn
  title="Blockquote"
+ label="Blockquote"
  icon={Quote}
  active={editor.isActive('blockquote')}
  onClick={() => editor.chain().focus().toggleBlockquote().run()}
  />
  <ToolbarBtn
  title="Code block"
+ label="Code block"
  icon={Code}
  active={editor.isActive('codeBlock')}
  onClick={() => editor.chain().focus().toggleCodeBlock().run()}
@@ -153,6 +170,7 @@ function EditorToolbar({ editor, onAddImage }) {
  <Divider />
  <ToolbarBtn
  title="Link"
+ label="Insert link"
  icon={LinkIcon}
  active={editor.isActive('link')}
  onClick={() => {
@@ -163,10 +181,11 @@ function EditorToolbar({ editor, onAddImage }) {
  <button
  type="button"
  title="Insert image"
+ aria-label="Insert image"
  onClick={() => fileRef.current?.click()}
  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
  >
- <ImageIcon className="h-3.5 w-3.5" />
+ <ImageIcon className="h-3.5 w-3.5" aria-hidden />
  </button>
  <input
  ref={fileRef}
@@ -228,10 +247,12 @@ function SlashMenu({ pos, items, activeIdx, onPick }) {
  if (!pos) return null;
  return (
  <div
+ role="listbox"
+ aria-label="Block commands"
  className="fixed z-50 w-56 overflow-hidden rounded-lg border bg-popover py-1"
  style={{ top: pos.top, left: pos.left }}
  >
- <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+ <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground" aria-hidden>
  Blocks
  </p>
  {items.map((it, i) => {
@@ -240,6 +261,8 @@ function SlashMenu({ pos, items, activeIdx, onPick }) {
  <button
  key={it.title}
  type="button"
+ role="option"
+ aria-selected={i === activeIdx}
  onMouseDown={(e) => {
  e.preventDefault();
  onPick(i);
@@ -267,6 +290,8 @@ export default function NotesPage() {
  const [activeId, setActiveId] = useState(null);
  const [title, setTitle] = useState('');
  const [isNew, setIsNew] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState(null);
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
  const [saveState, setSaveState] = useState('idle'); // idle | saving | saved
  const [slash, setSlash] = useState({
  open: false,
@@ -274,7 +299,6 @@ export default function NotesPage() {
  pos: null,
  active: 0,
  });
- const saveTimer = useRef(null);
  const editorRef = useRef(null);
  // Refs mirroring the active-note identity so the TipTap editor callbacks
  // (which close over the first render) always read the CURRENT note being
@@ -283,6 +307,8 @@ export default function NotesPage() {
  const activeIdRef = useRef(null);
  const titleRef = useRef('');
  const isNewRef = useRef(false);
+ // Tracks unsaved edits so we can flush on blur, note switch, or page exit.
+ const dirtyRef = useRef(false);
  // True only once the TipTap editor view has actually mounted (onCreate). The
  // editor object becomes non-null before the view is attached to the DOM, and
  // calling commands (setContent) before mount throws
@@ -310,33 +336,37 @@ export default function NotesPage() {
 
  const createMut = useMutation({
  mutationFn: notesApi.create,
- onSuccess: (res) => {
+onSuccess: (res) => {
  const n = res.data || res;
  qc.invalidateQueries({ queryKey: ['notes'] });
  setActiveId(n.id);
  setIsNew(false);
  setTitle(n.title || '');
+ dirtyRef.current = false;
  setSaveState('saved');
  },
  onError: () => {
- setSaveState('idle');
+ dirtyRef.current = true;
+ setSaveState('dirty');
  toast.error('Failed to create note');
  },
- });
+});
 
  const updateMut = useMutation({
  mutationFn: ({ id, data }) => notesApi.update(id, data),
- onSuccess: (res) => {
+onSuccess: (res) => {
  qc.invalidateQueries({ queryKey: ['notes'] });
+ dirtyRef.current = false;
  setSaveState('saved');
  const n = res.data || res;
  if (n) setTitle(n.title || '');
  },
  onError: () => {
- setSaveState('idle');
+ dirtyRef.current = true;
+ setSaveState('dirty');
  toast.error('Failed to save');
  },
- });
+});
 
  const deleteMut = useMutation({
  mutationFn: notesApi.delete,
@@ -349,14 +379,18 @@ export default function NotesPage() {
  },
  });
 
- const bulkDeleteMut = useMutation({
- mutationFn: (ids) => notesApi.bulkDelete(ids),
- onSuccess: () => {
- toast.success(`${selectedNotes.size} notes deleted`);
- qc.invalidateQueries({ queryKey: ['notes'] });
- setSelectedNotes(new Set());
- },
- });
+  const bulkDeleteMut = useMutation({
+  mutationFn: (ids) => notesApi.bulkDelete(ids),
+  onSuccess: () => {
+  toast.success(`${selectedNotes.size} notes deleted`);
+  qc.invalidateQueries({ queryKey: ['notes'] });
+  setSelectedNotes(new Set());
+  setBulkConfirmOpen(false);
+  },
+  onError: () => {
+  toast.error('Could not delete notes');
+  },
+  });
 
  const editor = useEditor({
  extensions: [
@@ -378,40 +412,36 @@ export default function NotesPage() {
  setEditorReady(true);
  editorRef.current = ed;
  },
- onUpdate: ({ editor: ed }) => {
- // Autosave debounce. Capture the note identity + rendered HTML now so a
- // pending save targets this exact note (never the note the user may have
- // switched to before the timer fires).
- setSaveState('saving');
- if (saveTimer.current) clearTimeout(saveTimer.current);
- const snapshot = {
- id: activeIdRef.current,
- isNew: isNewRef.current,
- title: titleRef.current,
- html: ed.getHTML(),
- };
- saveTimer.current = setTimeout(() => commitRef.current(snapshot), 800);
+onUpdate: ({ editor: ed }) => {
+  // No autosave while typing — mark the note dirty. Persistence happens on
+  // blur, explicit save (Save / Ctrl+S), note switch, or page exit so edits
+  // are never lost while keystrokes stay uninterrupted.
+  setSaveState('dirty');
+  dirtyRef.current = true;
 
- // Slash menu detection
- const { from } = ed.state.selection;
- const textBefore = ed.state.doc.textBetween(
- Math.max(0, from - 30),
- from,
- '\n',
- );
- const slashMatch = textBefore.match(/(?:^|\s)\/([a-zA-Z]*)$/);
- if (slashMatch) {
- const coords = ed.view.coordsAtPos(from);
- setSlash({
- open: true,
- query: slashMatch[1].toLowerCase(),
- pos: { top: coords.bottom + 6, left: coords.left },
- active: 0,
- });
- } else if (slash.open) {
- setSlash({ open: false, query: '', pos: null, active: 0 });
- }
- },
+  // Slash menu detection
+  const { from } = ed.state.selection;
+  const textBefore = ed.state.doc.textBetween(
+  Math.max(0, from - 30),
+  from,
+  '\n',
+  );
+  const slashMatch = textBefore.match(/(?:^|\s)\/([a-zA-Z]*)$/);
+  if (slashMatch) {
+  const coords = ed.view.coordsAtPos(from);
+  setSlash({
+  open: true,
+  query: slashMatch[1].toLowerCase(),
+  pos: { top: coords.bottom + 6, left: coords.left },
+  active: 0,
+  });
+  } else if (slash.open) {
+  setSlash({ open: false, query: '', pos: null, active: 0 });
+  }
+  },
+  onBlur: () => {
+  if (dirtyRef.current) saveNowRef.current();
+  },
  onKeyDown: (_e) => {
  // handle slash nav via wrapper below since we need editor + state
  },
@@ -462,7 +492,55 @@ export default function NotesPage() {
  return () => dom.removeEventListener('keydown', handler);
  }, [editor, slash]);
 
-// Load active note content into editor.
+// Save a captured snapshot {id, isNew, title, html}. The note identity and
+  // its rendered HTML are fixed when the edit happens, so a save can never be
+  // written to a different note the user switched to while a timer was pending.
+const commitSave = useCallback(
+    ({ id, isNew: isNewTarget, title: titleSnapshot, html }) => {
+      const finalTitle = (titleSnapshot || '').trim() || 'Untitled';
+      const hasTitle = !!(titleSnapshot || '').trim();
+      const hasContent = !!html && html !== '<p></p>' && html !== '<p><br></p>';
+      // Refuse to create a fully empty note; title-only saves (Ctrl+S with an
+      // empty body) must still persist for existing notes.
+      if ((isNewTarget || !id) && !hasTitle && !hasContent) {
+        setSaveState('dirty');
+        return;
+      }
+      setSaveState('saving');
+      if (isNewTarget || !id) {
+        createMut.mutate({ title: finalTitle, content: html });
+      } else {
+        updateMut.mutate({ id, data: { title: finalTitle, content: html } });
+      }
+    },
+    [createMut, updateMut],
+  );
+
+  // Always-current references so stale editor callbacks can reach the latest
+  // save logic without closing over an old render.
+  const commitRef = useRef(commitSave);
+  const saveNowRef = useRef(() => {});
+  useEffect(() => {
+    commitRef.current = commitSave;
+    saveNowRef.current = () => {
+      commitRef.current({
+        id: activeIdRef.current,
+        isNew: isNewRef.current,
+        title: titleRef.current,
+        html: editorRef.current?.getHTML?.() || '',
+      });
+    };
+  });
+
+  // Ctrl/Cmd+S must work wherever focus is. The <form> keydown never fires
+  // when focus sits inside the TipTap editor (ProseMirror intercepts keydown),
+  // so bind it globally on the window and save through the always-current ref.
+  useKeyboardShortcut('mod+s', (e) => {
+    e.preventDefault();
+    saveNowRef.current();
+  });
+
+  // Load active note content into editor.
  //
  // Refs are updated synchronously BEFORE touching the editor so that the
  // editor's onUpdate (which can fire from setContent/clearContent) never
@@ -481,7 +559,16 @@ export default function NotesPage() {
 
  useEffect(() => {
  if (!editor || !editorReady) return;
- if (saveTimer.current) clearTimeout(saveTimer.current);
+ // Flush any unsaved edits to the note being left before switching.
+ if (dirtyRef.current && (isNewRef.current || activeIdRef.current)) {
+ commitRef.current({
+ id: activeIdRef.current,
+ isNew: isNewRef.current,
+ title: titleRef.current,
+ html: editor.getHTML(),
+ });
+ dirtyRef.current = false;
+ }
  activeIdRef.current = isNew ? null : activeNote?.id ?? null;
  isNewRef.current = isNew;
  const nextTitle = isNew ? '' : activeNote?.title || '';
@@ -493,52 +580,45 @@ export default function NotesPage() {
  editor.commands.setContent(activeNote.content || '', { emitUpdate: false });
  }, [editor, editorReady, activeNote, isNew]);
 
- // Cleanup timer
+ // Flush pending edits when leaving the page so nothing typed is lost.
  useEffect(
- () => () => saveTimer.current && clearTimeout(saveTimer.current),
+ () => () => {
+ if (dirtyRef.current && (isNewRef.current || activeIdRef.current)) {
+ commitRef.current({
+ id: activeIdRef.current,
+ isNew: isNewRef.current,
+ title: titleRef.current,
+ html: editorRef.current?.getHTML?.() || '',
+ });
+ }
+ },
  [],
  );
 
- // Save a captured snapshot {id, isNew, title, html}. The note identity and
- // its rendered HTML are fixed when the edit happens, so a debounced save can
- // never be written to a different note that the user switched to while the
- // timer was pending.
- const commitSave = useCallback(
- ({ id, isNew: isNewTarget, title: titleSnapshot, html }) => {
- const finalTitle = (titleSnapshot || '').trim() || 'Untitled';
- if (!html || html === '<p></p>') {
- setSaveState('idle');
- return;
- }
- setSaveState('saving');
- if (isNewTarget || !id) {
- createMut.mutate({ title: finalTitle, content: html });
- } else {
- updateMut.mutate({ id, data: { title: finalTitle, content: html } });
- }
- },
- [createMut, updateMut],
- );
-
- // Always-current reference so stale editor callbacks can reach the latest
- // save logic without closing over an old render.
- const commitRef = useRef(commitSave);
- useEffect(() => {
- commitRef.current = commitSave;
- });
-
- // Image insert (base64 for now; backend persists HTML as-is)
- const addImage = (file, ed) => {
- const reader = new FileReader();
- reader.onload = (ev) =>
- ed.chain().focus().setImage({ src: ev.target.result }).run();
- reader.readAsDataURL(file);
- };
+// Image insert (base64 for now; backend persists HTML as-is). Images only,
+// capped at 5 MB — anything else would silently bloat the note document.
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+  const addImage = (file, ed) => {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+  toast.error('Only image files can be inserted.');
+  return;
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+  toast.error(`Image exceeds the 5 MB limit (${(file.size / 1024 / 1024).toFixed(1)} MB).`);
+  return;
+  }
+  const reader = new FileReader();
+  reader.onload = (ev) =>
+  ed.chain().focus().setImage({ src: ev.target.result }).run();
+  reader.readAsDataURL(file);
+  };
 
  const createNew = () => {
  setActiveId(null);
  setIsNew(true);
  setTitle('');
+ dirtyRef.current = false;
  setSaveState('idle');
  setTimeout(() => editor?.commands.focus('end'), 30);
  };
@@ -546,27 +626,22 @@ export default function NotesPage() {
  const openNote = (note) => {
  setIsNew(false);
  setActiveId(note.id);
+ dirtyRef.current = false;
  setSaveState('idle');
  };
 
  const saveNow = () => {
- if (saveTimer.current) clearTimeout(saveTimer.current);
- commitSave({
- id: activeIdRef.current,
- isNew: isNewRef.current,
- title: titleRef.current,
- html: editor?.getHTML?.() || '',
- });
+ saveNowRef.current();
  };
 
  const deleteSelected = (note) => {
- if (
- !window.confirm(
- `Delete"${note.title || 'Untitled'}"? This cannot be undone.`,
- )
- )
- return;
- deleteMut.mutate(note.id);
+ setNoteToDelete(note);
+ };
+
+ const confirmDelete = () => {
+ if (!noteToDelete) return;
+ deleteMut.mutate(noteToDelete.id);
+ setNoteToDelete(null);
  };
 
  const toggleSelect = (id) => {
@@ -603,7 +678,7 @@ export default function NotesPage() {
  return (
  <AppShell
  title="Notes"
- description="Capture thoughts, lecture summaries, and personal research. Auto-saves as you type."
+ description="Capture thoughts, lecture summaries, and personal research. Save with Ctrl+S, save-on-blur, or the Save button."
  actions={
  <Button
  size="sm"
@@ -614,37 +689,37 @@ export default function NotesPage() {
  </Button>
  }
  >
- <div className="flex h-[calc(100vh-9rem)] gap-0 overflow-hidden rounded-xl border bg-card">
- {/* List */}
- <aside className="flex w-full shrink-0 flex-col border-r md:w-72 lg:w-80">
- <div className="border-b p-3">
+  <div className="flex h-[calc(100vh-9rem)] gap-0 overflow-hidden rounded-xl border bg-card">
+  {/* List — on small screens it yields to the editor with a Back button
+  to return, otherwise the editor would be unreachable on mobile. */}
+  <aside className={cn('shrink-0 flex-col border-r md:flex md:w-72 lg:w-80', showingEditor ? 'hidden w-full' : 'flex w-full')}>
+  <div className="border-b p-3">
  <div className="relative">
  <Search
  className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
  aria-hidden
  />
- <Input
- placeholder="Search notes…"
- className="h-8 pl-8 pr-2 text-xs"
- value={search}
- onChange={(e) => setSearch(e.target.value)}
- />
+  <Input
+  placeholder="Search notes…"
+  aria-label="Search notes by title or content"
+  className="h-8 pl-8 pr-2 text-xs"
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+  />
  </div>
  {selectedNotes.size > 0 && (
  <div className="mt-2 flex items-center justify-between rounded-md bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">
  <span>{selectedNotes.size} selected</span>
- <Button
- variant="ghost"
- size="sm"
- className="h-6 px-2 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive"
- onClick={() =>
- bulkDeleteMut.mutate(Array.from(selectedNotes))
- }
- disabled={bulkDeleteMut.isPending}
- >
- <Trash2 className="mr-1 h-3 w-3" />
- Delete
- </Button>
+  <Button
+  variant="ghost"
+  size="sm"
+  className="h-6 px-2 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive"
+  onClick={() => setBulkConfirmOpen(true)}
+  disabled={bulkDeleteMut.isPending}
+  >
+  <Trash2 className="mr-1 h-3 w-3" />
+  Delete
+  </Button>
  </div>
  )}
  </div>
@@ -668,62 +743,63 @@ export default function NotesPage() {
  <p className="text-xs font-medium">
  {search ? 'No matching notes' : 'No notes yet'}
  </p>
- <p className="mt-0.5 text-[11px] text-muted-foreground">
- {search
- ? 'Try a different search.'
- : 'Press"New note" to start writing.'}
- </p>
+  <p className="mt-0.5 text-[11px] text-muted-foreground">
+  {search
+  ? 'Try a different search.'
+  : 'Press "New note" to start writing.'}
+  </p>
  </div>
  ) : (
  <ul className="space-y-0.5">
- {filtered.map((note) => {
- const isActive = isNew ? false : activeId === note.id;
- const isSelected = selectedNotes.has(note.id);
- return (
- <li key={note.id}>
- <button
- type="button"
- onClick={() => openNote(note)}
- className={cn(
- 'group flex w-full items-start gap-2 rounded-lg p-2.5 text-left transition-colors',
- isActive ? 'bg-primary/10' : 'hover:bg-muted/60',
- )}
- >
- <span
- onClick={(e) => e.stopPropagation()}
- className="mt-0.5 shrink-0"
- >
- <Checkbox
- checked={isSelected}
- onCheckedChange={() => toggleSelect(note.id)}
- />
- </span>
- <div className="min-w-0 flex-1">
- <div className="flex items-start justify-between gap-1">
- <p
- className={cn(
- 'truncate text-[13px] font-medium',
- isActive && 'text-primary',
- )}
- >
- {note.title || 'Untitled'}
- </p>
- </div>
- <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
- {preview(note.content)}
- </p>
- {note.updated_at && (
- <p className="mt-1 text-[10px] text-muted-foreground/70">
- {formatDistanceToNow(new Date(note.updated_at), {
- addSuffix: true,
- })}
- </p>
- )}
- </div>
- </button>
- </li>
- );
- })}
+  {filtered.map((note) => {
+  const isActive = isNew ? false : activeId === note.id;
+  const isSelected = selectedNotes.has(note.id);
+  return (
+  // Checkbox and opener are siblings — a checkbox nested inside the
+  // open-note button would be invalid interactive nesting.
+  <li key={note.id} className={cn(
+  'group flex w-full items-start gap-1 rounded-lg p-1.5 text-left transition-colors',
+  isActive ? 'bg-primary/10' : 'hover:bg-muted/60',
+  )}>
+  <span className="mt-1.5 shrink-0">
+  <Checkbox
+  checked={isSelected}
+  onCheckedChange={() => toggleSelect(note.id)}
+  aria-label={`Select note ${note.title || 'Untitled'}`}
+  />
+  </span>
+  <button
+  type="button"
+  onClick={() => openNote(note)}
+  aria-current={isActive ? 'true' : undefined}
+  className="min-w-0 flex-1 rounded-sm p-1 text-left focus-visible:outline-2 focus-visible:outline-ring"
+  >
+  <div className="min-w-0 flex-1">
+  <div className="flex items-start justify-between gap-1">
+  <p
+  className={cn(
+  'truncate text-[13px] font-medium',
+  isActive && 'text-primary',
+  )}
+  >
+  {note.title || 'Untitled'}
+  </p>
+  </div>
+  <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+  {preview(note.content)}
+  </p>
+  {note.updated_at && (
+  <p className="mt-1 text-[10px] text-muted-foreground/70">
+  {formatDistanceToNow(new Date(note.updated_at), {
+  addSuffix: true,
+  })}
+  </p>
+  )}
+  </div>
+  </button>
+  </li>
+  );
+  })}
  </ul>
  )}
  </div>
@@ -741,7 +817,7 @@ export default function NotesPage() {
  </h3>
  <p className="mt-1 max-w-sm text-xs text-muted-foreground">
  Choose a note from the list on the left, or create a new one.
- Notes auto-save as you type.
+ Notes save on blur, on Ctrl+S, or when you switch notes.
  </p>
  <Button
  size="sm"
@@ -752,76 +828,83 @@ export default function NotesPage() {
  </Button>
  </div>
  ) : (
- <form
- onSubmit={(e) => {
- e.preventDefault();
- saveNow();
- }}
- className="flex h-full flex-col"
- >
- {/* Header */}
- <div className="flex items-center justify-between gap-3 border-b px-4 py-2.5">
- <div className="flex min-w-0 flex-1 items-center gap-2">
- <FileText
- className="h-4 w-4 shrink-0 text-primary"
- aria-hidden
- />
- <input
- value={title}
- onChange={(e) => {
- const next = e.target.value;
- setTitle(next);
- setSaveState('saving');
- if (saveTimer.current) clearTimeout(saveTimer.current);
- saveTimer.current = setTimeout(() =>
- commitRef.current({
- id: activeIdRef.current,
- isNew: isNewRef.current,
- title: next,
- html: editor?.getHTML?.() || '',
- }),
- 600,
- );
- }}
- placeholder="Untitled note"
- className="min-w-0 flex-1 border-0 bg-transparent text-[15px] font-semibold tracking-tight shadow-none focus-visible:ring-0"
- />
- </div>
- <div className="flex shrink-0 items-center gap-2">
- <SaveBadge state={saveState} />
- {!isNew && displayNote && (
- <DropdownMenu>
- <DropdownMenuTrigger asChild>
- <Button variant="ghost" size="icon" className="h-7 w-7">
- <MoreVertical className="h-3.5 w-3.5" />
- </Button>
- </DropdownMenuTrigger>
- <DropdownMenuContent align="end" className="w-44">
- <DropdownMenuItem onClick={saveNow}>
- <Pencil className="mr-2 h-3.5 w-3.5" /> Save now
- </DropdownMenuItem>
- <DropdownMenuSeparator />
- <DropdownMenuItem
- className="text-destructive focus:bg-destructive/10 focus:text-destructive"
- onClick={() => deleteSelected(displayNote)}
- >
- <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
- </DropdownMenuItem>
- </DropdownMenuContent>
- </DropdownMenu>
- )}
- {(isNew || !displayNote) && saveState === 'idle' && (
- <Button
- type="submit"
- size="sm"
- className="h-7 px-3 text-xs"
- disabled={!title.trim()}
- >
- Create
- </Button>
- )}
- </div>
- </div>
+<form
+  onSubmit={(e) => {
+    e.preventDefault();
+    saveNow();
+  }}
+  className="flex h-full flex-col"
+>
+  {/* Header */}
+  <div className="flex items-center justify-between gap-3 border-b px-4 py-2.5">
+  <div className="flex min-w-0 flex-1 items-center gap-2">
+  <Button
+  type="button"
+  variant="ghost"
+  size="icon"
+  className="h-7 w-7 shrink-0 md:hidden"
+  aria-label="Back to notes list"
+  onClick={() => {
+  if (dirtyRef.current) saveNow();
+  setIsNew(false);
+  setActiveId(null);
+  }}
+  >
+  <ChevronLeft className="h-4 w-4" aria-hidden />
+  </Button>
+  <FileText
+  className="h-4 w-4 shrink-0 text-primary"
+  aria-hidden
+  />
+  <input
+  value={title}
+  onChange={(e) => {
+  setTitle(e.target.value);
+  setSaveState('dirty');
+  dirtyRef.current = true;
+  }}
+  onBlur={() => {
+  if (dirtyRef.current) saveNow();
+  }}
+  placeholder="Untitled note"
+  aria-label="Note title"
+  className="min-w-0 flex-1 border-0 bg-transparent text-[15px] font-semibold tracking-tight shadow-none focus-visible:ring-0"
+  />
+  </div>
+<div className="flex shrink-0 items-center gap-2">
+        <SaveBadge state={saveState} />
+        <Button
+          type="submit"
+          size="sm"
+          className="h-7 gap-1.5 px-3 text-xs"
+          disabled={saveState === 'saving'}
+        >
+          {saveState === 'saving' ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          ) : (
+            <Save className="h-3.5 w-3.5" aria-hidden />
+          )}
+          {saveState === 'saving' ? 'Saving…' : isNew ? 'Create' : 'Save'}
+        </Button>
+        {!isNew && displayNote && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Note options">
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                onClick={() => deleteSelected(displayNote)}
+              >
+                <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+    </div>
 
  <EditorToolbar editor={editor} onAddImage={addImage} />
 
@@ -855,12 +938,32 @@ export default function NotesPage() {
  const start = from - match[0].length;
  editor.chain().focus().deleteRange({ from: start, to: from }).run();
  }
- cmd.action(editor);
- setSlash({ open: false, query: '', pos: null, active: 0 });
- }}
- />
- </AppShell>
- );
+  cmd.action(editor);
+  setSlash({ open: false, query: '', pos: null, active: 0 });
+  }}
+   />
+
+  <ConfirmDialog
+    open={!!noteToDelete}
+    title="Delete note"
+    description={noteToDelete ? `Delete “${noteToDelete.title || 'Untitled'}”? This cannot be undone.` : ''}
+    onConfirm={confirmDelete}
+    onCancel={() => setNoteToDelete(null)}
+    confirmLabel="Delete"
+    destructive
+  />
+  <ConfirmDialog
+    open={bulkConfirmOpen}
+    title={`Delete ${selectedNotes.size} note${selectedNotes.size === 1 ? '' : 's'}?`}
+    description="The selected notes will be permanently deleted. This cannot be undone."
+    onConfirm={() => bulkDeleteMut.mutate(Array.from(selectedNotes))}
+    onCancel={() => setBulkConfirmOpen(false)}
+    confirmLabel="Delete all"
+    destructive
+    pending={bulkDeleteMut.isPending}
+  />
+  </AppShell>
+  );
 }
 
 function SaveBadge({ state }) {
@@ -868,6 +971,13 @@ function SaveBadge({ state }) {
  return (
  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
  <Loader2 className="h-2.5 w-2.5 animate-spin" /> Saving
+ </span>
+ );
+ }
+ if (state === 'dirty') {
+ return (
+ <span className="inline-flex items-center gap-1 rounded-full bg-[var(--warn-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--warn)]">
+ <Pencil className="h-2.5 w-2.5" /> Unsaved
  </span>
  );
  }

@@ -48,7 +48,7 @@ export default function CommandPalette({ open, onOpen }) {
 
   // Resources for quick navigation (refreshed from cache on open)
   const resources = (() => {
-    const list = open ? (qc.getQueryData(['resources', user?.role]) || []) : [];
+    const list = open ? qc.getQueryData(['resources', user?.role]) || [] : [];
     return Array.isArray(list) ? list.slice(0, 20) : [];
   })();
 
@@ -86,50 +86,89 @@ export default function CommandPalette({ open, onOpen }) {
         </CommandEmpty>
 
         <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => go('/')} keywords={['home', 'dashboard', 'overview']}>
+          <CommandItem
+            onSelect={() => go('/')}
+            keywords={['home', 'dashboard', 'overview']}
+          >
             <LayoutDashboard className={ICON_CLS} aria-hidden /> Dashboard
             <Shortcut>G D</Shortcut>
           </CommandItem>
-          <CommandItem onSelect={() => go('/chat')} keywords={['ai', 'assistant', 'chat', 'messages']}>
+          <CommandItem
+            onSelect={() => go('/chat')}
+            keywords={['ai', 'assistant', 'chat', 'messages']}
+          >
             <MessageSquare className={ICON_CLS} aria-hidden /> AI Chat
             <Shortcut>G C</Shortcut>
           </CommandItem>
-          <CommandItem onSelect={() => go('/resources')} keywords={['materials', 'library', 'files']}>
+          <CommandItem
+            onSelect={() => go('/resources')}
+            keywords={['materials', 'library', 'files']}
+          >
             <FileText className={ICON_CLS} aria-hidden /> Resources
             <Shortcut>G R</Shortcut>
           </CommandItem>
-          <CommandItem onSelect={() => go('/resources/upload')} keywords={['upload', 'material', 'file', 'new']}>
+          <CommandItem
+            onSelect={() => go('/resources/upload')}
+            keywords={['upload', 'material', 'file', 'new']}
+          >
             <Upload className={ICON_CLS} aria-hidden /> Upload material
           </CommandItem>
-          <CommandItem onSelect={() => go('/quizzes')} keywords={['quiz', 'test', 'practice', 'assessment']}>
+          <CommandItem
+            onSelect={() => go('/quizzes')}
+            keywords={['quiz', 'test', 'practice', 'assessment']}
+          >
             <ClipboardList className={ICON_CLS} aria-hidden /> Quizzes
           </CommandItem>
-          <CommandItem onSelect={() => go('/notes')} keywords={['notes', 'markdown', 'editor']}>
+          <CommandItem
+            onSelect={() => go('/notes')}
+            keywords={['notes', 'markdown', 'editor']}
+          >
             <StickyNote className={ICON_CLS} aria-hidden /> Notes
           </CommandItem>
-          <CommandItem onSelect={() => go('/courses')} keywords={['catalogue', 'catalog', 'courses']}>
+          <CommandItem
+            onSelect={() => go('/courses')}
+            keywords={['catalogue', 'catalog', 'courses']}
+          >
             <BookOpen className={ICON_CLS} aria-hidden /> Course catalogue
           </CommandItem>
-          <CommandItem onSelect={() => go('/my-courses')} keywords={['enrolled', 'my', 'classes']}>
+          <CommandItem
+            onSelect={() => go('/my-courses')}
+            keywords={['enrolled', 'my', 'classes']}
+          >
             <GraduationCap className={ICON_CLS} aria-hidden /> My courses
           </CommandItem>
-          <CommandItem onSelect={() => go('/bookmarks')} keywords={['saved', 'favorites', 'bookmarks']}>
+          <CommandItem
+            onSelect={() => go('/bookmarks')}
+            keywords={['saved', 'favorites', 'bookmarks']}
+          >
             <Bookmark className={ICON_CLS} aria-hidden /> Bookmarks
           </CommandItem>
-          <CommandItem onSelect={() => go('/progress')} keywords={['mastery', 'learning', 'analytics']}>
+          <CommandItem
+            onSelect={() => go('/progress')}
+            keywords={['mastery', 'learning', 'analytics']}
+          >
             <TrendingUp className={ICON_CLS} aria-hidden /> Learning progress
           </CommandItem>
           {!isStaff && (
-            <CommandItem onSelect={() => go('/my-programme')} keywords={['program', 'degree', 'department']}>
+            <CommandItem
+              onSelect={() => go('/my-programme')}
+              keywords={['program', 'degree', 'department']}
+            >
               <Building2 className={ICON_CLS} aria-hidden /> My programme
             </CommandItem>
           )}
           {isLecturer && (
-            <CommandItem onSelect={() => go('/assigned-courses')} keywords={['teaching', 'lecturer', 'assigned']}>
+            <CommandItem
+              onSelect={() => go('/assigned-courses')}
+              keywords={['teaching', 'lecturer', 'assigned']}
+            >
               <BookOpen className={ICON_CLS} aria-hidden /> Assigned courses
             </CommandItem>
           )}
-          <CommandItem onSelect={() => go('/settings')} keywords={['profile', 'settings', 'account', 'preferences']}>
+          <CommandItem
+            onSelect={() => go('/settings')}
+            keywords={['profile', 'settings', 'account', 'preferences']}
+          >
             <Settings className={ICON_CLS} aria-hidden /> Settings
           </CommandItem>
         </CommandGroup>
@@ -138,16 +177,28 @@ export default function CommandPalette({ open, onOpen }) {
           <>
             <CommandSeparator />
             <CommandGroup heading="Admin">
-              <CommandItem onSelect={() => go('/platform')} keywords={['admin', 'platform', 'dashboard', 'console']}>
+              <CommandItem
+                onSelect={() => go('/platform')}
+                keywords={['admin', 'platform', 'dashboard', 'console']}
+              >
                 <Building2 className={ICON_CLS} aria-hidden /> Platform console
               </CommandItem>
-              <CommandItem onSelect={() => go('/admin/users')} keywords={['people', 'accounts', 'users']}>
+              <CommandItem
+                onSelect={() => go('/admin/users')}
+                keywords={['people', 'accounts', 'users']}
+              >
                 <Users className={ICON_CLS} aria-hidden /> Manage users
               </CommandItem>
-              <CommandItem onSelect={() => go('/admin/quizzes')} keywords={['manage', 'quiz', 'editor']}>
+              <CommandItem
+                onSelect={() => go('/admin/quizzes')}
+                keywords={['manage', 'quiz', 'editor']}
+              >
                 <ClipboardList className={ICON_CLS} aria-hidden /> Quiz manager
               </CommandItem>
-              <CommandItem onSelect={() => go('/admin/audit')} keywords={['security', 'logs', 'events', 'audit']}>
+              <CommandItem
+                onSelect={() => go('/admin/audit')}
+                keywords={['security', 'logs', 'events', 'audit']}
+              >
                 <ScrollText className={ICON_CLS} aria-hidden /> Audit logs
               </CommandItem>
             </CommandGroup>
@@ -156,7 +207,10 @@ export default function CommandPalette({ open, onOpen }) {
 
         <CommandSeparator />
         <CommandGroup heading="Quick actions">
-          <CommandItem onSelect={() => go('/resources/upload')} keywords={['ai', 'generate', 'upload']}>
+          <CommandItem
+            onSelect={() => go('/resources/upload')}
+            keywords={['ai', 'generate', 'upload']}
+          >
             <Sparkles className={ICON_CLS} aria-hidden /> Upload new material
           </CommandItem>
         </CommandGroup>
@@ -165,15 +219,21 @@ export default function CommandPalette({ open, onOpen }) {
         <CommandGroup heading="Theme">
           <CommandItem onSelect={() => setTheme('light')}>
             <Sun className={ICON_CLS} aria-hidden /> Light
-            {theme === 'light' && <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden />}
+            {theme === 'light' && (
+              <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden />
+            )}
           </CommandItem>
           <CommandItem onSelect={() => setTheme('dark')}>
             <Moon className={ICON_CLS} aria-hidden /> Dark
-            {theme === 'dark' && <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden />}
+            {theme === 'dark' && (
+              <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden />
+            )}
           </CommandItem>
           <CommandItem onSelect={() => setTheme('system')}>
             <Monitor className={ICON_CLS} aria-hidden /> System
-            {theme === 'system' && <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden />}
+            {theme === 'system' && (
+              <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden />
+            )}
           </CommandItem>
         </CommandGroup>
 
@@ -185,19 +245,28 @@ export default function CommandPalette({ open, onOpen }) {
                 <CommandItem
                   key={r.id}
                   value={`resource-${r.id}-${r.title}`}
-                  keywords={[r.title, r.description || '', r.visibility_scope || '']}
+                  keywords={[
+                    r.title,
+                    r.description || '',
+                    r.visibility_scope || '',
+                  ]}
                   onSelect={() => go(`/resources`)}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     onOpen?.(false);
                     // Dispatch event so resources page can open detail dialog
-                    window.dispatchEvent(new CustomEvent('academiai:open-resource', { detail: r }));
+                    window.dispatchEvent(
+                      new CustomEvent('academiai:open-resource', { detail: r }),
+                    );
                     navigate('/resources');
                   }}
                 >
                   <FileText className={ICON_CLS} aria-hidden />
                   <span className="truncate">{r.title}</span>
-                  <ArrowRight className="ml-auto h-3.5 w-3.5 text-muted-foreground/40" aria-hidden />
+                  <ArrowRight
+                    className="ml-auto h-3.5 w-3.5 text-muted-foreground/40"
+                    aria-hidden
+                  />
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -206,9 +275,18 @@ export default function CommandPalette({ open, onOpen }) {
       </CommandList>
       <div className="flex items-center justify-between border-t px-3 py-2 text-[10px] text-muted-foreground">
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1"><kbd className="rounded border bg-muted px-1 font-mono">↑↓</kbd> navigate</span>
-          <span className="inline-flex items-center gap-1"><kbd className="rounded border bg-muted px-1 font-mono">↵</kbd> select</span>
-          <span className="inline-flex items-center gap-1"><kbd className="rounded border bg-muted px-1 font-mono">esc</kbd> close</span>
+          <span className="inline-flex items-center gap-1">
+            <kbd className="rounded border bg-muted px-1 font-mono">↑↓</kbd>{' '}
+            navigate
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <kbd className="rounded border bg-muted px-1 font-mono">↵</kbd>{' '}
+            select
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <kbd className="rounded border bg-muted px-1 font-mono">esc</kbd>{' '}
+            close
+          </span>
         </div>
         <span>⌘K</span>
       </div>
@@ -222,7 +300,9 @@ function Shortcut({ children }) {
     <span className="ml-auto flex items-center gap-0.5 text-[10px] text-muted-foreground">
       {typeof children === 'string'
         ? children.split(' ').map((part, i) => (
-            <kbd key={i} className="rounded border bg-muted px-1 font-mono">{part}</kbd>
+            <kbd key={i} className="rounded border bg-muted px-1 font-mono">
+              {part}
+            </kbd>
           ))
         : children}
     </span>
@@ -232,7 +312,16 @@ function Shortcut({ children }) {
 // Check icon is rendered inline to avoid importing a component that doesn't exist
 function Check({ className }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );

@@ -27,9 +27,9 @@ function formatBytes(bytes) {
 }
 
 const ROLE_STYLES = {
-  tenant_admin: "bg-violet-500/12 text-violet-700 dark:text-violet-300 border-violet-500/25",
-  lecturer: "bg-sky-500/12 text-sky-700 dark:text-sky-300 border-sky-500/25",
-  student: "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300 border-indigo-500/25",
+  tenant_admin: "bg-[var(--accent-soft)] text-[var(--accent-strong)] border-[var(--accent)]/25",
+  lecturer: "bg-[var(--info-soft)] text-[var(--info)] border-[var(--info)]/25",
+  student: "bg-[var(--surface-2)] text-[var(--fg-soft)] border-[var(--border)]",
 };
 
 const ROLE_LABELS = {
@@ -126,7 +126,14 @@ export default function TenantDetailPage() {
       {detailQ.isLoading ? (
         <SkeletonRows rows={6} />
       ) : detailQ.error ? (
-        <Alert variant="destructive"><AlertDescription>Failed to load tenant details.</AlertDescription></Alert>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription className="flex w-full items-center justify-between gap-3">
+            <span>Failed to load tenant details.</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => detailQ.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : data ? (
         <div className="space-y-6">
           {/* ── Header Card ─────────────────────────────────────── */}
@@ -149,18 +156,21 @@ export default function TenantDetailPage() {
           </Card>
 
           {/* ── Stats ───────────────────────────────────────────── */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard icon={Users} label="Users" value={stats?.users?.total} hint={`${stats?.users?.verified || 0} verified`} />
             <StatCard icon={FileText} label="Resources" value={stats?.resources?.total} hint={formatBytes(stats?.resources?.storage_used_bytes)} />
-            <StatCard icon={GraduationCap} label="Enrollments" value={stats?.academic?.enrollments} hint={`${stats?.academic?.courses || 0} courses`} />
-            <StatCard icon={Landmark} label="Faculties" value={stats?.academic?.faculties} hint={`${stats?.academic?.departments || 0} departments`} />
+            <StatCard icon={GraduationCap} label="Quiz Attempts" value={stats?.quizzes?.attempts} hint={`${stats?.quizzes?.total || 0} quizzes`} />
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <StatCard icon={Users} label="Chat Sessions" value={stats?.chat?.sessions} hint={`${stats?.chat?.messages || 0} messages`} />
-            <StatCard icon={Users} label="Quiz Attempts" value={stats?.quizzes?.attempts} hint={`${stats?.quizzes?.total || 0} quizzes`} />
-            <StatCard icon={HardDrive} label="Vector Chunks" value={stats?.resources?.chunks} hint="Embedded" />
-          </div>
+          {/* Structure stats are only exposed to the tenant's own admin. */}
+          {data?.structure_visible && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard icon={GraduationCap} label="Enrollments" value={stats?.academic?.enrollments} hint={`${stats?.academic?.courses || 0} courses`} />
+              <StatCard icon={Landmark} label="Faculties" value={stats?.academic?.faculties} hint={`${stats?.academic?.departments || 0} departments`} />
+              <StatCard icon={Users} label="Chat Sessions" value={stats?.chat?.sessions} hint={`${stats?.chat?.messages || 0} messages`} />
+              <StatCard icon={HardDrive} label="Vector Chunks" value={stats?.resources?.chunks} hint="Embedded" />
+            </div>
+          )}
 
           {/* ── Users by Role ───────────────────────────────────── */}
           {stats?.users?.by_role && Object.keys(stats.users.by_role).length > 0 && (
@@ -180,7 +190,7 @@ export default function TenantDetailPage() {
           )}
 
           {/* ── Academic Structure ──────────────────────────────── */}
-          {stats?.academic && (
+          {data?.structure_visible && stats?.academic && (
             <Card>
               <CardContent className="py-5">
                 <h3 className="text-sm font-semibold mb-3">Academic structure</h3>

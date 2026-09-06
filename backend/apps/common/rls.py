@@ -27,6 +27,7 @@ TABLES = [
     "quizzes", "quiz_questions", "quiz_attempts",
     "notes", "bookmarks", "progress_records",
     "audit_logs",
+    "tenant_logs",
 ]
 
 

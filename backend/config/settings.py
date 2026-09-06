@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     "apps.learning",
     "apps.audit",
     "apps.platform",
+    "apps.logs",
+    "apps.agent",
 ]
 
 MIDDLEWARE = [
@@ -63,6 +65,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "apps.common.middleware.TenantContextMiddleware",
+    "apps.logs.middleware.TenantLoggingMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -174,7 +177,7 @@ REST_FRAMEWORK = {
         "user": "2000/hour",
         "auth": "20/minute",
         "ai": "30/minute",
-        "upload": "20/hour",
+        "upload": "120/hour",
         "tenant_request": "5/hour",
     },
 }
@@ -229,6 +232,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "Administration", "description": "Audit logs and operational data (admins)"},
         {"name": "Platform", "description": "Platform-wide management for superusers (tenants, analytics, health, announcements)"},
         {"name": "System", "description": "Health and background-job status"},
+        {"name": "Agent", "description": "AI agent streaming, tool listing, and session tracking"},
     ],
     "ENUM_NAME_OVERRIDES": {
         "UserRoleEnum": "apps.accounts.models.User.Role",
@@ -301,6 +305,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 GEMINI_EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL", "text-embedding-004")
 EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "768"))
+# Cache single-query embedding vectors in Redis for this many seconds (300 = 5 min).
+# Retrieval re-embeds the same query text repeatedly; this avoids redundant API calls.
+EMB_CACHE_TTL = int(os.getenv("EMB_CACHE_TTL", "300"))
 
 # Auth tokens / codes
 AUTH_VERIFICATION_CODE_EXPIRY_MINUTES = int(os.getenv("AUTH_VERIFICATION_CODE_EXPIRY_MINUTES", "15"))
@@ -308,13 +315,20 @@ AUTH_PASSWORD_RESET_EXPIRY_MINUTES = int(os.getenv("AUTH_PASSWORD_RESET_EXPIRY_M
 AUTH_MAX_VERIFICATION_ATTEMPTS = int(os.getenv("AUTH_MAX_VERIFICATION_ATTEMPTS", "5"))
 
 # Email
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+# Local dev routes SMTP through Mailpit (`docker compose up -d` -> service
+# "mailpit", web UI on http://localhost:8025). A host-run backend reaches it
+# on localhost:1025; the in-Docker backend (app profile) overrides
+# EMAIL_HOST=mailpit in docker-compose.yml. Override via env for a real
+# provider (SES/SendGrid/Postmark) in production.
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "AcademiAI <noreply@academiai.local>")
-EMAIL_HOST = os.getenv("EMAIL_HOST", "")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST = os.getenv("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "1025"))
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() in ("1", "true", "yes")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False").lower() in ("1", "true", "yes")
+# Public origin of the SPA, used for links/CTAs in transactional emails.
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
 
 # Debug Toolbar (dev only)
 INTERNAL_IPS = ["127.0.0.1", "localhost"]

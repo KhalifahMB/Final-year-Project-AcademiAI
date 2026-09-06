@@ -1,0 +1,48 @@
+{% extends "emails/base_email.html" %}
+
+{% block subject %}{{ product_name }} — Verify your account{% endblock %}
+{% block preheader %}Use the code below to confirm your email address and activate your account.{% endblock %}
+{% block masthead %}
+  <tr>
+    <td class="email-pad" style="padding:8px 40px 6px 40px;">
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:{{ brand_main }}; margin-bottom:8px;">Confirm your email</div>
+      <h1 style="margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:26px; font-weight:700; color:{{ text_primary }}; letter-spacing:-0.02em; line-height:1.2;">Hello {{ first_name | default:"there" }}, verify your account</h1>
+    </td>
+  </tr>
+{% endblock %}
+{% block body %}
+  <p style="margin:0 0 16px 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:15px; line-height:1.6; color:{{ text_primary }};">
+    Welcome to {{ product_name }}. To activate your account, enter the
+    one-time verification code below. It expires in
+    <strong>{{ expiry_minutes }}</strong> minutes.
+  </p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 4px 0; background-color:{{ page_bg }}; border:1px solid {{ border }}; border-radius:12px;">
+    <tr><td align="center" style="padding:20px 16px;">
+      <div style="font-family:'SF Mono',ui-monospace,Menlo,Consolas,'Liberation Mono',monospace; font-size:30px; font-weight:700; letter-spacing:0.18em; color:{{ brand_main }};">{{ code }}</div>
+      <div style="margin-top:6px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; color:{{ text_muted }};">Your one-time verification code</div>
+    </td></tr>
+  </table>
+
+  {% if verify_url %}
+  <p style="margin:18px 0 0 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:14px; line-height:1.6; color:{{ text_primary }};">
+    Or open the app to enter the code:
+  </p>
+  {% endif %}
+
+  <p style="margin:18px 0 0 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; line-height:1.6; color:{{ text_muted }};">
+    If you didn't create a {{ product_name }} account, you can ignore this
+    email — the code will expire on its own and no account will be activated.
+  </p>
+{% endblock %}
+
+{% block footer_extra %}
+  <p style="margin:0 0 10px 0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.5; color:{{ danger }};">
+    Security note: never share this code with anyone. {{ product_name }} will
+    never ask you for it outside of the sign-in screen.
+  </p>
+{% endblock %}
+
+{% block cta_url %}{{ verify_url | default:"" }}{% endblock %}
+{% block cta_label %}Open {{ product_name }}{% endblock %}
+{% block cta_hint %}{{ verify_url | default:"" }}{% endblock %}

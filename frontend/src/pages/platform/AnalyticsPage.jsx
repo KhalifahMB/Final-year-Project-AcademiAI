@@ -9,6 +9,8 @@ import StatCard from "@/components/shared/StatCard";
 import SkeletonRows from "@/components/shared/SkeletonRows";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, FileText, MessageSquareText, ClipboardList, HardDrive, TrendingUp } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 function formatBytes(bytes) {
   if (!bytes && bytes !== 0) return "—";
@@ -51,7 +53,14 @@ export default function AnalyticsPage() {
       {statsQ.isLoading ? (
         <SkeletonRows rows={6} />
       ) : statsQ.error ? (
-        <p className="text-sm text-destructive">Failed to load analytics.</p>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+            <span>Failed to load analytics.</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => statsQ.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : stats ? (
         <>
           {/* ── Summary Row ────────────────────────────────────── */}
@@ -74,6 +83,10 @@ export default function AnalyticsPage() {
               <CardContent>
                 {stats.trends?.user_signups?.length > 0 ? (
                   <div className="h-[260px]">
+                    <p className="sr-only">
+                      User signups over the last 30 days, {stats.trends.user_signups.length} data points,
+                      latest: {stats.trends.user_signups[stats.trends.user_signups.length - 1]?.count ?? 0} signups.
+                    </p>
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={stats.trends.user_signups}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
@@ -100,6 +113,9 @@ export default function AnalyticsPage() {
               <CardContent>
                 {stats.trends?.tenant_provisioning?.length > 0 ? (
                   <div className="h-[260px]">
+                    <p className="sr-only">
+                      Tenants provisioned over the last 30 days, {stats.trends.tenant_provisioning.length} data points.
+                    </p>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={stats.trends.tenant_provisioning}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />

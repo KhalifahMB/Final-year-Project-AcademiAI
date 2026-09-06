@@ -14,9 +14,9 @@ import { toast } from "sonner";
 import { Megaphone, Plus, Pencil, Trash2 } from "lucide-react";
 
 const PRIORITY_STYLES = {
-  info: "bg-sky-500/12 text-sky-700 dark:text-sky-300 border-sky-500/25",
-  warning: "bg-amber-500/12 text-amber-700 dark:text-amber-300 border-amber-500/25",
-  critical: "bg-[var(--danger)]/12 text-red-700 dark:text-red-300 border-red-500/25",
+  info: "bg-[var(--info-soft)] text-[var(--info)] border-[var(--info)]/25",
+  warning: "bg-[var(--warn-soft)] text-[var(--warn)] border-[var(--warn)]/25",
+  critical: "bg-[var(--danger-soft)] text-[var(--danger)] border-[var(--danger)]/25",
 };
 
 function PriorityBadge({ priority }) {
@@ -108,14 +108,21 @@ export default function AnnouncementsPage() {
       {announcementsQ.isLoading ? (
         <SkeletonRows rows={4} />
       ) : announcementsQ.error ? (
-        <Alert variant="destructive"><AlertDescription>Failed to load announcements.</AlertDescription></Alert>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+            <span>Failed to load announcements.</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => announcementsQ.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : announcements.length === 0 ? (
         <EmptyState
           icon={Megaphone}
           title="No announcements yet"
           description="Create your first platform announcement to notify tenants about updates, maintenance, or important information."
           action="Create announcement"
-          actionTo="#"
+          onAction={() => { setModalError(""); setAddOpen(true); }}
         />
       ) : (
         <div className="space-y-4">
@@ -142,6 +149,7 @@ export default function AnnouncementsPage() {
                       type="button"
                       variant="ghost"
                       size="icon"
+                      aria-label={`Edit announcement ${a.title || ''}`}
                       title="Edit"
                       onClick={() => { setModalError(""); setEditItem(a); }}
                     >
@@ -151,6 +159,7 @@ export default function AnnouncementsPage() {
                       type="button"
                       variant="ghost"
                       size="icon"
+                      aria-label={`Delete announcement ${a.title || ''}`}
                       title="Delete"
                       className="text-destructive hover:text-destructive"
                       onClick={() => setDeleteTarget(a)}

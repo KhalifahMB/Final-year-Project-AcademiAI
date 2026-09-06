@@ -1,15 +1,23 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import EmptyState from '@/components/shared/EmptyState';
+import StatTile from '@/components/shared/StatTile';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import {
+ Select,
+ SelectContent,
+ SelectItem,
+ SelectTrigger,
+ SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
-import { BookOpen, ChevronRight, GraduationCap } from 'lucide-react';
+import { BookOpen, ChevronRight, GraduationCap, Loader2, Search, X } from 'lucide-react';
 
 const errMsg = (err, fallback) =>
  err?.response?.data?.error?.detail ||
@@ -18,39 +26,10 @@ const errMsg = (err, fallback) =>
  fallback;
 
 function CourseCard({ course, offeringId, enrolled, isStudent, busy, onEnroll, onUnenroll }) {
- const footer = offeringId ? (
-  isStudent ? (
-   <Button
-   type="button"
-   size="sm"
-   variant={enrolled ? 'outline' : 'default'}
-   className="h-7 px-2.5 text-[11px]"
-   disabled={busy}
-   onClick={(e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (enrolled) onUnenroll(offeringId);
-    else onEnroll(offeringId);
-   }}
-   >
-   {enrolled ? 'Unenrol' : 'Enrol'}
-   </Button>
-  ) : (
-   <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
-   View <ChevronRight className="h-3 w-3" aria-hidden />
-   </span>
-  )
- ) : (
-  <span className="text-[10px] text-muted-foreground">No offering yet</span>
- );
-
- const body = (
- <>
-  <div className="flex items-start gap-3">
-  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-strong)]">
-  <BookOpen className="h-5 w-5" aria-hidden />
-  </span>
-  <div className="min-w-0 flex-1">
+ // No button-inside-link nesting: the card is a plain container, the title
+ // is the link, and enrol/unenrol actions sit beside it as siblings.
+ const title = (
+  <>
   <div className="flex items-center gap-2">
   <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold tracking-wide text-primary">
   {course.code || '—'}
@@ -62,6 +41,50 @@ function CourseCard({ course, offeringId, enrolled, isStudent, busy, onEnroll, o
   <h2 className="mt-1.5 truncate text-sm font-semibold leading-snug">
   {course.title}
   </h2>
+  </>
+ );
+
+ const footer = offeringId ? (
+  isStudent ? (
+  <Button
+  type="button"
+  size="sm"
+  variant={enrolled ? 'outline' : 'default'}
+  className="h-7 gap-1 px-2.5 text-[11px]"
+  disabled={busy}
+  aria-busy={busy}
+  onClick={() => {
+  if (enrolled) onUnenroll(offeringId);
+  else onEnroll(offeringId);
+  }}
+  >
+  {busy && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}
+  {enrolled ? 'Unenrol' : 'Enrol'}
+  </Button>
+  ) : (
+  <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+  View <ChevronRight className="h-3 w-3" aria-hidden />
+  </span>
+  )
+ ) : (
+  <span className="text-[10px] text-muted-foreground">No offering yet</span>
+ );
+
+ return (
+  <li>
+  <div className="group flex h-full flex-col rounded-xl border bg-card p-4 transition-colors hover:border-[var(--border-strong)]">
+  <div className="flex items-start gap-3">
+  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+  <BookOpen className="h-5 w-5" aria-hidden />
+  </span>
+  <div className="min-w-0 flex-1">
+  {offeringId ? (
+  <Link to={`/courses/${offeringId}`} className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring">
+  {title}
+  </Link>
+  ) : (
+  title
+  )}
   </div>
   </div>
   <p className="mt-2.5 line-clamp-2 min-h-[2rem] text-[11.5px] leading-relaxed text-muted-foreground">
@@ -73,27 +96,9 @@ function CourseCard({ course, offeringId, enrolled, isStudent, busy, onEnroll, o
   </span>
   {footer}
   </div>
- </>
- );
- if (!offeringId) {
-  return (
-  <li>
-  <div className="flex h-full cursor-default flex-col rounded-xl border bg-card p-4">
-  {body}
   </div>
   </li>
   );
- }
- return (
-  <li>
-  <Link
-  to={`/courses/${offeringId}`}
-  className="group flex h-full flex-col rounded-xl border bg-card p-4 transition-colors hover:border-[var(--border-strong)]"
-  >
-  {body}
-  </Link>
-  </li>
- );
 }
 
 export default function CoursesPage() {
@@ -111,6 +116,59 @@ export default function CoursesPage() {
   select: (data) => data || [],
  });
  const courses = useMemo(() => data ?? [], [data]);
+
+  const [searchParams] = useSearchParams();
+  const urlDept = searchParams.get('dept');
+  const [deptFilter, setDeptFilter] = useState(
+  () => urlDept || 'all',
+  );
+  const [deptTouched, setDeptTouched] = useState(!!urlDept);
+  // The auth profile often arrives after first render: apply the student's
+  // home-department default then (render-time adjustment, same pattern as
+  // AppShell's drawer state) unless the user already chose a filter.
+  if (!deptTouched && !urlDept && isStudent && user?.department_id && deptFilter === 'all') {
+  setDeptTouched(true);
+  setDeptFilter(user.department_id);
+  }
+  const [search, setSearch] = useState(searchParams.get('q') ?? '');
+
+ // Every department that owns at least one course in the catalogue, so the
+ // filter list reflects what the institution actually offers.
+ const departments = useMemo(() => {
+  const map = new Map();
+  for (const c of courses) {
+  if (!c.department) continue;
+  if (!map.has(c.department)) {
+  map.set(c.department, { id: c.department, name: c.department_name || 'Unknown department' });
+  }
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+ }, [courses]);
+
+ const filtered = useMemo(() => {
+  let list = courses;
+  if (deptFilter !== 'all') list = list.filter((c) => c.department === deptFilter);
+  const q = search.trim().toLowerCase();
+  if (q) {
+  list = list.filter(
+  (c) =>
+  (c.title || '').toLowerCase().includes(q) ||
+  (c.code || '').toLowerCase().includes(q),
+  );
+  }
+  return list;
+ }, [courses, deptFilter, search]);
+
+  const hasFilters = deptFilter !== 'all' || search.trim() !== '';
+  const resetFilters = () => {
+  setDeptTouched(true);
+  setDeptFilter(isStudent ? user?.department_id || 'all' : 'all');
+  setSearch('');
+  };
+  const handleDeptFilter = (v) => {
+  setDeptTouched(true);
+  setDeptFilter(v);
+  };
 
  // Course detail links resolve to a course offering (/course-offerings/:id),
  // so map each course to its latest offering (the API returns newest first).
@@ -182,6 +240,41 @@ export default function CoursesPage() {
   title="Course catalogue"
   description="Every course offered across your institution."
   >
+  {/* Filters */}
+  {!isLoading && courses.length > 0 && (
+  <div className="mb-4 flex flex-col gap-2.5 rounded-xl border bg-card p-3 sm:flex-row sm:items-center">
+  <Select value={deptFilter} onValueChange={handleDeptFilter}>
+  <SelectTrigger aria-label="Filter by department" className="h-9 w-full text-sm sm:w-56">
+  <SelectValue placeholder="All departments" />
+  </SelectTrigger>
+  <SelectContent>
+  <SelectItem value="all" className="text-sm">All departments</SelectItem>
+  {departments.map((d) => (
+  <SelectItem key={d.id} value={d.id} className="text-sm">{d.name}</SelectItem>
+  ))}
+  </SelectContent>
+  </Select>
+  <div className="relative flex-1">
+  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+  <Input
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+  placeholder="Search by code or title…"
+  aria-label="Search courses by code or title"
+  className="h-9 pl-8 text-sm"
+  />
+  </div>
+  {hasFilters && (
+  <Button type="button" variant="ghost" size="sm" onClick={resetFilters} className="h-8 gap-1 text-[11px] text-muted-foreground">
+  <X className="h-3.5 w-3.5" aria-hidden /> Clear
+  </Button>
+  )}
+  <span className="shrink-0 text-[11px] text-muted-foreground">
+  {filtered.length} of {courses.length} course{courses.length === 1 ? '' : 's'}
+  </span>
+  </div>
+  )}
+
   {/* Stats */}
   {!isLoading && courses.length > 0 && (
   <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
@@ -218,9 +311,15 @@ export default function CoursesPage() {
   title="The catalogue is empty"
   description="Courses created by your institution's administrators will appear here."
   />
+  ) : filtered.length === 0 ? (
+  <EmptyState
+  icon={Search}
+  title="No courses match your filters"
+  description={deptFilter !== 'all' ? 'Try another department, or clear the filters above to see the full catalogue.' : 'Try a different search term.'}
+  />
   ) : (
   <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-  {courses.map((c) => {
+  {filtered.map((c) => {
   const offeringId = offeringByCourse.get(c.id);
   return (
   <CourseCard
@@ -238,22 +337,5 @@ export default function CoursesPage() {
   </ul>
   )}
   </AppShell>
- );
-}
-
-function StatTile({ label, value, icon: Icon, tone = 'indigo' }) {
- const tones = {
-  indigo: 'text-primary bg-primary/10',
-  emerald: 'text-[var(--success)] bg-[var(--success-soft)] ',
-  violet: 'text-[var(--accent-strong)] bg-[var(--accent-soft)] ',
- };
- return (
-  <div className="flex items-center gap-3 rounded-xl border bg-card/60 px-4 py-3">
-  {Icon && <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg', tones[tone])}><Icon className="h-4 w-4" aria-hidden /></span>}
-  <div className="min-w-0">
-  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-  <p className="text-xl font-semibold tabular-nums tracking-tight">{value ?? 0}</p>
-  </div>
-  </div>
- );
+  );
 }

@@ -54,4 +54,8 @@ secrets/
 mailpit/
 
 .opencode/
-.opencode/
+.impeccable/
+
+.agents/
+.claude/
+.qwen/

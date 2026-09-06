@@ -90,5 +90,6 @@ export default defineConfig({
     setupFiles: './src/test/setup.js',
     css: false,
     pool: 'forks',
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
   },
 });

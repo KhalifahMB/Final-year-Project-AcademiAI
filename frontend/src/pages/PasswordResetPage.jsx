@@ -76,6 +76,7 @@ export default function PasswordResetPage() {
   return (
     <AuthLayout
       icon={KeyRound}
+      eyebrow="Password recovery"
       title={success ? 'Password updated' : step === 'request' ? 'Reset your password' : 'Choose a new password'}
       subtitle={
         success
@@ -89,7 +90,7 @@ export default function PasswordResetPage() {
           Remembered it?{' '}
           <Link
             to="/login"
-            className="font-semibold text-primary underline-offset-4 hover:underline"
+            className="landing-text-link font-semibold"
           >
             Back to sign in
           </Link>
@@ -97,12 +98,12 @@ export default function PasswordResetPage() {
       }
     >
       {error && (
-        <Alert variant="destructive" className="mb-4">
+        <Alert variant="destructive" role="alert" className="mb-4">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
       {ok && (
-        <Alert className="mb-4 border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)] ">
+        <Alert role="status" className="mb-4 border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)] ">
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription>{ok}</AlertDescription>
         </Alert>

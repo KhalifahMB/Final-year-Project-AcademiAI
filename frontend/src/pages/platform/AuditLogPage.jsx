@@ -12,13 +12,13 @@ import {
 import { Search, ScrollText } from "lucide-react";
 
 const ACTION_STYLES = {
-  "user.signup": "bg-[var(--success)]/12 text-[var(--success)]  border-emerald-500/25",
-  "user.login": "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300 border-indigo-500/25",
-  "user.email_verified": "bg-sky-500/12 text-sky-700 dark:text-sky-300 border-sky-500/25",
-  "user.password_change": "bg-amber-500/12 text-amber-700 dark:text-amber-300 border-amber-500/25",
-  "resource.create": "bg-violet-500/12 text-violet-700 dark:text-violet-300 border-violet-500/25",
-  "resource.delete": "bg-[var(--danger)]/12 text-red-700 dark:text-red-300 border-red-500/25",
-  "tenant.update": "bg-zinc-500/12 text-zinc-600 dark:text-zinc-300 border-zinc-500/25",
+  "user.signup": "bg-[var(--success-soft)] text-[var(--success)] border-[var(--success)]/25",
+  "user.login": "bg-[var(--accent-soft)] text-[var(--accent-strong)] border-[var(--accent)]/25",
+  "user.email_verified": "bg-[var(--info-soft)] text-[var(--info)] border-[var(--info)]/25",
+  "user.password_change": "bg-[var(--warn-soft)] text-[var(--warn)] border-[var(--warn)]/25",
+  "resource.create": "bg-[var(--accent-soft)] text-[var(--accent-strong)] border-[var(--accent)]/25",
+  "resource.delete": "bg-[var(--danger-soft)] text-[var(--danger)] border-[var(--danger)]/25",
+  "tenant.update": "bg-[var(--surface-2)] text-[var(--muted)] border-[var(--border)]",
 };
 
 function ActionBadge({ action }) {
@@ -63,6 +63,7 @@ export default function AuditLogPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input
             placeholder="Filter by action..."
+            aria-label="Filter by action"
             value={actionFilter}
             onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
             className="pl-9"
@@ -70,6 +71,7 @@ export default function AuditLogPage() {
         </div>
         <Input
           placeholder="Filter by entity type..."
+          aria-label="Filter by entity type"
           value={entityFilter}
           onChange={(e) => { setEntityFilter(e.target.value); setPage(1); }}
           className="w-[200px]"
@@ -79,10 +81,17 @@ export default function AuditLogPage() {
       {logsQ.isLoading ? (
         <SkeletonRows rows={8} />
       ) : logsQ.error ? (
-        <Alert variant="destructive"><AlertDescription>Failed to load audit logs — superuser access required.</AlertDescription></Alert>
+        <Alert variant="destructive" role="alert">
+          <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+            <span>Failed to load audit logs — superuser access required.</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => logsQ.refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : (
         <>
-          <div className="overflow-hidden rounded-xl card-surface">
+          <div className="overflow-x-auto rounded-xl card-surface">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -103,8 +112,8 @@ export default function AuditLogPage() {
                     <TableCell><ActionBadge action={log.action} /></TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       <span>{log.entity_type}</span>
-                      {log.entity_id && (
-                        <span className="ml-1 font-mono text-[10px]">{log.entity_id.slice(0, 8)}…</span>
+                      {log.entity_id != null && (
+                        <span className="ml-1 font-mono text-[10px]">{String(log.entity_id).slice(0, 8)}…</span>
                       )}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{log.tenant_name || "—"}</TableCell>

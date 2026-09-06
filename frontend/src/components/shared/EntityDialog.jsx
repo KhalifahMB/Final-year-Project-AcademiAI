@@ -67,7 +67,7 @@ export default function EntityDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         {error ? (
-          <Alert variant="destructive">
+          <Alert variant="destructive" role="alert">
             <AlertDescription>{String(error)}</AlertDescription>
           </Alert>
         ) : null}

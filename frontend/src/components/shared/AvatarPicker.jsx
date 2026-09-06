@@ -39,13 +39,11 @@ export default function AvatarPicker({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-7">
-        {/* Upload tile */}
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          aria-label="Upload a picture"
+        {/* Upload tile — the replace/remove controls are siblings, never
+        nested buttons, so keyboard and screen-reader interaction is valid. */}
+        <div
           className={cn(
-            "group relative aspect-square overflow-hidden rounded-xl border-2 border-dashed transition-colors focus-visible:outline-2 focus-visible:outline-ring",
+            "group relative aspect-square overflow-hidden rounded-xl border-2 border-dashed transition-colors",
             file
               ? "border-primary bg-primary/10"
               : "border-border hover:border-primary/60 hover:bg-muted",
@@ -53,33 +51,49 @@ export default function AvatarPicker({
         >
           {preview ? (
             <>
-              <img src={preview} alt="" className="h-full w-full object-cover" />
-              <span
-                role="button"
-                tabIndex={0}
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                aria-label="Replace picture"
+                className="absolute inset-0 rounded-[10px] focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <img src={preview} alt="" className="h-full w-full object-cover" />
+              </button>
+              <button
+                type="button"
                 aria-label="Remove uploaded picture"
                 onClick={(e) => {
                   e.stopPropagation();
                   onFile(null);
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.stopPropagation();
-                    onFile(null);
-                  }
-                }}
-                className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-1 text-white transition-opacity focus-visible:opacity-100 max-md:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
               >
-                <Trash2 className="h-3 w-3" />
-              </span>
+                <Trash2 className="h-3 w-3" aria-hidden />
+              </button>
             </>
           ) : (
-            <span className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              aria-label="Upload a picture"
+              className="absolute inset-0 flex h-full w-full flex-col items-center justify-center gap-1 rounded-[10px] text-muted-foreground focus-visible:outline-2 focus-visible:outline-ring"
+            >
               <Camera className="h-5 w-5" aria-hidden />
               <span className="text-[10px] font-medium">Upload</span>
-            </span>
+            </button>
           )}
-        </button>
+          <input
+            ref={inputRef}
+            type="file"
+            accept={ACCEPTED.join(",")}
+            className="sr-only"
+            aria-label="Choose a picture file"
+            onChange={(e) => {
+              pick(e.target.files?.[0] || null);
+              e.target.value = "";
+            }}
+          />
+        </div>
 
         {/* Presets */}
         {AVATAR_PRESETS.map((p) => {
@@ -93,6 +107,7 @@ export default function AvatarPicker({
                 onPresetId(p.id);
               }}
               aria-pressed={active}
+              aria-label={`Use ${p.label} avatar`}
               title={p.label}
               className={cn(
                 "aspect-square overflow-hidden rounded-xl border-2 transition-all focus-visible:outline-2 focus-visible:outline-ring",
@@ -106,13 +121,6 @@ export default function AvatarPicker({
           );
         })}
       </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ACCEPTED.join(",")}
-        className="hidden"
-        onChange={(e) => pick(e.target.files?.[0])}
-      />
       <p className="text-xs text-muted-foreground">
         Pick an avatar or upload your own photo (PNG/JPEG, max 2 MB).
       </p>

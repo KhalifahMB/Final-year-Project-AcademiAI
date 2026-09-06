@@ -1,0 +1,10 @@
+Hello {{ first_name | default:"there" }},
+
+This is a test email from {{ product_name }}. It confirms that transactional
+mail from your institution's workspace is being delivered correctly —
+including the branded HTML template, your institution's logo, and the
+plain-text fallback.
+
+SMTP delivery and template rendering are working.
+
+You can safely ignore this email. No action is needed on your part.

@@ -3,8 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
+import StatTile from '@/components/shared/StatTile';
 import EmptyState from '@/components/shared/EmptyState';
+import Pagination from '@/components/shared/Pagination';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -13,10 +16,12 @@ import { cn } from '@/lib/utils';
 import { Search, UsersRound } from 'lucide-react';
 import { useState } from 'react';
 
+const PAGE_SIZE = 10;
+
 const ROLE_STYLES = {
-  tenant_admin: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20',
-  lecturer: 'bg-[var(--info-soft)] text-sky-700 dark:text-sky-300 border-sky-500/20',
-  student: 'bg-[var(--accent-soft)] text-[var(--accent-strong)] border-[var(--accent)]/20',
+  tenant_admin: 'bg-[var(--accent-soft)] text-[var(--accent-strong)] border-[var(--accent)]/20',
+  lecturer: 'bg-[var(--info-soft)] text-[var(--info)] border-[var(--info)]/20',
+  student: 'bg-[var(--surface-2)] text-[var(--fg-soft)] border-[var(--border)]',
 };
 
 const ROLE_LABELS = {
@@ -39,7 +44,8 @@ function RoleBadge({ role }) {
 export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
-  const { data, isLoading, error } = useQuery({
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['admin-users'],
     queryFn: async () => {
       const { data } = await api.get('/auth/users/');
@@ -62,14 +68,23 @@ export default function AdminUsersPage() {
     });
   }, [users, search, roleFilter]);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   return (
     <AppShell
       title="Users"
       description="Accounts in your institution — roles and activation status."
     >
       {error ? (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription className="text-xs">Admin access required or request failed</AlertDescription>
+        <Alert variant="destructive" role="alert" className="mb-4">
+          <AlertDescription className="flex w-full items-center justify-between gap-3 text-xs">
+            <span>Admin access required or request failed{error?.response?.data?.detail ? `: ${error.response.data.detail}` : ''}</span>
+            <Button type="button" variant="outline" size="sm" onClick={() => refetch()} className="h-7 shrink-0 text-[11px]">
+              Retry
+            </Button>
+          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -88,14 +103,15 @@ export default function AdminUsersPage() {
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="relative min-w-[220px] flex-1">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search users…" className="h-8 pl-8 text-xs" />
+            <Input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Search users…" aria-label="Search users by name or email" className="h-8 pl-8 text-xs" />
           </div>
-          <div className="inline-flex rounded-lg border bg-card p-0.5">
+          <div className="inline-flex rounded-lg border bg-card p-0.5" role="group" aria-label="Filter by role">
             {['all', 'student', 'lecturer', 'tenant_admin'].map((r) => (
               <button
                 key={r}
                 type="button"
-                onClick={() => setRoleFilter(r)}
+                onClick={() => { setRoleFilter(r); setPage(1); }}
+                aria-pressed={roleFilter === r}
                 className={cn(
                   'h-7 rounded-md px-2.5 text-[11px] font-medium transition-colors',
                   roleFilter === r ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -121,7 +137,7 @@ export default function AdminUsersPage() {
           description="Users appear here once they sign up with your institution slug."
         />
       ) : (
-        <div className="overflow-hidden rounded-xl card-surface">
+        <div className="overflow-x-auto rounded-xl card-surface">
           <Table>
             <TableHeader>
               <TableRow className="h-9 bg-muted/50 hover:bg-muted/50">
@@ -132,7 +148,7 @@ export default function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((u) => (
+              {paged.map((u) => (
                 <TableRow key={u.id} className="h-11">
                   <TableCell className="py-2 pl-4 text-sm font-medium">
                     {[u.first_name, u.last_name].filter(Boolean).join(' ') || '—'}
@@ -144,7 +160,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
+              {paged.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="py-8 text-center text-xs text-muted-foreground">
                     No users match your search.
@@ -155,25 +171,10 @@ export default function AdminUsersPage() {
           </Table>
         </div>
       )}
-    </AppShell>
-  );
-}
 
-function StatTile({ label, value, tone = 'indigo' }) {
-  const tones = {
-    indigo: 'text-primary bg-primary/10',
-    sky: 'text-[var(--info)] bg-[var(--info-soft)] ',
-    violet: 'text-[var(--accent-strong)] bg-[var(--accent-soft)]',
-  };
-  return (
-    <div className="flex items-center gap-3 rounded-xl border bg-card/60 px-4 py-2.5">
-      <span className={cn('flex h-8 w-8 items-center justify-center rounded-lg', tones[tone])}>
-        <UsersRound className="h-4 w-4" aria-hidden />
-      </span>
-      <div className="min-w-0">
-        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-        <p className="text-lg font-semibold tabular-nums tracking-tight">{value ?? 0}</p>
-      </div>
-    </div>
+      {!isLoading && users.length > 0 && filtered.length > PAGE_SIZE && (
+        <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} className="mt-4" />
+      )}
+    </AppShell>
   );
 }

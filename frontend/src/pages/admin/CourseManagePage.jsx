@@ -14,7 +14,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ClipboardList, Pencil, Plus, Trash2, UserCheck, Users } from "lucide-react";
+import { ArrowLeft, ClipboardList, Pencil, Plus, Trash2, UserCheck, Users } from "lucide-react";
 
 const toList = (d) => d?.results || d || [];
 
@@ -167,7 +167,7 @@ export default function CourseManagePage() {
     onSuccess: () => {
       toast.success("Course deleted");
       qc.invalidateQueries({ queryKey: ["courses"] });
-      navigate(-1);
+      navigate("/admin/courses", { replace: true });
     },
     onError: (e) => toast.error(errText(e, "Delete failed")),
   });
@@ -188,7 +188,7 @@ export default function CourseManagePage() {
             type="button"
             variant="outline"
             size="sm"
-            className="border-red-500/40 text-red-700 hover:bg-[var(--danger)]/10 dark:text-red-400"
+            className="border-[var(--danger)]/40 text-[var(--danger)] hover:bg-[var(--danger-soft)]"
             onClick={() => setConfirmDeleteCourse(true)}
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Delete
@@ -197,8 +197,8 @@ export default function CourseManagePage() {
       }
     >
       {course?.department && (
-        <Link to={`/admin/departments/${course.department}`} className="mb-4 inline-block text-sm text-primary hover:underline">
-          ← Department
+        <Link to={`/admin/departments/${course.department}`} className="mb-4 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden /> Department
         </Link>
       )}
 
@@ -299,7 +299,8 @@ export default function CourseManagePage() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-red-600 hover:bg-[var(--danger)]/10 hover:text-red-700"
+                        className="text-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
+                        aria-label={`Unassign ${a.lecturer_name || a.lecturer_email || 'lecturer'}`}
                         onClick={() => setConfirmRemoveAssignment(a)}
                       >
                         <Trash2 className="h-3.5 w-3.5" aria-hidden />
@@ -346,7 +347,7 @@ export default function CourseManagePage() {
                 }
               />
             ) : (
-              <div className="overflow-hidden rounded-xl border bg-card">
+              <div className="overflow-x-auto rounded-xl border bg-card">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50 hover:bg-muted/50">
@@ -376,7 +377,8 @@ export default function CourseManagePage() {
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="text-red-600 hover:bg-[var(--danger)]/10 hover:text-red-700"
+                              className="text-[var(--danger)] hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
+                              aria-label={`Remove enrollment for ${e.student_name || e.student_email || 'student'}`}
                               onClick={() => setConfirmRemoveEnrollment(e)}
                             >
                               <Trash2 className="h-3.5 w-3.5" aria-hidden />

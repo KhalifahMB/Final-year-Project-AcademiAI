@@ -32,6 +32,7 @@ import {
 
 import StudentDashboard from './dashboard/StudentDashboard';
 import LecturerDashboard from './dashboard/LecturerDashboard';
+import AiInsightCard from '@/components/shared/AiInsightCard';
 
 function TimeAgo({ iso }) {
   return <span title={iso}>{formatRelativeTime(iso)}</span>;
@@ -103,7 +104,9 @@ export default function DashboardPage() {
         ? dashboardApi.lecturer
         : dashboardApi.student;
   const dash = useQuery({
-    queryKey: [isStaff ? 'dash-admin' : isLecturer ? 'dash-lecturer' : 'dash-student'],
+    queryKey: [
+      isStaff ? 'dash-admin' : isLecturer ? 'dash-lecturer' : 'dash-student',
+    ],
     queryFn: endpoint,
     staleTime: 60_000,
     retry: 1,
@@ -266,7 +269,10 @@ export default function DashboardPage() {
               </p>
               <h1 className="mt-0.5 text-[22px] font-semibold leading-tight tracking-tight sm:text-2xl">
                 {firstName}
-                <span className="text-muted-foreground"> — institution overview.</span>
+                <span className="text-muted-foreground">
+                  {' '}
+                  — institution overview.
+                </span>
               </h1>
               <p className="mt-0.5 text-[13px] text-muted-foreground">
                 Here&apos;s what&apos;s happening across your institution today.
@@ -296,6 +302,8 @@ export default function DashboardPage() {
             ))}
           </div>
 
+          <AiInsightCard dashboardType="admin" className="mb-6" />
+
           {/* Quick actions */}
           <section className="mt-6">
             <SectionHeader title="Quick actions" />
@@ -305,7 +313,7 @@ export default function DashboardPage() {
                   key={to}
                   to={to}
                   className={cn(
-                    'group flex items-center gap-3 rounded-xl border bg-card p-3.5 transition-all hover:-translate-y-px hover:border-primary/30 hover:shadow-md',
+                    'group flex items-center gap-3 card-glass p-3.5 transition-all hover:-translate-y-px hover:border-primary/30 hover:shadow-md',
                     primary &&
                       'border-primary/25  from-primary/5 via-transparent to-transparent',
                   )}
@@ -339,7 +347,7 @@ export default function DashboardPage() {
 
           {/* Role grid — staff only */}
           <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <section className="rounded-xl border bg-card p-4 lg:col-span-2">
+            <section className="card-glass p-4 lg:col-span-2">
               <SectionHeader title="Material pipeline" />
               <div className="grid grid-cols-4 gap-2">
                 {(dash.data?.materials_by_status || []).map((s) => (
@@ -391,7 +399,7 @@ export default function DashboardPage() {
               )}
             </section>
 
-            <section className="rounded-xl border bg-card p-4">
+            <section className="card-glass p-4">
               <SectionHeader title="Academic structure" />
               <ul className="space-y-2">
                 {(dash.data?.structure || []).map((s) => (
@@ -410,7 +418,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Staff audit analytics */}
-          <section className="mt-6 rounded-xl border bg-card p-4">
+          <section className="mt-6 card-glass p-4">
             <SectionHeader
               title="Audit & activity"
               description={`${auditSummary.data?.total_events ?? '—'} events in the last ${auditDays} days.`}
@@ -430,6 +438,19 @@ export default function DashboardPage() {
             />
             {auditSummary.isLoading ? (
               <div className="h-56 animate-pulse rounded-lg bg-muted/40" />
+            ) : auditSummary.isError ? (
+              <div className="flex h-56 flex-col items-center justify-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 px-4 text-center">
+                <p className="text-sm font-medium text-destructive">
+                  Audit activity could not be loaded.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => auditSummary.refetch()}
+                  className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
+                >
+                  Retry
+                </button>
+              </div>
             ) : (
               <div className="grid gap-5 lg:grid-cols-3">
                 <div className="h-56 lg:col-span-2">

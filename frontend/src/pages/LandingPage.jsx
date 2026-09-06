@@ -1,21 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import api from '@/services/api';
-import { useAuth } from '@/hooks/useAuth';
-import ThemeToggle from '@/components/shared/ThemeToggle';
-import BrandMark from '@/components/shared/BrandMark';
-import SkeletonRows from '@/components/shared/SkeletonRows';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import {
   ArrowRight,
   Bookmark,
+  BookOpen,
   Bot,
-  Building2,
   Check,
-  ClipboardList,
-  FileText,
   GraduationCap,
   Landmark,
   Search,
@@ -25,92 +16,87 @@ import {
   TrendingUp,
   UsersRound,
 } from 'lucide-react';
-
-/* ------------------------------------------------------------------ */
-/* Content                                                             */
-/* ------------------------------------------------------------------ */
+import api from '@/services/api';
+import { useAuth } from '@/hooks/useAuth';
+import BrandMark from '@/components/shared/BrandMark';
+import ThemeToggle from '@/components/shared/ThemeToggle';
+import { Button } from '@/components/ui/button';
 
 const CORE_FEATURES = [
   {
     icon: Bot,
-    title: 'Tutoring with receipts',
-    text:
-      'Ask in plain language; answers retrieve from course materials you are authorised to see and every claim carries its chunk, page and similarity score.',
-    chip: 'Citations included',
-  },
-  {
-    icon: ClipboardList,
-    title: 'Quizzes from your slides',
-    text:
-      'Lecturers queue the AI against chosen materials, review generated drafts, then publish. Attempts flow straight into mastery records.',
-    chip: 'AI generated',
+    label: '01 / Retrieve',
+    title: 'Tutoring with receipts.',
+    text: 'Ask in plain language; answers retrieve from course materials you are authorised to see and every claim carries its chunk, page and similarity score.',
   },
   {
     icon: TrendingUp,
-    title: 'Cohort signals, early',
-    text:
-      'Concept confusion surfaces while the term can still be steered — ranked by quiz results and what students actually ask the tutor.',
-    chip: 'Live insight',
+    label: '02 / Practice',
+    title: 'Quizzes from your slides.',
+    text: 'Lecturers queue the AI against chosen materials, review generated drafts, then publish. Attempts flow straight into mastery records.',
+  },
+  {
+    icon: ShieldCheck,
+    label: '03 / Govern',
+    title: 'Cohort signals, early.',
+    text: 'Concept confusion surfaces while the term can still be steered — ranked by quiz results and what students actually ask the tutor.',
   },
 ];
 
 const SECONDARY_FEATURES = [
-  { icon: Bookmark, t: 'Bookmarks & notes', d: 'A personal learning space that follows you across every course.' },
-  { icon: FileText, t: 'Smart summaries', d: 'Concise digests of lecture material — one tap away.' },
-  { icon: ShieldCheck, t: 'Tenant isolation', d: 'Database-level RLS keeps each university private.' },
+  {
+    icon: Bookmark,
+    t: 'Bookmarks & notes',
+    d: 'A personal learning space that follows you across every course.',
+  },
+  {
+    icon: BookOpen,
+    t: 'Smart summaries',
+    d: 'Concise digests of lecture material — one tap away.',
+  },
+  {
+    icon: ShieldCheck,
+    t: 'Tenant isolation',
+    d: 'Database-level RLS keeps each university private.',
+  },
 ];
 
 const HOW_STEPS = [
-  {
-    n: '01',
-    title: 'Your university gets its own tenant',
-    text: 'Each institution gets an isolated workspace with faculties, departments, courses, roles and permissions.',
-  },
-  {
-    n: '02',
-    title: 'Lecturers upload authorised materials',
-    text: 'Lecture notes, PDFs and slides are chunked, embedded and understood by the AI — within that tenant only.',
-  },
-  {
-    n: '03',
-    title: 'Students learn with cited answers',
-    text: 'Chat, generate quizzes and build summaries — all grounded in your own university\'s materials, with citations you can open.',
-  },
+  [
+    '01',
+    'Create your institution space',
+    'Your university gets its own tenant, academic hierarchy, roles, and access rules.',
+  ],
+  [
+    '02',
+    'Bring the material in',
+    'Lecturers upload notes, slides, and PDFs. The pipeline chunks and indexes them asynchronously.',
+  ],
+  [
+    '03',
+    'Learn from the source',
+    'Students chat, practise, and review with answers tied back to real pages and passages.',
+  ],
 ];
 
 const AUDIENCES = [
   {
-    badge: 'Students',
-    name: 'Amara',
-    points: [
-      'Grounded answers with page-level citations',
-      'Practice sets generated from lecture material',
-      'Mastery tracking with a review queue',
-    ],
-    href: '/signup',
-    accent: 'from-[oklch(58%_0.18_255)] to-[oklch(50%_0.20_280)]',
+    label: 'Students',
+    title: 'Learn with receipts.',
+    text: 'Grounded answers with page-level citations, practice sets from your lecture material, and mastery tracking with a review queue.',
+    icon: GraduationCap,
   },
   {
-    badge: 'Lecturers',
-    name: 'Dr. Hoffmann',
-    points: [
-      'See confusion before the exam does',
-      'Generate and publish assessments in minutes',
-      'Ingest materials with OCR recovery',
-    ],
-    href: '/signup',
-    accent: 'from-emerald-500 [var(--success)]',
+    label: 'Lecturers',
+    title: 'See the signal early.',
+    text: 'Turn authorised resources into reviewed quizzes and spot confusion before assessment day.',
+    icon: BookOpen,
   },
   {
-    badge: 'Administrators',
-    name: 'Marcus',
-    points: [
-      'Tenant-wide usage and pipeline health',
-      'Invites, roles and suspensions with audit trail',
-      'Visibility governance per resource scope',
-    ],
-    href: '/signup',
-    accent: 'from-amber-500 to-rose-500',
+    label: 'Administrators',
+    title: 'Keep the map yours.',
+    text: 'Manage hierarchy, access, resources, and audit trails inside your institution boundary.',
+    icon: ShieldCheck,
   },
 ];
 
@@ -129,143 +115,170 @@ const EXTRAS = [
   },
 ];
 
-/* ------------------------------------------------------------------ */
-/* Institutions directory                                              */
-/* ------------------------------------------------------------------ */
+const FEATURES_CHECKLIST = [
+  'Citations point to real passages you can open',
+  'Concept-level progress tracking as you study',
+  'Visibility scopes keep materials within your institution',
+];
 
-function InstitutionDirectory() {
+function LiveDirectory() {
   const [search, setSearch] = useState('');
-  const q = search.trim();
+  const query = search.trim();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['tenant-directory', q],
+  const directoryQuery = useQuery({
+    queryKey: ['landing-directory', query],
     queryFn: async () => {
       const { data } = await api.get('/tenants/directory/', {
-        params: q ? { search: q } : {},
+        params: query ? { search: query } : {},
       });
-      return data.results || [];
+      return Array.isArray(data.results) ? data.results : [];
     },
     staleTime: 60_000,
+    retry: 1,
   });
 
-  const institutions = data || [];
+  const institutions = directoryQuery.data || [];
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="relative">
-        <Search
-          className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]"
-          aria-hidden
-        />
-        <Input
+    <div>
+      <label className="landing-search">
+        <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="sr-only">Search active institutions</span>
+        <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search for your university…"
-          aria-label="Search institutions"
-          className="h-11 rounded-[var(--radius-lg)] pl-11 text-[14px]"
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search your university"
+          aria-label="Search active institutions"
         />
-      </div>
-
-      <div className="mt-5" role="list" aria-label="Institutions">
-        {isLoading ? (
-          <SkeletonRows rows={2} />
+      </label>
+      <div className="mt-4 grid gap-2" aria-live="polite">
+        {directoryQuery.isLoading ? (
+          <p className="landing-data-note">
+            Loading the live institution directory...
+          </p>
+        ) : directoryQuery.isError ? (
+          <p className="landing-data-note landing-data-note--error">
+            The institution directory is unavailable right now.
+          </p>
         ) : institutions.length === 0 ? (
-          <div className="card px-6 py-10 text-center">
-            <Building2 className="mx-auto h-6 w-6 text-[var(--muted)]" aria-hidden />
-            <p className="mt-3 text-[14px] font-[600]">
-              {q ? `No institutions match “${q}”` : 'No institutions yet'}
-            </p>
-            <p className="mt-1 text-[13px] text-[var(--muted)]">
-              Universities are onboarded by the platform team — yours could be next.
-            </p>
-          </div>
+          <p className="landing-data-note">
+            {query
+              ? 'No active institution matches that search.'
+              : 'No active institutions are listed yet.'}
+          </p>
         ) : (
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {institutions.map((t) => (
-              <li key={t.id} role="listitem">
-                <div className="card flex items-center gap-3 p-4 transition-colors hover:border-[var(--border-strong)]">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent-soft)] text-[13px] font-[650] uppercase text-[var(--accent-strong)]">
-                    {(t.name?.[0] || '?').toUpperCase()}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[14px] font-[600]" title={t.name}>
-                      {t.name}
-                    </p>
-                    <p className="truncate text-[12px] text-[var(--muted)]">/{t.slug}</p>
-                  </div>
-                  <Link
-                    to="/signup"
-                    className="inline-flex h-8 items-center rounded-[var(--radius-md)] border border-[var(--border)] px-3 text-[12px] font-[600] transition-colors hover:bg-[var(--hover)]"
-                  >
-                    Join
-                  </Link>
-                </div>
-              </li>
-            ))}
-          </ul>
+          institutions.slice(0, 6).map((institution) => (
+            <Link
+              key={institution.id}
+              to="/signup"
+              className="landing-institution"
+            >
+              <span className="landing-institution__mark" aria-hidden="true">
+                {(institution.name || '?').slice(0, 1).toUpperCase()}
+              </span>
+              <span className="min-w-0 flex-1">
+                <strong>{institution.name}</strong>
+                <small>{institution.slug}</small>
+              </span>
+              <span className="landing-institution__join">Join</span>
+            </Link>
+          ))
         )}
       </div>
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Page                                                                */
-/* ------------------------------------------------------------------ */
+function TutorPanel() {
+  return (
+    <div className="landing-tutor-wrap">
+      <div className="landing-tutor">
+        <div className="landing-tutor__topline">
+          <span className="landing-tutor__dots" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+          <span>ACADEMIAI / TUTOR SESSION</span>
+          <span className="landing-tutor__online">● ONLINE</span>
+        </div>
+        <div className="landing-tutor__body">
+          <p className="landing-tutor__question">
+            &gt; Explain why this algorithm is O(n log n).
+          </p>
+          <div className="landing-tutor__answer">
+            The divide-and-conquer steps split the input into logarithmic
+            levels, while each level processes all n items once. Together, that
+            produces n log n work.
+          </div>
+          <span className="landing-tutor__citation">
+            SOURCE / Algorithms-lecture-03.pdf / p.18 / 0.94
+          </span>
+        </div>
+      </div>
+      <div className="landing-tutor__caption">
+        <Check className="h-4 w-4" aria-hidden="true" />
+        <span>
+          Every useful answer can take you back to the page it came from.
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   const { isAuthenticated } = useAuth();
 
+  const countQuery = useQuery({
+    queryKey: ['landing-directory-count'],
+    queryFn: async () => {
+      const { data } = await api.get('/tenants/directory/');
+      return Array.isArray(data.results) ? data.results : [];
+    },
+    staleTime: 60_000,
+    retry: 1,
+  });
+
+  const institutionCount = countQuery.data?.length ?? 0;
+
   return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)] antialiased">
-      {/* ---------------------------------------------------------- Nav */}
-      <header className="sticky top-0 z-40 border-b border-[var(--border)] glass">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-5 sm:px-8">
-          <Link
-            to="/"
-            className="flex items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-[var(--ring)]"
-          >
-            <BrandMark size="h-7 w-7" />
-            <span className="text-[16px] font-[680] tracking-[-0.02em]">
-              AcademiAI
-            </span>
-            <span className="ml-1 hidden rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-[600] uppercase tracking-[0.08em] text-[var(--muted)] lg:inline-block">
-              Multi-tenant · FYP
-            </span>
+    <div className="landing-page">
+      <header className="landing-nav">
+        <div className="landing-shell landing-nav__inner">
+          <Link to="/" className="landing-brand" aria-label="AcademiAI home">
+            <BrandMark size="h-8 w-8" />
+            <span>AcademiAI</span>
           </Link>
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Page sections">
-            {[
-              ['#product', 'Product'],
-              ['#how', 'How it works'],
-              ['#audiences', 'Who it serves'],
-              !isAuthenticated && ['#institutions', 'Universities'],
-              ['#case-study', 'Case study'],
-            ].filter(Boolean).map(([href, label]) => (
-              <a
-                key={href}
-                href={href}
-                className="rounded-[var(--radius-md)] px-3 py-1.5 text-[13.5px] text-[var(--muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--fg)]"
-              >
-                {label}
-              </a>
-            ))}
+          <nav
+            className="landing-nav__links"
+            aria-label="Landing page sections"
+          >
+            <a href="#model">The model</a>
+            <a href="#institutions">Institutions</a>
           </nav>
-          <div className="flex items-center gap-2">
-            <ThemeToggle iconOnly />
+          <div className="landing-nav__actions">
+            <ThemeToggle className="landing-theme-btn" iconOnly />
             {isAuthenticated ? (
               <Button size="sm" asChild>
                 <Link to="/dashboard">
-                  Open workspace <ArrowRight className="ml-1 h-3.5 w-3.5" aria-hidden />
+                  Open workspace{' '}
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
               </Button>
             ) : (
               <>
-                <Button variant="ghost" size="sm" asChild>
+                <Button
+                  className="landing-auth-secondary"
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                >
                   <Link to="/login">Sign in</Link>
                 </Button>
-                <Button size="sm" asChild>
+                <Button className="landing-auth-primary" size="sm" asChild>
                   <Link to="/signup">
-                    Create free account <ArrowRight className="ml-1 h-3.5 w-3.5" aria-hidden />
+                    Get started{' '}
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </Link>
                 </Button>
               </>
@@ -274,467 +287,370 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* --------------------------------------------------------- Hero */}
-      <section className="relative isolate overflow-hidden bg-[oklch(16%_0.015_255)] text-white">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(1200px 600px at 12% 0%, oklch(58% 0.18 255 / 0.28), transparent 60%),' +
-              'radial-gradient(900px 500px at 90% 30%, oklch(60% 0.20 290 / 0.18), transparent 60%)',
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.08]"
-          style={{
-            backgroundImage: 'radial-gradient(rgba(255,255,255,.8) 1px, transparent 1px)',
-            backgroundSize: '22px 22px',
-          }}
-        />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-5 py-20 sm:px-8 md:py-28 lg:grid-cols-[1.05fr_1fr]">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 py-1 text-[11px] font-[600] tracking-[0.06em] text-white/75 backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5 text-[var(--accent)]" aria-hidden />
-              Multi-tenant · Built as a Final Year Project
-            </span>
-            <h1 className="mt-6 max-w-[16ch] text-[44px] font-[650] leading-[1.03] tracking-[-0.025em] sm:text-[56px]">
-              Every answer comes from your institution&rsquo;s own{' '}
-              <span
-                style={{
-                  background:
-                    'linear-gradient(135deg, oklch(80% 0.12 255), oklch(88% 0.08 280))',
-                  WebkitBackgroundClip: 'text',
-                  backgroundClip: 'text',
-                  color: 'transparent',
-                }}
-              >
-                materials.
+      <main>
+        {/* ------------------------------------------------- Hero */}
+        <section className="landing-hero">
+          <div className="landing-shell landing-hero__grid">
+            <div>
+              <p className="landing-eyebrow">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                Academic intelligence, with provenance
+              </p>
+              <h1 className="landing-hero__heading">
+                Every answer comes from your institution&rsquo;s own materials.
+              </h1>
+              <p className="landing-lede">
+                AcademiAI gives every university its own AI tutor. Students
+                access, understand and excel with their course materials through
+                intelligent chat, personalised quizzes and cohort insight — all
+                grounded in authorised resources. Implemented as a case study at
+                Abubakar Tafawa Balewa University, Bauchi.
+              </p>
+              <div className="landing-actions">
+                {isAuthenticated ? (
+                  <Button size="lg" asChild>
+                    <Link to="/dashboard">
+                      Open workspace
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <>
+                    <Button size="lg" asChild>
+                      <Link to="/signup">
+                        Create account
+                        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </Button>
+                    <a className="landing-text-link" href="#institutions">
+                      Find your university
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </a>
+                  </>
+                )}
+              </div>
+              <div className="landing-proofline">
+                <span>
+                  <Check className="h-4 w-4" aria-hidden="true" />
+                  Live implementation
+                </span>
+                <span>
+                  <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+                  Secure &amp; tenant-isolated
+                </span>
+                <span>
+                  <Landmark className="h-4 w-4" aria-hidden="true" />
+                  Scales to any faculty
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <TutorPanel />
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------- Signal bar */}
+        <section id="model" className="landing-signal-bar">
+          <div className="landing-shell landing-signal-bar__inner">
+            <div>
+              <strong>Grounded</strong>
+              <span>
+                Answers cite the source material you are authorised to see.
               </span>
-            </h1>
-            <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-white/70">
-              AcademiAI gives every university its own AI tutor. Students access, understand and excel with their course materials through intelligent chat, personalised quizzes and cohort insight — all grounded in authorised resources. Implemented as a case study at Abubakar Tafawa Balewa University, Bauchi.
+            </div>
+            <div>
+              <strong>Reviewed</strong>
+              <span>Quizzes are drafted by AI, reviewed, then published.</span>
+            </div>
+            <div>
+              <strong className="landing-live">
+                <i aria-hidden="true" />
+                {institutionCount > 0 ? `${institutionCount} live` : 'Live'}
+              </strong>
+              <span>University tenants running AcademiAI today.</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ----------------------------------------- Product / model */}
+        <section id="product" className="landing-section">
+          <div className="landing-shell">
+            <div className="landing-section__heading">
+              <div>
+                <p className="landing-eyebrow">The model</p>
+                <h2>Your complete academic assistant.</h2>
+              </div>
+              <p>
+                Designed for universities to provide grounded AI assistance to
+                their students — every answer traced to authorised course
+                materials in your university&rsquo;s tenant.
+              </p>
+            </div>
+            <div className="landing-principles">
+              {CORE_FEATURES.map(({ icon: Icon, label, title, text }) => (
+                <article key={title} className="landing-principle">
+                  <div className="landing-principle__top">
+                    <span>{label}</span>
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </article>
+              ))}
+            </div>
+            <div className="landing-extras-row">
+              {SECONDARY_FEATURES.map(({ icon: Icon, t, d }) => (
+                <div key={t} className="landing-extra">
+                  <Icon className="landing-extra__icon" aria-hidden="true" />
+                  <div>
+                    <p className="landing-extra__title">{t}</p>
+                    <p className="landing-extra__text">{d}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* --------------------------------------------- Collaboration */}
+        <section className="landing-photo-band">
+          <div className="landing-shell landing-photo-band__inner">
+            <img
+              src="/images/holographic_ai_library_collaboration.webp"
+              alt="Students collaborating with an AI assistant inside a digital library"
+              loading="lazy"
+            />
+            <div>
+              <p className="landing-eyebrow">
+                <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
+                One workspace per university
+              </p>
+              <h2>Grounded answers, one cohort at a time.</h2>
+              <p>
+                Answers are scoped to materials the student is actually enrolled
+                to see — your university&rsquo;s content never leaks between
+                tenants. Students, lecturers, and admins all work from a single
+                isolated workspace.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------- How it works */}
+        <section id="how" className="landing-how">
+          <div className="landing-shell landing-how__grid">
+            <div>
+              <p className="landing-eyebrow">How it works</p>
+              <h2>A multi-tenant architecture for every university.</h2>
+              <p className="landing-how__intro">
+                Each institution gets an isolated workspace where faculties,
+                departments, courses, roles, and permissions stay private —
+                scalable to any faculty or department.
+              </p>
+            </div>
+            <ol className="landing-how__steps">
+              {HOW_STEPS.map(([n, title, text]) => (
+                <li key={n}>
+                  <span>{n}</span>
+                  <div>
+                    <h3>{title}</h3>
+                    <p>{text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* ------------------------------------------- Knowledge showcase */}
+        <section className="landing-knowledge">
+          <div className="landing-shell landing-knowledge__grid">
+            <div className="landing-knowledge__image">
+              <img
+                src="/images/ai_knowledge_graph_visualization.webp"
+                alt="Knowledge graph connecting course concepts"
+                loading="lazy"
+              />
+            </div>
+            <div className="landing-knowledge__copy">
+              <p className="landing-eyebrow">
+                <Bot className="h-3.5 w-3.5" aria-hidden="true" />
+                Under the hood
+              </p>
+              <h2>A knowledge graph behind every answer.</h2>
+              <p>
+                Uploaded documents are chunked, embedded and linked into a
+                concept map of your curriculum. When you ask a question,
+                AcademiAI retrieves the exact passages and cites them — never a
+                hallucinated reference.
+              </p>
+              <ul>
+                {FEATURES_CHECKLIST.map((t) => (
+                  <li key={t}>
+                    <Check className="h-4 w-4" aria-hidden="true" />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------- Audiences */}
+        <section id="audiences" className="landing-audiences">
+          <div className="landing-shell landing-section">
+            <div className="landing-section__heading">
+              <div>
+                <p className="landing-eyebrow">Who it serves</p>
+                <h2>Pick a seat and walk through it.</h2>
+              </div>
+              <p>
+                AcademiAI is built for three working roles on day one — students
+                learning, lecturers teaching, and administrators governing.
+              </p>
+            </div>
+            <div className="landing-audiences__grid">
+              {AUDIENCES.map(({ icon: Icon, label, title, text }) => (
+                <article key={label} className="landing-audience">
+                  <div className="landing-audience__top">
+                    <span>{label}</span>
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------- Institutions */}
+        <section id="institutions" className="landing-directory-section">
+          <div className="landing-shell landing-directory-section__grid">
+            <div>
+              <p className="landing-eyebrow">Universities</p>
+              <h2>Find your university.</h2>
+              <p className="landing-data-note">
+                Each university gets its own private workspace. Browse the
+                directory and join yours in under a minute.
+              </p>
+              <a className="landing-text-link" href="#institutions">
+                Browse all institutions
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </a>
+            </div>
+            <div>
+              <LiveDirectory />
+            </div>
+          </div>
+        </section>
+
+        {/* --------------------------------------------- On the roadmap */}
+        <section className="landing-section">
+          <div className="landing-shell">
+            <div className="landing-section__heading">
+              <div>
+                <p className="landing-eyebrow">On the roadmap</p>
+                <h2>Coming next.</h2>
+              </div>
+              <p>
+                The platform is built to grow with each university — starting
+                with the features below.
+              </p>
+            </div>
+            <div className="landing-extras-row">
+              {EXTRAS.map(({ icon: Icon, tag, title, text }) => (
+                <article key={title} className="landing-extra">
+                  <div className="landing-extra__top">
+                    <span className="landing-extra__tag">{tag}</span>
+                    <Icon className="landing-extra__icon" aria-hidden="true" />
+                  </div>
+                  <h3 className="landing-extra__title">{title}</h3>
+                  <p className="landing-extra__text">{text}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------ Case study */}
+        <section id="case-study" className="landing-case-study">
+          <div className="landing-shell landing-case-study__inner">
+            <div>
+              <p className="landing-eyebrow">
+                <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
+                Final Year Project · Computer Science
+              </p>
+              <h2>Case study: Abubakar Tafawa Balewa University, Bauchi.</h2>
+              <p>
+                AcademiAI is being developed as a Final Year Project for the
+                Department of Computer Science, Faculty of Computing, ATBU
+                Bauchi. The faculty serves as the initial implementation
+                example, demonstrating how any university can adopt AcademiAI as
+                a multi-tenant solution — starting with Computer Science
+                courses, with architecture ready for any faculty and university.
+              </p>
+            </div>
+            <div className="landing-case-study__stamp" aria-hidden="true">
+              <span>ATBU</span>
+              <small>Faculty of Computing · 2025/2026</small>
+            </div>
+          </div>
+        </section>
+
+        {/* -------------------------------------------------------- CTA */}
+        <section className="landing-cta">
+          <div className="landing-shell landing-cta__inner">
+            <p className="landing-eyebrow">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+              Get started
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <h2>
+              Get grounded answers from your university&rsquo;s materials.
+            </h2>
+            <p>
+              Every answer cites the slide, page or passage it came from — and
+              content never leaks between institutions.
+            </p>
+            <div className="landing-actions">
               {isAuthenticated ? (
-                <Button
-                  size="lg"
-                  className="!h-11 !rounded-[var(--radius-md)] !bg-white !px-7 !text-[14px] !font-[620] !text-[oklch(18%_0.015_255)] hover:!bg-white/90"
-                  asChild
-                >
+                <Button size="lg" asChild>
                   <Link to="/dashboard">
-                    Open workspace
-                    <ArrowRight className="h-4 w-4" aria-hidden />
+                    Open your workspace
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
                   </Link>
                 </Button>
               ) : (
                 <>
-                  <Button
-                    size="lg"
-                    className="!h-11 !rounded-[var(--radius-md)] !bg-white !px-7 !text-[14px] !font-[620] !text-[oklch(18%_0.015_255)] hover:!bg-white/90"
-                    asChild
-                  >
+                  <Button size="lg" asChild>
                     <Link to="/signup">
-                      Create free account
-                      <ArrowRight className="h-4 w-4" aria-hidden />
+                      Get started free
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
                     </Link>
                   </Button>
-                  <a
-                    href="#institutions"
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-white/20 bg-white/5 px-7 text-[14px] font-[600] text-white backdrop-blur transition-colors hover:bg-white/10"
-                  >
-                    Find your university
+                  <a className="landing-text-link" href="#institutions">
+                    Browse universities
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </a>
                 </>
               )}
             </div>
-            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] text-white/55">
-              <span className="inline-flex items-center gap-1.5">
-                <Check className="h-3.5 w-3.5 text-emerald-400" aria-hidden /> Live implementation
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <ShieldCheck className="h-3.5 w-3.5" aria-hidden /> Secure &amp; tenant-isolated
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Landmark className="h-3.5 w-3.5" aria-hidden /> Scales to any faculty
-              </span>
-            </div>
           </div>
+        </section>
+      </main>
 
-          {/* Hero visual — generated AcademiAI tutor mock */}
-          <div className="relative">
-            <img
-              src="/images/landing/hero-academiai-tutor.png"
-              alt="AcademiAI AI tutor showing a cited answer with source chips"
-              className="relative z-[1] w-full rounded-[20px] [filter:drop-shadow(0_30px_60px_oklch(58%_0.18_255/0.35))]"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------- Product */}
-      <section id="product" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-24">
-        <div className="mb-12 flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
-            <p className="eyebrow">The product</p>
-            <h2 className="mt-2 max-w-[18ch] text-[34px] font-[650] leading-[1.05] tracking-[-0.02em]">
-              Your complete academic assistant.
-            </h2>
-          </div>
-          <p className="max-w-[44ch] text-[14px] leading-relaxed text-[var(--muted)]">
-            Designed for universities to provide grounded AI assistance to their students — every answer traced to authorised course materials in your university&rsquo;s tenant.
-          </p>
-        </div>
-
-        <div className="grid gap-5 md:grid-cols-3">
-          {CORE_FEATURES.map(({ icon: Icon, title, text, chip }) => (
-            <div
-              key={title}
-              className="card p-6 transition-colors hover:border-[var(--border-strong)]"
-            >
-              <div className="flex items-start justify-between">
-                <span className="mb-4 inline-grid h-10 w-10 place-items-center rounded-[var(--radius-md)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
-                  <Icon className="h-[18px] w-[18px]" aria-hidden />
-                </span>
-                <span className="rounded-full bg-[var(--success-soft)] px-2.5 py-0.5 text-[11px] font-[600] text-[var(--success)]">
-                  {chip}
-                </span>
-              </div>
-              <h3 className="text-[15px] font-[640] tracking-[-0.01em]">{title}</h3>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-[var(--muted)]">{text}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          {SECONDARY_FEATURES.map(({ icon: Icon, t, d }) => (
-            <div key={t} className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-2)]/50 p-5">
-              <Icon className="mt-0.5 h-[18px] w-[18px] shrink-0 text-[var(--accent-strong)]" aria-hidden />
-              <div>
-                <p className="text-[14px] font-[620]">{t}</p>
-                <p className="mt-0.5 text-[12.5px] leading-relaxed text-[var(--muted)]">{d}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* --------------------------------------------- Collaboration image banner */}
-      <section className="border-y border-[var(--border)] bg-[var(--surface)]">
-        <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8 lg:py-20">
-          <div className="relative overflow-hidden rounded-[20px] border border-[var(--border)]">
-            <img
-              src="/images/holographic_ai_library_collaboration.webp"
-              alt="Students collaborating with an AI assistant inside a digital library"
-              className="aspect-[16/7] w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" aria-hidden />
-            <div className="absolute bottom-5 left-5 right-5 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-[650] text-zinc-900 backdrop-blur">
-                  <GraduationCap className="h-3.5 w-3.5 text-[var(--accent-strong)]" aria-hidden />
-                  One workspace per university — students, lecturers, admins
-                </p>
-                <h3 className="mt-3 max-w-[22ch] text-[22px] font-[650] leading-[1.1] tracking-[-0.02em] text-white">
-                  Grounded answers, one cohort at a time.
-                </h3>
-              </div>
-              <p className="max-w-[36ch] rounded-[var(--radius-md)] bg-white/10 px-3 py-2 text-[12.5px] leading-relaxed text-white/80 backdrop-blur">
-                Answers are scoped to materials the student is actually enrolled to see — your university&rsquo;s content never leaks between tenants.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* --------------------------------------------- How it works */}
-      <section id="how" className="mx-auto max-w-6xl px-5 py-20 scroll-mt-16 sm:px-8 lg:py-24">
-        <div className="mb-12 flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
-            <p className="eyebrow">How it works</p>
-            <h2 className="mt-2 max-w-[20ch] text-[34px] font-[650] leading-[1.05] tracking-[-0.02em]">
-              How AcademiAI works for your university.
-            </h2>
-          </div>
-          <p className="max-w-[46ch] text-[14px] leading-relaxed text-[var(--muted)]">
-            A multi-tenant architecture where each university gets its own isolated, secure environment — scalable to any faculty or department.
-          </p>
-        </div>
-        <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
-          <ol className="space-y-8">
-            {HOW_STEPS.map(({ n, title, text }) => (
-              <li key={n} className="flex gap-5">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--accent-soft)] font-mono text-[13px] font-[650] text-[var(--accent-strong)]">
-                  {n}
-                </span>
-                <div>
-                  <h3 className="text-[15px] font-[640] tracking-[-0.01em]">{title}</h3>
-                  <p className="mt-1.5 text-[13.5px] leading-relaxed text-[var(--muted)]">{text}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-          <div className="relative overflow-hidden rounded-[20px] border border-[var(--border)]">
-            <img
-              src="/images/abuja_campus_sunset.webp"
-              alt="University campus at sunset"
-              loading="lazy"
-              className="aspect-[4/3] h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" aria-hidden />
-            <div className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-[650] text-zinc-900 backdrop-blur">
-              <Landmark className="h-3.5 w-3.5" aria-hidden />
-              Case study: ATBU campus · Faculty of Computing
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ------------------------------------------- Knowledge showcase */}
-      <section className="border-y border-[var(--border)] bg-[var(--surface)]">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-20 sm:px-8 lg:grid-cols-2 lg:gap-16 lg:py-24">
-          <div className="overflow-hidden rounded-[20px] border border-[var(--border)]">
-            <img
-              src="/images/ai_knowledge_graph_visualization.webp"
-              alt="Knowledge graph connecting course concepts"
-              loading="lazy"
-              className="aspect-[4/3] w-full object-cover transition-transform duration-500 hover:scale-[1.02]"
-            />
-          </div>
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-[11px] font-[600] tracking-[0.06em] text-[var(--accent-strong)]">
-              <Bot className="h-3.5 w-3.5" aria-hidden /> Under the hood
-            </span>
-            <h2 className="mt-4 text-[28px] font-[650] leading-[1.1] tracking-[-0.02em] sm:text-[32px]">
-              A knowledge graph behind every answer.
-            </h2>
-            <p className="mt-3 text-[14.5px] leading-relaxed text-[var(--muted)]">
-              Uploaded documents are chunked, embedded and linked into a concept map of your curriculum. When you ask a question, AcademiAI retrieves the exact passages and cites them — never a hallucinated reference.
-            </p>
-            <ul className="mt-6 space-y-2.5 text-[13.5px]">
-              {[
-                'Citations point to real passages you can open',
-                'Concept-level progress tracking as you study',
-                'Visibility scopes keep materials within your institution',
-              ].map((t) => (
-                <li key={t} className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" aria-hidden />
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* --------------------------------------------- Audiences */}
-      <section id="audiences" className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-24">
-        <div className="mb-10 flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
-            <p className="eyebrow">Who it serves</p>
-            <h2 className="mt-2 max-w-[20ch] text-[34px] font-[650] leading-[1.05] tracking-[-0.02em]">
-              Pick a seat and walk through it.
-            </h2>
-          </div>
-          <p className="max-w-[44ch] text-[14px] leading-relaxed text-[var(--muted)]">
-            AcademiAI is built for three working roles on day one — students learning, lecturers teaching, and administrators governing.
-          </p>
-        </div>
-        <div className="grid gap-5 md:grid-cols-3">
-          {AUDIENCES.map((a) => (
-            <div key={a.badge} className="card flex flex-col p-6">
-              <div className="flex items-center justify-between">
-                <span className="badge badge-accent">{a.badge}</span>
-                <span className="text-[12px] font-[600] text-[var(--muted)]">{a.name}</span>
-              </div>
-              <ul className="mt-5 space-y-2.5 text-[13.5px] leading-relaxed text-[var(--fg-soft)]">
-                {a.points.map((p) => (
-                  <li key={p} className="flex items-start gap-2">
-                    <span
-                      className={`mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full  ${a.accent}`}
-                      aria-hidden
-                    />
-                    {p}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                to={a.href}
-                className="mt-auto pt-6 inline-flex items-center gap-1 text-[13px] font-[620] text-[var(--accent-strong)] underline-offset-4 hover:underline"
-              >
-                Open {a.badge.toLowerCase()} workspace
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-              </Link>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* --------------------------------------------- Institutions */}
-      <section id="institutions" className="border-y border-[var(--border)] bg-[var(--surface)]">
-        <div className="mx-auto max-w-6xl px-5 py-20 scroll-mt-16 sm:px-8 lg:py-24">
-          <div className="mb-10 flex flex-col items-start justify-between gap-4 lg:flex-row lg:items-end">
-            <div>
-              <p className="eyebrow">Universities</p>
-              <h2 className="mt-2 max-w-[18ch] text-[34px] font-[650] leading-[1.05] tracking-[-0.02em]">
-                Find your university.
-              </h2>
-            </div>
-            <p className="max-w-[42ch] text-[14px] leading-relaxed text-[var(--muted)]">
-              Each university gets its own private workspace. Browse the directory and join yours in under a minute.
-            </p>
-          </div>
-          <InstitutionDirectory />
-        </div>
-      </section>
-
-      {/* --------------------------------------------------- Coming soon */}
-      <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
-        <p className="text-center text-[11px] font-[600] uppercase tracking-[0.14em] text-[var(--muted)]">
-          On the roadmap
-        </p>
-        <div className="mt-6 grid gap-5 md:grid-cols-2">
-          {EXTRAS.map(({ icon: Icon, tag, title, text }) => (
-            <div
-              key={title}
-              className="card flex items-start gap-4 p-6 transition-colors hover:border-[var(--border-strong)]"
-            >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
-                <Icon className="h-5 w-5" aria-hidden />
-              </span>
-              <div>
-                <p className="flex items-center gap-2 text-[14.5px] font-[640]">
-                  {title}
-                  <span className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-[600] uppercase tracking-[0.08em] text-[var(--muted)]">
-                    {tag}
-                  </span>
-                </p>
-                <p className="mt-1 text-[13.5px] leading-relaxed text-[var(--muted)]">{text}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ---------------------------------------------------- Case study */}
-      <section id="case-study" className="border-t border-[var(--border)] bg-[var(--surface)]">
-        <div className="mx-auto max-w-[900px] px-5 py-20 text-center scroll-mt-16 sm:px-6 lg:py-24">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1 text-[11px] font-[600] tracking-[0.06em] text-[var(--muted)]">
-            <GraduationCap className="h-3.5 w-3.5 text-[var(--accent-strong)]" aria-hidden />
-            Final Year Project · Department of Computer Science
+      <footer className="landing-footer">
+        <div className="landing-shell landing-footer__inner">
+          <Link to="/" className="landing-brand">
+            <BrandMark size="h-7 w-7" />
+            <span>AcademiAI</span>
+          </Link>
+          <span>
+            © {new Date().getFullYear()} — Multi-tenant · Final Year Project ·
+            ATBU Bauchi · open for collaboration
           </span>
-          <h2 className="mt-6 text-[32px] font-[650] leading-[1.1] tracking-[-0.02em] sm:text-[38px]">
-            Case study: Abubakar Tafawa Balewa University, Bauchi.
-          </h2>
-          <p className="mx-auto mt-5 max-w-[64ch] text-[14.5px] leading-relaxed text-[var(--muted)]">
-            AcademiAI is being developed as a Final Year Project for the Department of Computer Science, Faculty of Computing, ATBU Bauchi. The faculty serves as the initial implementation example, demonstrating how any university can adopt AcademiAI as a multi-tenant solution — starting with Computer Science courses, with architecture ready for any faculty and university.
-          </p>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------ CTA */}
-      <section className="relative isolate overflow-hidden bg-[oklch(16%_0.015_255)] text-white">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(800px 400px at 20% 20%, oklch(58% 0.18 255 / 0.35), transparent 60%),' +
-              'radial-gradient(700px 400px at 80% 80%, oklch(60% 0.20 290 / 0.25), transparent 60%)',
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage: 'radial-gradient(rgba(255,255,255,.8) 1px, transparent 1px)',
-            backgroundSize: '22px 22px',
-          }}
-        />
-        <div className="relative mx-auto max-w-3xl px-5 py-20 text-center sm:px-6 lg:py-28">
-          <h2 className="text-[34px] font-[650] leading-[1.05] tracking-[-0.02em] sm:text-[44px]">
-            Get grounded answers from materials your students can actually access.
-          </h2>
-          <p className="mx-auto mt-4 max-w-[60ch] text-[15px] leading-relaxed text-white/75">
-            Every answer cites the slide, page or passage it came from — and content never leaks between institutions.
-          </p>
-          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-            {isAuthenticated ? (
-              <Button
-                size="lg"
-                className="!h-11 !rounded-[var(--radius-md)] !bg-white !px-8 !text-[14px] !font-[620] !text-[oklch(18%_0.015_255)] hover:!bg-white/90"
-                asChild
-              >
-                <Link to="/dashboard">
-                  Open your workspace
-                  <ArrowRight className="h-4 w-4" aria-hidden />
-                </Link>
-              </Button>
-            ) : (
-              <>
-                <Button
-                  size="lg"
-                  className="!h-11 !rounded-[var(--radius-md)] !bg-white !px-8 !text-[14px] !font-[620] !text-[oklch(18%_0.015_255)] hover:!bg-white/90"
-                  asChild
-                >
-                  <Link to="/signup">
-                    Get started free
-                    <ArrowRight className="h-4 w-4" aria-hidden />
-                  </Link>
-                </Button>
-                <a
-                  href="#institutions"
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] border border-white/25 bg-white/5 px-8 text-[14px] font-[600] text-white backdrop-blur transition-colors hover:bg-white/10"
-                >
-                  Browse universities
-                </a>
-              </>
-            )}
-          </div>
-          <p className="mt-8 text-[12px] text-white/60">
-            Multi-tenant · Built as an ATBU Faculty of Computing case study · Open for collaboration
-          </p>
-        </div>
-      </section>
-
-      {/* -------------------------------------------------------- Footer */}
-      <footer className="border-t border-[var(--border)]">
-        <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:px-8 md:grid-cols-3">
-          <div>
-            <Link to="/" className="flex items-center gap-2.5">
-              <BrandMark size="h-8 w-8" />
-              <span className="text-[16px] font-[680] tracking-[-0.02em]">AcademiAI</span>
-            </Link>
-            <p className="mt-3 max-w-[36ch] text-[12.5px] leading-relaxed text-[var(--muted)]">
-              AI-powered academic assistance for every university. Multi-tenant platform · Final Year Project · Computer Science · ATBU Bauchi (case study).
-            </p>
-          </div>
-          <nav aria-label="Product">
-            <p className="eyebrow !tracking-[0.14em]">Product</p>
-            <ul className="mt-3 space-y-2 text-[13.5px]">
-              <li><a className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" href="#product">For students</a></li>
-              <li><a className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" href="#audiences">For lecturers</a></li>
-              <li><a className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" href="#audiences">For admins</a></li>
-              <li><a className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" href="#institutions">Institutions directory</a></li>
-            </ul>
-          </nav>
-          <nav aria-label="Project">
-            <p className="eyebrow !tracking-[0.14em]">Project</p>
-            <ul className="mt-3 space-y-2 text-[13.5px]">
-              <li><a className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" href="#case-study">Final Year Project 2025/2026</a></li>
-              <li><a className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" href="#case-study">ATBU case study</a></li>
-              <li><a className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" href="#how">Multi-tenant architecture</a></li>
-              {!isAuthenticated && (
-                <li><Link className="text-[var(--muted)] transition-colors hover:text-[var(--fg)]" to="/request-institution">Request your institution</Link></li>
-              )}
-            </ul>
-          </nav>
-        </div>
-        <div className="mx-auto max-w-6xl border-t border-[var(--border)] px-5 py-6 sm:px-8">
-          <p className="text-center text-[12px] text-[var(--muted)]">
-            © {new Date().getFullYear()} AcademiAI — built for defence · designed for scale · open for collaboration
-          </p>
         </div>
       </footer>
     </div>

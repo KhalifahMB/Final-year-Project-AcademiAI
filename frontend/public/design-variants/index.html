@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AcademiAI landing concepts</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family:
+          'Aptos', 'Trebuchet MS', ui-sans-serif, system-ui, sans-serif;
+        background: #111;
+        color: #f5f2eb;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 32px;
+        background:
+          radial-gradient(circle at 20% 0%, #203d45, transparent 35%), #111;
+      }
+      main {
+        width: min(980px, 100%);
+      }
+      h1 {
+        max-width: 650px;
+        font-size: clamp(40px, 7vw, 82px);
+        line-height: 0.94;
+        letter-spacing: -0.06em;
+        margin: 0 0 18px;
+      }
+      p {
+        color: #a5aaa9;
+        max-width: 580px;
+        line-height: 1.6;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-top: 42px;
+      }
+      a {
+        display: flex;
+        min-height: 210px;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 22px;
+        color: inherit;
+        text-decoration: none;
+        border: 1px solid #394346;
+        border-radius: 14px;
+        background: #191d1e;
+        transition:
+          transform 0.25s ease,
+          border-color 0.25s ease,
+          background 0.25s ease;
+      }
+      a:hover,
+      a:focus-visible {
+        transform: translateY(-5px);
+        border-color: #a7e2d7;
+        background: #202728;
+        outline: none;
+      }
+      small {
+        color: #8ba6a3;
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      strong {
+        font-size: 25px;
+        letter-spacing: -0.04em;
+      }
+      span {
+        color: #a5aaa9;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      @media (max-width: 700px) {
+        body {
+          padding: 22px;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        a {
+          min-height: 150px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <small>AcademiAI / landing concepts</small>
+      <h1>Choose the front door for the product.</h1>
+      <p>
+        Three directions for the same promise: an academic AI workspace where
+        answers stay grounded in the materials a university actually owns.
+      </p>
+      <div class="grid">
+        <a href="/design-variants/editorial.html"
+          ><small>01 / Editorial signal</small><strong>Quiet authority.</strong
+          ><span
+            >Warm paper, oversized type, campus imagery, and a citation-led
+            product story.</span
+          ></a
+        >
+        <a href="/design-variants/lab.html"
+          ><small>02 / The lab</small><strong>Instrumented intelligence.</strong
+          ><span
+            >Dark observatory surfaces, live system signals, and a sharper
+            AI-native posture.</span
+          ></a
+        >
+        <a href="/design-variants/atlas.html"
+          ><small>03 / Campus atlas</small><strong>One map, many minds.</strong
+          ><span
+            >Structured grid, strong wayfinding, and a more institutional
+            editorial rhythm.</span
+          ></a
+        >
+      </div>
+    </main>
+  </body>
+</html>

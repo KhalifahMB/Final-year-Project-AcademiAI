@@ -1,0 +1,9 @@
+{{ priority | upper }} — {{ title }}
+
+{{ announcement_body }}
+
+{% if cta_url %}View announcement: {{ cta_url }}{% endif %}
+
+You are receiving this announcement because you're a member of this
+{{ product_name }} workspace. You can adjust your announcement preferences in
+your profile settings.

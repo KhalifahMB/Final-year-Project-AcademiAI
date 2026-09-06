@@ -55,12 +55,99 @@ class ProgrammeViewSet(AdminWriteViewSet):
 
 
 @extend_schema(
+    tags=["Faculties"],
+    summary="Public faculty directory for signup",
+    description=(
+        "Unauthenticated list of faculties for one ACTIVE tenant slug, "
+        "used by the signup form so students/lecturers scope departments "
+        "before choosing a programme. Exposes id/name/code only. "
+        "Supports ?search= for large structures."
+    ),
+    auth=[],
+)
+class FacultyDirectoryView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from apps.academics.models import Faculty
+        from apps.tenants.models import Tenant
+
+        slug = (request.query_params.get("tenant") or "").strip()
+        tenant = Tenant.objects.filter(slug=slug, status=Tenant.Status.ACTIVE).first()
+        if not tenant:
+            return Response({"count": 0, "results": []})
+        # Faculties are RLS-protected; anonymous requests have no tenant
+        # context, so open the tenant's scope explicitly.
+        search = (request.query_params.get("search") or "").strip()
+        with tenant_scope(str(tenant.id)):
+            qs = Faculty.objects.order_by("name")
+            if search:
+                qs = qs.filter(name__icontains=search) | qs.filter(code__icontains=search)
+            data = [
+                {
+                    "id": str(f.id),
+                    "name": f.name,
+                    "code": f.code,
+                }
+                for f in qs.order_by("name").iterator()
+            ]
+        return Response({"count": len(data), "results": data})
+
+
+@extend_schema(
+    tags=["Departments"],
+    summary="Public department directory for signup",
+    description=(
+        "Unauthenticated list of departments for one ACTIVE tenant slug, "
+        "used by the signup form so students/lecturers pick their department "
+        "before choosing a programme. Exposes id/name/code/faculty only. "
+        "Supports ?faculty=<uuid> to scope to one faculty and ?search= "
+        "for large structures."
+    ),
+    auth=[],
+)
+class DepartmentDirectoryView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from apps.academics.models import Department
+        from apps.tenants.models import Tenant
+
+        slug = (request.query_params.get("tenant") or "").strip()
+        tenant = Tenant.objects.filter(slug=slug, status=Tenant.Status.ACTIVE).first()
+        if not tenant:
+            return Response({"count": 0, "results": []})
+        # Departments are RLS-protected; anonymous requests have no tenant
+        # context, so open the tenant's scope explicitly.
+        faculty_id = (request.query_params.get("faculty") or "").strip()
+        search = (request.query_params.get("search") or "").strip()
+        with tenant_scope(str(tenant.id)):
+            qs = Department.objects.select_related("faculty").order_by("name")
+            if faculty_id:
+                qs = qs.filter(faculty_id=faculty_id)
+            if search:
+                qs = qs.filter(name__icontains=search) | qs.filter(code__icontains=search)
+            data = [
+                {
+                    "id": str(d.id),
+                    "name": d.name,
+                    "code": d.code,
+                    "faculty_name": d.faculty.name if d.faculty_id else "",
+                }
+                for d in qs.order_by("name").iterator()
+            ]
+        return Response({"count": len(data), "results": data})
+
+
+@extend_schema(
     tags=["Programmes"],
     summary="Public programme directory for signup",
     description=(
         "Unauthenticated list of programmes for one ACTIVE tenant slug, "
         "used by the signup form so students can pick their programme "
-        "and build their academic profile. Exposes id/name/code/department only."
+        "and build their academic profile. Exposes id/name/code/department only. "
+        "Supports ?department=<uuid> to scope to one department and ?search= "
+        "for large catalogues."
     ),
     auth=[],
 )
@@ -77,11 +164,17 @@ class ProgrammeDirectoryView(APIView):
             return Response({"count": 0, "results": []})
         # Programmes are RLS-protected; anonymous requests have no tenant
         # context, so open the tenant's scope explicitly.
+        department_id = (request.query_params.get("department") or "").strip()
+        search = (request.query_params.get("search") or "").strip()
         with tenant_scope(str(tenant.id)):
             qs = (
                 Programme.objects.select_related("department")
                 .order_by("name")
             )
+            if department_id:
+                qs = qs.filter(department_id=department_id)
+            if search:
+                qs = qs.filter(name__icontains=search) | qs.filter(code__icontains=search)
             data = [
                 {
                     "id": str(p.id),
@@ -89,6 +182,7 @@ class ProgrammeDirectoryView(APIView):
                     "code": p.code,
                     "degree_type": p.degree_type,
                     "department_id": str(p.department_id),
+                    "department_name": p.department.name if p.department_id else "",
                 }
                 for p in qs.iterator()
             ]
@@ -100,6 +194,18 @@ class AcademicSessionViewSet(AdminWriteViewSet):
     queryset = AcademicSession.objects.all()
     serializer_class = AcademicSessionSerializer
 
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        instance = serializer.instance
+        # Auto-set as current if it is the latest by start_date.
+        is_latest = not AcademicSession.objects.filter(
+            tenant_id=instance.tenant_id,
+            start_date__gt=instance.start_date,
+        ).exists()
+        if is_latest:
+            instance.is_current = True
+            instance.save(update_fields=["is_current"])
+
 
 @extend_schema(tags=["Semesters"])
 class SemesterViewSet(AdminWriteViewSet):
@@ -107,13 +213,17 @@ class SemesterViewSet(AdminWriteViewSet):
     serializer_class = SemesterSerializer
     filterset_fields = ["academic_session"]
 
-    def perform_update(self, serializer):
-        semester = serializer.save()
-        # Only one current semester per tenant at a time.
-        if semester.is_current:
-            Semester.objects.filter(
-                tenant_id=semester.tenant_id, is_current=True
-            ).exclude(id=semester.id).update(is_current=False)
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        instance = serializer.instance
+        # Auto-set as current if it is the latest by start_date.
+        is_latest = not Semester.objects.filter(
+            tenant_id=instance.tenant_id,
+            start_date__gt=instance.start_date,
+        ).exists()
+        if is_latest:
+            instance.is_current = True
+            instance.save(update_fields=["is_current"])
 
 
 @extend_schema(tags=["Courses"])
@@ -128,7 +238,7 @@ class CourseViewSet(AdminWriteViewSet):
 class CourseOfferingViewSet(AdminWriteViewSet):
     queryset = CourseOffering.objects.select_related(
         "course", "academic_session", "semester"
-    ).order_by("-created_at")
+    ).prefetch_related("lecturer_assignments__lecturer").order_by("-created_at")
     serializer_class = CourseOfferingSerializer
     filterset_fields = ["course", "academic_session", "semester", "status"]
 

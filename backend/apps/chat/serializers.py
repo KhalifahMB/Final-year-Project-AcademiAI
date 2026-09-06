@@ -7,12 +7,14 @@ class ChatMessageSourceSerializer(serializers.ModelSerializer):
     resource_id = serializers.SerializerMethodField()
     resource_title = serializers.SerializerMethodField()
     version_number = serializers.SerializerMethodField()
+    chunk_text = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatMessageSource
         fields = (
             "id", "chunk", "rank", "similarity_score", "retrieval_method",
-            "resource_id", "resource_title", "version_number", "created_at",
+            "resource_id", "resource_title", "version_number", "chunk_text",
+            "created_at",
         )
         read_only_fields = fields
 
@@ -32,6 +34,14 @@ class ChatMessageSourceSerializer(serializers.ModelSerializer):
         rv = getattr(chunk, "resource_version", None) if chunk else None
         return rv.version_number if rv else None
 
+    def get_chunk_text(self, obj):
+        """Return first 300 chars of the chunk content for preview."""
+        try:
+            content = obj.chunk.content if obj.chunk else ""
+            return content[:300] if content else ""
+        except Exception:
+            return ""
+
 
 class ChatMessageSerializer(serializers.ModelSerializer):
     sources = ChatMessageSourceSerializer(many=True, read_only=True)
@@ -40,9 +50,9 @@ class ChatMessageSerializer(serializers.ModelSerializer):
         model = ChatMessage
         fields = (
             "id", "session", "role", "content", "content_type",
-            "sources", "created_at",
+            "confidence", "rating", "sources", "created_at",
         )
-        read_only_fields = ("id", "role", "content_type", "created_at")
+        read_only_fields = ("id", "role", "content_type", "confidence", "rating", "created_at")
 
 
 class ChatSessionSerializer(serializers.ModelSerializer):

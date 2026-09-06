@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import TenantViewSet, TenantDirectoryView
 from .request_views import (
-    TenantRequestCreateView, TenantRequestListView, TenantRequestReviewView,
+    TenantRequestCreateView, TenantRequestEmailCheckView, TenantRequestListView, TenantRequestReviewView,
 )
 from .stats import PlatformStatsView, PlatformTenantDetailView, PlatformAuditLogView
 from apps.common.dashboard import (
@@ -17,6 +17,7 @@ router.register("tenants", TenantViewSet, basename="tenant")
 urlpatterns = [
     path("tenants/directory/", TenantDirectoryView.as_view(), name="tenant-directory"),
     # Self-serve institution request flow
+    path("tenant-requests/check-email/", TenantRequestEmailCheckView.as_view(), name="tenant-request-check-email"),
     path("tenant-requests/", TenantRequestCreateView.as_view(), name="tenant-request-create"),
     path("platform/tenant-requests/", TenantRequestListView.as_view(), name="platform-tenant-requests"),
     path("platform/tenant-requests/<uuid:pk>/review/", TenantRequestReviewView.as_view(), name="platform-tenant-request-review"),

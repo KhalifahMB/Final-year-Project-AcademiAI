@@ -124,10 +124,10 @@ export function formatBytes(bytes) {
 }
 
 export const SCOPE_META = {
-  private:     { label: 'Private',     tint: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400' },
-  course:      { label: 'Course',      tint: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' },
-  programme:   { label: 'Programme',   tint: 'bg-violet-500/10 text-violet-600 dark:text-violet-400' },
-  department:  { label: 'Department',  tint: 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400' },
-  faculty:     { label: 'Faculty',     tint: 'bg-pink-500/10 text-pink-600 dark:text-pink-400' },
-  institution: { label: 'Institution', tint: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  private:     { label: 'Private',     tint: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400',     dot: 'bg-zinc-500' },
+  course:      { label: 'Course',      tint: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', dot: 'bg-indigo-500' },
+  programme:   { label: 'Programme',   tint: 'bg-violet-500/10 text-violet-600 dark:text-violet-400', dot: 'bg-violet-500' },
+  department:  { label: 'Department',  tint: 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400', dot: 'bg-fuchsia-500' },
+  faculty:     { label: 'Faculty',     tint: 'bg-pink-500/10 text-pink-600 dark:text-pink-400',       dot: 'bg-pink-500' },
+  institution: { label: 'Institution', tint: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
 };

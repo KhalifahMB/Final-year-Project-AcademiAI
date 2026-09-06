@@ -21,6 +21,7 @@ from .serializers import (
     PasswordResetConfirmSerializer,
     PasswordChangeSerializer,
     UserSerializer,
+    UserAdminUpdateSerializer,
     ProfileUpdateSerializer,
     CustomTokenObtainPairSerializer,
     MessageResponseSerializer,
@@ -59,9 +60,12 @@ class SignupView(APIView):
         data = ser.validated_data
         # Self-service signup is limited to student/lecturer; admin is
         # only ever granted by an existing tenant admin or the platform.
-        role = data.get("role", User.Role.STUDENT)
-        if role not in (User.Role.STUDENT, User.Role.LECTURER):
-            role = User.Role.STUDENT
+        # Self-service signup is restricted to students. Lecturer and
+        # tenant-admin roles are granted exclusively by an existing tenant
+        # admin (or the platform) — allowing lecturer self-registration would
+        # let anyone claim elevated access to an active institution. Any
+        # submitted role is therefore coerced to student.
+        role = User.Role.STUDENT
         try:
             user, code = services.signup_user(
                 email=data["email"],
@@ -71,6 +75,7 @@ class SignupView(APIView):
                 role=role,
                 tenant_slug=data.get("tenant_slug"),
                 programme_id=data.get("programme"),
+                department_id=data.get("department"),
                 gender=data.get("gender", ""),
                 avatar_preset=data.get("avatar_preset", ""),
             )
@@ -133,7 +138,7 @@ class SignupView(APIView):
             {
                 "success": True,
                 "message": "Account created. Please verify your email.",
-                "user": UserSerializer(user).data,
+                "user": None,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -563,10 +568,15 @@ class UserAdminViewSet(viewsets.ModelViewSet):
     filterset_fields = ["role", "is_active", "is_email_verified"]
     http_method_names = ["get", "patch", "head", "options"]
 
+    def get_serializer_class(self):
+        if self.action in ("update", "partial_update"):
+            return UserAdminUpdateSerializer
+        return UserSerializer
+
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
             return User.objects.none()
-        return User.objects.filter(tenant=self.request.user.tenant).order_by("email")
+        return User.objects.filter(tenant=self.request.user.tenant).select_related("tenant").order_by("email")
 
     def perform_update(self, serializer):
         old_role = serializer.instance.role
