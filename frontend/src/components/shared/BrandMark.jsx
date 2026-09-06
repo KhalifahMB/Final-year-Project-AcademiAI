@@ -20,8 +20,6 @@ export default function BrandMark({
   const isOnDark = isCurrentDark;
   // const isOnLight = !isCurrentDark;
 
-  console.log('CuureentDark', isCurrentDark);
-
   const alt = 'AcademiAI';
 
   // Show dark asset when: forced dark variant OR auto + dark theme active

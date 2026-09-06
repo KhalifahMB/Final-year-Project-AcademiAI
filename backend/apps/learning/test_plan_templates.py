@@ -163,7 +163,7 @@ def test_cannot_instantiate_foreign_tenant_template():
 def test_instantiate_malformed_template_is_rejected_without_side_effects():
     tenant = _tenant("tpl-bad")
     user = _user("stu@tpl-bad.edu", tenant)
-    template = _template(tenant, template_data={"milestones": [{"tasks": "nope"}]})
+    template = _template(tenant, created_by=user, template_data={"milestones": [{"tasks": "nope"}]})
 
     resp = _auth(user).post(
         f"/api/v1/plan-templates/{template.id}/instantiate/", {}, format="json",
@@ -208,7 +208,7 @@ def test_student_can_create_private_template():
     }
     # Serializer round-trips visibility + creator display name.
     assert resp.data["is_public"] is False
-    assert resp.data["created_by"] == str(student.id)
+    assert resp.data["created_by"] == student.id
 
 
 @pytest.mark.django_db
@@ -259,7 +259,7 @@ def test_owner_can_edit_and_delete_private_template():
         format="json",
     )
     assert upd.status_code == 200, upd.data
-    assert upd.data["created_by"] == str(owner.id)  # creator preserved on edit
+    assert upd.data["created_by"] == owner.id  # creator preserved on edit
     template.refresh_from_db()
     assert template.name == "Renamed"
     assert template.template_data["milestones"] == [
@@ -278,11 +278,13 @@ def test_peer_cannot_edit_or_delete_private_template():
     peer = _user("peer@tpl-peer-no.edu", tenant)
     template = _template(tenant, created_by=owner, is_public=False)
 
+    # The template isn't in the peer's queryset, so it is invisible: any
+    # direct mutation attempt is a 404, never a 200.
     upd = _auth(peer).patch(f"/api/v1/plan-templates/{template.id}/", {"name": "Hijack"}, format="json")
-    assert upd.status_code == 403
+    assert upd.status_code == 404
     assert template.name == "Exam prep"
 
-    assert _auth(peer).delete(f"/api/v1/plan-templates/{template.id}/").status_code == 403
+    assert _auth(peer).delete(f"/api/v1/plan-templates/{template.id}/").status_code == 404
     assert PlanTemplate.objects.filter(id=template.id).count() == 1
 
 

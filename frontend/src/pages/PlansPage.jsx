@@ -5,6 +5,8 @@ import { plansApi } from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import EmptyState from '@/components/shared/EmptyState';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
+import TemplateEditorDialog from '@/components/shared/TemplateEditorDialog';
+import { useAuth } from '@/hooks/useAuth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { ArrowRight, CalendarClock, CheckCircle2, LayoutTemplate, Loader2, Plus, Search, Target, Trash2 } from 'lucide-react';
+import { ArrowRight, CalendarClock, CheckCircle2, Globe, LayoutTemplate, Loader2, Lock, Pencil, Plus, Search, Target, Trash2 } from 'lucide-react';
 
 const STATUS_STYLES = {
   active: 'bg-[var(--info-soft)] text-[var(--info)]',
@@ -37,12 +39,15 @@ const TYPE_LABELS = {
 export default function PlansPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [planToDelete, setPlanToDelete] = useState(null);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [templateId, setTemplateId] = useState(null);
   const [templateTitle, setTemplateTitle] = useState('');
+  const [editorTemplate, setEditorTemplate] = useState(null);
+  const [templateToDelete, setTemplateToDelete] = useState(null);
   const [newPlan, setNewPlan] = useState({ title: '', description: '', plan_type: 'study', start_date: '', target_date: '' });
 
   const { data, isLoading } = useQuery({
@@ -96,6 +101,19 @@ export default function PlansPage() {
     },
     onError: () => {
       toast.error('Could not delete plan');
+    },
+  });
+
+  const templateDeleteMutation = useMutation({
+    mutationFn: plansApi.deleteTemplate,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['plan-templates'] });
+      qc.invalidateQueries({ queryKey: ['admin-plan-templates'] });
+      setTemplateToDelete(null);
+      toast.success('Template deleted');
+    },
+    onError: () => {
+      toast.error('Could not delete the template');
     },
   });
 
@@ -316,12 +334,40 @@ export default function PlansPage() {
         title={templateTitle}
         onTitle={setTemplateTitle}
         pending={instantiateMutation.isPending}
+        currentUserId={user?.id}
+        isAdmin={user?.role === 'tenant_admin'}
+        onRequestCreate={() => setEditorTemplate({})}
+        onRequestEdit={(t) => setEditorTemplate(t)}
+        onRequestDelete={(t) => setTemplateToDelete(t)}
         onClose={() => {
           setTemplateOpen(false);
           setTemplateId(null);
           setTemplateTitle('');
         }}
         onConfirm={() => templateId && instantiateMutation.mutate({ id: templateId, title: templateTitle })}
+      />
+
+      <TemplateEditorDialog
+        key={editorTemplate ? (editorTemplate.id || 'new') : 'closed'}
+        open={editorTemplate !== null}
+        onOpenChange={(o) => !o && setEditorTemplate(null)}
+        template={editorTemplate && editorTemplate.id ? editorTemplate : null}
+      />
+
+      <ConfirmDialog
+        open={!!templateToDelete}
+        title="Delete template?"
+        description={`“${templateToDelete?.name || ''}” will be removed. Existing plans already started from it are unaffected.`}
+        onCancel={() => setTemplateToDelete(null)}
+        onConfirm={() => {
+          const id = templateToDelete.id;
+          setTemplateId((cur) => (cur === id ? null : cur));
+          setTemplateToDelete(null);
+          templateDeleteMutation.mutate(id);
+        }}
+        confirmLabel="Delete"
+        destructive
+        pending={templateDeleteMutation.isPending}
       />
     </AppShell>
   );
@@ -339,6 +385,7 @@ function templateCounts(t) {
 function TemplatePickerDialog({
   open, templates, loading, error, onRetry,
   selectedId, onSelect, title, onTitle, pending, onClose, onConfirm,
+  currentUserId, isAdmin, onRequestCreate, onRequestEdit, onRequestDelete,
 }) {
   const [filter, setFilter] = useState('');
 
@@ -361,7 +408,8 @@ function TemplatePickerDialog({
             Start from a template
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Pick an institution template — its milestones and tasks are copied into a new personal plan.
+            Pick a template — its milestones and tasks are copied into a new personal plan. Anyone can
+            create a reusable template and share it with the institution or keep it private.
           </DialogDescription>
         </DialogHeader>
         {loading ? (
@@ -380,20 +428,40 @@ function TemplatePickerDialog({
             </AlertDescription>
           </Alert>
         ) : templates.length === 0 ? (
-          <p className="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
-            No templates yet — your institution can add reusable plan templates for everyone.
-          </p>
+          <div className="rounded-lg border border-dashed px-3 py-6 text-center">
+            <p className="text-xs text-muted-foreground">No templates yet.</p>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={onRequestCreate}
+              className="mt-3 h-8 gap-1.5 text-xs"
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden /> Create a reusable template
+            </Button>
+          </div>
         ) : (
           <div className="space-y-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-              <Input
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder="Search templates…"
-                aria-label="Search templates"
-                className="h-9 pl-8 text-sm"
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                <Input
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  placeholder="Search templates…"
+                  aria-label="Search templates"
+                  className="h-9 pl-8 text-sm"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onRequestCreate}
+                className="h-9 shrink-0 gap-1.5 text-xs"
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden /> New
+              </Button>
             </div>
             <div role="radiogroup" aria-label="Plan templates" className="space-y-2">
               {filtered.length === 0 ? (
@@ -406,55 +474,99 @@ function TemplatePickerDialog({
                   ? t.template_data.milestones
                   : [];
                 const selected = selectedId === t.id;
+                const mine = t.created_by === currentUserId;
+                const manageable = mine || (t.is_public && isAdmin);
                 return (
-                  <button
+                  <div
                     key={t.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => onSelect(t.id)}
                     className={cn(
-                      'flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                      'rounded-xl border p-2.5 transition-colors',
                       selected
                         ? 'border-primary/50 bg-primary/5 ring-2 ring-primary/20'
                         : 'hover:border-[var(--border-strong)]',
                     )}
                   >
-                    <span className={cn(
-                      'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
-                      selected ? 'border-primary bg-primary text-primary-foreground' : 'border-[var(--border-strong)]',
-                    )} aria-hidden>
-                      {selected && <CheckCircle2 className="h-3 w-3" />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-semibold">{t.name}</span>
-                      {t.description && (
-                        <span className="mt-0.5 line-clamp-2 block text-[11.5px] text-muted-foreground">
-                          {t.description}
+                    <div className="flex items-start gap-2">
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => onSelect(t.id)}
+                        className="flex min-w-0 flex-1 items-start gap-3 text-left focus-visible:outline-2 focus-visible:outline-ring"
+                      >
+                        <span className={cn(
+                          'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border',
+                          selected ? 'border-primary bg-primary text-primary-foreground' : 'border-[var(--border-strong)]',
+                        )} aria-hidden>
+                          {selected && <CheckCircle2 className="h-3 w-3" />}
                         </span>
-                      )}
-                      <span className="mt-1 block text-[11px] text-muted-foreground num">
-                        {counts.milestones} milestone{counts.milestones === 1 ? '' : 's'} · {counts.tasks} task{counts.tasks === 1 ? '' : 's'} · {TYPE_LABELS[t.plan_type] || t.plan_type}
-                      </span>
-                      {milestones.length > 0 && (
-                        <span className="mt-1.5 flex flex-wrap gap-1">
-                          {milestones.slice(0, 3).map((m, i) => (
-                            <span
-                              key={i}
-                              className="inline-flex max-w-[180px] items-center truncate rounded-full border bg-[var(--surface-2)] px-2 py-0.5 text-[10.5px] text-muted-foreground"
-                            >
-                              {m.title || `Milestone ${i + 1}`}
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="block truncate text-[13px] font-semibold">{t.name}</span>
+                            {t.is_public ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--info-soft)] px-1.5 py-0.5 text-[9.5px] font-medium text-[var(--info)]">
+                                <Globe className="h-2.5 w-2.5" aria-hidden /> Public
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[9.5px] font-medium text-muted-foreground">
+                                <Lock className="h-2.5 w-2.5" aria-hidden /> Private{mine ? ' · you' : ''}
+                              </span>
+                            )}
+                          </span>
+                          {t.description && (
+                            <span className="mt-0.5 line-clamp-2 block text-[11.5px] text-muted-foreground">
+                              {t.description}
                             </span>
-                          ))}
-                          {milestones.length > 3 && (
-                            <span className="inline-flex items-center px-1 text-[10.5px] text-muted-foreground">
-                              +{milestones.length - 3} more
+                          )}
+                          <span className="mt-1 block text-[11px] text-muted-foreground num">
+                            {counts.milestones} milestone{counts.milestones === 1 ? '' : 's'} · {counts.tasks} task{counts.tasks === 1 ? '' : 's'} · {TYPE_LABELS[t.plan_type] || t.plan_type}
+                            {t.created_by_name && !mine && ` · by ${t.created_by_name}`}
+                          </span>
+                          {milestones.length > 0 && (
+                            <span className="mt-1.5 flex flex-wrap gap-1">
+                              {milestones.slice(0, 3).map((m, i) => (
+                                <span
+                                  key={i}
+                                  className="inline-flex max-w-[180px] items-center truncate rounded-full border bg-[var(--surface-2)] px-2 py-0.5 text-[10.5px] text-muted-foreground"
+                                >
+                                  {m.title || `Milestone ${i + 1}`}
+                                </span>
+                              ))}
+                              {milestones.length > 3 && (
+                                <span className="inline-flex items-center px-1 text-[10.5px] text-muted-foreground">
+                                  +{milestones.length - 3} more
+                                </span>
+                              )}
                             </span>
                           )}
                         </span>
+                      </button>
+                      {manageable && (
+                        <span className="flex shrink-0 items-center gap-0.5" role="group" aria-label={`Manage template ${t.name || ''}`}>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onRequestEdit(t)}
+                            aria-label={`Edit template ${t.name || ''}`}
+                            className="h-7 w-7 p-0"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onRequestDelete(t)}
+                            aria-label={`Delete template ${t.name || ''}`}
+                            className="h-7 w-7 p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </span>
                       )}
-                    </span>
-                  </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
