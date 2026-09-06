@@ -500,7 +500,7 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
   const continueCourses = dash?.continue_courses || [];
   const concepts = dash?.concept_mastery || [];
   const recentResources = dash?.recent_resources || [];
-  const timeline = studentActivity?.timeline || [];
+  const timeline = studentActivity?.data?.timeline || [];
   const chartData = buildTotalSeries(timeline);
 
   const { data: aiGreeting } = useQuery({

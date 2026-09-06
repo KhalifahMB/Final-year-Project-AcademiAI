@@ -24,6 +24,7 @@ import {
   DatabaseZap,
   FileText,
   GraduationCap,
+  HardHat,
   MessageSquareText,
   Plus,
   Sparkles,
