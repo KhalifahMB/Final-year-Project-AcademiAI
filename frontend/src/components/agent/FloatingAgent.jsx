@@ -16,6 +16,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import AgentSettings from '@/components/agent/AgentSettings';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const ROUTE_CONTEXT = {
   '/dashboard': 'dashboard',
@@ -65,6 +66,7 @@ export default function FloatingAgent() {
     stopStreaming,
     toggleOpen,
   } = useAgent();
+  const { unreadCount, hasUnread, markAllRead } = useNotifications();
   const location = useLocation();
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -113,6 +115,13 @@ export default function FloatingAgent() {
     }
     wasOpenRef.current = isOpen;
   }, [isOpen]);
+
+  // Opening the agent acknowledges the alerts: clear the badge.
+  useEffect(() => {
+    if (isOpen && hasUnread) {
+      markAllRead().catch(() => {});
+    }
+  }, [isOpen, hasUnread, markAllRead]);
 
   // Unified pointer drag (mouse + touch). A drag that actually moves never
   // toggles the panel: only a near-stationary press counts as a click.
@@ -238,6 +247,15 @@ export default function FloatingAgent() {
               presenceClass,
             )}
           />
+        )}
+        {!isOpen && hasUnread && (
+          <span
+            role="status"
+            title={`${unreadCount} unread alert${unreadCount === 1 ? '' : 's'}`}
+            className="absolute -left-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[10px] font-[700] text-[var(--on-accent)] shadow ring-2 ring-[var(--bg)]"
+          >
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
         )}
       </div>
 

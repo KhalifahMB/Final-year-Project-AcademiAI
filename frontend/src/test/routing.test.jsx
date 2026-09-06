@@ -123,6 +123,14 @@ vi.mock('@/services/api', () => {
       deleteSession: vi.fn(emptyObj),
       stream: vi.fn(() => null),
     },
+    notificationsApi: {
+      list: vi.fn(() =>
+        Promise.resolve({ results: [], count: 0, unread_count: 0 }),
+      ),
+      unreadCount: vi.fn(() => Promise.resolve({ unread_count: 0 })),
+      markRead: vi.fn(() => Promise.resolve({ ok: true })),
+      markAllRead: vi.fn(() => Promise.resolve({ ok: true, updated: 0 })),
+    },
   };
 });
 

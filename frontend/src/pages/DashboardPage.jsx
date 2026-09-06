@@ -17,7 +17,6 @@ import {
   Users,
   ArrowRight,
   Plus,
-  Flame,
 } from 'lucide-react';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import {
@@ -36,15 +35,6 @@ import AiInsightCard from '@/components/shared/AiInsightCard';
 
 function TimeAgo({ iso }) {
   return <span title={iso}>{formatRelativeTime(iso)}</span>;
-}
-
-function greeting() {
-  const h = new Date().getHours();
-  if (h < 5) return 'Working late';
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  if (h < 21) return 'Good evening';
-  return 'Good night';
 }
 
 function SectionHeader({ title, action, description }) {
@@ -261,23 +251,14 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* Greeting strip */}
-          <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                <Flame className="h-3 w-3 text-orange-500" aria-hidden />
-                {greeting()},
-              </p>
-              <h1 className="mt-0.5 text-[22px] font-semibold leading-tight tracking-tight sm:text-2xl">
-                {firstName}
-                <span className="text-muted-foreground">
-                  {' '}
-                  — institution overview.
-                </span>
-              </h1>
-              <p className="mt-0.5 text-[13px] text-muted-foreground">
-                Here&apos;s what&apos;s happening across your institution today.
-              </p>
-            </div>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-[22px] font-semibold leading-tight tracking-tight sm:text-2xl">
+              {firstName}
+              <span className="text-muted-foreground">
+                {' '}
+                — institution overview.
+              </span>
+            </h1>
             <div className="flex items-center gap-2">
               <Link
                 to="/resources/upload"

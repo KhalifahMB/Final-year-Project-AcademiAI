@@ -39,6 +39,7 @@ import {
 import EmptyState from '@/components/shared/EmptyState';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import { cn } from '@/lib/utils';
+import { invalidatePlannerCaches } from '@/lib/plannerSync';
 import { toast } from 'sonner';
 import {
   CalendarPlus,
@@ -155,7 +156,7 @@ export default function CalendarPage() {
         ? calendarApi.updateEvent(editing.id, payload)
         : calendarApi.createEvent(payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['calendar'] });
+      invalidatePlannerCaches(qc);
       setShowCreate(false);
       setEditing(null);
       toast.success(editing ? 'Event updated' : 'Event scheduled');
@@ -172,7 +173,7 @@ export default function CalendarPage() {
   const deleteMutation = useMutation({
     mutationFn: calendarApi.deleteEvent,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['calendar'] });
+      invalidatePlannerCaches(qc);
       setToDelete(null);
       toast.success('Event deleted');
     },
@@ -288,13 +289,15 @@ export default function CalendarPage() {
     >
       <div className="card-glass overflow-hidden rounded-[var(--radius-lg)]">
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] p-3">
-          <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] p-3">
+          {/* Nav group: ‹ Today › */}
+          <div className="flex items-center">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => shift(-1)}
               aria-label="Previous"
+              className="h-8 w-8 rounded-l-md rounded-r-none border border-r-0 border-[var(--border)] text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -302,6 +305,7 @@ export default function CalendarPage() {
               variant="ghost"
               size="sm"
               onClick={() => setCurrent(new Date())}
+              className="h-8 rounded-none border-y border-[var(--border)] px-3 text-[12.5px] font-[560] text-[var(--fg-soft)] hover:bg-[var(--hover)]"
             >
               Today
             </Button>
@@ -310,12 +314,13 @@ export default function CalendarPage() {
               size="icon"
               onClick={() => shift(1)}
               aria-label="Next"
+              className="h-8 w-8 rounded-r-md rounded-l-none border border-l-0 border-[var(--border)] text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
 
-          <h2 className="min-w-[140px] px-1 text-[15px] font-[640] tracking-tight">
+          <h2 className="min-w-[150px] px-1 text-[17px] font-[650] tracking-tight text-[var(--fg)]">
             {view === 'month'
               ? format(current, 'MMMM yyyy')
               : view === 'week'
@@ -323,40 +328,54 @@ export default function CalendarPage() {
                 : format(current, 'EEEE, MMMM d, yyyy')}
           </h2>
 
-          <div className="ml-auto flex items-center gap-1">
-            <div className="flex rounded-md border border-[var(--border)] p-0.5">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {/* View switcher */}
+            <div className="inline-flex rounded-[var(--radius-md)] bg-[var(--surface-2)] p-0.5">
               {VIEWS.map((v) => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
                   className={cn(
-                    'rounded-[var(--radius-sm)] px-3 py-1.5 text-[12px] font-[560] capitalize transition-colors',
+                    'rounded-[var(--radius-sm)] px-3 py-1.5 text-[12px] font-[560] capitalize transition-colors focus-visible:outline-2 focus-visible:outline-ring',
                     view === v
-                      ? 'bg-[var(--accent)] text-[var(--on-accent)]'
-                      : 'text-[var(--muted)] hover:text-[var(--fg)]',
+                      ? 'border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--fg)] shadow-sm'
+                      : 'border border-transparent text-[var(--muted)] hover:text-[var(--fg)]',
                   )}
                 >
                   {v}
                 </button>
               ))}
             </div>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={exportIcs}
+              className="gap-1.5"
+            >
+              <Download className="h-3.5 w-3.5" /> Export ICS
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => startCreate(selectedDate)}
+              className="gap-1.5"
+            >
+              <CalendarPlus className="h-3.5 w-3.5" /> Schedule
+            </Button>
           </div>
         </div>
 
         {/* Layer toggles */}
-        <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] px-4 py-2.5">
-          <span className="text-[11px] font-[600] uppercase tracking-wide text-[var(--muted)]">
-            Layers
-          </span>
-          {LAYERS.map((layer) => (
-            <label
-              key={layer.key}
-              className="flex cursor-pointer select-none items-center gap-1.5 text-[13px] text-[var(--fg)]"
-            >
+        <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-4 py-2.5">
+          {LAYERS.map((layer) => {
+            const on = selectedLayers[layer.key];
+            const count = events.filter((e) => e.layer === layer.key).length;
+            return (
               <button
+                key={layer.key}
                 type="button"
                 role="switch"
-                aria-checked={selectedLayers[layer.key]}
+                aria-checked={on}
                 onClick={() =>
                   setSelectedLayers((s) => ({
                     ...s,
@@ -364,28 +383,30 @@ export default function CalendarPage() {
                   }))
                 }
                 className={cn(
-                  'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors',
-                  selectedLayers[layer.key]
-                    ? 'bg-[var(--accent)]'
-                    : 'bg-[var(--surface-2)] border border-[var(--border)]',
+                  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-[560] transition-colors focus-visible:outline-2 focus-visible:outline-ring',
+                  on
+                    ? 'border-[var(--border-strong)] bg-[var(--surface-2)] text-[var(--fg)]'
+                    : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--border-strong)] hover:text-[var(--fg-soft)]',
                 )}
               >
                 <span
-                  className={cn(
-                    'inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform',
-                    selectedLayers[layer.key]
-                      ? 'translate-x-[19px]'
-                      : 'translate-x-[3px]',
-                  )}
+                  className="inline-block h-1.5 w-1.5 rounded-full"
+                  style={{ backgroundColor: layer.color }}
                 />
+                {layer.label}
+                {count > 0 && (
+                  <span
+                    className={cn(
+                      'num text-[10.5px]',
+                      on ? 'text-[var(--muted)]' : 'text-[var(--faint)]',
+                    )}
+                  >
+                    {count}
+                  </span>
+                )}
               </button>
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: layer.color }}
-              />
-              {layer.label}
-            </label>
-          ))}
+            );
+          })}
         </div>
 
         {/* Views */}
@@ -398,6 +419,7 @@ export default function CalendarPage() {
           ) : view === 'month' ? (
             <MonthView
               current={current}
+              selectedDate={selectedDate}
               events={visibleEvents}
               onSelectDay={(d) => {
                 setSelectedDate(d);
@@ -460,6 +482,7 @@ export default function CalendarPage() {
 /* ============================ Month View ============================ */
 function MonthView({
   current,
+  selectedDate,
   events,
   onSelectDay,
   onNewDay,
@@ -485,11 +508,11 @@ function MonthView({
 
   return (
     <div>
-      <div className="grid grid-cols-7 border-b border-[var(--border)]">
+      <div className="grid grid-cols-7 border-b border-[var(--border)] bg-[var(--surface-2)]/50">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((h) => (
           <div
             key={h}
-            className="py-2 text-center text-[11px] font-[600] uppercase tracking-wide text-[var(--muted)]"
+            className="py-2 text-center text-[10.5px] font-[600] uppercase tracking-[0.08em] text-[var(--muted)]"
           >
             {h}
           </div>
@@ -498,26 +521,30 @@ function MonthView({
       <div className="grid grid-cols-7">
         {days.map((day) => {
           const dayEvents = events.filter((e) =>
-            e.all_day
-              ? isSameDay(parseISO(e.start), day)
-              : isSameDay(parseISO(e.start), day),
+            isSameDay(parseISO(e.start), day),
           );
           const inMonth = isSameMonth(day, current);
           const today = isToday(day);
+          const selected = isSameDay(day, selectedDate);
           return (
             <div
               key={day.toISOString()}
               onClick={() => onSelectDay(day)}
               className={cn(
-                'group min-h-[96px] cursor-pointer border-b border-r border-[var(--border)] p-1 transition-colors hover:bg-[var(--hover)] last:border-r-0',
-                !inMonth && 'text-[var(--muted)] bg-[var(--surface)]/30',
+                'group relative min-h-[100px] cursor-pointer border-b border-r border-[var(--border)] p-1 transition-colors hover:bg-[var(--hover)] last:border-r-0',
+                !inMonth && 'text-[var(--faint)] bg-[var(--surface)]/40',
+                selected && 'bg-[var(--accent-soft)]/60 hover:bg-[var(--accent-soft)]',
               )}
             >
               <div className="flex items-center justify-between">
                 <span
                   className={cn(
-                    'inline-flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-[560]',
-                    today && 'bg-[var(--accent)] text-[var(--on-accent)]',
+                    'inline-flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-[560] transition-colors',
+                    today
+                      ? 'bg-[var(--accent)] text-[var(--on-accent)]'
+                      : selected
+                        ? 'text-[var(--accent-strong)]'
+                        : 'text-[var(--fg)]',
                   )}
                 >
                   {format(day, 'd')}
@@ -528,7 +555,7 @@ function MonthView({
                     e.stopPropagation();
                     onNewDay(day);
                   }}
-                  className="opacity-0 group-hover:opacity-100 rounded-full p-1 text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--fg)]"
+                  className="rounded-full p-1 text-[var(--faint)] opacity-0 transition-[opacity,color] group-hover:opacity-100 hover:bg-[var(--surface-2)] hover:text-[var(--fg)] focus-visible:opacity-100"
                   aria-label="Add event"
                 >
                   <Plus className="h-3 w-3" />
@@ -543,19 +570,27 @@ function MonthView({
                       ev.stopPropagation();
                       if (canEdit(e)) onEventClick(e);
                     }}
-                    className="block w-full truncate rounded px-1 py-0.5 text-left text-[11px] leading-tight text-[var(--on-accent)]/90 hover:brightness-95"
-                    style={{
-                      backgroundColor: layerColor(e.layer),
-                      opacity: e.status === 'cancelled' ? 0.5 : 1,
-                    }}
+                    title={e.title}
+                    className={cn(
+                      'flex w-full items-center gap-1 rounded-[var(--radius-sm)] border border-transparent bg-[var(--surface-2)] px-1 py-0.5 text-left text-[10.5px] font-[520] leading-tight text-[var(--fg-soft)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)] hover:text-[var(--fg)]',
+                      e.status === 'cancelled' && 'opacity-45',
+                    )}
                   >
-                    {e.title}
+                    <span
+                      className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: layerColor(e.layer) }}
+                    />
+                    <span className="truncate">{e.title}</span>
                   </button>
                 ))}
                 {dayEvents.length > 3 && (
-                  <div className="px-1 text-[11px] font-[560] text-[var(--muted)]">
+                  <button
+                    type="button"
+                    onClick={() => onSelectDay(day)}
+                    className="px-1 text-[10.5px] font-[560] text-[var(--muted)] hover:text-[var(--accent-strong)]"
+                  >
                     +{dayEvents.length - 3} more
-                  </div>
+                  </button>
                 )}
               </div>
             </div>
@@ -573,50 +608,91 @@ function WeekView({ current, events, onNewDay, onEventClick, canEdit }) {
 
   return (
     <div>
-      <div className="grid grid-cols-8 border-b border-[var(--border)]">
+      {/* Day header */}
+      <div className="grid grid-cols-[48px_repeat(7,1fr)] border-b border-[var(--border)] bg-[var(--surface-2)]/50">
         <div />
         {days.map((d) => {
           const today = isToday(d);
-          const dayEvents = events.filter((e) =>
-            isSameDay(parseISO(e.start), d),
-          );
           return (
-            <div
-              key={d.toISOString()}
-              className="flex flex-col items-center gap-1 py-2"
-            >
-              <span className="text-[10px] font-[560] uppercase text-[var(--muted)]">
+            <div key={d.toISOString()} className="flex flex-col items-center gap-1 py-2">
+              <span className="text-[10px] font-[560] uppercase tracking-[0.06em] text-[var(--muted)]">
                 {format(d, 'EEE')}
               </span>
               <span
                 className={cn(
                   'inline-flex h-7 w-7 items-center justify-center rounded-full text-[13px] font-[640]',
-                  today && 'bg-[var(--accent)] text-[var(--on-accent)]',
+                  today
+                    ? 'bg-[var(--accent)] text-[var(--on-accent)]'
+                    : 'text-[var(--fg)]',
                 )}
               >
                 {format(d, 'd')}
               </span>
-              <div className="flex flex-wrap justify-center gap-0.5 px-1">
-                {dayEvents.slice(0, 3).map((e) => (
-                  <span
-                    key={e.id}
-                    className="h-1.5 w-4 rounded-full"
-                    style={{ backgroundColor: layerColor(e.layer) }}
-                  />
-                ))}
-              </div>
+              <span className="flex h-1 items-center gap-0.5">
+                {events
+                  .filter((e) => !e.all_day && isSameDay(parseISO(e.start), d))
+                  .slice(0, 4)
+                  .map((e) => (
+                    <span
+                      key={e.id}
+                      className="h-1 w-1.5 rounded-full"
+                      style={{ backgroundColor: layerColor(e.layer) }}
+                    />
+                  ))}
+              </span>
             </div>
           );
         })}
       </div>
-      <div className="grid grid-cols-8">
-        <div className="border-r border-[var(--border)] bg-[var(--surface)]/30">
+
+      {/* All-day strip */}
+      <div className="grid grid-cols-[48px_repeat(7,1fr)] border-b border-[var(--border)]">
+        <div className="flex items-center px-1 text-[9.5px] font-[560] uppercase tracking-wide text-[var(--faint)]">
+          All-day
+        </div>
+        {days.map((d) => {
+          const allDayEvents = events.filter(
+            (e) => e.all_day && isSameDay(parseISO(e.start), d),
+          );
+          return (
+            <div
+              key={d.toISOString()}
+              className="min-h-[28px] space-y-0.5 border-l border-[var(--border)] p-0.5 max-md:min-h-[auto]"
+            >
+              {allDayEvents.slice(0, 2).map((e) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={() => canEdit(e) && onEventClick(e)}
+                  title={e.title}
+                  className="flex w-full items-center gap-1 truncate rounded-[var(--radius-sm)] border border-transparent bg-[var(--surface-2)] px-1 py-0.5 text-left text-[10px] font-[520] text-[var(--fg-soft)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--fg)]"
+                >
+                  <span
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: layerColor(e.layer) }}
+                  />
+                  <span className="truncate">{e.title}</span>
+                </button>
+              ))}
+              {allDayEvents.length > 2 && (
+                <div className="px-1 text-[9.5px] font-[560] text-[var(--faint)]">
+                  +{allDayEvents.length - 2}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Time grid */}
+      <div className="grid grid-cols-[48px_repeat(7,1fr)]">
+        <div className="border-r border-[var(--border)] bg-[var(--surface-2)]/40">
           {HOURS.map((h) => (
             <div
               key={h}
               className="relative h-14 border-b border-[var(--border)] pr-1 text-right align-top"
             >
-              <span className="absolute -top-1.5 right-1 text-[10px] text-[var(--muted)]">
+              <span className="absolute -top-2 right-1.5 text-[9.5px] font-[540] text-[var(--faint)]">
                 {h === 0
                   ? '12am'
                   : h < 12
@@ -629,18 +705,21 @@ function WeekView({ current, events, onNewDay, onEventClick, canEdit }) {
           ))}
         </div>
         {days.map((d) => {
-          const dayEvents = events.filter((e) =>
-            isSameDay(parseISO(e.start), d),
+          const dayEvents = events.filter(
+            (e) => !e.all_day && isSameDay(parseISO(e.start), d),
           );
           return (
             <div
               key={d.toISOString()}
-              className="relative border-r border-[var(--border)] last:border-r-0"
+              className={cn(
+                'relative border-r border-[var(--border)] last:border-r-0',
+                isToday(d) && 'bg-[var(--accent-soft)]/25',
+              )}
             >
               {HOURS.map((h) => (
                 <div
                   key={h}
-                  className="h-14 border-b border-[var(--border)] hover:bg-[var(--hover)]"
+                  className="h-14 border-b border-[var(--border)] transition-colors hover:bg-[var(--hover)]"
                   onClick={() => {
                     const dt = new Date(d);
                     dt.setHours(h, 0, 0, 0);
@@ -649,7 +728,8 @@ function WeekView({ current, events, onNewDay, onEventClick, canEdit }) {
                 />
               ))}
               {dayEvents
-                .filter((e) => !e.all_day)
+                .slice()
+                .sort((a, b) => new Date(a.start) - new Date(b.start))
                 .map((e) => {
                   const s = parseISO(e.start);
                   const mins = s.getHours() * 60 + s.getMinutes();
@@ -659,14 +739,21 @@ function WeekView({ current, events, onNewDay, onEventClick, canEdit }) {
                       key={e.id}
                       type="button"
                       onClick={() => canEdit(e) && onEventClick(e)}
-                      className="absolute left-0.5 right-0.5 overflow-hidden rounded px-1.5 py-0.5 text-left text-[10px] leading-tight text-[var(--on-accent)]/90"
+                      className="absolute left-0.5 right-0.5 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-left text-[10px] leading-tight text-[var(--fg)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)]"
                       style={{
                         top: `${(mins / 60) * 56}px`,
                         height: `${Math.max((dur / 60) * 56 - 2, 18)}px`,
-                        backgroundColor: layerColor(e.layer),
                       }}
                     >
-                      {e.title}
+                      <span
+                        className="absolute inset-y-0 left-0 w-0.5"
+                        style={{ backgroundColor: layerColor(e.layer) }}
+                      />
+                      <span className="block truncate font-[600]">{e.title}</span>
+                      <span className="block truncate text-[9px] text-[var(--muted)]">
+                        {format(s, 'h:mm a')}
+                        {e.end ? ` – ${format(parseISO(e.end), 'h:mm a')}` : ''}
+                      </span>
                     </button>
                   );
                 })}
@@ -681,17 +768,20 @@ function WeekView({ current, events, onNewDay, onEventClick, canEdit }) {
 /* ============================ Day View ============================ */
 function DayView({ current, events, onNewDay, onEventClick, canEdit }) {
   const dayEvents = events
-    .filter((e) => isSameDay(parseISO(e.start), current))
+    .filter((e) => !e.all_day && isSameDay(parseISO(e.start), current))
     .sort((a, b) => new Date(a.start) - new Date(b.start));
+  const allDayEvents = events.filter(
+    (e) => e.all_day && isSameDay(parseISO(e.start), current),
+  );
 
   return (
     <div>
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+      <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--surface-2)]/40 px-4 py-3">
         <h3 className="text-[15px] font-[640]">
           {format(current, 'EEEE, MMMM d, yyyy')}
         </h3>
         <div className="flex gap-1.5">
-          {dayEvents.map((e) => (
+          {[...allDayEvents, ...dayEvents].slice(0, 8).map((e) => (
             <span
               key={e.id}
               className="inline-block h-2.5 w-5 rounded-full"
@@ -700,14 +790,41 @@ function DayView({ current, events, onNewDay, onEventClick, canEdit }) {
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-[80px_1fr]">
-        <div className="border-r border-[var(--border)] bg-[var(--surface)]/30">
+
+      {allDayEvents.length > 0 && (
+        <div className="space-y-1 border-b border-[var(--border)] px-4 py-2.5">
+          <span className="text-[9.5px] font-[560] uppercase tracking-[0.08em] text-[var(--faint)]">
+            All-day
+          </span>
+          {allDayEvents.map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              onClick={() => canEdit(e) && onEventClick(e)}
+              title={e.title}
+              className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] border border-transparent bg-[var(--surface-2)] px-2 py-1.5 text-left text-[12.5px] font-[560] text-[var(--fg-soft)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"
+            >
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: layerColor(e.layer) }}
+              />
+              <span className="truncate">{e.title}</span>
+              <span className="ml-auto rounded-full bg-[var(--surface-2)] px-1.5 py-0.5 text-[9.5px] font-[550] uppercase tracking-wide text-[var(--muted)]">
+                {LAYER_LABELS[e.layer] || e.layer}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-[72px_1fr]">
+        <div className="border-r border-[var(--border)] bg-[var(--surface-2)]/40">
           {HOURS.map((h) => (
             <div
               key={h}
               className="relative h-14 border-b border-[var(--border)] pr-1 text-right align-top"
             >
-              <span className="absolute -top-1.5 right-1 text-[10px] text-[var(--muted)]">
+              <span className="absolute -top-2 right-1.5 text-[9.5px] font-[540] text-[var(--faint)]">
                 {h === 0
                   ? '12am'
                   : h < 12
@@ -723,7 +840,7 @@ function DayView({ current, events, onNewDay, onEventClick, canEdit }) {
           {HOURS.map((h) => (
             <div
               key={h}
-              className="h-14 border-b border-[var(--border)] hover:bg-[var(--hover)]"
+              className="h-14 border-b border-[var(--border)] transition-colors hover:bg-[var(--hover)]"
               onClick={() => {
                 const dt = new Date(current);
                 dt.setHours(h, 0, 0, 0);
@@ -731,33 +848,38 @@ function DayView({ current, events, onNewDay, onEventClick, canEdit }) {
               }}
             />
           ))}
-          {dayEvents
-            .filter((e) => !e.all_day)
-            .map((e) => {
-              const s = parseISO(e.start);
-              const mins = s.getHours() * 60 + s.getMinutes();
-              const dur = e.duration_minutes || 60;
-              return (
-                <button
-                  key={e.id}
-                  type="button"
-                  onClick={() => canEdit(e) && onEventClick(e)}
-                  className="absolute left-0 right-0 mx-1 overflow-hidden rounded px-2 py-1 text-left text-[11px] leading-tight text-[var(--on-accent)]/90"
-                  style={{
-                    top: `${(mins / 60) * 56}px`,
-                    height: `${Math.max((dur / 60) * 56 - 2, 22)}px`,
-                    backgroundColor: layerColor(e.layer),
-                  }}
-                >
-                  <span className="font-[620]">{e.title}</span>
-                  {e.venue && (
-                    <div className="flex items-center gap-0.5 opacity-80">
-                      <MapPin className="h-2.5 w-2.5" /> {e.venue}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
+          {dayEvents.map((e) => {
+            const s = parseISO(e.start);
+            const mins = s.getHours() * 60 + s.getMinutes();
+            const dur = e.duration_minutes || 60;
+            return (
+              <button
+                key={e.id}
+                type="button"
+                onClick={() => canEdit(e) && onEventClick(e)}
+                className="absolute left-0 right-0 mx-1 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-left text-[11px] leading-tight text-[var(--fg)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)]"
+                style={{
+                  top: `${(mins / 60) * 56}px`,
+                  height: `${Math.max((dur / 60) * 56 - 2, 22)}px`,
+                }}
+              >
+                <span
+                  className="absolute inset-y-0 left-0 w-0.5"
+                  style={{ backgroundColor: layerColor(e.layer) }}
+                />
+                <span className="block truncate pl-1 font-[620]">{e.title}</span>
+                <span className="block truncate pl-1 text-[9.5px] text-[var(--muted)]">
+                  {format(s, 'h:mm a')}
+                  {e.end ? ` – ${format(parseISO(e.end), 'h:mm a')}` : ''}
+                </span>
+                {e.venue && (
+                  <div className="mt-0.5 flex items-center gap-0.5 pl-1 opacity-80">
+                    <MapPin className="h-2.5 w-2.5" /> {e.venue}
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -794,13 +916,13 @@ function AgendaView({ events, onEventClick, onDayClick, canEdit }) {
           <button
             type="button"
             onClick={() => onDayClick(parseISO(day))}
-            className="mb-2 flex items-baseline gap-2 text-left hover:text-[var(--accent)]"
+            className="group mb-2 flex items-baseline gap-2 text-left"
           >
-            <span className="text-[14px] font-[640]">
+            <span className="text-[14px] font-[640] text-[var(--fg)] transition-colors group-hover:text-[var(--accent-strong)]">
               {format(parseISO(day), 'EEEE, MMMM d')}
             </span>
-            <span className="text-[12px] text-[var(--muted)]">
-              {dayEvents.length} events
+            <span className="rounded-full bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px] font-[560] text-[var(--muted)] num">
+              {dayEvents.length}
             </span>
           </button>
           <div className="space-y-1.5">
@@ -809,14 +931,16 @@ function AgendaView({ events, onEventClick, onDayClick, canEdit }) {
                 key={e.id}
                 type="button"
                 onClick={() => canEdit(e) && onEventClick(e)}
-                className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)]/60 p-2.5 text-left transition-colors hover:bg-[var(--hover)]"
+                className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-2.5 text-left transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)]"
               >
                 <span
-                  className="inline-block h-full min-h-[34px] w-1 shrink-0 rounded-full"
+                  className="inline-block h-8 w-1 shrink-0 rounded-full"
                   style={{ backgroundColor: layerColor(e.layer) }}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-[600]">{e.title}</p>
+                  <p className="truncate text-[13px] font-[600] text-[var(--fg)]">
+                    {e.title}
+                  </p>
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11.5px] text-[var(--muted)]">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
@@ -833,11 +957,11 @@ function AgendaView({ events, onEventClick, onDayClick, canEdit }) {
                         <Tag className="h-3 w-3" /> {e.course_code}
                       </span>
                     )}
-                    <span className="rounded-full bg-[var(--surface-2)] px-1.5 text-[10px] font-[550] uppercase tracking-wide">
-                      {LAYER_LABELS[e.layer] || e.layer}
-                    </span>
                   </div>
                 </div>
+                <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-[550] uppercase tracking-wide text-[var(--muted)]">
+                  {LAYER_LABELS[e.layer] || e.layer}
+                </span>
               </button>
             ))}
           </div>

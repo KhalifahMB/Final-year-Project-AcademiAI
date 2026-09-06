@@ -30,6 +30,7 @@ TABLES = [
     "audit_logs",
     "tenant_logs",
     "calendar_events", "calendar_schedules",
+    "notifications",
 ]
 
 

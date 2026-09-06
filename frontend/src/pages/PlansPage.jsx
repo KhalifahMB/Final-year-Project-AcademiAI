@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { invalidatePlannerCaches } from '@/lib/plannerSync';
 import { toast } from 'sonner';
 import { ArrowRight, CalendarClock, CheckCircle2, Globe, LayoutTemplate, Loader2, Lock, Pencil, Plus, Search, Target, Trash2 } from 'lucide-react';
 
@@ -68,7 +69,7 @@ export default function PlansPage() {
       plansApi.instantiateTemplate(id, title.trim() ? { title: title.trim() } : {}),
     onSuccess: (plan) => {
       toast.success('Plan created from template');
-      qc.invalidateQueries({ queryKey: ['plans'] });
+      invalidatePlannerCaches(qc);
       setTemplateOpen(false);
       setTemplateId(null);
       setTemplateTitle('');
@@ -82,7 +83,7 @@ export default function PlansPage() {
   const createMutation = useMutation({
     mutationFn: plansApi.create,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['plans'] });
+      invalidatePlannerCaches(qc);
       setShowCreate(false);
       setNewPlan({ title: '', description: '', plan_type: 'study', start_date: '', target_date: '' });
       toast.success('Plan created');
@@ -95,7 +96,7 @@ export default function PlansPage() {
   const deleteMutation = useMutation({
     mutationFn: plansApi.delete,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['plans'] });
+      invalidatePlannerCaches(qc);
       setPlanToDelete(null);
       toast.success('Plan deleted');
     },

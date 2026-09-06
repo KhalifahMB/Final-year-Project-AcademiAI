@@ -23,6 +23,7 @@ import Avatar from '@/components/shared/Avatar';
 import OnlineStatus from '@/components/shared/OnlineStatus';
 import CommandPalette from '@/components/common/CommandPalette';
 import FloatingAgent from '@/components/agent/FloatingAgent';
+import NotificationToaster from '@/components/notifications/NotificationToaster';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
 import { getTenantInfo } from '@/lib/tenant';
@@ -867,6 +868,7 @@ export default function AppShell({
       </div>
       <CommandPalette open={paletteOpen} onOpen={setPaletteOpen} />
       <FloatingAgent />
+      <NotificationToaster />
     </TooltipProvider>
   );
 }

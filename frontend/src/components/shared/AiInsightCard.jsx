@@ -1,7 +1,11 @@
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { dashboardApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { Lightbulb, Sparkles } from 'lucide-react';
+
+const INSIGHT_TOAST_KEY = 'academiai:ai-insight-toast';
 
 export default function AiInsightCard({ dashboardType = 'student', className, 'data-testid': testId }) {
   const { data, isLoading } = useQuery({
@@ -10,6 +14,22 @@ export default function AiInsightCard({ dashboardType = 'student', className, 'd
     staleTime: 1800000, // 30 minutes
     retry: 1,
   });
+
+  // Surface the insight once per browser session as an auto-dismissible toast.
+  useEffect(() => {
+    if (!data?.headline) return;
+    try {
+      if (window.sessionStorage.getItem(INSIGHT_TOAST_KEY) === '1') return;
+      window.sessionStorage.setItem(INSIGHT_TOAST_KEY, '1');
+    } catch {
+      /* ignore storage errors */
+    }
+    toast('AI Insight', {
+      description: data.headline,
+      icon: <Sparkles className="h-4 w-4" aria-hidden />,
+      duration: 8000,
+    });
+  }, [data]);
 
   if (isLoading) {
     return (

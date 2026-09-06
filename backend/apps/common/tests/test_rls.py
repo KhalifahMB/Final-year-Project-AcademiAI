@@ -25,6 +25,7 @@ RLS_TABLES = [
     "notes", "bookmarks", "progress_records",
     "audit_logs",
     "calendar_events", "calendar_schedules",
+    "notifications",
 ]
 
 RLS_ROLE = "rls_tester"

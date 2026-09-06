@@ -13,7 +13,6 @@
  * Backend contract: apps/common/dashboard.py#LecturerDashboardView
  */
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowRight,
@@ -34,8 +33,6 @@ import {
 } from 'lucide-react';
 
 import { TimeAgo, Meter } from './DashboardPage.helpers';
-import { greeting } from '@/lib/utils';
-import { dashboardApi } from '@/services/api';
 import AiInsightCard from '@/components/shared/AiInsightCard';
 
 /* ---------------------------------------------------------------- */
@@ -326,14 +323,6 @@ export default function LecturerDashboard({ dash, firstName }) {
   const weak = dash?.weak_concepts || [];
   const asked = dash?.asked_about_materials || [];
   const pipeline = dash?.pipeline || {};
-  const workspace = dash?.workspace || 'LECTURER WORKSPACE';
-
-  const { data: aiGreeting } = useQuery({
-    queryKey: ['ai-greeting'],
-    queryFn: dashboardApi.aiGreeting,
-    staleTime: 3600000, // 1 hour
-    retry: 1,
-  });
 
   const kpis = [
     { icon: GraduationCap,      label: 'Active courses',     value: k.active_courses ?? 0,    hint: 'Assigned this term' },
@@ -347,20 +336,11 @@ export default function LecturerDashboard({ dash, firstName }) {
   return (
     <>
       {/* Hero */}
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="eyebrow flex items-center gap-1.5">
-            <GraduationCap className="h-3 w-3 text-[var(--accent-strong)]" aria-hidden />
-            {workspace}
-          </p>
-          <h1 className="mt-1 text-[30px] font-[650] leading-[1.08] tracking-[-0.02em]">
-            {aiGreeting?.greeting || greeting()}, {firstName}
-            <span className="text-[var(--muted)] font-[450]"> — here's your cohort.</span>
-          </h1>
-          <p className="mt-1 text-[13.5px] text-[var(--muted)]">
-            {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} · {students.length} student{students.length === 1 ? '' : 's'} flagged · {k.ai_answers_today ?? 0} AI answers today
-          </p>
-        </div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-[22px] font-[650] leading-tight tracking-[-0.02em]">
+          {firstName}
+          <span className="text-[var(--muted)] font-[450]"> — here’s your cohort.</span>
+        </h1>
         <Link
           to="/resources/upload"
           className="inline-flex h-9 items-center gap-1.5 rounded-[var(--radius-md)] bg-[var(--accent)] px-4 text-[13px] font-[620] text-[var(--on-accent)] transition-colors hover:bg-[var(--accent-strong)]"

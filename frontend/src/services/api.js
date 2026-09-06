@@ -294,6 +294,14 @@ export const readingApi = {
     api.patch(`/reading-positions/${id}/`, data).then((r) => r.data),
 };
 
+/** Notifications feed — sync-on-read alerts surfaced as a badge + toasts. */
+export const notificationsApi = {
+  list: () => api.get('/notifications/').then((r) => r.data),
+  unreadCount: () => api.get('/notifications/unread-count/').then((r) => r.data),
+  markRead: (id) => api.post(`/notifications/${id}/read/`).then((r) => r.data),
+  markAllRead: () => api.post('/notifications/read-all/').then((r) => r.data),
+};
+
 /** Calendar — layered, role-aware events + ICS export + timetable schedules. */
 export const calendarApi = {
   listEvents: (params = {}) =>

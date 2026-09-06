@@ -12,7 +12,6 @@
  * Backend contracts stay intact — reads the same aggregate payload.
  */
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import {
   Area,
   AreaChart,
@@ -37,8 +36,6 @@ import {
 } from 'lucide-react';
 
 import { TimeAgo, Meter } from './DashboardPage.helpers';
-import { greeting } from '@/lib/utils';
-import { dashboardApi } from '@/services/api';
 import AiInsightCard from '@/components/shared/AiInsightCard';
 
 /* ---------------------------------------------------------------- */
@@ -503,13 +500,6 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
   const timeline = studentActivity?.data?.timeline || [];
   const chartData = buildTotalSeries(timeline);
 
-  const { data: aiGreeting } = useQuery({
-    queryKey: ['ai-greeting'],
-    queryFn: dashboardApi.aiGreeting,
-    staleTime: 3600000, // 1 hour
-    retry: 1,
-  });
-
   // KPI strip
   const kpis = [
     { icon: GraduationCap, label: 'Enrolled', value: counts.enrollments ?? 0, hint: 'courses' },
@@ -521,22 +511,10 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
   return (
     <>
       {/* Greeting */}
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3" data-testid="student-dashboard">
-        <div className="min-w-0">
-          <p className="eyebrow flex items-center gap-1.5">
-            <Flame className="h-3 w-3 text-[var(--warn)]" aria-hidden />
-            {aiGreeting?.greeting || greeting()}
-          </p>
-          <h1 className="mt-1 text-[30px] font-[650] leading-[1.08] tracking-[-0.02em]">
-            Hi {firstName}
-            <span className="text-[var(--muted)] font-[450]"> — here’s your study workspace.</span>
-          </h1>
-          <p className="mt-1 text-[13.5px] text-[var(--muted)]">
-            {dash?.up_next?.length
-              ? 'Jump straight in, or ask the AI tutor about any enrolled course.'
-              : 'Enrol in a course or ask the AI tutor to get started.'}
-          </p>
-        </div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3" data-testid="student-dashboard">
+        <h1 className="text-[22px] font-[650] leading-tight tracking-[-0.02em]">
+          Hi {firstName}
+        </h1>
         <Link
           to="/chat"
           data-testid="dashboard-ask-ai"
