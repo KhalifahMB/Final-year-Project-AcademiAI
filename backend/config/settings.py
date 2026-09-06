@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "apps.platform",
     "apps.logs",
     "apps.agent",
+    "apps.calendar",
 ]
 
 MIDDLEWARE = [

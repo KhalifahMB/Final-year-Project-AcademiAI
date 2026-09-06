@@ -42,6 +42,7 @@ const MyCoursesPage = lazy(() => import('@/pages/MyCoursesPage'));
 const MyProgrammePage = lazy(() => import('@/pages/MyProgrammePage'));
 const AssignedCoursesPage = lazy(() => import('@/pages/AssignedCoursesPage'));
 const NotesPage = lazy(() => import('@/pages/NotesPage'));
+const CalendarPage = lazy(() => import('@/pages/CalendarPage'));
 const BookmarksPage = lazy(() => import('@/pages/BookmarksPage'));
 const ProgressPage = lazy(() => import('@/pages/ProgressPage'));
 const PlansPage = lazy(() => import('@/pages/PlansPage'));
@@ -489,6 +490,22 @@ export default function App() {
             element={
               <Guard roles={EVERYONE}>
                 <ProfilePage />
+              </Guard>
+            }
+          />
+          <Route
+            path="/calendar"
+            element={
+              <Guard roles={EVERYONE}>
+                <CalendarPage />
+              </Guard>
+            }
+          />
+          <Route
+            path="/calendar/new"
+            element={
+              <Guard roles={EVERYONE}>
+                <CalendarPage />
               </Guard>
             }
           />

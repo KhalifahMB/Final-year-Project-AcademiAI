@@ -46,6 +46,7 @@ import {
   Menu,
   MessageSquareText,
   Bookmark,
+  CalendarDays,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -115,6 +116,7 @@ const ADMIN_NAV = [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/resources', label: 'Resources', icon: FileText },
       { to: '/chat', label: 'AI Chat', icon: MessageSquareText },
+      { to: '/calendar', label: 'Calendar', icon: CalendarDays },
     ],
   },
   {
@@ -162,6 +164,7 @@ const LECTURER_NAV = [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/resources', label: 'Resources', icon: FileText },
       { to: '/chat', label: 'AI Chat', icon: MessageSquareText },
+      { to: '/calendar', label: 'Calendar', icon: CalendarDays },
     ],
   },
   {
@@ -193,6 +196,7 @@ const STUDENT_NAV = [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/resources', label: 'Resources', icon: FileText },
       { to: '/chat', label: 'AI Chat', icon: MessageSquareText },
+      { to: '/calendar', label: 'Calendar', icon: CalendarDays },
     ],
   },
   {

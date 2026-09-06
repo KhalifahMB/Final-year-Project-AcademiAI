@@ -293,3 +293,26 @@ export const readingApi = {
   updatePosition: (id, data) =>
     api.patch(`/reading-positions/${id}/`, data).then((r) => r.data),
 };
+
+/** Calendar — layered, role-aware events + ICS export + timetable schedules. */
+export const calendarApi = {
+  listEvents: (params = {}) =>
+    api.get('/calendar/events/', { params }).then((r) => r.data),
+  listEventsLight: (params = {}) =>
+    api.get('/calendar/events/', { params: { ...params, light: true } }).then((r) => r.data),
+  getEvent: (id) => api.get(`/calendar/events/${id}/`).then((r) => r.data),
+  createEvent: (payload) => api.post('/calendar/events/', payload).then((r) => r.data),
+  updateEvent: (id, payload) =>
+    api.patch(`/calendar/events/${id}/`, payload).then((r) => r.data),
+  deleteEvent: (id) => api.delete(`/calendar/events/${id}/`),
+  upcoming: (limit = 10) =>
+    api.get('/calendar/events/upcoming/', { params: { limit } }).then((r) => r.data),
+  exportIcs: (params = {}) =>
+    api.get('/calendar/events/export/', { params, responseType: 'blob' }).then((r) => r.data),
+  listSchedules: (params = {}) =>
+    api.get('/calendar/schedules/', { params }).then((r) => r.data),
+  createSchedule: (payload) =>
+    api.post('/calendar/schedules/', payload).then((r) => r.data),
+  getSchedule: (id) => api.get(`/calendar/schedules/${id}/`).then((r) => r.data),
+  deleteSchedule: (id) => api.delete(`/calendar/schedules/${id}/`),
+};
