@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from apps.common.permissions import IsAdminRole, IsTenantMember
 from apps.common.viewsets import TenantModelViewSet
 
-from .models import CalendarEvent, CalendarSchedule, CalendarLayer
+from .models import CalendarEvent, CalendarSchedule, CalendarLayer, EventStatus
 from .serializers import (
     CalendarEventSerializer,
     CalendarEventListSerializer,
@@ -86,6 +86,7 @@ class CalendarEventViewSet(TenantModelViewSet):
     - `view` = month|week|day|agenda (agenda returns upcoming events).
     """
     serializer_class = CalendarEventSerializer
+    queryset = CalendarEvent.objects.all()
     filterset_fields = ["layer", "event_type"]
     search_fields = ["title", "description", "venue", "course_code"]
 
@@ -114,7 +115,7 @@ class CalendarEventViewSet(TenantModelViewSet):
         # Enforce role-based defaults for institution-wide events.
         if layer == CalendarLayer.INSTITUTION:
             if user.role != "tenant_admin" and not user.is_superuser:
-                raise PermissionError("Only tenant admins can create institution-wide events.")
+                raise PermissionDenied("Only tenant admins can create institution-wide events.")
             serializer.save(
                 tenant=user.tenant,
                 created_by=user,
@@ -122,7 +123,7 @@ class CalendarEventViewSet(TenantModelViewSet):
             )
         elif layer == CalendarLayer.OFFICE_HOURS:
             if user.role not in ("lecturer", "tenant_admin"):
-                raise PermissionError("Only lecturers and admins can create office hours.")
+                raise PermissionDenied("Only lecturers and admins can create office hours.")
             serializer.save(tenant=user.tenant, created_by=user, user=user)
         else:
             serializer.save(tenant=user.tenant, created_by=user, user=user)
@@ -158,7 +159,7 @@ class CalendarEventViewSet(TenantModelViewSet):
         now = timezone.now()
         qs = qs.filter(
             Q(end__isnull=True, start__gte=now) | Q(end__gte=now),
-            status__in=[CalendarEvent.EventStatus.CONFIRMED, CalendarEvent.EventStatus.TENTATIVE],
+            status__in=[EventStatus.CONFIRMED, EventStatus.TENTATIVE],
         ).order_by("start")
         limit = min(int(request.query_params.get("limit", 10)), 50)
         serializer = CalendarEventListSerializer(qs[:limit], many=True)
@@ -194,6 +195,7 @@ class CalendarEventViewSet(TenantModelViewSet):
 class CalendarScheduleViewSet(TenantModelViewSet):
     """Manage bulk-imported timetables (admin upload wizard)."""
     serializer_class = CalendarScheduleSerializer
+    queryset = CalendarSchedule.objects.all()
     permission_classes = [IsTenantMember]
 
     def get_queryset(self):

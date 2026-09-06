@@ -89,6 +89,40 @@ vi.mock('@/services/api', () => {
       uploadAttachment: vi.fn(emptyObj),
       stream: vi.fn(() => ({ abort: vi.fn() })),
     },
+    agentApi: {
+      identities: vi.fn(() =>
+        Promise.resolve({
+          agents: [
+            {
+              key: 'tutor',
+              name: 'Tutor',
+              avatar: '/avatars/tutor.svg',
+              presence: 'online',
+              guardian: 'Subject guide',
+              tagline: 'Learn anything',
+            },
+          ],
+          default_key: 'tutor',
+          settings: {
+            enabled: true,
+            default_agent: 'tutor',
+            tone: 'balanced',
+            filters: { ableism: true, reading_order: true },
+            reminders_enabled: true,
+          },
+        }),
+      ),
+      getSettings: vi.fn(emptyObj),
+      updateSettings: vi.fn((data) => Promise.resolve({ data })),
+      listSessions: vi.fn(() =>
+        Promise.resolve({ results: [], count: 0 }),
+      ),
+      getSession: vi.fn(emptyObj),
+      createSession: vi.fn(() => Promise.resolve({ id: 'mock-session' })),
+      renameSession: vi.fn(emptyObj),
+      deleteSession: vi.fn(emptyObj),
+      stream: vi.fn(() => null),
+    },
   };
 });
 

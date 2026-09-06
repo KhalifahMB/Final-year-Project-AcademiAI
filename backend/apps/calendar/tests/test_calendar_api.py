@@ -250,8 +250,10 @@ def test_upcoming_returns_future_events_only():
     student = _user("stu@cal-upcoming.edu", tenant)
     past = datetime.datetime(2025, 1, 1, 10, 0, tzinfo=datetime.timezone.utc)
     future = datetime.datetime(2027, 1, 1, 10, 0, tzinfo=datetime.timezone.utc)
-    _event(tenant, layer="personal", user=student, created_by=student, title="Old", start=past)
-    _event(tenant, layer="personal", user=student, created_by=student, title="New", start=future)
+    _event(tenant, layer="personal", user=student, created_by=student, title="Old",
+           start=past, end=past + datetime.timedelta(hours=1))
+    _event(tenant, layer="personal", user=student, created_by=student, title="New",
+           start=future, end=future + datetime.timedelta(hours=1))
 
     resp = _auth(student).get("/api/v1/calendar/events/upcoming/")
     assert resp.status_code == 200

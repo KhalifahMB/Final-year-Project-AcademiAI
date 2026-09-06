@@ -20,9 +20,11 @@ RLS_TABLES = [
     "resources", "resource_versions", "resource_chunks", "resource_permissions", "resource_summaries",
     "concepts", "concept_edges",
     "chat_sessions", "chat_messages", "chat_message_sources",
+    "agent_sessions", "agent_tool_executions", "agent_settings",
     "quizzes", "quiz_questions", "quiz_attempts",
     "notes", "bookmarks", "progress_records",
     "audit_logs",
+    "calendar_events", "calendar_schedules",
 ]
 
 RLS_ROLE = "rls_tester"

@@ -316,3 +316,77 @@ export const calendarApi = {
   getSchedule: (id) => api.get(`/calendar/schedules/${id}/`).then((r) => r.data),
   deleteSchedule: (id) => api.delete(`/calendar/schedules/${id}/`),
 };
+
+/**
+ * Agent subsystem (apps.agent) — identity manifest, settings, sessions and
+ * the raw SSE streaming endpoint. `stream` returns an abort controller.
+ */
+export const agentApi = {
+  identities: () => api.get('/agent/identities/').then((r) => r.data),
+  getSettings: () => api.get('/agent/settings/').then((r) => r.data),
+  updateSettings: (payload) =>
+    api.put('/agent/settings/', payload).then((r) => r.data),
+  listSessions: () => api.get('/agent/sessions/').then((r) => r.data),
+  getSession: (id) => api.get(`/agent/sessions/${id}/`).then((r) => r.data),
+  createSession: (payload = {}) =>
+    api.post('/agent/sessions/', payload).then((r) => r.data),
+  renameSession: (id, title) =>
+    api.patch(`/agent/sessions/${id}/`, { title }).then((r) => r.data),
+  deleteSession: (id) => api.delete(`/agent/sessions/${id}/`),
+  stream: ({ message, contextType = 'dashboard', sessionId, agent, title }, callbacks = {}) => {
+    const { onToken, onToolCall, onToolResult, onDone, onError } = callbacks;
+    const ctrl = new AbortController();
+    (async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const res = await fetch(`${api.defaults.baseURL}/agent/stream/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            message,
+            context_type: contextType,
+            session_id: sessionId,
+            agent,
+            title,
+          }),
+          signal: ctrl.signal,
+        });
+        if (!res.ok || !res.body) {
+          onError?.(new Error(`Stream failed (${res.status})`));
+          return;
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const events = buf.split('\n\n');
+          buf = events.pop() || '';
+          for (const event of events) {
+            let eventType = '';
+            let data = '';
+            for (const line of event.split('\n')) {
+              if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+              else if (line.startsWith('data: ')) data = line.slice(6);
+            }
+            if (!eventType || !data) continue;
+            const parsed = JSON.parse(data);
+            if (eventType === 'token') onToken?.(parsed);
+            else if (eventType === 'tool_call') onToolCall?.(parsed);
+            else if (eventType === 'tool_result') onToolResult?.(parsed);
+            else if (eventType === 'done') onDone?.(parsed);
+            else if (eventType === 'error') onError?.(new Error(parsed.message || 'Agent error'));
+          }
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') onError?.(err);
+      }
+    })();
+    return ctrl;
+  },
+};

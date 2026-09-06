@@ -1,130 +1,359 @@
-import { useCallback, useRef, useState } from 'react';
-import api from '@/services/api';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { agentApi } from '@/services/api';
+import { applyAiFilters } from '@/lib/agentFilters';
+
+const DEFAULT_SETTINGS = {
+  enabled: true,
+  default_agent: '',
+  tone: 'balanced',
+  filters: { ableism: true, reading_order: true },
+  reminders_enabled: true,
+};
+
+function loadLocalPreference() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem('academiai:agent-settings') || '{}',
+    );
+    return saved;
+  } catch {
+    return {};
+  }
+}
 
 export function useAgent() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [agents, setAgents] = useState([]);
+  const [defaultKey, setDefaultKey] = useState('');
+  const [agentKey, setAgentKey] = useState('');
+  const [settings, setSettings] = useState({
+    ...DEFAULT_SETTINGS,
+    ...loadLocalPreference(),
+  });
+  const [sessions, setSessions] = useState([]);
+  const [activeSessionId, setActiveSessionId] = useState(null);
   const activeStream = useRef(null);
+  const settingsRef = useRef(settings);
 
-  const sendMessage = useCallback(async (text, contextType = 'dashboard') => {
-    if (!text.trim() || loading) return;
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
-    const userMsg = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: text,
-      timestamp: new Date().toISOString(),
-    };
-
-    const agentMsg = {
-      id: `agent-${Date.now()}`,
-      role: 'assistant',
-      content: '',
-      toolCalls: [],
-      streaming: true,
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, userMsg, agentMsg]);
-    setLoading(true);
-
-    const token = localStorage.getItem('access_token');
-    const ctrl = new AbortController();
-
-    try {
-      const res = await fetch(`${api.defaults.baseURL}/agent/stream/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ message: text, context_type: contextType }),
-        signal: ctrl.signal,
+  // Boot: pull identities + persisted settings + session history once.
+  useEffect(() => {
+    let cancelled = false;
+    if (typeof agentApi?.identities !== 'function') return undefined;
+    Promise.all([agentApi.identities(), agentApi.listSessions()])
+      .then(([identityPayload, sessionPayload]) => {
+        if (cancelled) return;
+        const list = sessionPayload?.results || sessionPayload || [];
+        const serverSettings = identityPayload?.settings || null;
+        const mergedSettings = {
+          ...DEFAULT_SETTINGS,
+          ...settingsRef.current,
+          ...(serverSettings || {}),
+          filters: {
+            ...DEFAULT_SETTINGS.filters,
+            ...(serverSettings?.filters || {}),
+          },
+        };
+        setAgents(identityPayload?.agents || []);
+        setDefaultKey(identityPayload?.default_key || '');
+        const preferred = serverSettings?.default_agent || settingsRef.current.default_agent;
+        setAgentKey(
+          preferred ||
+            identityPayload?.default_key ||
+            (identityPayload?.agents || [])[0]?.key ||
+            '',
+        );
+        settingsRef.current = mergedSettings;
+        setSettings(mergedSettings);
+        setSessions(list);
+        if (list[0]) setActiveSessionId(list[0].id);
+      })
+      .catch(() => {
+        /* keep local defaults when the API is unavailable or mocked */
       });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = '';
-      let fullContent = '';
-      let toolCalls = [];
+  // Cross-instance sync: any AgentSettings panel (e.g. in Profile) broadcasts
+  // changes; keep this instance's state in step without re-broadcasting.
+  useEffect(() => {
+    const handler = (e) => {
+      const detail = e.detail;
+      if (!detail || typeof detail !== 'object') return;
+      setSettings((prev) => {
+        const patch = detail.patch || {};
+        return {
+          ...prev,
+          ...('enabled' in detail ? { enabled: detail.enabled } : {}),
+          ...patch,
+          filters: { ...prev.filters, ...(patch.filters || {}) },
+        };
+      });
+    };
+    window.addEventListener('academiai:agent-settings-changed', handler);
+    return () =>
+      window.removeEventListener('academiai:agent-settings-changed', handler);
+  }, []);
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
+  const identity = useMemo(
+    () => agents.find((a) => a.key === agentKey) || agents[0],
+    [agents, agentKey],
+  );
 
-        buf += decoder.decode(value, { stream: true });
-        const events = buf.split('\n\n');
-        buf = events.pop() || '';
+  const activeSession = useMemo(
+    () => sessions.find((s) => s.id === activeSessionId) || null,
+    [sessions, activeSessionId],
+  );
 
-        for (const event of events) {
-          const lines = event.split('\n');
-          let eventType = '';
-          let data = '';
+  const refreshSessions = useCallback(async () => {
+    if (typeof agentApi?.listSessions !== 'function') return;
+    try {
+      const payload = await agentApi.listSessions();
+      const list = payload?.results || payload || [];
+      setSessions(list);
+      return list;
+    } catch {
+      return null;
+    }
+  }, []);
 
-          for (const line of lines) {
-            if (line.startsWith('event: ')) {
-              eventType = line.slice(7).trim();
-            } else if (line.startsWith('data: ')) {
-              data = line.slice(6);
-            }
-          }
+  const saveSettings = useCallback(
+    (patch = {}) => {
+      const next = {
+        ...settingsRef.current,
+        ...patch,
+        filters: {
+          ...(settingsRef.current.filters || {}),
+          ...(patch.filters || {}),
+        },
+      };
+      settingsRef.current = next;
+      setSettings(next);
+      localStorage.setItem('academiai:agent-settings', JSON.stringify(next));
+      window.dispatchEvent(
+        new CustomEvent('academiai:agent-settings-changed', {
+          detail: { enabled: next.enabled, patch },
+        }),
+      );
+      if (typeof agentApi?.updateSettings === 'function') {
+        agentApi
+          .updateSettings({
+            enabled: next.enabled,
+            default_agent: next.default_agent || agentKey,
+            tone: next.tone,
+            filters: next.filters,
+            reminders_enabled: next.reminders_enabled,
+          })
+          .catch(() => {});
+      }
+    },
+    [agentKey],
+  );
 
-          if (!eventType || !data) continue;
+  const setAgent = useCallback(
+    (key) => {
+      setAgentKey(key);
+      saveSettings({ default_agent: key });
+    },
+    [saveSettings],
+  );
 
-          try {
-            const parsed = JSON.parse(data);
+  const createSession = useCallback(
+    async (title, contextType) => {
+      if (typeof agentApi?.createSession !== 'function') return null;
+      try {
+        const session = await agentApi.createSession({
+          title: title?.slice(0, 60) || 'New conversation',
+          agent_key: agentKey || defaultKey,
+          context_type: contextType,
+        });
+        setActiveSessionId(session.id);
+        refreshSessions();
+        return session;
+      } catch {
+        return null;
+      }
+    },
+    [agentKey, defaultKey, refreshSessions],
+  );
 
-            if (eventType === 'token') {
-              fullContent += parsed.text || '';
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === agentMsg.id ? { ...m, content: fullContent } : m,
-                ),
-              );
-            } else if (eventType === 'tool_call') {
-              toolCalls.push({ type: 'call', tool: parsed.tool, params: parsed.params });
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === agentMsg.id ? { ...m, toolCalls: [...toolCalls] } : m,
-                ),
-              );
-            } else if (eventType === 'tool_result') {
-              toolCalls = toolCalls.map((tc) =>
-                tc.tool === parsed.tool ? { ...tc, result: parsed.result } : tc,
-              );
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === agentMsg.id ? { ...m, toolCalls: [...toolCalls] } : m,
-                ),
-              );
-            } else if (eventType === 'done') {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === agentMsg.id ? { ...m, streaming: false } : m,
-                ),
-              );
-            } else if (eventType === 'error') {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === agentMsg.id
-                    ? { ...m, content: parsed.message || 'Error occurred', streaming: false }
-                    : m,
-                ),
-              );
-            }
-          } catch {
-            // Skip malformed JSON
-          }
+  const selectSession = useCallback(async (id) => {
+    if (typeof agentApi?.getSession !== 'function') return;
+    setLoading(true);
+    try {
+      const session = await agentApi.getSession(id);
+      const history = session.recent_messages || [];
+      const restored = history.map((m, i) => ({
+        id: `hist-${id}-${i}`,
+        role: m.role,
+        content: m.content,
+        toolCalls: [],
+        timestamp: new Date().toISOString(),
+      }));
+      if (session.agent_key) setAgentKey(session.agent_key);
+      setActiveSessionId(id);
+      setMessages(restored);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const deleteSession = useCallback(
+    async (id) => {
+      if (typeof agentApi?.deleteSession !== 'function') return;
+      try {
+        await agentApi.deleteSession(id);
+        if (id === activeSessionId) {
+          setActiveSessionId(null);
+          setMessages([]);
         }
+        refreshSessions();
+      } catch {
+        /* ignore */
+      }
+    },
+    [activeSessionId, refreshSessions],
+  );
+
+  const renameSession = useCallback(async (id, title) => {
+    if (typeof agentApi?.renameSession !== 'function') return;
+    try {
+      const updated = await agentApi.renameSession(id, title);
+      setSessions((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, title: updated.title || title } : s)),
+      );
+      return updated;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const sendMessage = useCallback(
+    async (text, contextType = 'dashboard') => {
+      if (!text.trim() || loading) return;
+      const filters =
+        settingsRef.current.filters || DEFAULT_SETTINGS.filters;
+
+      const userMsg = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: text,
+        timestamp: new Date().toISOString(),
+      };
+      const agentMsg = {
+        id: `agent-${Date.now()}`,
+        role: 'assistant',
+        content: '',
+        toolCalls: [],
+        streaming: true,
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, userMsg, agentMsg]);
+      setLoading(true);
+
+      let sessionId = activeSessionId;
+      if (!sessionId) {
+        const created = await createSession(text, contextType);
+        if (created) sessionId = created.id;
       }
 
-      activeStream.current = null;
-      setLoading(false);
-    } catch (err) {
-      if (err.name === 'AbortError') {
-        // User cancelled
-      } else {
+      const ctrl = agentApi?.stream?.(
+        {
+          message: text,
+          contextType,
+          sessionId,
+          agent: agentKey || defaultKey,
+        },
+        {
+          onToken: (parsed) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === agentMsg.id
+                  ? {
+                      ...m,
+                      raw: (m.raw || '') + (parsed.text || ''),
+                      content: applyAiFilters(
+                        (m.raw || '') + (parsed.text || ''),
+                        filters,
+                      ),
+                    }
+                  : m,
+              ),
+            );
+          },
+          onToolCall: (parsed) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === agentMsg.id
+                  ? {
+                      ...m,
+                      toolCalls: [
+                        ...m.toolCalls,
+                        { type: 'call', tool: parsed.tool, params: parsed.params },
+                      ],
+                    }
+                  : m,
+              ),
+            );
+          },
+          onToolResult: (parsed) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === agentMsg.id
+                  ? {
+                      ...m,
+                      toolCalls: m.toolCalls.map((tc) =>
+                        tc.tool === parsed.tool
+                          ? { ...tc, result: parsed.result }
+                          : tc,
+                      ),
+                    }
+                  : m,
+              ),
+            );
+          },
+          onDone: () => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === agentMsg.id ? { ...m, streaming: false } : m,
+              ),
+            );
+            setActiveSessionId(sessionId || activeSessionId);
+            refreshSessions();
+            setLoading(false);
+            activeStream.current = null;
+          },
+          onError: (err) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === agentMsg.id
+                  ? {
+                      ...m,
+                      content:
+                        err?.message === 'Stream failed'
+                          ? 'Failed to connect. Please try again.'
+                          : err?.message || 'Failed to connect. Please try again.',
+                      streaming: false,
+                    }
+                  : m,
+              ),
+            );
+            setLoading(false);
+            activeStream.current = null;
+          },
+        },
+      );
+      if (ctrl) activeStream.current = ctrl;
+      else {
+        setLoading(false);
         setMessages((prev) =>
           prev.map((m) =>
             m.id === agentMsg.id
@@ -133,10 +362,9 @@ export function useAgent() {
           ),
         );
       }
-      activeStream.current = null;
-      setLoading(false);
-    }
-  }, [loading]);
+    },
+    [activeSessionId, agentKey, createSession, defaultKey, loading, refreshSessions],
+  );
 
   const stopStreaming = useCallback(() => {
     if (activeStream.current) {
@@ -151,16 +379,43 @@ export function useAgent() {
 
   const clearMessages = useCallback(() => {
     setMessages([]);
+    setActiveSessionId(null);
   }, []);
 
-  const toggleOpen = useCallback(() => {
-    setIsOpen((v) => !v);
-  }, []);
+  const newConversation = useCallback(
+    async (contextType = 'dashboard') => {
+      await createSession('New conversation', contextType);
+      setMessages([]);
+    },
+    [createSession],
+  );
+
+  const toggleOpen = useCallback(() => setIsOpen((v) => !v), []);
+  const setEnabled = useCallback(
+    (enabled) => saveSettings({ enabled }),
+    [saveSettings],
+  );
 
   return {
     messages,
     loading,
     isOpen,
+    agents,
+    defaultKey,
+    agentKey,
+    setAgent,
+    identity,
+    settings,
+    saveSettings,
+    setEnabled,
+    sessions,
+    activeSession,
+    activeSessionId,
+    refreshSessions,
+    selectSession,
+    deleteSession,
+    renameSession,
+    newConversation,
     sendMessage,
     stopStreaming,
     clearMessages,

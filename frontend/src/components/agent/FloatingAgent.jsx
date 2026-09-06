@@ -6,15 +6,16 @@ import { useAgent } from '@/hooks/useAgent';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';
 import {
-  Bot,
-  Send,
-  Square,
-  X,
-  Trash2,
-  Minus,
+  ChevronDown,
+  History,
   Loader2,
-  Sparkles,
+  Minus,
+  Send,
+  Settings2,
+  Square,
+  Trash2,
 } from 'lucide-react';
+import AgentSettings from '@/components/agent/AgentSettings';
 
 const ROUTE_CONTEXT = {
   '/dashboard': 'dashboard',
@@ -30,18 +31,45 @@ function getContextType(pathname) {
   return 'dashboard';
 }
 
+const PRESENCE_STYLES = {
+  online: 'bg-[var(--success)]',
+  idle: 'bg-[var(--warn)]',
+  focus: 'bg-[var(--accent)]',
+  offline: 'bg-[var(--muted)]',
+};
+
+const DEFAULT_TONE = {
+  mastery: 'var(--accent)',
+  harmony: 'var(--success)',
+  plan: 'var(--info)',
+  literature: 'var(--warn)',
+  analytics: 'var(--muted)',
+  exec: 'var(--danger)',
+};
+
 export default function FloatingAgent() {
   const {
     messages,
     loading,
     isOpen,
+    agents,
+    agentKey,
+    setAgent,
+    identity,
+    settings,
+    sessions,
+    activeSession,
+    selectSession,
+    deleteSession,
     sendMessage,
     stopStreaming,
-    clearMessages,
     toggleOpen,
   } = useAgent();
   const location = useLocation();
   const [input, setInput] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
+  const [showAgents, setShowAgents] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [position, setPosition] = useState(() => {
     try {
       const saved = localStorage.getItem('academiai:agent-position');
@@ -53,14 +81,6 @@ export default function FloatingAgent() {
     }
   });
   const [isDragging, setIsDragging] = useState(false);
-  const [settings, setSettings] = useState(() => {
-    try {
-      const saved = localStorage.getItem('academiai:agent-settings');
-      return saved ? JSON.parse(saved) : { enabled: true };
-    } catch {
-      return { enabled: true };
-    }
-  });
   const dragStartRef = useRef(null);
   const dragMovedRef = useRef(false);
   const orbRef = useRef(null);
@@ -79,10 +99,6 @@ export default function FloatingAgent() {
   }, [position]);
 
   useEffect(() => {
-    localStorage.setItem('academiai:agent-settings', JSON.stringify(settings));
-  }, [settings]);
-
-  useEffect(() => {
     endRef.current?.scrollIntoView({
       behavior: reducedMotion ? 'auto' : 'smooth',
     });
@@ -93,20 +109,10 @@ export default function FloatingAgent() {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
     } else if (wasOpenRef.current) {
-      // Return focus to the launcher, but only when the panel actually
-      // closes (not on first mount).
       orbRef.current?.focus?.();
     }
     wasOpenRef.current = isOpen;
   }, [isOpen]);
-
-  useEffect(() => {
-    const handler = (e) => {
-      setSettings((prev) => ({ ...prev, enabled: e.detail?.enabled }));
-    };
-    window.addEventListener('academiai:agent-settings-changed', handler);
-    return () => window.removeEventListener('academiai:agent-settings-changed', handler);
-  }, []);
 
   // Unified pointer drag (mouse + touch). A drag that actually moves never
   // toggles the panel: only a near-stationary press counts as a click.
@@ -162,8 +168,6 @@ export default function FloatingAgent() {
   }, [isDragging]);
 
   const handleOrbClick = useCallback(() => {
-    // A real drag ends with a click — swallow it so dragging never
-    // opens/closes the panel by accident.
     if (dragMovedRef.current) {
       dragMovedRef.current = false;
       return;
@@ -190,6 +194,10 @@ export default function FloatingAgent() {
 
   if (!enabled) return null;
 
+  const avatarSrc = identity?.avatar || '/avatars/tutor.svg';
+  const presenceClass = PRESENCE_STYLES[identity?.presence] || PRESENCE_STYLES.online;
+  const agentToneColor = DEFAULT_TONE[identity?.tone] || 'var(--accent)';
+
   return (
     <>
       <div
@@ -202,26 +210,34 @@ export default function FloatingAgent() {
           onClick={handleOrbClick}
           onPointerDown={handleOrbPointerDown}
           className={cn(
-            'group flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all',
-            'bg-primary text-primary-foreground',
+            'group flex h-14 w-14 items-center justify-center overflow-hidden rounded-full shadow-lg transition-all',
+            'bg-[var(--surface-2)] ring-1 ring-[var(--border)] hover:ring-[var(--accent)]/60',
             'hover:shadow-xl hover:scale-105 active:scale-95',
-            'focus-visible:outline-2 focus-visible:outline-ring',
-            isOpen && 'bg-muted text-muted-foreground hover:bg-muted/80',
+            'focus-visible:outline-2 focus-visible:outline-[var(--accent)]',
+            isOpen && 'ring-[var(--accent)]',
           )}
           aria-label={isOpen ? 'Close AI agent' : 'Open AI agent'}
           aria-expanded={isOpen}
-          title="AI Agent — drag to move"
+          title={`${identity?.name || 'AI Agent'} — drag to move`}
         >
-          {isOpen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <Sparkles className="h-5 w-5" />
-          )}
+          <img
+            src={avatarSrc}
+            alt=""
+            className={cn(
+              'h-full w-full object-cover transition-transform',
+              isOpen && 'scale-90 opacity-70',
+            )}
+            draggable={false}
+          />
         </button>
         {!isOpen && (
-          <span aria-hidden className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--success)] text-[8px] font-bold text-[var(--bg)]">
-            AI
-          </span>
+          <span
+            aria-hidden
+            className={cn(
+              'absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full ring-2 ring-[var(--bg)]',
+              presenceClass,
+            )}
+          />
         )}
       </div>
 
@@ -229,65 +245,193 @@ export default function FloatingAgent() {
         <div
           role="dialog"
           aria-modal="false"
-          aria-label="AI agent"
+          aria-label={`${identity?.name || 'AI Agent'} assistant`}
           onKeyDown={(e) => {
             if (e.key === 'Escape') toggleOpen();
           }}
-          className="fixed z-50 flex w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border bg-background/95 shadow-2xl backdrop-blur-xl"
+          className="fixed z-50 flex w-[400px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--fg)] shadow-[var(--shadow-pop)] backdrop-blur-xl"
           style={{
-            right: Math.max(16, window.innerWidth - position.x - 400),
+            right: Math.max(16, window.innerWidth - position.x - 420),
             top: Math.max(
               16,
-              Math.min(position.y - 460, window.innerHeight - 500),
+              Math.min(position.y - 480, window.innerHeight - 520),
             ),
-            height: 'min(480px, calc(100vh - 32px))',
+            height: 'min(500px, calc(100vh - 32px))',
           }}
         >
-          <div className="flex items-center justify-between border-b bg-muted/30 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
-                <Bot className="h-4 w-4 text-primary" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold">AI Agent</p>
-                <p className="text-[10px] text-muted-foreground">
-                  Ask me anything
+          {/* Header: agent identity + presence */}
+          <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface-2)]/60 px-3 py-2.5">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <div className="relative shrink-0">
+                <img
+                  src={avatarSrc}
+                  alt=""
+                  className="h-9 w-9 rounded-full ring-1 ring-[var(--border)] object-cover"
+                />
+                <span
+                  aria-hidden
+                  className={cn(
+                    'absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-[var(--surface)]',
+                    presenceClass,
+                  )}
+                />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  <p className="truncate text-[14px] font-[640] leading-tight">
+                    {identity?.name || 'AI Agent'}
+                  </p>
+                  {agents.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAgents((v) => !v)}
+                      aria-label="Switch agent"
+                      title="Switch agent"
+                      className="rounded p-0.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                <p className="truncate text-[10.5px] text-[var(--muted)]">
+                  {identity?.guardian} · {identity?.presence_label || 'Available'}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              {messages.length > 0 && (
-                <button
-                  type="button"
-                  onClick={clearMessages}
-                  aria-label="Clear agent chat"
-                  className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  title="Clear chat"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              )}
+            <div className="flex shrink-0 items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowHistory(false);
+                  setShowSettings(true);
+                }}
+                aria-label="Agent settings"
+                title="Agent settings"
+                className="rounded-md p-1.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSettings(false);
+                  setShowHistory((v) => !v);
+                }}
+                aria-label="Conversation history"
+                title="Conversation history"
+                className={cn(
+                  'rounded-md p-1.5 hover:bg-[var(--hover)]',
+                  showHistory ? 'text-[var(--accent)]' : 'text-[var(--muted)] hover:text-[var(--fg)]',
+                )}
+              >
+                <History className="h-3.5 w-3.5" />
+              </button>
               <button
                 type="button"
                 onClick={toggleOpen}
                 aria-label="Minimize agent"
-                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                 title="Minimize"
+                className="rounded-md p-1.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
 
+          {/* Agent switcher */}
+          {showAgents && (
+            <div className="border-b border-[var(--border)] bg-[var(--surface-2)]/40 p-2">
+              <div className="flex flex-wrap gap-1.5">
+                {agents.map((a) => (
+                  <button
+                    key={a.key}
+                    type="button"
+                    onClick={() => {
+                      setAgent(a.key);
+                      setShowAgents(false);
+                    }}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] transition-colors',
+                      a.key === agentKey
+                        ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-strong)]'
+                        : 'border-[var(--border)] text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]',
+                    )}
+                  >
+                    <img src={a.avatar} alt="" className="h-4 w-4 rounded-full" />
+                    {a.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* History rail */}
+          {showHistory && (
+            <div className="max-h-[220px] overflow-y-auto border-b border-[var(--border)] p-2">
+              <p className="px-2 pb-1 text-[10.5px] font-[600] uppercase tracking-wide text-[var(--muted)]">
+                Conversations
+              </p>
+              {sessions.length === 0 ? (
+                <p className="px-2 py-2 text-[12px] text-[var(--muted)]">
+                  No past conversations yet.
+                </p>
+              ) : (
+                <div className="space-y-0.5">
+                  {sessions.map((s) => (
+                    <div
+                      key={s.id}
+                      className={cn(
+                        'group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-[var(--hover)]',
+                        s.id === activeSession?.id && 'bg-[var(--surface-2)]',
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => selectSession(s.id)}
+                        className="min-w-0 flex-1 text-left"
+                        title={s.title}
+                      >
+                        <p className="truncate text-[12.5px] font-[560]">
+                          {s.title}
+                        </p>
+                        <p className="text-[10.5px] text-[var(--muted)]">
+                          {new Date(s.last_active_at).toLocaleString()}
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteSession(s.id)}
+                        aria-label="Delete conversation"
+                        className="rounded p-1 text-[var(--muted)] opacity-0 hover:bg-[var(--surface-2)] hover:text-[var(--danger)] group-hover:opacity-100"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Settings panel */}
+          {showSettings && (
+            <div className="max-h-[300px] overflow-y-auto border-b border-[var(--border)] p-3">
+              <AgentSettings embedded onClose={() => setShowSettings(false)} />
+            </div>
+          )}
+
           <div className="flex-1 overflow-y-auto p-4">
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-center">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Sparkles className="h-5 w-5" />
+                <span
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl overflow-hidden ring-1 ring-[var(--border)]"
+                  style={{ backgroundColor: agentToneColor, opacity: 0.92 }}
+                >
+                  <img src={avatarSrc} alt="" className="h-10 w-10" />
                 </span>
-                <p className="mt-3 text-sm font-medium">How can I help?</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  I can help with study plans, progress tracking, and more.
+                <p className="mt-3 text-sm font-[620]">How can I help?</p>
+                <p className="mt-1 text-[11px] text-[var(--muted)]">
+                  {identity?.tagline}
                 </p>
                 <div className="mt-4 flex flex-wrap justify-center gap-1.5">
                   {[
@@ -306,7 +450,7 @@ export default function FloatingAgent() {
                           0,
                         );
                       }}
-                      className="rounded-full border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+                      className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] text-[var(--muted)] transition-colors hover:border-[var(--accent)]/50 hover:text-[var(--fg)]"
                     >
                       {q}
                     </button>
@@ -325,10 +469,10 @@ export default function FloatingAgent() {
                   >
                     <div
                       className={cn(
-                        'max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed',
+                        'max-w-[88%] rounded-2xl px-3 py-2 text-[13px] leading-relaxed',
                         msg.role === 'user'
-                          ? 'bg-primary/10 text-foreground rounded-br-sm'
-                          : 'bg-muted/50 text-foreground rounded-bl-sm',
+                          ? 'rounded-br-sm bg-[var(--accent-soft)] text-[var(--fg)]'
+                          : 'rounded-bl-sm bg-[var(--surface-2)] text-[var(--fg)]',
                       )}
                     >
                       {msg.toolCalls && msg.toolCalls.length > 0 && (
@@ -336,14 +480,14 @@ export default function FloatingAgent() {
                           {msg.toolCalls.map((tc, i) => (
                             <div
                               key={i}
-                              className="flex items-center gap-1.5 text-[10px] text-muted-foreground"
+                              className="flex items-center gap-1.5 text-[10px] text-[var(--muted)]"
                             >
                               <Loader2
                                 className={cn(
                                   'h-2.5 w-2.5',
                                   tc.result
                                     ? 'text-[var(--success)]'
-                                    : 'animate-spin text-primary',
+                                    : 'animate-spin text-[var(--accent)]',
                                 )}
                               />
                               <span>{tc.tool.replace(/_/g, ' ')}</span>
@@ -361,7 +505,7 @@ export default function FloatingAgent() {
                           </ReactMarkdown>
                         </div>
                       ) : msg.streaming ? (
-                        <span className="inline-block h-4 w-1.5 animate-pulse bg-primary/70" />
+                        <span className="inline-block h-4 w-1.5 animate-pulse bg-[var(--accent)]/70" />
                       ) : null}
                     </div>
                   </div>
@@ -371,14 +515,14 @@ export default function FloatingAgent() {
             )}
           </div>
 
-          <div className="border-t bg-background/80 p-3">
-            <div className="flex items-end gap-2 rounded-xl border bg-card p-1.5 focus-within:border-primary/40 focus-within:shadow-[0_0_0_3px_color-mix(in_oklab,var(--primary)_15%,transparent)]">
+          <div className="shrink-0 border-t border-[var(--border)] bg-[var(--surface)]/80 p-3">
+            <div className="flex items-end gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)]/60 p-1.5 focus-within:border-[var(--accent)]/50 focus-within:shadow-[0_0_0_3px_var(--accent-soft)]">
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask the agent…"
+                placeholder={`Ask ${identity?.name || 'the agent'}…`}
                 aria-label="Ask the agent"
                 rows={1}
                 className="max-h-24 min-h-[32px] flex-1 resize-none border-0 bg-transparent px-2 py-1.5 text-[13px] leading-relaxed shadow-none focus-visible:ring-0"
@@ -391,8 +535,8 @@ export default function FloatingAgent() {
                 className={cn(
                   'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
                   loading
-                    ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
-                    : 'bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50',
+                    ? 'bg-[var(--danger)] text-[var(--on-accent)] hover:bg-[var(--danger)]/90'
+                    : 'bg-[var(--accent)] text-[var(--on-accent)] hover:bg-[var(--accent)]/90 disabled:opacity-50',
                 )}
               >
                 {loading ? (
