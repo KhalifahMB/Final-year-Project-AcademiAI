@@ -303,8 +303,7 @@ export default function LandingPage() {
                 AcademiAI gives every university its own AI tutor. Students
                 access, understand and excel with their course materials through
                 intelligent chat, personalised quizzes and cohort insight — all
-                grounded in authorised resources. Implemented as a case study at
-                Abubakar Tafawa Balewa University, Bauchi.
+                grounded in authorised resources.
               </p>
               <div className="landing-actions">
                 {isAuthenticated ? (
@@ -575,27 +574,26 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ------------------------------------------------ Case study */}
+        {/* ------------------------------------------------ Multi-tenant */}
         <section id="case-study" className="landing-case-study">
           <div className="landing-shell landing-case-study__inner">
             <div>
               <p className="landing-eyebrow">
                 <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
-                Final Year Project · Computer Science
+                Built for any institution
               </p>
-              <h2>Case study: Abubakar Tafawa Balewa University, Bauchi.</h2>
+              <h2>One platform, every faculty and university.</h2>
               <p>
-                AcademiAI is being developed as a Final Year Project for the
-                Department of Computer Science, Faculty of Computing, ATBU
-                Bauchi. The faculty serves as the initial implementation
-                example, demonstrating how any university can adopt AcademiAI as
-                a multi-tenant solution — starting with Computer Science
-                courses, with architecture ready for any faculty and university.
+                AcademiAI is architected as a multi-tenant solution — each
+                institution gets an isolated workspace with its own courses,
+                materials and AI. Designed to start with a single faculty and
+                scale seamlessly across departments, faculties and the whole
+                university.
               </p>
             </div>
             <div className="landing-case-study__stamp" aria-hidden="true">
-              <span>ATBU</span>
-              <small>Faculty of Computing · 2025/2026</small>
+              <span>v1</span>
+              <small>Multi-tenant · Isolated workspaces</small>
             </div>
           </div>
         </section>
@@ -648,8 +646,7 @@ export default function LandingPage() {
             <span>AcademiAI</span>
           </Link>
           <span>
-            © {new Date().getFullYear()} — Multi-tenant · Final Year Project ·
-            ATBU Bauchi · open for collaboration
+            © {new Date().getFullYear()} — Multi-tenant academic AI · open for collaboration
           </span>
         </div>
       </footer>

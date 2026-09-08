@@ -106,6 +106,18 @@ export const notesApi = {
     Promise.all(ids.map((id) => api.delete(`/notes/${id}/`))),
 };
 
+/** Course tooling — per-offering analytics + content intelligence for
+ * lecturers/admins (GET /course-offerings/{id}/analytics/ and
+ * /course-offerings/{id}/content-intelligence/). */
+export const courseApi = {
+  analytics: (offeringId) =>
+    api.get(`/course-offerings/${offeringId}/analytics/`).then((r) => r.data),
+  contentIntelligence: (offeringId) =>
+    api
+      .get(`/course-offerings/${offeringId}/content-intelligence/`)
+      .then((r) => r.data),
+};
+
 export const platformApi = {
   stats: () => api.get('/platform/stats/'),
   tenantDetail: (id) => api.get(`/platform/tenants/${id}/`),
@@ -323,6 +335,34 @@ export const calendarApi = {
     api.post('/calendar/schedules/', payload).then((r) => r.data),
   getSchedule: (id) => api.get(`/calendar/schedules/${id}/`).then((r) => r.data),
   deleteSchedule: (id) => api.delete(`/calendar/schedules/${id}/`),
+  layers: () => api.get('/calendar/events/layers/').then((r) => r.data),
+  scheduleTemplate: () =>
+    api
+      .get('/calendar/schedules/template/', { responseType: 'blob' })
+      .then((r) => r.data),
+  previewSchedule: (file, { sourceFormat = 'csv', importType = 'lecture' } = {}) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('source_format', sourceFormat);
+    form.append('import_type', importType);
+    return api
+      .post('/calendar/schedules/preview/', form, {
+        headers: { 'Content-Type': undefined },
+      })
+      .then((r) => r.data);
+  },
+  commitSchedule: (file, { title, importType = 'lecture', sourceFormat = 'csv' } = {}) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('title', title || '');
+    form.append('import_type', importType);
+    form.append('source_format', sourceFormat);
+    return api
+      .post('/calendar/schedules/preview-commit/', form, {
+        headers: { 'Content-Type': undefined },
+      })
+      .then((r) => r.data);
+  },
 };
 
 /**
@@ -334,6 +374,13 @@ export const agentApi = {
   getSettings: () => api.get('/agent/settings/').then((r) => r.data),
   updateSettings: (payload) =>
     api.put('/agent/settings/', payload).then((r) => r.data),
+  uploadAvatar: (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api
+      .post('/agent/avatar/', form, { headers: { 'Content-Type': undefined } })
+      .then((r) => r.data);
+  },
   listSessions: () => api.get('/agent/sessions/').then((r) => r.data),
   getSession: (id) => api.get(`/agent/sessions/${id}/`).then((r) => r.data),
   createSession: (payload = {}) =>

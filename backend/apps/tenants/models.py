@@ -24,7 +24,7 @@ class Tenant(UUIDModel, TimeStampedModel):
     # login-restriction scheduled task. Cleared on reactivation.
     suspended_at = models.DateTimeField(null=True, blank=True)
     # Future: restrict signups to institutional email domains, e.g.
-    # ["atbu.edu.ng"]. Not enforced anywhere yet (documented roadmap item).
+    # ["university.example.edu"]. Not enforced anywhere yet (documented roadmap item).
     allowed_email_domains = models.JSONField(default=list, blank=True)
     # Future: per-tenant branding (logo key, primary colour, tagline).
     branding = models.JSONField(default=dict, blank=True)

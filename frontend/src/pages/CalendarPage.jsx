@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   addDays,
@@ -53,6 +54,8 @@ import {
   Plus,
   Tag,
   Trash2,
+  Upload,
+  AlertTriangle,
 } from 'lucide-react';
 
 const VIEWS = ['month', 'week', 'day', 'agenda'];
@@ -107,6 +110,8 @@ export default function CalendarPage() {
   const [selectedLayers, setSelectedLayers] = useState(() =>
     Object.fromEntries(LAYERS.map((l) => [l.key, true])),
   );
+  const layersApplied = useRef(false);
+  const [showImport, setShowImport] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -127,6 +132,24 @@ export default function CalendarPage() {
   }));
 
   const range = useMemo(() => parseDateValue(view, current), [view, current]);
+
+  const { data: layerData } = useQuery({
+    queryKey: ['calendar', 'layers'],
+    queryFn: () => calendarApi.layers(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (layersApplied.current || !layerData?.default_layers?.length) return;
+    layersApplied.current = true;
+    setSelectedLayers((prev) => {
+      const next = { ...prev };
+      for (const l of LAYERS) {
+        next[l.key] = layerData.default_layers.includes(l.key);
+      }
+      return next;
+    });
+  }, [layerData]);
 
   const { data, isLoading } = useQuery({
     queryKey: [
@@ -245,6 +268,22 @@ export default function CalendarPage() {
     }
   };
 
+  const isAdmin = user?.role === 'tenant_admin' || user?.is_superuser;
+
+  const downloadTemplate = async () => {
+    try {
+      const blob = await calendarApi.scheduleTemplate();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'timetable-template.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Could not download template');
+    }
+  };
+
   const shift = (n) => {
     if (view === 'month') setCurrent((c) => addMonths(c, n));
     else setCurrent((c) => addDays(c, n * (view === 'week' ? 7 : 1)));
@@ -277,6 +316,16 @@ export default function CalendarPage() {
           >
             <Download className="h-3.5 w-3.5" /> Export ICS
           </Button>
+          {isAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowImport(true)}
+              className="gap-1.5"
+            >
+              <Upload className="h-3.5 w-3.5" /> Import timetable
+            </Button>
+          )}
           <Button
             size="sm"
             onClick={() => startCreate(selectedDate)}
@@ -474,6 +523,14 @@ export default function CalendarPage() {
         confirmLabel="Delete"
         confirmVariant="danger"
         onConfirm={() => toDelete && deleteMutation.mutate(toDelete.id)}
+      />
+      <ImportDialog
+        open={showImport}
+        onOpenChange={setShowImport}
+        onRefetch={() =>
+          qc.invalidateQueries({ queryKey: ['calendar', 'events'] })
+        }
+        onTemplate={downloadTemplate}
       />
     </AppShell>
   );
@@ -1179,6 +1236,222 @@ function EventDialog({
           </Button>
           <Button onClick={onSubmit} disabled={!form.title.trim()}>
             {editing ? 'Save changes' : 'Schedule'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ============================ Import Dialog ============================ */
+function ImportDialog({ open, onOpenChange, onRefetch, onTemplate }) {
+  const [importType, setImportType] = useState('lecture');
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [committing, setCommitting] = useState(false);
+
+  const reset = () => {
+    setFile(null);
+    setPreview(null);
+    setLoading(false);
+    setCommitting(false);
+  };
+
+  const handleClose = (next) => {
+    onOpenChange(next);
+    if (!next) reset();
+  };
+
+  const runPreview = async () => {
+    if (!file) return;
+    setLoading(true);
+    setPreview(null);
+    try {
+      const result = await calendarApi.previewSchedule(file, { importType });
+      setPreview(result);
+    } catch (e) {
+      toast.error(
+        e?.response?.data?.error?.detail || e?.message || 'Could not read file',
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const commit = async () => {
+    if (!file) return;
+    setCommitting(true);
+    try {
+      const result = await calendarApi.commitSchedule(file, {
+        importType,
+        title: `Imported ${importType} timetable`,
+      });
+      toast.success(
+        `Imported ${result.event_count} event${result.event_count === 1 ? '' : 's'}` +
+          (result.error_count ? ` · ${result.error_count} row(s) skipped` : ''),
+      );
+      onRefetch();
+      handleClose(false);
+    } catch (e) {
+      toast.error(
+        e?.response?.data?.error?.detail || e?.message || 'Import failed',
+      );
+    } finally {
+      setCommitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Import timetable</DialogTitle>
+          <DialogDescription>
+            Upload a CSV timetable (title, start, end, layer). Rows with
+            missing or invalid values are skipped and reported so you can fix
+            and re-upload.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <Label>Import type</Label>
+              <Select value={importType} onValueChange={setImportType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lecture">Lecture timetable</SelectItem>
+                  <SelectItem value="exam">Exam timetable</SelectItem>
+                  <SelectItem value="events">Institution events</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button variant="outline" size="sm" onClick={onTemplate} className="gap-1.5">
+                <Download className="h-3.5 w-3.5" /> Download CSV template
+              </Button>
+            </div>
+          </div>
+
+          <div>
+            <Label>CSV file</Label>
+            <Input
+              type="file"
+              accept=".csv,text/csv,application/vnd.ms-excel"
+              onChange={(e) => {
+                const f = e.target.files?.[0] || null;
+                setFile(f);
+                setPreview(null);
+              }}
+            />
+          </div>
+
+          {preview && (
+            <div className="rounded-[var(--radius-md)] border border-[var(--border)]">
+              <div className="flex items-center justify-between border-b border-[var(--border)] px-3 py-2">
+                <span className="text-[13px] font-[600] text-[var(--fg)]">
+                  Preview
+                </span>
+                <span className="text-[12px] text-[var(--muted)]">
+                  {preview.row_count} valid row{preview.row_count === 1 ? '' : 's'}
+                  {preview.warnings.length > 0 &&
+                    ` · ${preview.warnings.length} skipped`}
+                </span>
+              </div>
+              {preview.warnings.length > 0 && (
+                <div className="max-h-28 space-y-1 overflow-y-auto border-b border-[var(--border)] bg-[var(--warn-soft)]/40 px-3 py-2">
+                  {preview.warnings.map((w, i) => (
+                    <p
+                      key={i}
+                      className="flex items-start gap-1.5 text-[12px] text-[var(--fg-soft)]"
+                    >
+                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-[var(--warn)]" />
+                      {w}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {preview.rows.length > 0 ? (
+                <div className="max-h-52 overflow-auto">
+                  <table className="w-full text-left text-[12px]">
+                    <thead className="sticky top-0 bg-[var(--surface-2)] text-[var(--muted)]">
+                      <tr>
+                        <th className="px-3 py-1.5 font-[560]">Title</th>
+                        <th className="px-3 py-1.5 font-[560]">Layer</th>
+                        <th className="px-3 py-1.5 font-[560]">Start</th>
+                        <th className="px-3 py-1.5 font-[560]">End</th>
+                        <th className="px-3 py-1.5 font-[560]">Venue</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {preview.rows.map((r, i) => (
+                        <tr key={i}>
+                          <td className="px-3 py-1.5 text-[var(--fg)]">
+                            {r.title}
+                          </td>
+                          <td className="px-3 py-1.5 text-[var(--muted)]">
+                            {r.layer}
+                          </td>
+                          <td className="px-3 py-1.5 text-[var(--muted)]">
+                            {r.start?.replace('T', ' ').slice(0, 16) || '—'}
+                          </td>
+                          <td className="px-3 py-1.5 text-[var(--muted)]">
+                            {r.end?.replace('T', ' ').slice(0, 16) || '—'}
+                          </td>
+                          <td className="px-3 py-1.5 text-[var(--muted)]">
+                            {r.venue || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="px-3 py-3 text-[12px] text-[var(--muted)]">
+                  No valid rows to import — fix the flagged rows and re-upload.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleClose(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={runPreview}
+            disabled={!file || loading}
+            className="gap-1.5"
+          >
+            {loading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <CalendarRange className="h-3.5 w-3.5" />
+            )}
+            Preview
+          </Button>
+          <Button
+            size="sm"
+            onClick={commit}
+            disabled={!file || committing || preview?.row_count === 0}
+            className="gap-1.5"
+          >
+            {committing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="h-3.5 w-3.5" />
+            )}
+            Import {preview?.row_count ? `${preview.row_count} events` : ''}
           </Button>
         </DialogFooter>
       </DialogContent>

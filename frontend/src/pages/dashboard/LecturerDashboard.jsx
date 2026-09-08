@@ -13,10 +13,13 @@
  * Backend contract: apps/common/dashboard.py#LecturerDashboardView
  */
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { endOfDay, format, isToday, parseISO, startOfDay } from 'date-fns';
 import {
   AlertTriangle,
   ArrowRight,
   Bot,
+  CalendarClock,
   CheckCircle2,
   ClipboardList,
   Clock,
@@ -34,6 +37,7 @@ import {
 
 import { TimeAgo, Meter } from './DashboardPage.helpers';
 import AiInsightCard from '@/components/shared/AiInsightCard';
+import { calendarApi } from '@/services/api';
 
 /* ---------------------------------------------------------------- */
 /* Small atoms                                                       */
@@ -285,6 +289,66 @@ function AskedAbout({ items }) {
   );
 }
 
+function TodayAgenda({ events }) {
+  const items = events
+    .filter((e) => ['academic', 'office_hours', 'exams'].includes(e.layer))
+    .sort((a, b) => new Date(a.start) - new Date(b.start));
+  const showing = items.filter((e) => isToday(parseISO(e.start)));
+  const list = showing.length > 0 ? showing : items.slice(0, 3);
+  if (list.length === 0) return null;
+
+  return (
+    <section className="card p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <p className="eyebrow !mb-0">Today’s agenda</p>
+          <h3 className="mt-1 text-[15px] font-[640] tracking-[-0.01em]">
+            {showing.length > 0 ? `${showing.length} item${showing.length === 1 ? '' : 's'} today` : 'Your scheduled sessions'}
+          </h3>
+        </div>
+        <Link
+          to="/calendar"
+          className="inline-flex items-center gap-0.5 text-[12px] font-[600] text-[var(--accent-strong)] hover:underline"
+        >
+          Calendar
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {list.slice(0, 3).map((e) => {
+          const start = parseISO(e.start);
+          return (
+            <Link
+              key={e.id}
+              to="/calendar"
+              className="group rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)]/40 p-3 transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)]"
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+                  <CalendarClock className="h-3.5 w-3.5" aria-hidden />
+                </span>
+                <span className="num text-[13px] font-[680] text-[var(--fg)]">
+                  {format(start, 'h:mm a')}
+                </span>
+                <span className="ml-auto rounded-full bg-[var(--surface-2)] px-1.5 py-0.5 text-[9.5px] font-[600] uppercase tracking-wide text-[var(--muted)]">
+                  {e.layer === 'office_hours' ? 'Office hours' : e.layer === 'exams' ? 'Exam' : 'Lecture'}
+                </span>
+              </div>
+              <p className="mt-2 truncate text-[13px] font-[600]">{e.title}</p>
+              {e.venue && (
+                <p className="mt-0.5 flex items-center gap-1 truncate text-[11.5px] text-[var(--muted)]">
+                  <Clock className="h-3 w-3" aria-hidden />
+                  {e.venue}
+                </p>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function QuickGenerate() {
   return (
     <section className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--accent)]/20 bg-[var(--accent-soft)] p-5">
@@ -324,6 +388,31 @@ export default function LecturerDashboard({ dash, firstName }) {
   const asked = dash?.asked_about_materials || [];
   const pipeline = dash?.pipeline || {};
 
+  const { data: todayEvents } = useQuery({
+    queryKey: ['lecturer-today'],
+    queryFn: () =>
+      calendarApi.listEventsLight({
+        start: startOfDay(new Date()).toISOString(),
+        end: endOfDay(new Date()).toISOString(),
+        layer: 'academic',
+      }),
+    staleTime: 30_000,
+  });
+  const { data: officeHours } = useQuery({
+    queryKey: ['lecturer-office-hours'],
+    queryFn: () =>
+      calendarApi.listEventsLight({
+        start: startOfDay(new Date()).toISOString(),
+        end: endOfDay(new Date()).toISOString(),
+        layer: 'office_hours',
+      }),
+    staleTime: 30_000,
+  });
+  const todayList = [
+    ...(todayEvents?.results || todayEvents || []),
+    ...(officeHours?.results || officeHours || []),
+  ];
+
   const kpis = [
     { icon: GraduationCap,      label: 'Active courses',     value: k.active_courses ?? 0,    hint: 'Assigned this term' },
     { icon: Users,              label: 'Students enrolled',  value: k.students_enrolled ?? 0, hint: 'Across your courses' },
@@ -362,6 +451,7 @@ export default function LecturerDashboard({ dash, firstName }) {
       {/* Main grid */}
       <div className="mt-6 grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
+          <TodayAgenda events={todayList} />
           <StudentsNeedingAttention rows={students} />
           <div className="grid gap-5 md:grid-cols-2">
             <Pipeline pipeline={pipeline} />

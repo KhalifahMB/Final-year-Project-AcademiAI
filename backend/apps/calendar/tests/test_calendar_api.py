@@ -7,7 +7,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
-from apps.calendar.models import CalendarEvent, CalendarLayer
+from apps.calendar.models import CalendarEvent, CalendarLayer, CalendarSchedule
 from apps.tenants.models import Tenant
 
 
@@ -279,3 +279,123 @@ def test_only_admin_can_create_schedule():
     assert resp_admin.status_code == 201, resp_admin.data
     assert resp_admin.data["uploaded_by"] == admin.id
     assert resp_admin.data["import_type"] == "lecture"
+
+
+# ---------------------------------------------------------------- Layers
+
+@pytest.mark.django_db
+def test_layers_returns_role_defaults():
+    tenant = _tenant("cal-layers")
+    student = _user("stu@cal-layers.edu", tenant)
+    lecturer = _user("lec@cal-layers.edu", tenant, role="lecturer")
+    admin = _user("adm@cal-layers.edu", tenant, role="tenant_admin")
+
+    student_layers = _auth(student).get("/api/v1/calendar/events/layers/")
+    assert student_layers.status_code == 200
+    assert student_layers.data["default_layers"] == ["personal", "academic", "exams", "institution"]
+
+    lecturer_layers = _auth(lecturer).get("/api/v1/calendar/events/layers/")
+    assert lecturer_layers.status_code == 200
+    assert lecturer_layers.data["default_layers"] == [
+        "personal", "academic", "office_hours", "institution",
+    ]
+
+    admin_layers = _auth(admin).get("/api/v1/calendar/events/layers/")
+    assert admin_layers.status_code == 200
+    assert {"personal", "academic", "exams", "office_hours", "institution"} == {
+        item["key"] for item in admin_layers.data["all_layers"]
+    }
+
+
+# ---------------------------------------------------------------- Import wizard
+
+@pytest.mark.django_db
+def test_schedule_preview_returns_validated_rows():
+    tenant = _tenant("cal-preview")
+    admin = _user("adm@cal-preview.edu", tenant, role="tenant_admin")
+
+    csv_bytes = (
+        "title,start,end,layer,venue\n"
+        "Intro to CS,2026-09-15 09:00,2026-09-15 10:00,academic,LT-1\n"
+        "Bad row,2026-09-16 09:00,2026-09-16 08:00,academic,LT-2\n"
+        "Broken session,,,personal,\n"
+    ).encode("utf-8")
+
+    import io
+    from rest_framework.parsers import MultiPartParser
+
+    client = _auth(admin)
+    resp = client.post(
+        "/api/v1/calendar/schedules/preview/",
+        {"source_format": "csv", "file": io.BytesIO(csv_bytes)},
+        format="multipart",
+    )
+    assert resp.status_code == 200, resp.data
+    assert resp.data["row_count"] == 1
+    assert any("Bad row" in w for w in resp.data["warnings"])
+    assert any("Broken session" in w for w in resp.data["warnings"])
+
+
+@pytest.mark.django_db
+def test_schedule_preview_requires_admin():
+    tenant = _tenant("cal-preview-rbac")
+    student = _user("stu@cal-preview-rbac.edu", tenant)
+
+    import io
+
+    csv_bytes = b"title,start,end,layer\nA,2026-09-15 09:00,2026-09-15 10:00,academic"
+    resp = _auth(student).post(
+        "/api/v1/calendar/schedules/preview/",
+        {"source_format": "csv", "file": io.BytesIO(csv_bytes)},
+        format="multipart",
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.django_db
+def test_schedule_commit_creates_events():
+    tenant = _tenant("cal-commit")
+    admin = _user("adm@cal-commit.edu", tenant, role="tenant_admin")
+
+    csv_bytes = (
+        "title,start,end,layer,venue,course_code\n"
+        "Intro to CS,2026-09-15 09:00,2026-09-15 10:00,academic,LT-1,CS101\n"
+        "Final Exam,2026-12-01 09:00,2026-12-01 11:00,exams,MC-2,CS101\n"
+    ).encode("utf-8")
+
+    import io
+
+    resp = _auth(admin).post(
+        "/api/v1/calendar/schedules/preview-commit/",
+        {
+            "source_format": "csv",
+            "import_type": "lecture",
+            "title": "Sem 1 timetable",
+            "file": io.BytesIO(csv_bytes),
+        },
+        format="multipart",
+    )
+    assert resp.status_code == 200, resp.data
+    assert resp.data["success"] is True
+    assert resp.data["event_count"] == 2
+
+    schedule = CalendarSchedule.objects.get(tenant=tenant)
+    assert schedule.committed is True
+    assert schedule.import_type == "lecture"
+
+    events = CalendarEvent.objects.filter(tenant=tenant)
+    assert events.count() == 2
+    assert events.filter(layer=CalendarLayer.ACADEMIC, course_code="CS101").exists()
+    assert events.filter(layer=CalendarLayer.EXAMS, course_code="CS101").exists()
+
+
+@pytest.mark.django_db
+def test_schedule_template_download():
+    tenant = _tenant("cal-template")
+    admin = _user("adm@cal-template.edu", tenant, role="tenant_admin")
+
+    resp = _auth(admin).get("/api/v1/calendar/schedules/template/")
+    assert resp.status_code == 200
+    body = resp.content.decode("utf-8")
+    assert body.startswith("title,start,end")
+    assert "Intro to CS" in body

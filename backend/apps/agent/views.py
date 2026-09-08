@@ -3,11 +3,14 @@ Agent views: SSE streaming endpoint, identity manifest, settings, sessions.
 """
 import json
 import logging
+import uuid
 
 from django.conf import settings
+from django.core.files.storage import default_storage
 from django.http import StreamingHttpResponse
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -192,7 +195,7 @@ class AgentSettingsView(APIView):
     """
     GET/PUT /api/v1/agent/settings/
     Read or update the current user's agent preferences (default agent, tone,
-    AI filters, reminders, visibility).
+    AI filters, reminders, visibility, avatar).
     """
     permission_classes = [IsTenantMember]
 
@@ -214,6 +217,59 @@ class AgentSettingsView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+_ALLOWED_AVATAR_TYPES = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/webp": "webp",
+    "image/svg+xml": "svg",
+}
+
+
+@extend_schema(tags=["Agent"])
+class AgentAvatarUploadView(APIView):
+    """
+    POST /api/v1/agent/avatar/
+    Upload a custom agent avatar image. Accepts image/png, image/jpeg,
+    image/webp and image/svg+xml (max 1 MB). Persists the file and returns the
+    public URL to store in AgentSettings.avatar.
+    """
+    permission_classes = [IsTenantMember]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        from apps.common.throttling import UploadRateThrottle
+
+        throttle = UploadRateThrottle()
+        if not throttle.allow_request(request, self):
+            return Response(
+                {"success": False, "error": {"detail": "Upload rate limit exceeded."}},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        file = request.FILES.get("file")
+        if not file:
+            return Response(
+                {"success": False, "error": {"detail": "file field is required."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if file.size > 1_048_576:
+            return Response(
+                {"success": False, "error": {"detail": "Image must be 1 MB or smaller."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        ext = _ALLOWED_AVATAR_TYPES.get(file.content_type or "")
+        if not ext:
+            return Response(
+                {"success": False, "error": {"detail": "Unsupported image type."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        name = default_storage.save(
+            f"agent/avatars/{uuid.uuid4().hex}.{ext}", file
+        )
+        return Response({"avatar": default_storage.url(name)})
 
 
 @extend_schema(tags=["Agent"])

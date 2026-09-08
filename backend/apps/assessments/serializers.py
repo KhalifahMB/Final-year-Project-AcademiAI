@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Quiz, QuizQuestion, QuizAttempt
+from .answer_utils import is_answer_correct
 
 
 def _validate_tenant_quiz(quiz, request):
@@ -160,24 +161,10 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
         if not (is_owner or is_staff):
             return None
 
-        def _norm(value):
-            return value.strip().lower() if isinstance(value, str) else value
-
         review = []
         for q in obj.quiz.questions.all().order_by("order_index"):
             user_ans = obj.answers.get(str(q.id)) if obj.answers else None
-            ca = q.correct_answer or {}
-            # Correct if either: matches the whole correct_answer object,
-            # matches `index`, or matches `value` (case-insensitive for
-            # strings).
-            is_correct = bool(
-                user_ans is not None
-                and (
-                    user_ans == ca
-                    or _norm(user_ans) == _norm(ca.get("index"))
-                    or _norm(user_ans) == _norm(ca.get("value"))
-                )
-            )
+            is_correct = is_answer_correct(q.correct_answer, user_ans)
             review.append(
                 {
                     "question_id": str(q.id),
@@ -185,7 +172,7 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
                     "question_type": q.question_type,
                     "options": q.options or [],
                     "user_answer": user_ans,
-                    "correct_answer": ca,
+                    "correct_answer": q.correct_answer or {},
                     "is_correct": is_correct,
                     "explanation": q.explanation or "",
                 }

@@ -212,17 +212,23 @@ def test_manifest_delivers_role_gated_identities_and_defaults():
     student = _make_user(tenant, "ident@identities-uni.edu", role="student")
     student_result = identities_for_user(student)
     student_keys = {a["key"] for a in student_result["agents"]}
-    assert student_result["default_key"] == "tutor"
-    assert {"tutor", "mentor", "planner", "librarian"} <= student_keys
-    assert "exec" not in student_keys
-    assert "analyst" not in student_keys
+    assert student_result["default_key"] == "student"
+    assert student_keys == {"student"}
+    assert "admin" not in student_keys
+    assert "lecturer" not in student_keys
+
+    lecturer = _make_user(tenant, "lect@identities-uni.edu", role="lecturer")
+    lecturer_result = identities_for_user(lecturer)
+    lecturer_keys = {a["key"] for a in lecturer_result["agents"]}
+    assert lecturer_result["default_key"] == "lecturer"
+    assert lecturer_keys == {"lecturer"}
 
     admin = _make_user(tenant, "admin@identities-uni.edu", role="tenant_admin")
     admin_result = identities_for_user(admin)
     admin_keys = {a["key"] for a in admin_result["agents"]}
-    assert admin_result["default_key"] == "exec"
-    assert {"exec", "analyst", "planner", "librarian"} <= admin_keys
-    assert "tutor" not in admin_keys
+    assert admin_result["default_key"] == "admin"
+    assert admin_keys == {"admin"}
+    assert "student" not in admin_keys
 
     # Presence is stable per user+agent (ssrg), never empty.
     for agent in student_result["agents"]:
@@ -230,10 +236,10 @@ def test_manifest_delivers_role_gated_identities_and_defaults():
         assert agent["avatar"].startswith("/avatars/")
 
     # resolve_agent_key rejects out-of-role keys and falls back to the default.
-    assert resolve_agent_key("", "student") == "tutor"
-    assert resolve_agent_key("exec", "student") == "tutor"
-    assert resolve_agent_key("mentor", "student") == "mentor"
-    assert resolve_agent_key("", "tenant_admin") == "exec"
+    assert resolve_agent_key("", "student") == "student"
+    assert resolve_agent_key("admin", "student") == "student"
+    assert resolve_agent_key("lecturer", "student") == "student"
+    assert resolve_agent_key("", "tenant_admin") == "admin"
 
 
 @pytest.mark.django_db
@@ -245,14 +251,14 @@ def test_agent_identities_settings_and_sessions_api():
     resp = client.get("/api/v1/agent/identities/")
     assert resp.status_code == 200
     payload = resp.json()
-    assert payload["default_key"] == "tutor"
+    assert payload["default_key"] == "student"
     assert payload["settings"] is not None
     assert payload["settings"]["tone"] == "balanced"
 
     resp = client.put(
         "/api/v1/agent/settings/",
         {
-            "default_agent": "mentor",
+            "default_agent": "student",
             "tone": "coach",
             "filters": {"ableism": True, "reading_order": True},
             "reminders_enabled": False,
@@ -261,16 +267,16 @@ def test_agent_identities_settings_and_sessions_api():
     )
     assert resp.status_code == 200
     assert resp.json()["tone"] == "coach"
-    assert resp.json()["default_agent"] == "mentor"
+    assert resp.json()["default_agent"] == "student"
 
     resp = client.post(
         "/api/v1/agent/sessions/",
-        {"title": "Revision help", "agent_key": "mentor", "context_type": "plans"},
+        {"title": "Revision help", "agent_key": "student", "context_type": "plans"},
         format="json",
     )
     assert resp.status_code == 201
     session_id = resp.json()["id"]
-    assert resp.json()["agent_key"] == "mentor"
+    assert resp.json()["agent_key"] == "student"
 
     resp = client.get("/api/v1/agent/sessions/")
     assert resp.status_code == 200
@@ -307,14 +313,14 @@ def test_agent_stream_creates_resumable_session_in_dev_mode():
 
     resp = client.post(
         "/api/v1/agent/stream/",
-        {"message": "Help me plan", "context_type": "plans", "agent": "planner"},
+        {"message": "Help me plan", "context_type": "plans", "agent": "student"},
         format="json",
     )
     assert resp.status_code == 200
     body = b"".join(resp.streaming_content).decode()
 
     session = AgentSession.objects.get(user=user)
-    assert session.agent_key == "planner"
+    assert session.agent_key == "student"
     assert session.context_type == "plans"
     assert f'"session_id": "{session.id}"' in body
 

@@ -48,6 +48,15 @@ class QuizQuestion(TenantScopedModel):
     correct_answer = models.JSONField(default=dict, blank=True)
     explanation = models.TextField(blank=True)
     order_index = models.PositiveIntegerField(default=0)
+    # Chunk the question was generated from (AI generation attributes this);
+    # drives resource quality scoring ("referenced in successful quiz answers").
+    source_chunk = models.ForeignKey(
+        "resources.ResourceChunk",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
 
     class Meta:
         db_table = "quiz_questions"

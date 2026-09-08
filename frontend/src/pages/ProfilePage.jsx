@@ -43,6 +43,7 @@ import { profileSchema, passwordChangeSchema } from '@/lib/validations';
 import api, { platformApi, authApi } from '@/services/api';
 import { getTenantInfo } from '@/lib/tenant';
 import { toast } from 'sonner';import {
+  Bot,
   Building2,
   Check,
   KeyRound,
@@ -76,6 +77,7 @@ const SECTIONS = [
   { id: 'security', label: 'Account & security', hint: 'Email, password, sessions', icon: ShieldCheck },
   { id: 'appearance', label: 'Appearance', hint: 'Theme', icon: Sun },
   { id: 'notifications', label: 'Notifications', hint: 'Email preferences', icon: Megaphone },
+  { id: 'agent', label: 'AI Agents', hint: 'Assistant, tone & avatar', icon: Bot },
   { id: 'workspace', label: 'Workspace', hint: 'Institution & shortcuts', icon: LayoutDashboard },
 ];
 
@@ -920,12 +922,23 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {section === 'agent' && (
+          <div className="max-w-2xl space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold">AI Agents</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Pick your assigned assistant, its tone and a custom avatar.
+              </p>
+            </div>
+            <AgentSettings embedded={false} />
+          </div>
+        )}
+
         {section === 'workspace' && (
           <div className="max-w-2xl space-y-6">
             <WorkspaceShortcutsCard user={user} />
             {(user?.tenant || user?.tenant_detail) && !isSuper ? <InstitutionCard user={user} /> : null}
             {showAcademic ? <AcademicCard user={user} /> : null}
-            <AgentSettings />
           </div>
         )}
           </div>

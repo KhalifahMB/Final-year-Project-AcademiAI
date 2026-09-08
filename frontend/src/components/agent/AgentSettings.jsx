@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Bot, Check, Loader2, X } from 'lucide-react';
+import { Bot, Check, Loader2, Upload, X } from 'lucide-react';
 import { useAgent } from '@/hooks/useAgent';
+import { agentApi } from '@/services/api';
+import { toast } from 'sonner';
 
 const TONES = [
   { value: 'concise', label: 'Concise', desc: 'Short, pointed answers' },
@@ -9,21 +11,22 @@ const TONES = [
   { value: 'coach', label: 'Coach', desc: 'Encouraging, pushes you' },
 ];
 
-const FILTER_META = {
-  ableism: {
-    label: 'Accessible language',
-    desc: 'Swap ableist idioms for neutral phrasing',
-  },
-  reading_order: {
-    label: 'Reading order',
-    desc: 'Normalize mixed RTL/LTR text to left-to-right',
-  },
-};
+// Curated avatar set (no emojis): authored SVG glyphs shipped with the app.
+const AVATAR_OPTIONS = [
+  { src: '/avatars/tutor.svg', label: 'Scholar' },
+  { src: '/avatars/mentor.svg', label: 'Mentor' },
+  { src: '/avatars/planner.svg', label: 'Planner' },
+  { src: '/avatars/librarian.svg', label: 'Librarian' },
+  { src: '/avatars/analyst.svg', label: 'Analyst' },
+  { src: '/avatars/exec.svg', label: 'Executive' },
+];
 
 export default function AgentSettings({ embedded = false, onClose } = {}) {
   const { agents, agentKey, setAgent, settings, saveSettings, identity } =
     useAgent();
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
 
   const busy = saving || !agents.length;
 
@@ -38,6 +41,22 @@ export default function AgentSettings({ embedded = false, onClose } = {}) {
       await saveSettings(patch);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAvatarFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { avatar } = await agentApi.uploadAvatar(file);
+      update({ avatar });
+      toast.success('Agent avatar updated');
+    } catch {
+      toast.error('Could not upload that image');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -151,45 +170,83 @@ export default function AgentSettings({ embedded = false, onClose } = {}) {
 
         <div className="space-y-2 border-t border-[var(--border)] pt-3">
           <span className="block text-[11px] font-[600] uppercase tracking-wide text-[var(--muted)]">
-            AI filters
+            Avatar
           </span>
-          {Object.entries(FILTER_META).map(([key, meta]) => {
-            const active = settings.filters?.[key] !== false;
-            return (
-              <div key={key} className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {AVATAR_OPTIONS.map((opt) => {
+              const active =
+                settings.avatar === opt.src
+                  ? 1
+                  : !settings.avatar && identity?.avatar === opt.src
+                    ? 1
+                    : 0;
+              return (
                 <button
+                  key={opt.src}
                   type="button"
-                  role="switch"
-                  aria-checked={active}
-                  aria-label={meta.label}
-                  onClick={() =>
-                    update({ filters: { [key]: !active } })
-                  }
+                  title={opt.label}
+                  aria-label={`Use ${opt.label} avatar`}
+                  aria-pressed={active === 1}
+                  onClick={() => update({ avatar: opt.src })}
                   className={cn(
-                    'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors',
+                    'relative h-9 w-9 overflow-hidden rounded-full ring-2 transition-all',
                     active
-                      ? 'bg-[var(--accent)]'
-                      : 'bg-[var(--surface-2)] border border-[var(--border)]',
+                      ? 'ring-[var(--accent)]'
+                      : 'ring-[var(--border)] hover:ring-[var(--accent)]/50',
                   )}
                 >
-                  <span
-                    className={cn(
-                      'inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform',
-                      active ? 'translate-x-[18px]' : 'translate-x-0.5',
-                    )}
+                  <img
+                    src={opt.src}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    draggable={false}
                   />
+                  {active === 1 && (
+                    <span className="absolute inset-0 flex items-center justify-center bg-[var(--accent)]/25">
+                      <Check className="h-4 w-4 text-[var(--accent-strong)]" />
+                    </span>
+                  )}
                 </button>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12.5px] font-[560] leading-tight">
-                    {meta.label}
-                  </p>
-                  <p className="truncate text-[10.5px] text-[var(--muted)]">
-                    {meta.desc}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="flex h-9 items-center gap-1.5 rounded-full border border-dashed border-[var(--border)] px-2.5 text-[11.5px] text-[var(--muted)] transition-colors hover:border-[var(--accent)]/50 hover:text-[var(--fg)]"
+            >
+              {uploading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Upload className="h-3 w-3" />
+              )}
+              Upload
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={handleAvatarFile}
+            />
+            {settings.avatar && !AVATAR_OPTIONS.some((o) => o.src === settings.avatar) && (
+              <span
+                className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full ring-2 ring-[var(--accent)]"
+                title="Custom upload (click avatar option to switch back)"
+              >
+                <img
+                  src={settings.avatar}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              </span>
+            )}
+          </div>
+          <p className="truncate text-[10.5px] text-[var(--muted)]">
+            {settings.avatar
+              ? 'Custom avatar applied'
+              : `Default for ${identity?.name || 'agent'}. Pick any avatar or upload your own.`}
+          </p>
         </div>
 
         <div className="flex items-center gap-2 border-t border-[var(--border)] pt-3">

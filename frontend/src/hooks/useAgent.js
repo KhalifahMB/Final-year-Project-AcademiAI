@@ -6,8 +6,9 @@ const DEFAULT_SETTINGS = {
   enabled: true,
   default_agent: '',
   tone: 'balanced',
-  filters: { ableism: true, reading_order: true },
+  filters: { ableism: false, reading_order: false },
   reminders_enabled: true,
+  avatar: '',
 };
 
 function loadLocalPreference() {
@@ -102,10 +103,11 @@ export function useAgent() {
       window.removeEventListener('academiai:agent-settings-changed', handler);
   }, []);
 
-  const identity = useMemo(
-    () => agents.find((a) => a.key === agentKey) || agents[0],
-    [agents, agentKey],
-  );
+  const identity = useMemo(() => {
+    const base = agents.find((a) => a.key === agentKey) || agents[0];
+    if (!base) return null;
+    return settings.avatar ? { ...base, avatar: settings.avatar } : base;
+  }, [agents, agentKey, settings]);
 
   const activeSession = useMemo(
     () => sessions.find((s) => s.id === activeSessionId) || null,
@@ -150,6 +152,7 @@ export function useAgent() {
             tone: next.tone,
             filters: next.filters,
             reminders_enabled: next.reminders_enabled,
+            avatar: next.avatar || '',
           })
           .catch(() => {});
       }

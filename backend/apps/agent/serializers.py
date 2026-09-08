@@ -54,8 +54,9 @@ class AgentToolExecutionSerializer(serializers.ModelSerializer):
 class AgentSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = AgentSettings
-        fields = ["enabled", "default_agent", "tone", "filters", "reminders_enabled"]
+        fields = ["enabled", "default_agent", "tone", "filters", "reminders_enabled", "avatar"]
         extra_kwargs = {
             "default_agent": {"required": False, "allow_blank": True},
             "filters": {"required": False},
+            "avatar": {"required": False, "allow_blank": True},
         }

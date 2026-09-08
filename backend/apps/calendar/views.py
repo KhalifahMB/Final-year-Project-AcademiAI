@@ -17,6 +17,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
 from apps.common.permissions import IsAdminRole, IsTenantMember
@@ -152,6 +153,25 @@ class CalendarEventViewSet(TenantModelViewSet):
             return Response(serializer.data)
         return super().list(request, *args, **kwargs)
 
+    @action(detail=False, methods=["get"], url_path="layers")
+    def layers(self, request):
+        """Return the full layer catalogue plus the role's default active set.
+
+        The frontend uses ``default_layers`` to initialise which calendar
+        layers are toggled for the signed-in user's role.
+        """
+        all_layers = [{"key": value, "label": label} for value, label in CalendarLayer.choices]
+        defaults = {
+            "student": ["personal", "academic", "exams", "institution"],
+            "lecturer": ["personal", "academic", "office_hours", "institution"],
+            "tenant_admin": [value for value, _ in CalendarLayer.choices],
+        }
+        role = request.user.role if not request.user.is_superuser else "tenant_admin"
+        return Response({
+            "all_layers": all_layers,
+            "default_layers": defaults.get(role, defaults["student"]),
+        })
+
     @action(detail=False, methods=["get"], url_path="upcoming")
     def upcoming(self, request):
         """Return the next N events (agenda-style)."""
@@ -216,7 +236,10 @@ class CalendarScheduleViewSet(TenantModelViewSet):
 
     def get_permissions(self):
         perms = super().get_permissions()
-        if self.action in ("create", "update", "partial_update", "destroy"):
+        if self.action in (
+            "create", "update", "partial_update", "destroy",
+            "preview", "preview_commit", "template",
+        ):
             return [IsAdminRole()] + perms
         return perms
 
@@ -225,3 +248,116 @@ class CalendarScheduleViewSet(TenantModelViewSet):
             tenant=self.request.user.tenant,
             uploaded_by=self.request.user,
         )
+
+    @action(detail=False, methods=["get"], url_path="template")
+    def template(self, request):
+        """Download a CSV template for timetable uploads."""
+        from .services.schedule_parse import template_csv_bytes
+
+        content = template_csv_bytes()
+        response = HttpResponse(content, content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="timetable-template.csv"'
+        return response
+
+    @action(detail=False, methods=["post"], url_path="preview", parser_classes=[MultiPartParser])
+    def preview(self, request):
+        """Parse an uploaded CSV/XLSX and return validated rows + warnings.
+
+        This is a dry-run: nothing is persisted. The client renders the
+        preview and then calls ``preview-commit`` with the same body to
+        actually create the events.
+        """
+        source_format = (request.data.get("source_format") or "csv").lower()
+        import_type = request.data.get("import_type") or "lecture"
+        file = request.FILES.get("file")
+        if file is None:
+            return Response(
+                {"success": False, "error": {"detail": "file field is required."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from .services.schedule_parse import parse_schedule
+
+        rows, warnings = parse_schedule(
+            source_format, file.read(), filename=file.name or ""
+        )
+        return Response({"rows": rows, "warnings": warnings, "row_count": len(rows)})
+
+    @action(detail=False, methods=["post"], url_path="preview-commit", parser_classes=[MultiPartParser])
+    def preview_commit(self, request):
+        """Commit a previously previewed timetable as CalendarEvents.
+
+        Accepts the same multipart body as ``preview`` plus optional
+        ``faculty`` / ``department`` links, and materialises the parsed rows
+        into events under the tenant. Only tenant admins may re-run this.
+        """
+        from django.db import transaction
+
+        from apps.academics.models import Faculty, Department
+        from .models import CalendarEvent
+        from .services.schedule_parse import parse_schedule, rows_to_events
+
+        source_format = (request.data.get("source_format") or "csv").lower()
+        import_type = request.data.get("import_type") or "lecture"
+        title = (request.data.get("title") or "").strip()[:255]
+        file = request.FILES.get("file")
+        if file is None:
+            return Response(
+                {"success": False, "error": {"detail": "file field is required."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        raw = file.read()
+        rows, warnings = parse_schedule(source_format, raw, filename=file.name or "")
+        layer_default = {
+            "lecture": CalendarLayer.ACADEMIC,
+            "exam": CalendarLayer.EXAMS,
+            "events": CalendarLayer.INSTITUTION,
+        }.get(import_type, CalendarLayer.ACADEMIC)
+
+        faculty = department = None
+        faculty_id = request.data.get("faculty")
+        department_id = request.data.get("department")
+        if faculty_id:
+            try:
+                faculty = Faculty.objects.get(id=faculty_id, tenant=request.user.tenant)
+            except Faculty.DoesNotExist:
+                faculty = None
+        if department_id:
+            try:
+                department = Department.objects.get(id=department_id, tenant=request.user.tenant)
+            except Department.DoesNotExist:
+                department = None
+
+        events = rows_to_events(
+            rows, request.user.tenant, request.user, import_type, layer_default
+        )
+
+        with transaction.atomic():
+            created_ids = []
+            for event in events:
+                event.save()
+                created_ids.append(str(event.id))
+
+            schedule = CalendarSchedule.objects.create(
+                tenant=request.user.tenant,
+                import_type=import_type,
+                title=title or f"{import_type.title()} timetable",
+                file_name=file.name or "",
+                source_format=source_format,
+                faculty=faculty,
+                department=department,
+                uploaded_by=request.user,
+                event_count=len(created_ids),
+                error_count=len(warnings),
+                import_log=warnings,
+                committed=True,
+            )
+
+        return Response({
+            "success": True,
+            "schedule_id": str(schedule.id),
+            "event_count": len(created_ids),
+            "error_count": len(warnings),
+            "warnings": warnings,
+        })

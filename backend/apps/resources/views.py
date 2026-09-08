@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from apps.common.throttling import AiRateThrottle, UploadRateThrottle
 from apps.common.viewsets import TenantModelViewSet
 from apps.resources.permissions import IsOwnerOrAdminForWrite
-from .models import Resource, ResourceVersion, ResourceSummary
+from .models import Resource, ResourceVersion, ResourceSummary, ResourceAccess
 from .serializers import (
     ResourceSerializer,
     ResourceVersionSerializer,
@@ -25,6 +25,27 @@ from apps.common.security.file_validation import ALLOWED_MIME_PREFIXES
 import uuid
 
 logger = logging.getLogger(__name__)
+
+
+def _record_resource_access(resource, user, access_type: str) -> None:
+    """Best-effort structured view/download event for lecturer analytics.
+
+    Runs inside the request's tenant context (the RLS GUC is set by
+    TenantContextMiddleware for the whole request), so no explicit
+    tenant_scope is needed. Analytics aggregation filters to enrolled
+    students, so staff usage never skews cohort metrics.
+    """
+    if user is None or not getattr(user, "tenant_id", None):
+        return
+    try:
+        ResourceAccess.objects.create(
+            tenant_id=user.tenant_id,
+            resource=resource,
+            user=user,
+            access_type=access_type,
+        )
+    except Exception:
+        logger.exception("Failed to record resource access resource=%s", resource.id)
 
 
 def _content_type_allowed(content_type: str) -> bool:
@@ -340,6 +361,7 @@ class ResourceViewSet(TenantModelViewSet):
         if not resource.storage_key:
             return Response({"detail": "No file uploaded."}, status=status.HTTP_404_NOT_FOUND)
         url = generate_presigned_download_url(resource.storage_key)
+        _record_resource_access(resource, request.user, ResourceAccess.AccessType.DOWNLOAD)
         return Response({"download_url": url})
 
     @action(detail=True, methods=["post"], throttle_classes=[UploadRateThrottle])
@@ -450,6 +472,8 @@ class ResourceViewSet(TenantModelViewSet):
             return Response(
                 {"detail": "No file uploaded."}, status=status.HTTP_404_NOT_FOUND
             )
+
+        _record_resource_access(resource, request.user, ResourceAccess.AccessType.VIEW)
 
         kind = _preview_kind(resource)
 

@@ -12,6 +12,8 @@
  * Backend contracts stay intact — reads the same aggregate payload.
  */
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { addDays, endOfDay, format, isToday, parseISO, startOfDay } from 'date-fns';
 import {
   Area,
   AreaChart,
@@ -25,6 +27,7 @@ import {
   ArrowRight,
   BookOpenCheck,
   CalendarClock,
+  CalendarDays,
   ClipboardList,
   Clock,
   FileText,
@@ -32,11 +35,13 @@ import {
   GraduationCap,
   MessageSquareText,
   Sparkles,
+  Target,
   TrendingUp,
 } from 'lucide-react';
 
 import { TimeAgo, Meter } from './DashboardPage.helpers';
 import AiInsightCard from '@/components/shared/AiInsightCard';
+import { calendarApi, plansApi } from '@/services/api';
 
 /* ---------------------------------------------------------------- */
 /* Sections                                                          */
@@ -422,6 +427,158 @@ function NewInLibrary({ items }) {
   );
 }
 
+function MyWeek({ events }) {
+  const sorted = [...events].sort(
+    (a, b) => new Date(a.start) - new Date(b.start),
+  );
+  return (
+    <section className="card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="eyebrow !mb-0">My week</p>
+          <h3 className="mt-1 text-[15px] font-[640] tracking-[-0.01em]">
+            Next 7 days
+          </h3>
+        </div>
+        <Link
+          to="/calendar"
+          className="inline-flex items-center gap-0.5 text-[12px] font-[600] text-[var(--accent-strong)] hover:underline"
+        >
+          Calendar
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      {sorted.length === 0 ? (
+        <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] px-4 py-8 text-center">
+          <CalendarDays className="mx-auto h-5 w-5 text-[var(--muted)]" aria-hidden />
+          <p className="mt-2 text-[13px] font-[600]">A clear week</p>
+          <p className="mt-0.5 text-[12px] text-[var(--muted)]">
+            Lectures, exams and study sessions will appear here.
+          </p>
+        </div>
+      ) : (
+        <ul className="-mx-2 space-y-1">
+          {sorted.slice(0, 5).map((e) => {
+            const start = parseISO(e.start);
+            const today = isToday(start);
+            return (
+              <li key={e.id}>
+                <Link
+                  to="/calendar"
+                  className="group flex items-center gap-3 rounded-[var(--radius-md)] px-2 py-2 transition-colors hover:bg-[var(--hover)]"
+                >
+                  <span
+                    className={`inline-flex h-9 w-12 shrink-0 flex-col items-center justify-center rounded-[var(--radius-md)] text-center ${
+                      today
+                        ? 'bg-[var(--accent)] text-[var(--on-accent)]'
+                        : 'bg-[var(--surface-2)]'
+                    }`}
+                  >
+                    <span className="text-[10px] font-[650] uppercase tracking-wide">
+                      {today ? 'Today' : format(start, 'EEE')}
+                    </span>
+                    <span className={`num text-[14px] font-[680] leading-none ${today ? '' : 'text-[var(--fg)]'}`}>
+                      {format(start, 'd')}
+                    </span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-[600]">{e.title}</p>
+                    <p className="mt-0.5 flex items-center gap-1 text-[11.5px] text-[var(--muted)]">
+                      <Clock className="h-3 w-3" aria-hidden />
+                      {format(start, 'h:mm a')}
+                      {e.end ? ` – ${format(parseISO(e.end), 'h:mm a')}` : ''}
+                      {e.venue && (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span className="truncate">{e.venue}</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-[550] uppercase tracking-wide text-[var(--muted)]">
+                    {e.layer === 'office_hours'
+                      ? 'Office hours'
+                      : e.layer === 'exams'
+                        ? 'Exam'
+                        : e.layer === 'institution'
+                          ? 'Institution'
+                          : e.layer === 'academic'
+                            ? 'Lecture'
+                            : 'Study'}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function ActivePlans({ items }) {
+  const plans = items.filter((p) => p.status === 'active');
+  return (
+    <section className="card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="eyebrow !mb-0">Active plans</p>
+          <h3 className="mt-1 text-[15px] font-[640] tracking-[-0.01em]">
+            Keep your study on track
+          </h3>
+        </div>
+        <Link
+          to="/planner"
+          className="inline-flex items-center gap-0.5 text-[12px] font-[600] text-[var(--accent-strong)] hover:underline"
+        >
+          Planner
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      {plans.length === 0 ? (
+        <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] px-4 py-8 text-center">
+          <Target className="mx-auto h-5 w-5 text-[var(--muted)]" aria-hidden />
+          <p className="mt-2 text-[13px] font-[600]">No active plans</p>
+          <p className="mt-0.5 text-[12px] text-[var(--muted)]">
+            Create a study plan in the planner and it will show up here.
+          </p>
+        </div>
+      ) : (
+        <ul className="-mx-2 space-y-1">
+          {plans.slice(0, 4).map((p) => {
+            const done = p.completed_task_count || 0;
+            const total = p.task_count || 0;
+            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+            return (
+              <li key={p.id}>
+                <Link
+                  to="/planner"
+                  className="group block rounded-[var(--radius-md)] px-2 py-2 transition-colors hover:bg-[var(--hover)]"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-[13px] font-[600]">{p.title}</p>
+                    {p.target_date && (
+                      <span className="shrink-0 text-[11px] text-[var(--muted)]">
+                        due {format(parseISO(p.target_date), 'MMM d')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Meter pct={pct} tone={pct >= 75 ? 'ok' : 'accent'} />
+                    <span className="shrink-0 text-[11px] font-[600] text-[var(--muted)] num">
+                      {done}/{total}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function QuickCTA({ firstName }) {
   return (
     <section className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--accent)]/20 bg-[var(--accent-soft)] p-5 dark:bg-[var(--accent-soft)]">
@@ -500,6 +657,23 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
   const timeline = studentActivity?.data?.timeline || [];
   const chartData = buildTotalSeries(timeline);
 
+  const { data: weekEvents } = useQuery({
+    queryKey: ['student-week'],
+    queryFn: () =>
+      calendarApi.listEventsLight({
+        start: startOfDay(new Date()).toISOString(),
+        end: endOfDay(addDays(new Date(), 7)).toISOString(),
+      }),
+    staleTime: 30_000,
+  });
+  const { data: planData } = useQuery({
+    queryKey: ['student-plans'],
+    queryFn: () => plansApi.list(),
+    staleTime: 30_000,
+  });
+  const weekEventsList = weekEvents?.results || weekEvents || [];
+  const plans = planData?.results || planData || [];
+
   // KPI strip
   const kpis = [
     { icon: GraduationCap, label: 'Enrolled', value: counts.enrollments ?? 0, hint: 'courses' },
@@ -558,10 +732,12 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
             loading={studentActivity.isLoading}
             statsRow={deriveActivityStats(timeline)}
           />
+          <ActivePlans items={plans} />
         </div>
         <div className="space-y-5">
           <QuickCTA firstName={firstName} />
           <UpNext items={upNext} />
+          <MyWeek events={weekEventsList} />
           <ConceptMastery items={concepts} />
         </div>
       </div>

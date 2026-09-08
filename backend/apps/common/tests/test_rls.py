@@ -18,6 +18,7 @@ RLS_TABLES = [
     "courses", "course_offerings", "lecturer_course_assignments", "course_enrollments",
     "student_profiles", "lecturer_profiles",
     "resources", "resource_versions", "resource_chunks", "resource_permissions", "resource_summaries",
+    "resource_accesses",
     "concepts", "concept_edges",
     "chat_sessions", "chat_messages", "chat_message_sources",
     "agent_sessions", "agent_tool_executions", "agent_settings",

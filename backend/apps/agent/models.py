@@ -66,6 +66,12 @@ class AgentSettings(TenantScopedModel):
         help_text="AI filters toggles, e.g. {'ableism': True, 'reading_order': True, 'itim': False}.",
     )
     reminders_enabled = models.BooleanField(default=True)
+    avatar = models.CharField(
+        max_length=300,
+        blank=True,
+        default="",
+        help_text="Optional custom avatar URL (uploaded image or curated SVG path).",
+    )
 
     def filter_enabled(self, name, default=True):
         return bool((self.filters or {}).get(name, default))
