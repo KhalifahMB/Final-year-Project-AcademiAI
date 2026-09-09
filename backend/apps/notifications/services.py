@@ -19,13 +19,56 @@ import logging
 
 from django.core.cache import cache
 
-from .models import Notification
+from .models import Notification, NotificationPreference
 
 logger = logging.getLogger(__name__)
 
 SYNC_TTL = 60  # seconds; mirrors the dashboard cache staleness
 
 BADGE_SEVERITIES = (Notification.Severity.WARN, Notification.Severity.CRITICAL)
+
+# Catalog of every notification kind the engine can emit, with a human
+# label/description/category and default severity. The settings UI lists
+# these so users can mute any kind explicitly. Severity here is informational
+# (rows drive live severity), except `always_on` kinds which cannot be muted.
+KIND_CATALOG = [
+    # student
+    {"kind": "course_behind", "label": "Courses falling behind", "category": "Learning", "severity": "warn",
+     "description": "When a course's progress drops behind its schedule."},
+    {"kind": "concept_low", "label": "Low concept mastery", "category": "Learning", "severity": "warn",
+     "description": "Concepts where your average is below 50%."},
+    {"kind": "quiz_available", "label": "Practice quizzes ready", "category": "Learning", "severity": "info",
+     "description": "New practice quizzes available for your material."},
+    {"kind": "new_material", "label": "New study material", "category": "Library", "severity": "info",
+     "description": "Fresh study material added to your library."},
+    # lecturer
+    {"kind": "students_at_risk", "label": "Students at risk", "category": "Teaching", "severity": "critical",
+     "description": "Cohort averages that have fallen below 50%."},
+    {"kind": "weak_concept", "label": "Weak concepts", "category": "Teaching", "severity": "warn",
+     "description": "Topics your cohort is averaging below 50% on."},
+    {"kind": "pipeline_failed", "label": "Processing failures", "category": "Library", "severity": "critical", "always_on": True,
+     "description": "Uploads that failed to process and need re-uploading."},
+    {"kind": "pipeline_indexing", "label": "Indexing in progress", "category": "Library", "severity": "info",
+     "description": "Uploads still being indexed and made searchable."},
+    # admin
+    {"kind": "material_uploaded", "label": "Materials uploaded", "category": "Library", "severity": "info",
+     "description": "New materials uploaded to the institution library."},
+]
+
+KIND_CATALOG_BY_KIND = {item["kind"]: item for item in KIND_CATALOG}
+
+
+def _disabled_kinds(user):
+    """Return the set of kinds currently muted by the user.
+
+    `always_on` kinds (e.g. processing failures) cannot be muted and are
+    always excluded from the disabled set regardless of stored state.
+    """
+    muted = NotificationPreference.objects.filter(
+        tenant_id=user.tenant_id, user=user, enabled=False
+    ).values_list("kind", flat=True)
+    always_on = {k for k, v in KIND_CATALOG_BY_KIND.items() if v.get("always_on")}
+    return set(muted) - always_on
 
 
 def _sync_cache_key(user):
@@ -196,7 +239,10 @@ def _compute_alerts(user):
 # Persistence + sync
 # ----------------------------------------------------------------------
 
-def _persist_alerts(user, alerts):
+def _persist_alerts(user, alerts, disabled=()):
+    if disabled:
+        disabled_set = set(disabled)
+        alerts = [a for a in alerts if a.get("kind") not in disabled_set]
     by_key = {a["key"]: a for a in alerts}
     unread = Notification.objects.filter(
         tenant_id=user.tenant_id, user=user, is_read=False,
@@ -204,6 +250,11 @@ def _persist_alerts(user, alerts):
     stale = unread.exclude(key__in=by_key.keys())
     if stale.exists():
         stale.delete()
+    if disabled:
+        # Drop any lingering unread rows for a now-muted kind.
+        muted_unread = unread.filter(kind__in=disabled_set)
+        if muted_unread.exists():
+            muted_unread.delete()
     for key, alert in by_key.items():
         defaults = {
             "kind": alert["kind"],
@@ -236,6 +287,8 @@ def sync_user_notifications(user, *, force=False):
 
     Returns the list of current alerts (each a dict), for callers that need
     the membership set. The upsert + stale-unread cleanup is idempotent.
+    Alerts whose kind the user has muted are suppressed, and any still-unread
+    rows for a now-muted kind are removed.
     """
     if not getattr(user, "tenant_id", None):
         return []
@@ -249,7 +302,7 @@ def sync_user_notifications(user, *, force=False):
             alerts = []
         cache.set(cache_key, alerts, SYNC_TTL)
     try:
-        _persist_alerts(user, alerts)
+        _persist_alerts(user, alerts, _disabled_kinds(user))
     except Exception:
         logger.exception("Could not persist notifications for user=%s", user.id)
     return alerts
@@ -284,3 +337,60 @@ def mark_all_read(user):
         is_read=False,
     ).update(is_read=True)
     return updated
+
+
+def preferences_for_user(user):
+    """Return the full kind catalog with each row's enabled state.
+
+    Every catalog kind is included so the settings UI can render the complete
+    list; an absent preference row means the kind is enabled by default.
+    `always_on` kinds report `mutable: False` and are always enabled.
+    """
+    enabled_map = dict(
+        NotificationPreference.objects.filter(
+            tenant_id=user.tenant_id, user=user, enabled=False
+        ).values_list("kind", "enabled")
+    )
+    hard_disabled = set(enabled_map)  # stored disabled rows
+    rows = []
+    for item in sorted(
+        KIND_CATALOG, key=lambda k: (k["category"], k["label"])
+    ):
+        kind = item["kind"]
+        always_on = bool(item.get("always_on"))
+        enabled = True if always_on else (kind not in hard_disabled)
+        rows.append({
+            "kind": kind,
+            "label": item["label"],
+            "category": item["category"],
+            "severity": item["severity"],
+            "description": item["description"],
+            "enabled": enabled,
+            "mutable": not always_on,
+        })
+    return rows
+
+
+def set_preference(user, kind, enabled):
+    """Set (or clear) a per-kind mute. `always_on` kinds are never muted."""
+    if kind not in KIND_CATALOG_BY_KIND:
+        return False
+    if KIND_CATALOG_BY_KIND[kind].get("always_on"):
+        return False
+    pref, created = NotificationPreference.objects.get_or_create(
+        tenant_id=user.tenant_id,
+        user=user,
+        kind=kind,
+        defaults={"enabled": enabled},
+    )
+    if not created and pref.enabled != enabled:
+        pref.enabled = enabled
+        pref.save(update_fields=["enabled"])
+    if enabled:
+        # Turning a kind back on clears any still-unread rows of that kind
+        # so the restored kind recomputes fresh on next sync.
+        Notification.objects.filter(
+            tenant_id=user.tenant_id, user=user, kind=kind
+        ).delete()
+    invalidate_cache(user)
+    return True

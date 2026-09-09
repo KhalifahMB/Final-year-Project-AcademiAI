@@ -40,7 +40,7 @@ import AvatarPicker from '@/components/shared/AvatarPicker';
 import Avatar from '@/components/shared/Avatar';
 import { useAuth } from '@/hooks/useAuth';
 import { profileSchema, passwordChangeSchema } from '@/lib/validations';
-import api, { platformApi, authApi } from '@/services/api';
+import api, { platformApi, authApi, notificationsApi } from '@/services/api';
 import { getTenantInfo } from '@/lib/tenant';
 import { toast } from 'sonner';import {
   Bot,
@@ -63,6 +63,7 @@ import { toast } from 'sonner';import {
   ArrowRight,
   LogOut,
   Mail,
+  Bell,
 } from 'lucide-react';
 
 const GENDERS = [
@@ -186,6 +187,100 @@ function AnnouncementPreferencesCard() {
           Warnings and Critical announcements are always emailed to you and
           cannot be turned off.
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function NotificationKindPreferencesCard() {
+  const qc = useQueryClient();
+  const prefsQ = useQuery({
+    queryKey: ['notification-kind-preferences'],
+    queryFn: notificationsApi.preferences,
+    staleTime: 30_000,
+  });
+
+  const toggle = useMutation({
+    mutationFn: ({ kind, enabled }) =>
+      notificationsApi.setPreference(kind, enabled),
+    onSuccess: (data, vars) => {
+      toast.success(
+        vars.enabled ? 'Alerts re-enabled' : 'Alerts muted for this type',
+      );
+      qc.setQueryData(['notification-kind-preferences'], (old) =>
+        old ? { preferences: data.preferences } : old,
+      );
+    },
+    onError: () => toast.error('Could not update notification preferences'),
+  });
+
+  const prefs = prefsQ.data?.preferences || [];
+
+  const groups = {};
+  for (const p of prefs) {
+    (groups[p.category] = groups[p.category] || []).push(p);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Bell className="h-4 w-4 text-primary" aria-hidden /> Alert types
+        </CardTitle>
+        <CardDescription>
+          Mute specific in-app alerts. Important system alerts (like processing
+          failures) stay on and cannot be turned off.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {prefsQ.isLoading ? (
+          <div className="space-y-2">
+            <div className="h-20 animate-pulse rounded-lg bg-muted/40" />
+            <div className="h-20 animate-pulse rounded-lg bg-muted/40" />
+          </div>
+        ) : (
+          Object.entries(groups).map(([category, rows]) => (
+            <div key={category}>
+              <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {category}
+              </h4>
+              <div className="space-y-2">
+                {rows.map((p) => (
+                  <div
+                    key={p.kind}
+                    className="flex items-start gap-3 rounded-lg border bg-muted/20 p-3"
+                  >
+                    <Checkbox
+                      id={`kind-${p.kind}`}
+                      checked={p.enabled}
+                      disabled={!p.mutable || toggle.isPending}
+                      onCheckedChange={(v) =>
+                        toggle.mutate({
+                          kind: p.kind,
+                          enabled: v === true,
+                        })
+                      }
+                    />
+                    <label
+                      htmlFor={`kind-${p.kind}`}
+                      className="space-y-0.5 text-sm"
+                    >
+                      <span className="font-medium">{p.label}</span>
+                      {!p.mutable && (
+                        <Badge variant="secondary" className="ml-2 text-[10px]">
+                          Always on
+                        </Badge>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {p.description}
+                      </p>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
       </CardContent>
     </Card>
   );
@@ -919,6 +1014,7 @@ export default function ProfilePage() {
         {section === 'notifications' && (
           <div className="max-w-2xl space-y-6">
             <AnnouncementPreferencesCard />
+            <NotificationKindPreferencesCard />
           </div>
         )}
 

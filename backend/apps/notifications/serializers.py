@@ -11,3 +11,10 @@ class NotificationSerializer(serializers.ModelSerializer):
             "is_read", "created_at",
         )
         read_only_fields = fields
+
+
+class NotificationPrefsUpdateSerializer(serializers.Serializer):
+    """Toggle one notification kind: `{kind, enabled}`."""
+
+    kind = serializers.CharField(max_length=60)
+    enabled = serializers.BooleanField()

@@ -146,6 +146,12 @@ export const platformApi = {
   },
 };
 
+/** Tenant log analyzer (tenant_admin only) — /api/v1/logs/ */
+export const logsApi = {
+  list: (params) => api.get('/logs/', { params }).then((r) => r.data),
+  analyze: (params) => api.get('/logs/analyze/', { params }).then((r) => r.data),
+};
+
 /** Chat session helpers — streaming send + rename/delete. */
 export const chatApi = {
   listSessions: () =>
@@ -312,6 +318,9 @@ export const notificationsApi = {
   unreadCount: () => api.get('/notifications/unread-count/').then((r) => r.data),
   markRead: (id) => api.post(`/notifications/${id}/read/`).then((r) => r.data),
   markAllRead: () => api.post('/notifications/read-all/').then((r) => r.data),
+  preferences: () => api.get('/notifications/preferences/').then((r) => r.data),
+  setPreference: (kind, enabled) =>
+    api.patch('/notifications/preferences/', { kind, enabled }).then((r) => r.data),
 };
 
 /** Calendar — layered, role-aware events + ICS export + timetable schedules. */

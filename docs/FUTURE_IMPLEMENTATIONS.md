@@ -8,26 +8,23 @@ up without archaeology.
 
 ## 1. Tenant self-registration with platform approval
 
-**Status:** scaffolded (status field + platform console exist).
+**Status:** IMPLEMENTED.
 
-Current flow: platform operators provision tenants in the Platform Console
-(`/platform`, superuser-only) or Django admin. A tenant can be created with
-`status=pending` and later approved (`status=active`) from the console — the
-"Approve" button already works.
+Flow is live end-to-end:
 
-**Full future flow:**
+1. Public form at `/request-institution` (`RequestInstitutionPage.jsx`) —
+   collects requester name/email/role/phone, institution name/domain/type/
+   estimated students, and notes.
+2. Backend `POST /api/v1/tenant-requests/` creates a `TenantRequest` record
+   with auto-generated slug and duplicate-submission guard.
+3. Superuser reviews from Platform Console `/platform/requests`
+   (`RequestsPage.jsx`) — approve (with plan assignment + storage quota) or
+   reject with notes. Approval auto-provisions a live `Tenant`.
+4. Requester is notified of the decision.
 
-1. Public "Register your institution" form (name, slug, owner email,
-   justification, supporting documents).
-2. Backend creates `Tenant(status=pending)` and emails the platform team.
-3. Platform operator reviews documents (future: document upload to MinIO
-   under `tenants/{id}/verification/`), then activates from the console.
-4. On activation, the designated **owner email is promoted to `role=admin`**
-   of that tenant automatically (audit-logged as `tenant.owner_promoted`).
-
-**Where to build:** new public view in `apps/tenants/views.py`
-(`TenantRegistrationView`), a `owner_email` column on `Tenant`, and an
-activation hook in `TenantViewSet.perform_update`.
+**Not yet implemented:** document upload for verification evidence (MinIO
+under `tenants/{id}/verification/`), automatic owner-email promotion to
+`role=admin` on activation.
 
 ---
 
@@ -52,7 +49,7 @@ justification, status[pending/approved/rejected], decided_by, decided_at)`.
 
 **Status:** storage exists, enforcement does not.
 
-`Tenant.allowed_email_domains` (JSON list, e.g. `["atbu.edu.ng"]`) is already
+`Tenant.allowed_email_domains` (JSON list, e.g. `["university.edu.ng"]`) is already
 on the model and editable via migration when needed. Enforcement point when
 implemented: `apps/accounts/services.py::signup_user` — reject signups whose
 email domain is not in the list (only for tenants that configure it; empty
@@ -61,7 +58,7 @@ list = no restriction). Also surface it in the signup UI as a hint
 
 ---
 
-## 4. Per-tenant subdomains (`atbu.academiai.app`)
+## 4. Per-tenant subdomains (`university.academiai.app`)
 
 **Status:** decision made — implement **after** core project completion. No
 code was added now so nothing breaks.
@@ -165,10 +162,12 @@ preview endpoint, surfaced as "Recently viewed" + completion %.
 - **Auto-enrollment depth:** students are auto-enrolled into *active
   offerings of their programme's department* at email verification. Session-
   specific or curriculum-level enrollment rules are future work.
-- **Notifications center:** in-app notification feed (suspension, approvals,
-  quiz published) alongside email.
+- **Notifications center:** notification *preferences* (per-kind toggles, email
+  dispatch) are implemented; the **in-app notification feed** (suspension,
+  approvals, quiz published) alongside email is still future work.
 - **Platform operator analytics:** cross-tenant charts live only in Django
-  admin; the React console currently manages tenants but doesn't chart them.
+  admin; the React console manages tenants, requests, announcements, healthy
+  and audit but does not chart usage.
 - **Audit log retention policy** and export (compliance).
 - **Backup/DR runbook** for Postgres + MinIO.
 

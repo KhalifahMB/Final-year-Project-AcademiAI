@@ -222,3 +222,61 @@ Frontend (`npm test`, 6 passing):
 - unauthenticated redirect to login; authenticated dashboard render
 - role gate: student denied admin page; admin allowed
 - login form: invalid email blocked client-side; API error surfaced
+
+## D19 — Landing page section architecture
+
+**Decision:** The landing page uses a flat list of `<section>` elements inside a
+single `.landing-page` wrapper. Each section is independently styled with
+oklch tokens from `index.css`. Nav links use hash anchors. No client-side
+router is involved — the landing page is a single rendered component
+(`LandingPage.jsx`) with no role gating.
+
+**Section stack (top to bottom):** Hero → Signal bar → What-is (manifesto) →
+Product (3-card principles grid) → Photo band → How → Knowledge → Agents →
+Planner → Calendar → Platform depth → Audiences → Directory → Roadmap →
+Case study → CTA → Footer.
+
+**Design-system compliance:** All sections use the shared glass-material
+palette (paper, panel, line tokens) and the unified section spacing token
+`--landing-section-pad: 104px` (76px on mobile). The design-taste-frontend
+skill was applied to eliminate AI slop patterns (hero copy, section
+repetition, buzzword vocabulary).
+
+## D20 — `evaluate_rag` path resolution
+
+**Problem:** The `evaluate_rag` management command assumed a fixed relative
+path to `rag_queries.json` that broke when invoked from different working
+directories.
+
+**Decision:** Added `_resolve_queries_path()` that searches CWD,
+`settings.BASE_DIR`, `BASE_DIR/data`, and `BASE_DIR/fixtures` in order.
+File is opened with `encoding="utf-8-sig"` for BOM robustness. On missing
+file, raises `CommandError` with actionable guidance pointing to
+`build_rag_testset` and the expected JSON format. Three new DB-free unit
+tests added to `test_rag_metrics.py`.
+
+## D21 — Unified section spacing token
+
+**Decision:** All landing-page sections use a single CSS custom property for
+vertical padding: `--landing-section-pad: 104px` (desktop), `72px` (mobile
+≤760px). This replaces per-section inline padding values and eliminates
+double-padding where wrapper and inner elements both added spacing (e.g.
+`.landing-planner` and `.landing-calendar` had 104px on both wrapper and
+inner, producing 208px visual gaps).
+
+## D22 — AI slop vocabulary cleanup
+
+**Decision:** Systematic grep-and-replace of AI-slop vocabulary across all
+user-facing copy (landing page, README, docs). Banned terms: seamless,
+robust, cutting-edge, revolutionary, leverage, empower, transformative,
+holistic, synergy, paradigm, state-of-the-art, next-gen, unlock,
+world-class, comprehensive (when used as filler), "in today's fast-paced
+world", "it's important to note".
+
+**Specific fixes:** "Beyond the headline — the everyday depth" → "Beyond the
+headline" (removed vague filler). "The platform stays dense past the first
+screen" → concrete feature list. "scale seamlessly" → "grow across".
+
+**Verification:** Full regex grep across all markdown, JSX, and CSS files
+returned zero matches for the banned vocabulary list. Impeccable detector
+confirms clean (`[]`) on `LandingPage.jsx`.

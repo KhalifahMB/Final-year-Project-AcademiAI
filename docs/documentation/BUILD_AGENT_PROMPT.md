@@ -871,7 +871,7 @@ It must include:
 - local development setup
 - no real secrets
 
-Do not provide a superficial prototype. Build the system represented by the documentation package with production-minded engineering practices while keeping the implementation appropriate for an undergraduate final-year project.
+Do not provide a superficial prototype. Build the system represented by the documentation package with production-minded engineering practices and a deployable, well-tested implementation.
 
 ## 35. FINAL SELF-AUDIT
 

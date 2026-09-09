@@ -49,3 +49,33 @@ class Notification(TenantScopedModel):
             models.Index(fields=["tenant", "user", "is_read"]),
             models.Index(fields=["tenant", "user", "severity", "is_read"]),
         ]
+
+
+class NotificationPreference(TenantScopedModel):
+    """Per-user opt-in/out for each notification *kind*.
+
+    When a kind is disabled, alerts of that kind are suppressed in the sync
+    service and any still-unread rows for that kind are cleaned up, so a
+    user who mutes a kind sees neither new nor lingering alerts for it.
+    """
+
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.CASCADE,
+        related_name="notification_preferences",
+        db_index=True,
+    )
+    kind = models.CharField(max_length=60)
+    enabled = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "notification_preferences"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tenant", "user", "kind"],
+                name="uniq_notification_pref_per_user_kind",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["tenant", "user", "kind"]),
+        ]

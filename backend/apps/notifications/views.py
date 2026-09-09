@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from apps.common.pagination import DefaultPagination
 from apps.common.permissions import IsTenantMember
 from .models import Notification
-from .serializers import NotificationSerializer
+from .serializers import NotificationPrefsUpdateSerializer, NotificationSerializer
 from . import services
 
 
@@ -93,3 +93,35 @@ class NotificationMarkAllReadView(APIView):
         user = request.user
         updated = services.mark_all_read(user)
         return Response({"ok": True, "updated": updated})
+
+
+@extend_schema(
+    tags=["Notifications"],
+    summary="List notification kind preferences",
+    description=(
+        "Return the full notification-kind catalog annotated with each "
+        "kind's enabled/mutable state so users can opt in/out per kind."
+    ),
+)
+class NotificationPreferencesView(APIView):
+    permission_classes = [IsTenantMember]
+
+    def get(self, request):
+        return Response({"preferences": services.preferences_for_user(request.user)})
+
+    @extend_schema(request=NotificationPrefsUpdateSerializer)
+    def patch(self, request):
+        user = request.user
+        serializer = NotificationPrefsUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        kind = serializer.validated_data["kind"]
+        enabled = serializer.validated_data["enabled"]
+        if not services.set_preference(user, kind, enabled):
+            return Response(
+                {"detail": "Unknown or non-mutable notification kind."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({
+            "ok": True,
+            "preferences": services.preferences_for_user(user),
+        })

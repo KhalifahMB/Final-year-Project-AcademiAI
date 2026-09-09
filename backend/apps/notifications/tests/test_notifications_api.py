@@ -367,3 +367,105 @@ def test_permission_gates():
     assert _auth(user).post(
         f"/api/v1/notifications/{uuid4()}/read/"
     ).status_code == 404
+
+
+# ----------------------------------------------------------------------
+# Notification kind preferences
+# ----------------------------------------------------------------------
+
+def _student_with_course(tenant):
+    """A student enrolled in a course, producing a course_behind alert."""
+    user = _user("pref@ntf.edu", tenant, role="student")
+    _fac, _dep, _course, _session, _semester, offering = _campus(tenant)
+    CourseEnrollment.objects.create(
+        tenant=tenant, student=user, course_offering=offering,
+        status=CourseEnrollment.Status.ENROLLED,
+    )
+    quiz = _quiz(tenant, offering, user, title="Midterm")
+    QuizAttempt.objects.create(
+        tenant=tenant, quiz=quiz, student=user,
+        score=40.0, submitted_at=timezone.now(),
+    )
+    return user, offering
+
+
+@pytest.mark.django_db
+def test_preferences_list_returns_full_catalog():
+    tenant = _tenant("ntf-pref-list")
+    user = _user("prefs@ntf-pref-list.edu", tenant)
+    resp = _auth(user).get("/api/v1/notifications/preferences/")
+    assert resp.status_code == 200
+    kinds = {p["kind"]: p for p in resp.data["preferences"]}
+    assert "course_behind" in kinds
+    assert kinds["course_behind"]["mutable"] is True
+    assert kinds["course_behind"]["enabled"] is True
+    # always_on kinds are locked on.
+    assert "pipeline_failed" in kinds
+    assert kinds["pipeline_failed"]["mutable"] is False
+    assert kinds["pipeline_failed"]["enabled"] is True
+
+
+@pytest.mark.django_db
+def test_patch_mutes_kind_and_sync_suppresses_alerts():
+    tenant = _tenant("ntf-pref-mute")
+    user, offering = _student_with_course(tenant)
+    client = _auth(user)
+
+    # Baseline: the course_behind alert is present in the persisted feed.
+    services.sync_user_notifications(user, force=True)
+    assert Notification.objects.filter(
+        tenant_id=tenant.id, user=user, kind="course_behind"
+    ).count() == 1
+
+    # Mute course_behind.
+    resp = client.patch(
+        "/api/v1/notifications/preferences/",
+        {"kind": "course_behind", "enabled": False},
+        format="json",
+    )
+    assert resp.status_code == 200
+    by_kind = {p["kind"]: p for p in resp.data["preferences"]}
+    assert by_kind["course_behind"]["enabled"] is False
+
+    # A fresh sync suppresses the muted kind entirely.
+    services.sync_user_notifications(user, force=True)
+    assert Notification.objects.filter(
+        tenant_id=tenant.id, user=user, kind="course_behind"
+    ).count() == 0
+
+
+@pytest.mark.django_db
+def test_always_on_kind_cannot_be_muted():
+    tenant = _tenant("ntf-pref-always")
+    user = _user("always@ntf-pref-always.edu", tenant, role="lecturer")
+    resp = _auth(user).patch(
+        "/api/v1/notifications/preferences/",
+        {"kind": "pipeline_failed", "enabled": False},
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_unknown_kind_rejected_and_tenant_isolated():
+    t1 = _tenant("ntf-pref-iso-a")
+    t2 = _tenant("ntf-pref-iso-b")
+    u1 = _user("iso-a@ntf-pref.edu", t1)
+    u2 = _user("iso-b@ntf-pref.edu", t2)
+
+    assert _auth(u1).patch(
+        "/api/v1/notifications/preferences/",
+        {"kind": "totally_unknown", "enabled": False},
+        format="json",
+    ).status_code == 400
+
+    _auth(u2).patch(
+        "/api/v1/notifications/preferences/",
+        {"kind": "concept_low", "enabled": False},
+        format="json",
+    )
+    # Muting one tenant's user must not affect another tenant's user.
+    other = {p["kind"]: p for p in _auth(u1).get(
+        "/api/v1/notifications/preferences/"
+    ).data["preferences"]}
+    assert other["concept_low"]["enabled"] is True
