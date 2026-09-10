@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 
 from .models import ChatMessage
-from .views import _compute_confidence
+from .services import compute_confidence as _compute_confidence
 
 
 class ConfidenceHeuristicTests(SimpleTestCase):

@@ -58,6 +58,7 @@ export default function FloatingAgent() {
     setAgent,
     identity,
     settings,
+    available,
     sessions,
     activeSession,
     selectSession,
@@ -204,7 +205,9 @@ export default function FloatingAgent() {
   if (!enabled) return null;
 
   const avatarSrc = identity?.avatar || '/avatars/tutor.svg';
-  const presenceClass = PRESENCE_STYLES[identity?.presence] || PRESENCE_STYLES.online;
+  const presenceClass = available
+    ? PRESENCE_STYLES[identity?.presence] || PRESENCE_STYLES.online
+    : PRESENCE_STYLES.offline;
   const agentToneColor = DEFAULT_TONE[identity?.tone] || 'var(--accent)';
 
   return (
@@ -227,7 +230,11 @@ export default function FloatingAgent() {
           )}
           aria-label={isOpen ? 'Close AI agent' : 'Open AI agent'}
           aria-expanded={isOpen}
-          title={`${identity?.name || 'AI Agent'} — drag to move`}
+          title={
+            available
+              ? `${identity?.name || 'AI Agent'} — drag to move`
+              : 'Agent unavailable — service is offline'
+          }
         >
           <img
             src={avatarSrc}
@@ -447,33 +454,41 @@ export default function FloatingAgent() {
                 >
                   <img src={avatarSrc} alt="" className="h-10 w-10" />
                 </span>
-                <p className="mt-3 text-sm font-[620]">How can I help?</p>
-                <p className="mt-1 text-[11px] text-[var(--muted)]">
-                  {identity?.tagline}
-                </p>
-                <div className="mt-4 flex flex-wrap justify-center gap-1.5">
-                  {[
-                    "What's my progress?",
-                    'Create a study plan',
-                    'Show my deadlines',
-                  ].map((q) => (
-                    <button
-                      key={q}
-                      type="button"
-                      onClick={() => {
-                        setInput(q);
-                        setTimeout(
-                          () =>
-                            sendMessage(q, getContextType(location.pathname)),
-                          0,
-                        );
-                      }}
-                      className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] text-[var(--muted)] transition-colors hover:border-[var(--accent)]/50 hover:text-[var(--fg)]"
-                    >
-                      {q}
-                    </button>
-                  ))}
-                </div>
+                {available ? (
+                  <>
+                    <p className="mt-3 text-sm font-[620]">How can I help?</p>
+                    <p className="mt-1 text-[11px] text-[var(--muted)]">
+                      {identity?.tagline}
+                    </p>
+                    <div className="mt-4 flex flex-wrap justify-center gap-1.5">
+                      {[
+                        "What's my progress?",
+                        'Create a study plan',
+                        'Show my deadlines',
+                      ].map((q) => (
+                        <button
+                          key={q}
+                          type="button"
+                          onClick={() => {
+                            setInput(q);
+                            setTimeout(
+                              () =>
+                                sendMessage(q, getContextType(location.pathname)),
+                              0,
+                            );
+                          }}
+                          className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-[11px] text-[var(--muted)] transition-colors hover:border-[var(--accent)]/50 hover:text-[var(--fg)]"
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-3 text-sm font-[620] text-[var(--muted)]">
+                    Agent unavailable
+                  </p>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
@@ -540,15 +555,20 @@ export default function FloatingAgent() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={`Ask ${identity?.name || 'the agent'}…`}
+                placeholder={
+                  available
+                    ? `Ask ${identity?.name || 'the agent'}…`
+                    : 'Agent unavailable'
+                }
                 aria-label="Ask the agent"
                 rows={1}
-                className="max-h-24 min-h-[32px] flex-1 resize-none border-0 bg-transparent px-2 py-1.5 text-[13px] leading-relaxed shadow-none focus-visible:ring-0"
+                disabled={!available}
+                className="max-h-24 min-h-[32px] flex-1 resize-none border-0 bg-transparent px-2 py-1.5 text-[13px] leading-relaxed shadow-none focus-visible:ring-0 disabled:opacity-60"
               />
               <button
                 type="button"
                 onClick={loading ? stopStreaming : handleSend}
-                disabled={!loading && !input.trim()}
+                disabled={!available || (!loading && !input.trim())}
                 aria-label={loading ? 'Stop generating' : 'Send message'}
                 className={cn(
                   'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',

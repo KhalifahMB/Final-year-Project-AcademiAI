@@ -1,0 +1,608 @@
+/* =========================================================
+   App components — primitives, material system, navigation,
+   academic prose. Wrapped in Tailwind v4's `components` layer
+   so utilities can deliberately override component defaults.
+   ========================================================= */
+@layer components {
+  /* Tabular numerics helper */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* =========================================================
+     Primitives (from the Open Design HTML)
+     ========================================================= */
+
+  /* Micro label — all-caps 11/600/0.08 tracking */
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Buttons — 36px tall, 13.5px/580, md (8px) radius */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 13.5px;
+    font-weight: 580;
+    border-radius: var(--radius-md);
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid transparent;
+    letter-spacing: 0.01em;
+    transition:
+      background 0.12s ease,
+      border-color 0.12s ease,
+      color 0.12s ease;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+  .btn-primary:hover {
+    background: var(--accent-strong);
+  }
+  .btn-outline {
+    border-color: var(--border-strong);
+    background: var(--surface);
+    color: var(--fg);
+  }
+  .btn-outline:hover {
+    background: var(--hover);
+  }
+  .btn-ghost {
+    color: var(--fg-soft);
+  }
+  .btn-ghost:hover {
+    background: var(--hover);
+  }
+  .btn-lg {
+    min-height: 42px;
+    padding: 0 18px;
+    font-size: 14px;
+  }
+  .btn-danger {
+    background: var(--danger);
+    color: var(--bg);
+  }
+  .btn-danger:hover {
+    background: color-mix(in oklab, var(--danger) 85%, black);
+  }
+
+  /* Cards — hairline border, surface bg, NO shadow on light; subtle inset on dark */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .dark .card {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  }
+  .card-pad {
+    padding: 18px;
+  }
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-head h2 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 590;
+    letter-spacing: 0.01em;
+    border-radius: 999px;
+    padding: 2.5px 9px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--fg-soft);
+  }
+  .badge-ok {
+    background: var(--success-soft);
+    border-color: transparent;
+    color: var(--success);
+  }
+  .badge-warn {
+    background: var(--warn-soft);
+    border-color: transparent;
+    color: var(--warn);
+  }
+  .badge-bad {
+    background: var(--danger-soft);
+    border-color: transparent;
+    color: var(--danger);
+  }
+  .badge-info {
+    background: var(--info-soft);
+    border-color: transparent;
+    color: var(--info);
+  }
+  .badge-accent {
+    background: var(--accent-soft);
+    border-color: transparent;
+    color: var(--accent-strong);
+  }
+
+  /* Meter/progress bar (6px height, rounded) */
+  .meter {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--hover);
+    overflow: hidden;
+  }
+  .meter > i,
+  .meter > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--fg-soft);
+  }
+  .meter > .m-ok {
+    background: var(--success);
+  }
+  .meter > .m-warn {
+    background: var(--warn);
+  }
+  .meter > .m-bad {
+    background: var(--danger);
+  }
+  .meter > .m-accent {
+    background: var(--accent);
+  }
+
+  /* Kbd */
+  kbd {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 1px 5px;
+    background: var(--surface-2);
+  }
+
+  /* =========================================================
+     Utility classes / effects
+     ========================================================= */
+
+  /* View-enter helper */
+  .view-enter {
+    animation: slide-up 0.22s cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in oklab, var(--fg) 8%, transparent);
+    border-radius: var(--radius-md);
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in oklab, var(--fg) 10%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  /* Hairline utility */
+  .hairline {
+    box-shadow: inset 0 0 0 0.5px var(--border);
+  }
+
+  /* =========================================================
+     Material system — glass-first premium
+     Theme-derived, no hardcoded hues. Both light and dark native.
+     ========================================================= */
+
+  /* Glass effect — shell (sidebar, topbar, drawer). Meets the canvas; no drop shadow. */
+  .glass {
+    background: var(--glass-shell-tint);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur))
+      saturate(var(--glass-saturate));
+  }
+
+  /* Glass — highest layer (modals, palette, popovers) */
+  .glass-overlay {
+    background: var(--glass-overlay-tint);
+    backdrop-filter: blur(var(--glass-blur-overlay))
+      saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur-overlay))
+      saturate(var(--glass-saturate));
+  }
+
+  /* Glass — floating cards (stat cards, dashboard panels, dialogs, hero objects) */
+  .card-glass {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-strong);
+    background: var(--glass-card-tint);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur))
+      saturate(var(--glass-saturate));
+    box-shadow:
+      var(--shadow-glass),
+      inset 0 0 0 0.5px color-mix(in oklab, var(--fg) 10%, transparent);
+  }
+
+  /* Neomorph accent — high-level objects only (stat cards, trend panels, hero mock).
+     A whisper of inner light + base shadow; NOT the extruded-pill cliché. */
+  .neomorph {
+    box-shadow: var(--neo-light), var(--neo-dark);
+  }
+
+  /* Ambient app canvas — the color behind the glass. Subtle, accent-derived,
+     both themes equal. Applied once at the shell root so frosted surfaces blur. */
+  .app-canvas {
+    background:
+      radial-gradient(
+        1200px 700px at 8% -10%,
+        color-mix(in oklab, var(--accent) 7%, transparent) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        900px 600px at 100% 0%,
+        color-mix(in oklab, var(--accent) 5%, transparent) 0%,
+        transparent 55%
+      ),
+      var(--bg);
+  }
+
+  /* =========================================================
+     Navigation material — sidebar + topbar (glass-first nav)
+     ========================================================= */
+
+  /* Active nav item: accent-tinted glass pill + left indicator + neomorph */
+  .nav-item {
+    position: relative;
+    border-radius: var(--radius-md);
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .nav-item:active:not(:disabled) {
+    transform: translateY(0);
+  }
+  .nav-item .nav-indicator {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 16px;
+    width: 3px;
+    border-radius: 999px;
+    transform: translateY(-50%) scaleY(0);
+    background: var(--accent);
+    transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1);
+  }
+  .nav-item.nav-active {
+    background:
+      linear-gradient(
+        120deg,
+        color-mix(in oklab, var(--accent) 14%, transparent),
+        color-mix(in oklab, var(--accent) 4%, transparent)
+      ),
+      var(--glass-card-tint);
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    color: var(--accent-strong);
+    box-shadow: var(--neo-light), var(--neo-drop);
+  }
+  .nav-item.nav-active .nav-indicator {
+    transform: translateY(-50%) scaleY(1);
+  }
+  .nav-item.nav-active svg {
+    color: var(--accent-strong);
+  }
+
+  /* Glass icon tile for control buttons (topbar, sidebar bottom) */
+  .icon-tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in oklab, var(--surface) 70%, transparent);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    color: var(--muted);
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .icon-tile:hover {
+    color: var(--fg);
+    border-color: var(--border-strong);
+    background: color-mix(in oklab, var(--surface) 90%, var(--accent) 6%);
+  }
+
+  /* Search pill — glass + neomorph, accent ring on focus */
+  .search-pill {
+    background: color-mix(in oklab, var(--surface) 72%, transparent);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(10px) saturate(150%);
+    -webkit-backdrop-filter: blur(10px) saturate(150%);
+    box-shadow: var(--neo-light), var(--neo-drop);
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .search-pill:focus-within {
+    border-color: var(--accent-line);
+    box-shadow:
+      var(--neo-light),
+      var(--neo-drop),
+      0 0 0 2px color-mix(in oklab, var(--accent) 18%, transparent);
+  }
+
+  /* cmdk command palette surface — treated as an overlay (glass) */
+  [cmdk-dialog] {
+    background: var(--glass-overlay-tint);
+    backdrop-filter: blur(var(--glass-blur-overlay))
+      saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur-overlay))
+      saturate(var(--glass-saturate));
+    border: 1px solid var(--border-strong);
+    box-shadow: var(--shadow-glass);
+  }
+
+  /* Card surface (opaque) — dense data behind tables, lists, forms, prose only */
+  .card-surface {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .dark .card-surface {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  }
+  .card-surface-hover {
+    transition:
+      border-color 0.15s ease,
+      background-color 0.15s ease;
+  }
+  .card-surface-hover:hover {
+    border-color: var(--border-strong);
+    background: color-mix(in oklab, var(--surface) 97%, var(--accent) 3%);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-surface-hover {
+      transition: none;
+    }
+  }
+
+  /* AI gradient text (for hero moments). NOTE: per "status color is data,
+     not decoration" rule, use sparingly — landing hero + ai-text accents only. */
+  .ai-text {
+    background: linear-gradient(135deg, var(--accent), oklch(70% 0.16 280));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .ai-gradient {
+    background:
+      radial-gradient(
+        120% 120% at 0% 0%,
+        color-mix(in oklab, var(--accent) 14%, transparent) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        120% 120% at 100% 100%,
+        oklch(60% 0.16 280 / 0.12) 0%,
+        transparent 50%
+      );
+  }
+
+  /* Icon button (36mm ghost, 8px radius) */
+  .icon-btn {
+    position: relative;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    display: inline-grid;
+    place-items: center;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    transition:
+      background 0.12s ease,
+      color 0.12s ease,
+      border-color 0.12s ease;
+  }
+  .icon-btn:hover {
+    background: var(--hover);
+    color: var(--fg);
+  }
+
+  /* Theme toggle square */
+  .theme-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    display: inline-grid;
+    place-items: center;
+    color: var(--fg-soft);
+    cursor: pointer;
+  }
+  .theme-btn:hover {
+    background: var(--hover);
+    color: var(--fg);
+  }
+
+  /* Avatar circle */
+  .avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    display: inline-grid;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 650;
+    color: var(--fg-soft);
+    letter-spacing: 0.02em;
+    font-family: var(--font-sans);
+  }
+  .avatar-lg {
+    width: 36px;
+    height: 36px;
+    font-size: 12px;
+  }
+
+  /* Popover surface */
+  .popover {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-pop);
+    min-width: 240px;
+    padding: 6px;
+    z-index: 50;
+  }
+
+  /* Brand mark (square "A") */
+  .brand-mark {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    background: var(--fg);
+    color: var(--bg);
+    display: inline-grid;
+    place-items: center;
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.02em;
+    flex: none;
+  }
+
+  /* Status dot */
+  .dot {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--danger);
+    outline: 2px solid var(--bg);
+  }
+
+  /* =========================================================
+     KaTeX / academic prose
+     ========================================================= */
+  .katex {
+    font-size: 1.05em;
+  }
+  .katex-display {
+    margin: 0.75em 0;
+  }
+
+  .prose-academic {
+    color: var(--fg);
+    font-size: 14.5px;
+    line-height: 1.65;
+  }
+  .prose-academic p {
+    margin: 0.6em 0;
+  }
+  .prose-academic h1,
+  .prose-academic h2,
+  .prose-academic h3 {
+    font-weight: 640;
+    letter-spacing: -0.015em;
+    margin-top: 1.2em;
+    margin-bottom: 0.4em;
+  }
+  .prose-academic h1 {
+    font-size: 1.25rem;
+  }
+  .prose-academic h2 {
+    font-size: 1.08rem;
+  }
+  .prose-academic h3 {
+    font-size: 1rem;
+  }
+  .prose-academic ul,
+  .prose-academic ol {
+    padding-left: 1.35em;
+    margin: 0.5em 0;
+  }
+  .prose-academic li {
+    margin: 0.2em 0;
+  }
+  .prose-academic code {
+    background: var(--surface-2);
+    padding: 0.12em 0.4em;
+    border-radius: var(--radius-sm);
+    font-size: 0.875em;
+    font-family: var(--font-mono);
+  }
+  .prose-academic pre {
+    background: var(--surface-2);
+    padding: 0.75rem 0.9rem;
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    font-size: 0.82em;
+    font-family: var(--font-mono);
+    border: 1px solid var(--border);
+  }
+  .prose-academic blockquote {
+    border-left: 3px solid var(--accent);
+    padding-left: 0.85em;
+    margin: 0.8em 0;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .prose-academic a {
+    color: var(--accent-strong);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 0.05em;
+  }
+  .prose-academic table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+    margin: 0.8em 0;
+  }
+  .prose-academic th,
+  .prose-academic td {
+    border-bottom: 1px solid var(--border);
+    padding: 0.45em 0.6em;
+    text-align: left;
+  }
+  .prose-academic th {
+    font-weight: 600;
+    background: var(--surface-2);
+  }
+}

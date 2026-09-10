@@ -79,11 +79,16 @@ class TenantLoggingMiddleware(MiddlewareMixin):
 
         details = {}
         if request.method in ("POST", "PUT", "PATCH"):
-            try:
-                body = json.loads(request.body) if request.body else {}
-                details["request_body"] = sanitize_log_data(body)
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                pass
+            # Never read/parse multipart bodies in the logging middleware:
+            # they carry file bytes (large, non-JSON) and consuming request.body
+            # can break downstream parsing for streaming/in-memory uploads.
+            content_type = (request.META.get("CONTENT_TYPE") or "").lower()
+            if not content_type.startswith("multipart/"):
+                try:
+                    body = json.loads(request.body) if request.body else {}
+                    details["request_body"] = sanitize_log_data(body)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    pass
 
         status_code = response.status_code
         if status_code >= 400:

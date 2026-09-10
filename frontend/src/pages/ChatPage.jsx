@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
@@ -613,16 +614,20 @@ export default function ChatPage() {
  const [attachedResources, setAttachedResources] = useState([]);
  const [uploadingFiles, setUploadingFiles] = useState(false);
  const [error, setError] = useState('');
-  const endRef = useRef(null);
   const textareaRef = useRef(null);
   const localIdCounter = useRef(0);
-  // Only auto-scroll when the reader is already near the bottom — never
-  // yank them away from history they scrolled up to read.
-  const scrollBoxRef = useRef(null);
-  const stuckToBottomRef = useRef(true);
-  const [reducedMotion] = useState(
+  const reducedMotion = useMemo(
   () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  [],
   );
+
+  // Feed Virtuoso the same "stuck at bottom" flag the old manual scroll
+  // handler tracked (also reset back to `true` when opening a session,
+  // see openSession).
+  const stuckToBottomRef = useRef(true);
+  const handleAtBottomChange = useCallback((atBottom) => {
+  stuckToBottomRef.current = atBottom;
+  }, []);
 
  // Sources rail state
  const [sourcesRailOpen, setSourcesRailOpen] = useState(!isMobile);
@@ -657,17 +662,6 @@ export default function ChatPage() {
  useEffect(() => {
  if (currentSources.length > 0 && !isMobile) setSourcesRailOpen(true);
  }, [currentSources.length, isMobile]);
-
-  // Scroll to bottom on new messages — only when already near it.
-  useEffect(() => {
-  if (!stuckToBottomRef.current) return;
-  endRef.current?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'end' });
-  }, [messages, loading, reducedMotion]);
-
-  const onMessagesScroll = (e) => {
-  const el = e.currentTarget;
-  stuckToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-  };
 
   // Deep-link session via ?session=
   useEffect(() => {
@@ -1113,7 +1107,7 @@ export default function ChatPage() {
 
   {/* Messages */}
   <div className="relative flex min-h-0 flex-1 overflow-hidden">
-  <div ref={scrollBoxRef} onScroll={onMessagesScroll} className="flex-1 overflow-y-auto">
+  <div className="min-w-0 flex-1">
   {/* Streaming announces one concise status instead of every token:
   the full log stays out of the live region to avoid SR spam. */}
   <p role="status" className="sr-only">
@@ -1159,25 +1153,43 @@ export default function ChatPage() {
  })}
  </div>
  </div>
-  ) : (
-  <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6" aria-label="Conversation messages">
-  {messages.map((msg, idx) => (
- <MessageBubble
- key={msg.id}
- msg={msg}
- isLastAssistant={msg.role === 'assistant' && idx === messages.length - 1 && !loading}
- onSourceClick={(rank) => {
- setActiveSourceRank(rank);
- if (!sourcesRailOpen) setSourcesRailOpen(true);
- }}
- onOpenSourceResource={openSourceResource}
- onRegenerate={regenerate}
- />
- ))}
- <div ref={endRef} />
- </div>
- )}
- </div>
+) : (
+  <Virtuoso
+  data={messages}
+  alignToBottom
+  initialTopMostItemIndex={messages.length - 1}
+  style={{ height: '100%' }}
+  className="min-w-0"
+  followOutput={(isAtBottom) => (isAtBottom ? (reducedMotion ? 'auto' : 'smooth') : false)}
+  atBottomStateChange={handleAtBottomChange}
+  computeItemKey={(_, msg) => msg.id}
+  components={{
+  List: forwardRef(({ style, children, ...props }, ref) => (
+  <div
+  ref={ref}
+  {...props}
+  style={style}
+  className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6"
+  >
+  {children}
+  </div>
+  )),
+  }}
+  itemContent={(idx, msg) => (
+  <MessageBubble
+  msg={msg}
+  isLastAssistant={msg.role === 'assistant' && idx === messages.length - 1 && !loading}
+  onSourceClick={(rank) => {
+  setActiveSourceRank(rank);
+  setSourcesRailOpen(true);
+  }}
+  onOpenSourceResource={openSourceResource}
+  onRegenerate={regenerate}
+  />
+  )}
+  />
+  )}
+  </div>
 
  {/* Sources rail */}
  {sourcesRailOpen && currentSources.length > 0 && (

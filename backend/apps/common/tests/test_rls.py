@@ -5,6 +5,10 @@ cross-tenant access even for direct ORM/raw queries.
 Key: Django's normal test DB role is a SUPERUSER which has BYPASSRLS by
 default, so RLS policies never fire. We SET ROLE to a dedicated
 NOBYPASSRLS role for the test body so policies actually apply.
+
+The table list is NOT maintained here — it comes from the single source of
+truth ``apps.common.rls.TABLES`` (derived from the model registry), so adding
+a tenant-scoped model automatically extends both the policies and this test.
 """
 import pytest
 from contextlib import contextmanager
@@ -12,24 +16,39 @@ from django.db import connection
 
 from apps.academics.models import Faculty
 from apps.tenants.models import Tenant
-
-RLS_TABLES = [
-    "faculties", "departments", "programmes", "academic_sessions", "semesters",
-    "courses", "course_offerings", "lecturer_course_assignments", "course_enrollments",
-    "student_profiles", "lecturer_profiles",
-    "resources", "resource_versions", "resource_chunks", "resource_permissions", "resource_summaries",
-    "resource_accesses",
-    "concepts", "concept_edges",
-    "chat_sessions", "chat_messages", "chat_message_sources",
-    "agent_sessions", "agent_tool_executions", "agent_settings",
-    "quizzes", "quiz_questions", "quiz_attempts",
-    "notes", "bookmarks", "progress_records",
-    "audit_logs",
-    "calendar_events", "calendar_schedules",
-    "notifications",
-]
+from apps.common.rls import TABLES as RLS_TABLES
 
 RLS_ROLE = "rls_tester"
+
+
+def test_rls_table_list_is_derived():
+    """RLS coverage must come from the model registry, never a hand list.
+
+    Every tenant-scoped model (TenantScopedModel subclass, or any other table
+    with a tenant_id column) must appear in TABLES; the only tenant-bearing
+    tables exempt from RLS are the platform identity tables.
+    """
+    from django.apps import apps as django_apps
+
+    from apps.common.models import TenantScopedModel
+    from apps.common import rls
+
+    assert rls.TABLES == rls.derive_tenant_scoped_tables()
+
+    for model in django_apps.get_models():
+        if model._meta.abstract or not model._meta.managed:
+            continue
+        label = f"{model._meta.app_label}.{model._meta.model_name}"
+        tenant_bearing = any(f.attname == "tenant_id" for f in model._meta.fields)
+        if issubclass(model, TenantScopedModel) or tenant_bearing:
+            if label in rls.EXEMPT_TENANT_BEARING_MODELS:
+                continue
+            assert model._meta.db_table in rls.TABLES, (
+                f"{label} is tenant-scoped but missing from RLS policy tables"
+            )
+
+    # Deliberate exemptions are exactly the two platform identity tables.
+    assert rls.EXEMPT_TENANT_BEARING_MODELS == {"accounts.user", "tenants.tenant"}
 
 
 @contextmanager

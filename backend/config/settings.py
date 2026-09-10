@@ -31,6 +31,42 @@ if not DEBUG and SECRET_KEY.startswith("django-insecure-dev-only"):
         "DJANGO_SECRET_KEY must be set to a strong random value when DEBUG=False."
     )
 
+# --- Error tracking (Sentry, env-gated) ---
+# Off by default; set SENTRY_DSN to enable. Nothing is loaded or sent unless
+# the DSN is present, so local/test runs stay fully offline. PII is shared by
+# design: error reports must link affected users (the audit finding this
+# closes), which is the platform role account, not the user's raw email.
+SENTRY_DSN = os.getenv("SENTRY_DSN")
+if SENTRY_DSN:
+    import subprocess
+
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    def _git_release():
+        try:
+            return (
+                subprocess.check_output(
+                    ["git", "rev-parse", "--short", "HEAD"],
+                    cwd=BASE_DIR,
+                    stderr=subprocess.DEVNULL,
+                )
+                .decode()
+                .strip()
+                or None
+            )
+        except Exception:
+            return None
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration(transaction_style="url")],
+        environment=os.getenv("DJANGO_ENV", "development" if DEBUG else "production"),
+        release=f"academiai@{os.getenv('SENTRY_RELEASE') or _git_release() or 'dev'}",
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        send_default_pii=True,
+    )
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -113,8 +149,19 @@ DATABASES = {
         "HOST": os.getenv("POSTGRES_HOST", "localhost"),
         "PORT": os.getenv("POSTGRES_PORT", "5432"),
         "OPTIONS": {"options": "-c search_path=public"},
+        # Reuse pooled connections between requests instead of one-per-thread,
+        # cutting connection churn for Gunicorn workers and Celery tasks. Keep
+        # the age modest so autovacuum / GUC state (tenant RLS) can't stall on a
+        # stale conn; health checks transparently recycle dead connections.
+        "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
+        "CONN_HEALTH_CHECKS": True,
     }
 }
+# Under heavy async worker loads, terminate many connections at the Postgres
+# layer: run PgBouncer (or the managed provider's pooler) in front and point
+# HOST/PORT at it. The app role stays RLS-safe because PgBouncer pools by
+# database/user only (``pool_mode = transaction``), and tenant isolation is
+# enforced per-transaction by set_config anyway.
 
 # Custom user
 AUTH_USER_MODEL = "accounts.User"
@@ -146,9 +193,9 @@ CORS_ALLOWED_ORIGINS = [
     ).split(",")
     if o.strip()
 ]
-# CORS — JWT travels in the Authorization header, not cookies, so
-# credentialed CORS is neither needed nor allowed.
-CORS_ALLOW_CREDENTIALS = False
+# CORS — JWT now travels in httpOnly auth cookies (see AUTH_COOKIE_* below),
+# so credentialed cross-origin requests are required.
+CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     o.strip()
     for o in os.getenv(
@@ -160,7 +207,7 @@ CSRF_TRUSTED_ORIGINS = [
 # DRF
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.accounts.authentication.CookieJWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
@@ -183,6 +230,7 @@ REST_FRAMEWORK = {
         "anon": "100/hour",
         "user": "2000/hour",
         "auth": "20/minute",
+        "auth_ip": "10/minute",
         "ai": "30/minute",
         "upload": "120/hour",
         "tenant_request": "5/hour",
@@ -204,6 +252,22 @@ SIMPLE_JWT = {
     "AUDIENCE": os.getenv("JWT_AUDIENCE", "academiai-api"),
     "ISSUER": os.getenv("JWT_ISSUER", "academiai"),
 }
+
+# JWT auth cookies — HttpOnly, SameSite=Strict, path-scoped to the API so the
+# SPA never ships them on navigations. Tokens are never exposed to JS.
+# - secure: on outside DEBUG by default; override via AUTH_COOKIE_SECURE.
+# - samesite: Strict keeps CSRF-on-cookies impossible for same-site apps; a
+#   cross-site deployment (separate frontend/backend origins) MUST set
+#   AUTH_COOKIE_SAMESITE=None.
+AUTH_COOKIE_NAMES = ("access_token", "refresh_token")
+AUTH_COOKIE_PATH = os.getenv("AUTH_COOKIE_PATH", "/api/v1")
+_AUTH_COOKIE_SECURE_ENV = os.getenv("AUTH_COOKIE_SECURE")
+AUTH_COOKIE_SECURE = (
+    _AUTH_COOKIE_SECURE_ENV.lower() in ("1", "true", "yes")
+    if _AUTH_COOKIE_SECURE_ENV is not None
+    else not DEBUG
+)
+AUTH_COOKIE_SAMESITE = os.getenv("AUTH_COOKIE_SAMESITE", "Strict")
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "AcademiAI API",
@@ -338,6 +402,14 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "False").lower() in ("1", "true", "yes")
 # Public origin of the SPA, used for links/CTAs in transactional emails.
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173").rstrip("/")
+
+# ClamAV enforcement: in production an unavailable scanner must REJECT uploads
+# (fail closed), never silently accept an unscanned file. Dev default stays
+# lenient so local pipelines run without a clamd daemon.
+CLAMAV_STRICT = os.getenv(
+    "CLAMAV_STRICT",
+    "True" if not DEBUG else "False",
+).lower() in ("1", "true", "yes")
 
 # Debug Toolbar (dev only)
 INTERNAL_IPS = ["127.0.0.1", "localhost"]

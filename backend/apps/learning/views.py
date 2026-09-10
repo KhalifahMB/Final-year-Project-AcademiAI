@@ -1,4 +1,5 @@
 from drf_spectacular.utils import extend_schema
+from rest_framework import serializers as drf_serializers
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -19,6 +20,12 @@ from .serializers import (
 )
 
 
+class BulkDeleteIn(drf_serializers.Serializer):
+    ids = drf_serializers.ListField(
+        child=drf_serializers.UUIDField(), allow_empty=False,
+    )
+
+
 @extend_schema(tags=["Notes"])
 class NoteViewSet(TenantModelViewSet):
     queryset = Note.objects.select_related("resource")
@@ -30,6 +37,24 @@ class NoteViewSet(TenantModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(tenant=self.request.user.tenant, user=self.request.user)
+
+    @extend_schema(
+        request=BulkDeleteIn,
+        responses={200: None},
+        summary="Delete multiple notes in a single request",
+    )
+    @action(detail=False, methods=["post"], url_path="bulk-delete")
+    def bulk_delete(self, request):
+        ser = BulkDeleteIn(data=request.data)
+        ser.is_valid(raise_exception=True)
+        deleted, _ = (
+            Note.objects.filter(
+                tenant=request.user.tenant,
+                user=request.user,
+                id__in=ser.validated_data["ids"],
+            ).delete()
+        )
+        return Response({"success": True, "deleted": deleted})
 
 
 @extend_schema(tags=["Bookmarks"])
@@ -151,7 +176,7 @@ class PlanMilestoneViewSet(viewsets.ModelViewSet):
         return PlanMilestone.objects.filter(
             plan__user=self.request.user,
             plan__tenant=self.request.user.tenant,
-        )
+        ).prefetch_related("tasks")
 
     def perform_create(self, serializer):
         serializer.save(
@@ -199,7 +224,7 @@ class PlanTemplateViewSet(viewsets.ModelViewSet):
             tenant=user.tenant,
         ).filter(
             django_models.Q(is_public=True) | django_models.Q(created_by=user),
-        )
+        ).select_related("created_by")
 
     def _can_modify(self, obj):
         """Only the creator may edit/delete a template — or a tenant admin

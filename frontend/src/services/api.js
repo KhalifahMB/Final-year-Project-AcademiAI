@@ -3,22 +3,83 @@
  */
 import axios from 'axios';
 
+import { PAGINATION, SSE_MAX_BUFFER_BYTES, BULK_DELETE_MAX_IDS } from '@/lib/constants';
+import { clearSessionFlag } from '@/lib/session';
+import {
+  enforceContract,
+  tokenResponseContract,
+  signupResponseContract,
+  userContract,
+  sessionListContract,
+  messageListContract,
+  chatSessionContract,
+  chatTokenEventContract,
+  chatDoneEventContract,
+  agentTokenEventContract,
+  agentErrorEventContract,
+  noteListContract,
+} from '@/services/contracts';
+
 // In dev, use relative /api/v1 so Vite proxy handles CORS.
 // In prod, VITE_API_BASE_URL should be the full backend URL.
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
+// No default Content-Type: axios v1 sets it per-payload type (JSON for plain
+// objects, multipart/form-data with boundary for FormData), so uploads don't
+// need the old `{ 'Content-Type': undefined }` override hack.
+// JWT auth travels in HttpOnly SameSite=Strict cookies, so we must send and
+// accept credentials on every request (no JS-accessible tokens exist).
 const api = axios.create({
   baseURL: API_BASE,
-  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// --- Refresh-token mutex ---
+// Only one refresh request is in flight at a time. Concurrent 401s queue
+// behind the same promise and all replay once it resolves. Without this, N
+// simultaneous 401s each fire independent refresh requests; the first rotates
+// the refresh cookie and the rest fail, kicking the user to /login mid-session.
+let refreshPromise = null;
+
+function doRefresh() {
+  return api
+    .post('/auth/token/refresh/')
+    .then(() => true)
+    .catch((err) => {
+      clearSessionFlag();
+      window.location.href = '/login';
+      throw err;
+    });
+}
+
+/**
+ * apiFetch: raw `fetch` with the same auth semantics as the axios
+ * interceptor. SSE streaming needs raw fetch (axios buffers whole responses),
+ * so this wrapper sends the auth cookies (`credentials: 'include'`) and on a
+ * 401 performs a single-flight refresh (piggybacking on an in-flight one)
+ * then retries exactly once. On refresh failure it throws a uniform
+ * "Session expired" error (doRefresh has already cleared the session flag and
+ * redirected to /login).
+ */
+async function apiFetch(path, options = {}) {
+  const run = () =>
+    fetch(`${api.defaults.baseURL}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    });
+  let res = await run();
+  if (res.status === 401) {
+    await doRefresh().catch(() => {
+      throw new Error('Session expired. Please log in again.');
+    });
+    res = await run();
   }
-  return config;
-});
+  return res;
+}
 
 api.interceptors.response.use(
   (res) => res,
@@ -26,37 +87,100 @@ api.interceptors.response.use(
     const original = error.config;
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true;
-      const refresh = localStorage.getItem('refresh_token');
-      if (refresh) {
-        try {
-          const { data } = await axios.post(`${API_BASE}/auth/token/refresh/`, {
-            refresh,
-          });
-          localStorage.setItem('access_token', data.access);
-          original.headers.Authorization = `Bearer ${data.access}`;
-          return api(original);
-        } catch {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
-        }
+
+      // If a refresh is already in flight, piggyback on it.
+      if (!refreshPromise) {
+        refreshPromise = doRefresh().finally(() => {
+          refreshPromise = null;
+        });
+      }
+
+      try {
+        await refreshPromise;
+        return api(original);
+      } catch {
+        // doRefresh already cleared the session flag and redirected.
       }
     }
     return Promise.reject(error);
   },
 );
 
+// Maximum SSE accumulator size (bytes). If a stream grows past this without
+// a complete event delimiter (\n\n), the connection is aborted — otherwise a
+// slow consumer + runaway stream would balloon memory without limit.
+export const MAX_SSE_BUFFER = SSE_MAX_BUFFER_BYTES;
+const SSE_OVERFLOW = 'SSE stream buffer overflow';
+
+/**
+ * Shared SSE reader over raw `fetch`. Handles everything both streaming
+ * endpoints need: auth header + single-flight 401 refresh (via apiFetch),
+ * buffering with overflow protection, chunk accumulation, and `\n\n`
+ * event framing + JSON parse. Event-specific processing stays in the
+ * caller's `onEvent(type, data)` dispatch — return `false` from it to stop
+ * reading (e.g. after a `done` event).
+ */
+async function createSSEStream(path, { method = 'POST', body, signal }, onEvent) {
+  const res = await apiFetch(path, { method, body, signal });
+  if (!res.ok || !res.body) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    if (buf.length > SSE_MAX_BUFFER_BYTES) {
+      throw new Error(SSE_OVERFLOW);
+    }
+    let idx;
+    while ((idx = buf.indexOf('\n\n')) !== -1) {
+      const raw = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      let event = 'message';
+      let data = '';
+      for (const line of raw.split('\n')) {
+        if (line.startsWith('event: ')) event = line.slice(7).trim();
+        else if (line.startsWith('data: ')) data += line.slice(6);
+      }
+      if (!data) continue;
+      let parsed;
+      try {
+        parsed = JSON.parse(data);
+      } catch {
+        throw new Error('Malformed SSE chunk received.');
+      }
+      if (onEvent(event, parsed) === false) return;
+    }
+  }
+}
+
 export default api;
 
 export const authApi = {
-  signup: (payload) => api.post('/auth/signup/', payload),
-  login: (payload) => api.post('/auth/login/', payload),
+  signup: (payload) =>
+    api.post('/auth/signup/', payload).then((r) =>
+      enforceContract(signupResponseContract, r.data, 'auth.signup'),
+    ),
+  login: (payload) =>
+    api.post('/auth/login/', payload).then((r) =>
+      enforceContract(tokenResponseContract, r.data, 'auth.login'),
+    ),
   verifyEmail: (payload) => api.post('/auth/verify-email/', payload),
   resendVerification: (payload) =>
     api.post('/auth/resend-verification/', payload),
-  me: () => api.get('/auth/me/'),
-  updateMe: (payload) => api.patch('/auth/me/', payload),
-  logout: (refresh) => api.post('/auth/logout/', { refresh }),
+  me: () =>
+    api.get('/auth/me/').then((r) =>
+      enforceContract(userContract, r.data, 'auth.me'),
+    ),
+  updateMe: (payload) =>
+    api.patch('/auth/me/', payload).then((r) =>
+      enforceContract(userContract, r.data, 'auth.updateMe'),
+    ),
+  logout: () => api.post('/auth/logout/'),
   passwordResetRequest: (payload) =>
     api.post('/auth/password-reset/request/', payload),
   passwordResetConfirm: (payload) =>
@@ -87,13 +211,6 @@ const toList = (res) => {
   return Array.isArray(data) ? data : data?.results || [];
 };
 
-export const dashApi = {
-  courses: () => api.get('/courses/').then(toList),
-  resources: () => api.get('/resources/').then(toList),
-  quizzes: () => api.get('/quizzes/').then(toList),
-  notes: () => api.get('/notes/').then(toList),
-};
-
 /** Aggregate dashboard endpoints — one round-trip per role. */
 export const dashboardApi = {
   student: () => api.get('/dashboard/student/').then((r) => r.data),
@@ -115,12 +232,28 @@ export const dashboardApi = {
 };
 
 export const notesApi = {
-  list: () => api.get('/notes/').then(toList),
+  list: () =>
+    api.get('/notes/').then(toList).then((list) =>
+      enforceContract(noteListContract, list, 'notes.list'),
+    ),
   create: (payload) => api.post('/notes/', payload),
   update: (id, payload) => api.patch(`/notes/${id}/`, payload),
   delete: (id) => api.delete(`/notes/${id}/`),
-  bulkDelete: (ids) =>
-    Promise.all(ids.map((id) => api.delete(`/notes/${id}/`))),
+  /**
+   * Delete notes in a single round-trip (POST /notes/bulk-delete/).
+   * Chunks over BULK_DELETE_MAX_IDS so payloads stay within server limits —
+   * each chunk is still one request (never N-per-item).
+   */
+  bulkDelete: (ids) => {
+    const list = Array.isArray(ids) ? ids : [ids];
+    const chunks = [];
+    for (let i = 0; i < list.length; i += BULK_DELETE_MAX_IDS) {
+      chunks.push(list.slice(i, i + BULK_DELETE_MAX_IDS));
+    }
+    return Promise.all(
+      chunks.map((chunk) => api.post('/notes/bulk-delete/', { ids: chunk })),
+    );
+  },
 };
 
 /** Course tooling — per-offering analytics + content intelligence for
@@ -171,15 +304,26 @@ export const logsApi = {
 
 /** Chat session helpers — streaming send + rename/delete. */
 export const chatApi = {
-  listSessions: () =>
+  listSessions: ({ pageSize = PAGINATION.CHAT_SESSIONS_PAGE_SIZE } = {}) =>
     api
-      .get('/chat/sessions/?page_size=100')
-      .then((r) => r.data.results || r.data || []),
-  getMessages: (sessionId) =>
+      .get('/chat/sessions/', { params: { page_size: pageSize } })
+      .then((r) => r.data.results || r.data || [])
+      .then((list) => enforceContract(sessionListContract, list, 'chat.sessions')),
+  /** Read message history. Pass `before` (ISO created_at) to page backwards. */
+  getMessages: (
+    sessionId,
+    { pageSize = PAGINATION.CHAT_MESSAGES_PAGE_SIZE, before } = {},
+  ) =>
     api
-      .get(`/chat/messages/?session=${sessionId}&page_size=200`)
-      .then((r) => r.data.results || r.data || []),
-  createSession: (payload = {}) => api.post('/chat/sessions/', payload),
+      .get(`/chat/messages/?session=${sessionId}`, {
+        params: { page_size: pageSize, before },
+      })
+      .then((r) => r.data.results || r.data || [])
+      .then((list) => enforceContract(messageListContract, list, 'chat.messages')),
+  createSession: (payload = {}) =>
+    api.post('/chat/sessions/', payload).then((r) =>
+      enforceContract(chatSessionContract, r.data, 'chat.createSession'),
+    ),
   renameSession: (id, title) =>
     api.patch(`/chat/sessions/${id}/rename/`, { title }),
   deleteSession: (id) => api.delete(`/chat/sessions/${id}/`),
@@ -198,11 +342,7 @@ export const chatApi = {
     const form = new FormData();
     form.append('file', file);
     if (sessionId) form.append('session_id', sessionId);
-    return api
-      .post('/chat/upload/', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      .then((r) => r.data);
+    return api.post('/chat/upload/', form).then((r) => r.data);
   },
   /**
    * Stream an assistant response as SSE.
@@ -217,67 +357,28 @@ export const chatApi = {
     content,
     { onToken, onDone, onMeta, onError, resourceIds = [] },
   ) => {
-    const token = localStorage.getItem('access_token');
     const ctrl = new AbortController();
     (async () => {
       try {
-        const res = await fetch(
-          `${api.defaults.baseURL}/chat/sessions/${sessionId}/messages/stream/`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: token ? `Bearer ${token}` : '',
-            },
-            body: JSON.stringify({ content, resource_ids: resourceIds }),
-            signal: ctrl.signal,
+        await createSSEStream(
+          `/chat/sessions/${sessionId}/messages/stream/`,
+          { body: JSON.stringify({ content, resource_ids: resourceIds }), signal: ctrl.signal },
+          (event, parsed) => {
+            if (event === 'token') {
+              enforceContract(chatTokenEventContract, parsed, 'chat.stream.token');
+              if (onToken) onToken(parsed.text || '');
+            } else if (event === 'user_message') {
+              if (onMeta) onMeta({ user_message: parsed });
+            } else if (event === 'meta') {
+              if (onMeta) onMeta(parsed);
+            } else if (event === 'done') {
+              enforceContract(chatDoneEventContract, parsed, 'chat.stream.done');
+              if (onDone) onDone(parsed.assistant_message);
+              return false;
+            }
+            return undefined;
           },
         );
-        if (!res.ok || !res.body) {
-          const text = await res.text().catch(() => '');
-          throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = '';
-        let doneReading = false;
-        while (!doneReading) {
-          const { value, done } = await reader.read();
-          if (done) {
-            doneReading = true;
-            break;
-          }
-          buf += decoder.decode(value, { stream: true });
-          // Parse SSE events separated by double newlines
-          let idx;
-          while ((idx = buf.indexOf('\n\n')) !== -1) {
-            const raw = buf.slice(0, idx);
-            buf = buf.slice(idx + 2);
-            const lines = raw.split('\n');
-            let event = 'message';
-            let data = '';
-            for (const line of lines) {
-              if (line.startsWith('event: ')) event = line.slice(7).trim();
-              else if (line.startsWith('data: ')) data += line.slice(6);
-            }
-            if (!data) continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (event === 'token') {
-                if (onToken) onToken(parsed.text || '');
-              } else if (event === 'user_message') {
-                if (onMeta) onMeta({ user_message: parsed });
-              } else if (event === 'meta') {
-                if (onMeta) onMeta(parsed);
-              } else if (event === 'done') {
-                if (onDone) onDone(parsed.assistant_message);
-                return;
-              }
-            } catch {
-              // malformed chunk, ignore
-            }
-          }
-        }
       } catch (err) {
         if (err.name === 'AbortError') return;
         if (onError) onError(err);
@@ -372,9 +473,7 @@ export const calendarApi = {
     form.append('source_format', sourceFormat);
     form.append('import_type', importType);
     return api
-      .post('/calendar/schedules/preview/', form, {
-        headers: { 'Content-Type': undefined },
-      })
+      .post('/calendar/schedules/preview/', form)
       .then((r) => r.data);
   },
   commitSchedule: (file, { title, importType = 'lecture', sourceFormat = 'csv' } = {}) => {
@@ -384,9 +483,7 @@ export const calendarApi = {
     form.append('import_type', importType);
     form.append('source_format', sourceFormat);
     return api
-      .post('/calendar/schedules/preview-commit/', form, {
-        headers: { 'Content-Type': undefined },
-      })
+      .post('/calendar/schedules/preview-commit/', form)
       .then((r) => r.data);
   },
 };
@@ -403,9 +500,7 @@ export const agentApi = {
   uploadAvatar: (file) => {
     const form = new FormData();
     form.append('file', file);
-    return api
-      .post('/agent/avatar/', form, { headers: { 'Content-Type': undefined } })
-      .then((r) => r.data);
+    return api.post('/agent/avatar/', form).then((r) => r.data);
   },
   listSessions: () => api.get('/agent/sessions/').then((r) => r.data),
   getSession: (id) => api.get(`/agent/sessions/${id}/`).then((r) => r.data),
@@ -417,53 +512,29 @@ export const agentApi = {
   stream: ({ message, contextType = 'dashboard', sessionId, agent, title }, callbacks = {}) => {
     const { onToken, onToolCall, onToolResult, onDone, onError } = callbacks;
     const ctrl = new AbortController();
+    const body = JSON.stringify({ message, context_type: contextType, session_id: sessionId, agent, title });
     (async () => {
       try {
-        const token = localStorage.getItem('access_token');
-        const res = await fetch(`${api.defaults.baseURL}/agent/stream/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            message,
-            context_type: contextType,
-            session_id: sessionId,
-            agent,
-            title,
-          }),
-          signal: ctrl.signal,
-        });
-        if (!res.ok || !res.body) {
-          onError?.(new Error(`Stream failed (${res.status})`));
-          return;
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = '';
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const events = buf.split('\n\n');
-          buf = events.pop() || '';
-          for (const event of events) {
-            let eventType = '';
-            let data = '';
-            for (const line of event.split('\n')) {
-              if (line.startsWith('event: ')) eventType = line.slice(7).trim();
-              else if (line.startsWith('data: ')) data = line.slice(6);
-            }
-            if (!eventType || !data) continue;
-            const parsed = JSON.parse(data);
-            if (eventType === 'token') onToken?.(parsed);
-            else if (eventType === 'tool_call') onToolCall?.(parsed);
+        await createSSEStream(
+          '/agent/stream/',
+          { body, signal: ctrl.signal },
+          (eventType, parsed) => {
+            if (eventType === 'token') {
+              enforceContract(agentTokenEventContract, parsed, 'agent.stream.token');
+              onToken?.(parsed);
+            } else if (eventType === 'tool_call') onToolCall?.(parsed);
             else if (eventType === 'tool_result') onToolResult?.(parsed);
-            else if (eventType === 'done') onDone?.(parsed);
-            else if (eventType === 'error') onError?.(new Error(parsed.message || 'Agent error'));
-          }
-        }
+            else if (eventType === 'done') {
+              onDone?.(parsed);
+              return false;
+            } else if (eventType === 'error') {
+              enforceContract(agentErrorEventContract, parsed, 'agent.stream.error');
+              onError?.(new Error(parsed.message || 'Agent error'));
+              return false;
+            }
+            return undefined;
+          },
+        );
       } catch (err) {
         if (err.name !== 'AbortError') onError?.(err);
       }

@@ -48,6 +48,7 @@ class Notification(TenantScopedModel):
         indexes = [
             models.Index(fields=["tenant", "user", "is_read"]),
             models.Index(fields=["tenant", "user", "severity", "is_read"]),
+            models.Index(fields=["created_at"]),
         ]
 
 

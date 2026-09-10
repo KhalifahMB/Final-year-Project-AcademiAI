@@ -35,6 +35,7 @@ export function useAgent() {
   });
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
+  const [available, setAvailable] = useState(true);
   const activeStream = useRef(null);
   const settingsRef = useRef(settings);
 
@@ -75,7 +76,11 @@ export function useAgent() {
         if (list[0]) setActiveSessionId(list[0].id);
       })
       .catch(() => {
-        /* keep local defaults when the API is unavailable or mocked */
+        // Agent subsystem is down (404/500) or mocked away: don't silently
+        // swallow — flag the boot failure so the UI can show a non-intrusive
+        // "service unavailable" state instead of letting users send messages
+        // that are guaranteed to fail.
+        if (!cancelled) setAvailable(false);
       });
     return () => {
       cancelled = true;
@@ -241,6 +246,7 @@ export function useAgent() {
   const sendMessage = useCallback(
     async (text, contextType = 'dashboard') => {
       if (!text.trim() || loading) return;
+      if (!available) return;
       const filters =
         settingsRef.current.filters || DEFAULT_SETTINGS.filters;
 
@@ -366,7 +372,7 @@ export function useAgent() {
         );
       }
     },
-    [activeSessionId, agentKey, createSession, defaultKey, loading, refreshSessions],
+    [activeSessionId, agentKey, createSession, defaultKey, loading, refreshSessions, available],
   );
 
   const stopStreaming = useCallback(() => {
@@ -409,6 +415,7 @@ export function useAgent() {
     setAgent,
     identity,
     settings,
+    available,
     saveSettings,
     setEnabled,
     sessions,

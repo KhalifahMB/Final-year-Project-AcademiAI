@@ -1,8 +1,7 @@
 import logging
-import uuid
 
 from django.conf import settings
-from django.db import models, transaction
+from django.db import models
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
@@ -26,13 +25,17 @@ from .serializers import (
 )
 from apps.common.storage import (
     get_s3_client,
-    generate_presigned_upload_post,
     generate_presigned_download_url,
-    delete_object,
 )
-from apps.common.security.file_validation import ALLOWED_MIME_PREFIXES
-from apps.learning.models import Bookmark
-from .tasks import process_resource_ingestion
+from .services import (
+    UploadServiceError,
+    content_type_allowed,
+    detach_or_delete,
+    issue_upload_envelope,
+    peek_text_content,
+    register_completed_upload,
+    reset_for_retry,
+)
 from .summary_tasks import summarize_resource_task
 
 logger = logging.getLogger(__name__)
@@ -57,14 +60,6 @@ def _record_resource_access(resource, user, access_type: str) -> None:
         )
     except Exception:
         logger.exception("Failed to record resource access resource=%s", resource.id)
-
-
-def _content_type_allowed(content_type: str) -> bool:
-    """Only offer presigns for document MIME types we can actually process."""
-    ct = (content_type or "").lower()
-    if not ct or ct == "application/octet-stream":
-        return True  # let magic-byte validation decide at ingestion time
-    return any(ct.startswith(p) for p in ALLOWED_MIME_PREFIXES)
 
 
 _IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp")
@@ -286,30 +281,9 @@ class ResourceViewSet(TenantModelViewSet):
         resource_id = str(instance.id)
         tenant = self.request.user.tenant
 
-        # If anyone else has bookmarked this, keep it available for them
-        has_other_bookmarks = Bookmark.objects.filter(
-            resource=instance
-        ).exclude(user=self.request.user).exists()
-
-        if has_other_bookmarks and instance.visibility_scope != Resource.Visibility.PRIVATE:
-            # Detach the owner and hide it from listings by making it private.
-            # Bookmarkers will still be able to access it because it's their bookmark,
-            # though they won't find it in general search.
-            instance.uploaded_by = None
-            instance.visibility_scope = Resource.Visibility.PRIVATE
-            instance.save(update_fields=["uploaded_by", "visibility_scope", "updated_at"])
-            action = "resource.detach"
-        else:
-            # Object storage cleanup is best-effort; metadata removal must succeed.
-            if instance.storage_key:
-                try:
-                    delete_object(instance.storage_key)
-                except Exception:
-                    logger.exception(
-                        "Failed to delete stored object for resource=%s", resource_id
-                    )
-            super().perform_destroy(instance)
-            action = "resource.delete"
+        # The detach-vs-delete decision and every metadata mutation live in
+        # the upload service as a single atomic, race-free transaction.
+        action = detach_or_delete(instance, self.request.user)
 
         try:
             log_action(
@@ -330,28 +304,14 @@ class ResourceViewSet(TenantModelViewSet):
         """
         resource = self.get_object()
         content_type = request.data.get("content_type", "application/octet-stream")
-        if not _content_type_allowed(content_type):
+        try:
+            envelope = issue_upload_envelope(resource, content_type)
+        except UploadServiceError as exc:
             return Response(
-                {"success": False, "error": {"detail": f"Unsupported content type: {content_type}"}},
-                status=status.HTTP_400_BAD_REQUEST,
+                {"success": False, "error": {"detail": exc.message}},
+                status=exc.status,
             )
-        key = (
-            f"tenants/{resource.tenant_id}/resources/{resource.id}/"
-            f"{uuid.uuid4()}"
-        )
-        # Remember the declared type so preview/ingestion can classify the
-        # file later (storage keys are extension-less UUIDs).
-        if content_type and content_type != "application/octet-stream":
-            resource.mime_type = content_type
-            resource.save(update_fields=["mime_type", "updated_at"])
-        presigned = generate_presigned_upload_post(key, content_type)
-        return Response(
-            {
-                "upload_url": presigned["url"],
-                "form_fields": presigned["fields"],
-                "storage_key": key,
-            }
-        )
+        return Response(envelope)
 
     @action(detail=True, methods=["get"])
     def download_url(self, request, pk=None):
@@ -371,51 +331,15 @@ class ResourceViewSet(TenantModelViewSet):
         """
         resource = self.get_object()
         storage_key = request.data.get("storage_key")
-        if not storage_key:
-            return Response({"detail": "storage_key required"}, status=status.HTTP_400_BAD_REQUEST)
-        # The client must present the exact key issued for THIS resource.
-        # Accepting arbitrary keys would let one tenant ingest another
-        # tenant's stored document.
-        expected_prefix = f"tenants/{resource.tenant_id}/resources/{resource.id}/"
-        if not str(storage_key).startswith(expected_prefix):
-            return Response(
-                {"success": False, "error": {"detail": "storage_key does not belong to this resource."}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        # Reject an arbitrary client-supplied content type (MIME spoofing).
         declared_ct = request.data.get("content_type")
-        if declared_ct and declared_ct != "application/octet-stream" and not _content_type_allowed(declared_ct):
+        try:
+            result = register_completed_upload(resource, storage_key, declared_ct, request.user)
+        except UploadServiceError as exc:
             return Response(
-                {"success": False, "error": {"detail": f"Unsupported content type: {declared_ct}"}},
-                status=status.HTTP_400_BAD_REQUEST,
+                {"success": False, "error": {"detail": exc.message}},
+                status=exc.status,
             )
-        with transaction.atomic():
-            # Row-lock the resource so concurrent complete_upload calls cannot
-            # race on version numbering.
-            resource = self.get_object()
-            resource = type(resource).objects.select_for_update().get(pk=resource.pk)
-            last = resource.versions.order_by("-version_number").first()
-            next_ver = (last.version_number + 1) if last else 1
-            # The presign flow may have recorded the declared content type;
-            # allow the completion call to (re)state it (validated above).
-            if declared_ct and declared_ct != "application/octet-stream":
-                resource.mime_type = declared_ct
-            version = ResourceVersion.objects.create(
-                tenant=resource.tenant,
-                resource=resource,
-                version_number=next_ver,
-                storage_key=storage_key,
-                created_by=request.user,
-            )
-            resource.storage_key = storage_key
-            resource.processing_status = resource.ProcessingStatus.PENDING
-            resource.save(update_fields=["storage_key", "processing_status", "mime_type", "updated_at"])
-
-        task = process_resource_ingestion.delay(
-            str(resource.id), str(version.id), str(resource.tenant_id)
-        )
-        claim_job(task.id, request.user.id)
-        return Response({"version_id": str(version.id), "job_id": task.id, "status": "pending"})
+        return Response(result)
 
     @action(detail=True, methods=["post"], throttle_classes=[UploadRateThrottle])
     def retry_processing(self, request, pk=None):
@@ -425,26 +349,14 @@ class ResourceViewSet(TenantModelViewSet):
         when processing previously failed.
         """
         resource = self.get_object()
-        if resource.processing_status != Resource.ProcessingStatus.FAILED:
+        try:
+            result = reset_for_retry(resource, request.user)
+        except UploadServiceError as exc:
             return Response(
-                {"success": False, "error": {"detail": "Only failed materials can be retried."}},
-                status=status.HTTP_409_CONFLICT,
+                {"success": False, "error": {"detail": exc.message}},
+                status=exc.status,
             )
-        version = resource.versions.order_by("-version_number").first()
-        if version is None:
-            return Response(
-                {"success": False, "error": {"detail": "No stored file to process."}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        resource.processing_status = Resource.ProcessingStatus.PENDING
-        resource.processing_error = ""
-        resource.save(update_fields=["processing_status", "processing_error", "updated_at"])
-
-        task = process_resource_ingestion.delay(
-            str(resource.id), str(version.id), str(resource.tenant_id)
-        )
-        claim_job(task.id, request.user.id)
-        return Response({"job_id": task.id, "status": "pending"})
+        return Response(result)
 
     @action(detail=True, methods=["get"])
     def preview(self, request, pk=None):
@@ -481,16 +393,11 @@ class ResourceViewSet(TenantModelViewSet):
             )
 
         if kind == "text":
-            client = get_s3_client()
-            obj = client.get_object(
-                Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=resource.storage_key
-            )
-            raw = obj["Body"].read(512 * 1024 + 1)
-            truncated = len(raw) > 512 * 1024
+            content, truncated = peek_text_content(resource)
             return Response(
                 {
                     "kind": "text",
-                    "content": raw[: 512 * 1024].decode("utf-8", errors="replace"),
+                    "content": content,
                     "truncated": truncated,
                 }
             )

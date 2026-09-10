@@ -30,12 +30,6 @@ vi.mock('@/services/api', () => {
       passwordChange: vi.fn(emptyObj),
       updateMe: vi.fn(emptyObj),
     },
-    dashApi: {
-      courses: vi.fn(emptyList),
-      resources: vi.fn(emptyList),
-      quizzes: vi.fn(emptyList),
-      notes: vi.fn(emptyList),
-    },
     dashboardApi: {
       student: vi.fn(() =>
         Promise.resolve({
@@ -168,8 +162,7 @@ describe('routing and access control', () => {
   });
 
   it('renders the dashboard for an authenticated student', async () => {
-    localStorage.setItem('access_token', 'test-token');
-    localStorage.setItem('refresh_token', 'test-refresh');
+    localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
       data: { id: 'u1', email: 'stud@uni.edu', role: 'student', first_name: 'Stu', tenant: {} },
     });
@@ -184,8 +177,7 @@ describe('routing and access control', () => {
   }, 15000);
 
   it('denies a student access to an admin-only page (walks them to /forbidden)', async () => {
-    localStorage.setItem('access_token', 'test-token');
-    localStorage.setItem('refresh_token', 'test-refresh');
+    localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
       data: { id: 'u2', email: 'stud@uni.edu', role: 'student', first_name: 'Stu', tenant: {} },
     });
@@ -199,8 +191,7 @@ describe('routing and access control', () => {
   });
 
   it('sends a platform superuser away from tenant pages to /platform without firing tenant API calls', async () => {
-    localStorage.setItem('access_token', 'test-token');
-    localStorage.setItem('refresh_token', 'test-refresh');
+    localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
       data: {
         id: 'su1', email: 'operator@academiai.app', role: 'tenant_admin',
@@ -216,8 +207,7 @@ describe('routing and access control', () => {
   });
 
   it('lets a tenant_admin open a workspace route like /resources', async () => {
-    localStorage.setItem('access_token', 'test-token');
-    localStorage.setItem('refresh_token', 'test-refresh');
+    localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
       data: {
         id: 'a1', email: 'admin@uni.edu', role: 'tenant_admin',
@@ -234,8 +224,7 @@ describe('routing and access control', () => {
   }, 15000);
 
   it('keeps lecturer-grade routes open to tenant admins who can also teach', async () => {
-    localStorage.setItem('access_token', 'test-token');
-    localStorage.setItem('refresh_token', 'test-refresh');
+    localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
       data: {
         id: 'a2', email: 'admin@uni.edu', role: 'tenant_admin',
@@ -252,8 +241,7 @@ describe('routing and access control', () => {
   }, 15000);
 
   it('sends a signed-in user with no tenant to institution onboarding', async () => {
-    localStorage.setItem('access_token', 'test-token');
-    localStorage.setItem('refresh_token', 'test-refresh');
+    localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
       data: { id: 'u3', email: 'orphan@example.com', role: 'student', first_name: 'Or' },
     });

@@ -5,17 +5,119 @@ Never log codes or tokens.
 import hashlib
 import logging
 import secrets
+import uuid
 from datetime import timedelta
 
 from django.conf import settings
 from django.utils import timezone
 
+from apps.common.storage import (
+    delete_object,
+    generate_presigned_download_url,
+    get_s3_client,
+)
 from apps.tenants.models import Tenant
 from .models import User
 from apps.audit.services import log_action
 from .models import EmailVerificationCode, PasswordResetToken
 
 logger = logging.getLogger(__name__)
+
+
+class AvatarError(Exception):
+    """Expected avatar upload/presign failure carrying an HTTP status."""
+
+    def __init__(self, message, status=400):
+        super().__init__(message)
+        self.message = message
+        self.status = status
+
+
+MAX_AVATAR_BYTES = 2 * 1024 * 1024  # 2 MB
+
+_AVATAR_MAGIC = (
+    (b"\xff\xd8\xff", "image/jpeg", ".jpg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png", ".png"),
+    (b"GIF87a", "image/gif", ".gif"),
+    (b"GIF89a", "image/gif", ".gif"),
+)
+
+
+def sniff_avatar_image(raw: bytes):
+    """Return (content_type, ext) for allowed image magic bytes, else None."""
+    for magic, ctype, ext in _AVATAR_MAGIC:
+        if raw.startswith(magic):
+            return ctype, ext
+    # WebP: RIFF....WEBP
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "image/webp", ".webp"
+    return None
+
+
+def avatar_download_url(user) -> str:
+    """Short-lived signed URL for the user's custom avatar (None when unset)."""
+    if not user.avatar_key:
+        return None
+    try:
+        return generate_presigned_download_url(user.avatar_key, expires_in=3600)
+    except Exception:
+        logger.exception("Avatar presign failed user=%s", user.id)
+        raise AvatarError("Avatar storage unavailable.", 503)
+
+
+def store_avatar(user, raw: bytes) -> None:
+    """
+    Validate the bytes (size cap + magic bytes — never trust client MIME),
+    write under the tenant storage partition, swap avatar_key, best-effort
+    cleanup of the previous object, and audit the change.
+    """
+    if len(raw) > MAX_AVATAR_BYTES:
+        raise AvatarError("Image must be 2 MB or smaller.")
+    sniffed = sniff_avatar_image(raw)
+    if not sniffed:
+        raise AvatarError("Unsupported image type. Use PNG, JPEG, GIF or WebP.")
+    content_type, ext = sniffed
+
+    key = f"tenants/{user.tenant_id}/avatars/{user.id}/{uuid.uuid4()}{ext}"
+    try:
+        get_s3_client().put_object(
+            Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+            Key=key,
+            Body=raw,
+            ContentType=content_type,
+            ContentLength=len(raw),
+        )
+    except Exception:
+        logger.exception("Avatar upload failed user=%s", user.id)
+        raise AvatarError("Could not store the image. Try again.", 503)
+
+    old_key = user.avatar_key
+    user.avatar_key = key
+    user.save(update_fields=["avatar_key", "updated_at"])
+    if old_key and old_key != key:
+        try:
+            delete_object(old_key)
+        except Exception:
+            logger.warning("Old avatar cleanup failed user=%s", user.id)
+    log_action(
+        tenant=user.tenant,
+        actor=user,
+        action="user.avatar_update",
+        entity_type="user",
+        entity_id=str(user.id),
+    )
+
+
+def clear_avatar(user) -> None:
+    """Remove the custom picture and best-effort delete the stored object."""
+    old_key = user.avatar_key
+    user.avatar_key = ""
+    user.save(update_fields=["avatar_key", "updated_at"])
+    if old_key:
+        try:
+            delete_object(old_key)
+        except Exception:
+            logger.warning("Avatar object cleanup failed user=%s", user.id)
 
 
 def _hash_value(value: str) -> str:

@@ -2,25 +2,25 @@
 import { createContext, useContext, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/services/api";
+import { clearSessionFlag, hasSessionFlag, setSessionFlag } from "@/lib/session";
 
 const AuthContext = createContext(null);
 export const USER_QUERY_KEY = ["auth", "me"];
 
 // In-memory dedupe guard so that even if multiple AuthProvider mounts race
 // during React 19 StrictMode double-invoke, or multiple components subscribe
-// before the first fetch resolves, only ONE HTTP request is in flight for a
-// given access-token snapshot. TanStack already dedupes useQuery callers on
-// the same QueryClient; this guard also handles (a) components that hit the
-// fallback branch (new QueryClient per test/edge case), and (b) transient
-// StrictMode re-mounts.
+// before the first fetch resolves, only ONE HTTP request is in flight. TanStack
+// already dedupes useQuery callers on the same QueryClient; this guard also
+// handles (a) components that hit the fallback branch (new QueryClient per
+// test/edge case), and (b) transient StrictMode re-mounts.
 let inflight = null;
 
 async function fetchUser() {
-  const token = localStorage.getItem("access_token");
-  if (!token) return null;
+  // The JWT lives in an HttpOnly cookie (inaccessible to JS). The session
+  // flag only short-circuits the /auth/me probe for anonymous visitors.
+  if (!hasSessionFlag()) return null;
 
-  // Reuse in-flight promise if another caller started one for this token.
-  if (inflight && inflight.token === token) return inflight.promise;
+  if (inflight) return inflight;
 
   const promise = (async () => {
     try {
@@ -29,17 +29,16 @@ async function fetchUser() {
     } catch (err) {
       const status = err?.response?.status;
       if (status === 401 || status === 403) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
+        clearSessionFlag();
         return null;
       }
       throw err;
     } finally {
-      if (inflight && inflight.promise === promise) inflight = null;
+      if (inflight === promise) inflight = null;
     }
   })();
 
-  inflight = { token, promise };
+  inflight = promise;
   return promise;
 }
 
@@ -68,21 +67,18 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const { data } = await authApi.login({ email, password });
-    localStorage.setItem("access_token", data.access);
-    localStorage.setItem("refresh_token", data.refresh);
+    setSessionFlag();
     qc.setQueryData(USER_QUERY_KEY, data.user);
     return data;
   };
 
   const logout = async () => {
-    const refresh = localStorage.getItem("refresh_token");
     try {
-      await authApi.logout(refresh);
+      await authApi.logout();
     } catch {
       /* ignore — local cleanup must happen regardless */
     }
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
+    clearSessionFlag();
     qc.setQueryData(USER_QUERY_KEY, null);
     qc.clear();
     window.location.assign("/");
@@ -128,8 +124,7 @@ export function useAuth() {
       throw new Error("AuthProvider not mounted");
     },
     logout: () => {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
+      clearSessionFlag();
       qc.setQueryData(USER_QUERY_KEY, null);
       window.location.assign("/");
     },

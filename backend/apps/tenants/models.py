@@ -97,7 +97,10 @@ class TenantRequest(UUIDModel, TimeStampedModel):
     class Meta:
         db_table = "tenant_requests"
         ordering = ["-created_at"]
-        indexes = [models.Index(fields=["status", "created_at"])]
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["created_at"]),
+        ]
 
     def __str__(self):
         return f"{self.institution_name} — {self.status}"

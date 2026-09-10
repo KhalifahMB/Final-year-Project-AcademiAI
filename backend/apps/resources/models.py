@@ -78,6 +78,7 @@ class Resource(TenantScopedModel):
             models.Index(fields=["tenant", "processing_status"]),
             models.Index(fields=["tenant", "visibility_scope"]),
             models.Index(fields=["course_offering"]),
+            models.Index(fields=["created_at"]),
         ]
         ordering = ["-created_at"]
 
@@ -209,6 +210,7 @@ class ResourceSummary(TenantScopedModel):
     class Meta:
         db_table = "resource_summaries"
         ordering = ["-created_at"]
+        indexes = [models.Index(fields=["created_at"])]
         indexes = [
             models.Index(fields=["tenant", "resource", "-created_at"]),
         ]

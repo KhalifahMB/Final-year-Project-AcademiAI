@@ -1,5 +1,4 @@
 import logging
-import uuid
 
 from django.conf import settings
 from django.contrib.auth import authenticate
@@ -10,6 +9,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -31,15 +31,11 @@ from .serializers import (
     LogoutRequestSerializer,
 )
 from . import services
+from .cookies import clear_auth_cookies, set_auth_cookies
 from .tasks import send_verification_email
 from apps.audit.services import log_action
 from apps.common.permissions import IsAdminRole
 from apps.common.throttling import AuthFloodThrottle
-from apps.common.storage import (
-    get_s3_client,
-    delete_object,
-    generate_presigned_download_url,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -105,35 +101,19 @@ class SignupView(APIView):
                 },
                 status=status.HTTP_201_CREATED,
             )
-        # Optional profile picture uploaded at signup time.
+        # Optional profile picture uploaded at signup time (best-effort: a
+        # rejected image must never block account creation).
         avatar_file = request.FILES.get("avatar")
         if avatar_file is not None and user.tenant_id:
-            raw = avatar_file.read(MAX_AVATAR_BYTES + 1)
-            sniffed = (
-                _sniff_image(raw)
-                if len(raw) <= MAX_AVATAR_BYTES
-                else None
-            )
-            if sniffed:
-                content_type, ext = sniffed
-
-                key = f"tenants/{user.tenant_id}/avatars/{user.id}/{uuid.uuid4()}{ext}"
-                try:
-                    get_s3_client().put_object(
-                        Bucket=settings.AWS_STORAGE_BUCKET_NAME,
-                        Key=key,
-                        Body=raw,
-                        ContentType=content_type,
-                        ContentLength=len(raw),
-                    )
-                    user.avatar_key = key
-                    user.save(update_fields=["avatar_key", "updated_at"])
-                except Exception:
-                    logger.exception(
-                        "Signup avatar upload failed user=%s", user.id
-                    )
-            else:
+            raw = avatar_file.read(services.MAX_AVATAR_BYTES + 1)
+            try:
+                services.store_avatar(user, raw)
+            except services.AvatarError:
                 logger.info("Signup avatar rejected (type/size) user=%s", user.id)
+            except Exception:
+                logger.exception(
+                    "Signup avatar upload failed user=%s", user.id
+                )
         # Dispatch email task (non-blocking)
         try:
 
@@ -248,7 +228,7 @@ class LoginView(APIView):
         # Enrich claims
         refresh["role"] = user.role
         refresh["tenant_id"] = str(user.tenant_id) if user.tenant_id else None
-        return Response(
+        response = Response(
             {
                 "success": True,
                 "access": str(refresh.access_token),
@@ -256,6 +236,11 @@ class LoginView(APIView):
                 "user": UserSerializer(user).data,
             }
         )
+        # Primary transport for the SPA: HttpOnly SameSite=Strict cookies.
+        # The body tokens remain for non-browser/CLI clients that authenticate
+        # via the Authorization header instead.
+        set_auth_cookies(response, str(refresh.access_token), str(refresh))
+        return response
 
 
 class LogoutView(APIView):
@@ -263,17 +248,21 @@ class LogoutView(APIView):
         tags=["Authentication"],
         request=LogoutRequestSerializer,
         responses={200: MessageResponseSerializer},
-        summary="Blacklist the supplied refresh token",
+        summary="Blacklist the refresh token and clear auth cookies",
     )
     def post(self, request):
         try:
-            refresh = request.data.get("refresh")
+            refresh = request.COOKIES.get(settings.AUTH_COOKIE_NAMES[1])
             if refresh:
-                token = RefreshToken(refresh)
-                token.blacklist()
+                RefreshToken(refresh).blacklist()
+            else:
+                body_refresh = request.data.get("refresh")
+                if body_refresh:
+                    RefreshToken(body_refresh).blacklist()
         except Exception:
             pass
-        return Response({"success": True, "message": "Logged out."})
+        response = Response({"success": True, "message": "Logged out."})
+        return clear_auth_cookies(response)
 
 
 class MeView(generics.RetrieveUpdateAPIView):
@@ -324,27 +313,6 @@ MeView = extend_schema_view(
 )(MeView)
 
 
-MAX_AVATAR_BYTES = 2 * 1024 * 1024  # 2 MB
-
-_AVATAR_MAGIC = (
-    (b"\xff\xd8\xff", "image/jpeg", ".jpg"),
-    (b"\x89PNG\r\n\x1a\n", "image/png", ".png"),
-    (b"GIF87a", "image/gif", ".gif"),
-    (b"GIF89a", "image/gif", ".gif"),
-)
-
-
-def _sniff_image(raw: bytes):
-    """Return (content_type, ext) for allowed image magic bytes, else None."""
-    for magic, ctype, ext in _AVATAR_MAGIC:
-        if raw.startswith(magic):
-            return ctype, ext
-    # WebP: RIFF....WEBP
-    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
-        return "image/webp", ".webp"
-    return None
-
-
 class AvatarView(APIView):
     """
     GET    /auth/me/avatar/ — short-lived signed URL for the user's uploaded
@@ -359,88 +327,37 @@ class AvatarView(APIView):
     @extend_schema(tags=["Profile"], summary="Get own avatar URL")
     def get(self, request):
         user = request.user
-        if not user.avatar_key:
-            return Response({"url": None})
-
         try:
-            url = generate_presigned_download_url(user.avatar_key, expires_in=3600)
-        except Exception:
-            logger.exception("Avatar presign failed user=%s", user.id)
+            url = services.avatar_download_url(user)
+        except services.AvatarError as exc:
             return Response(
-                {"success": False, "error": {"detail": "Avatar storage unavailable."}},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                {"success": False, "error": {"detail": exc.message}},
+                status=exc.status,
             )
         return Response({"url": url})
 
     @extend_schema(tags=["Profile"], summary="Upload own avatar picture")
     def post(self, request):
-
         f = request.FILES.get("file")
         if not isinstance(f, UploadedFile):
             return Response(
                 {"success": False, "error": {"detail": "No file provided."}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        raw = f.read(MAX_AVATAR_BYTES + 1)
-        if len(raw) > MAX_AVATAR_BYTES:
-            return Response(
-                {"success": False, "error": {"detail": "Image must be 2 MB or smaller."}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        sniffed = _sniff_image(raw)
-        if not sniffed:
-            return Response(
-                {"success": False, "error": {"detail": "Unsupported image type. Use PNG, JPEG, GIF or WebP."}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        content_type, ext = sniffed
-        user = request.user
-        key = f"tenants/{user.tenant_id}/avatars/{user.id}/{uuid.uuid4()}{ext}"
-
+        raw = f.read(services.MAX_AVATAR_BYTES + 1)
         try:
-            client = get_s3_client()
-            client.put_object(
-                Bucket=settings.AWS_STORAGE_BUCKET_NAME,
-                Key=key,
-                Body=raw,
-                ContentType=content_type,
-                ContentLength=len(raw),
-            )
-        except Exception:
-            logger.exception("Avatar upload failed user=%s", user.id)
+            services.store_avatar(request.user, raw)
+        except services.AvatarError as exc:
             return Response(
-                {"success": False, "error": {"detail": "Could not store the image. Try again."}},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                {"success": False, "error": {"detail": exc.message}},
+                status=exc.status,
             )
-        old_key = user.avatar_key
-        user.avatar_key = key
-        user.save(update_fields=["avatar_key", "updated_at"])
-        if old_key and old_key != key:
-            try:
-                delete_object(old_key)
-            except Exception:
-                logger.warning("Old avatar cleanup failed user=%s", user.id)
-        log_action(
-            tenant=user.tenant,
-            actor=user,
-            action="user.avatar_update",
-            entity_type="user",
-            entity_id=str(user.id),
-        )
         return Response({"success": True, "has_custom_avatar": True})
 
     @extend_schema(tags=["Profile"], summary="Remove own avatar picture")
     def delete(self, request):
         user = request.user
-        old_key = user.avatar_key
-        user.avatar_key = ""
-        user.save(update_fields=["avatar_key", "updated_at"])
-        if old_key:
-            try:
-
-                delete_object(old_key)
-            except Exception:
-                logger.warning("Avatar object cleanup failed user=%s", user.id)
+        services.clear_avatar(user)
         return Response({"success": True, "has_custom_avatar": False})
 
 
@@ -544,11 +461,28 @@ class PasswordChangeView(APIView):
     post=extend_schema(
         tags=["Authentication"],
         summary="Refresh access token",
-        description="Exchanges a valid refresh token for a new access token (rotation enabled; used refresh tokens are blacklisted).",
+        description="Exchanges the refresh token (HttpOnly cookie, or request body for API clients) for a new access token. Rotation enabled; used refresh tokens are blacklisted.",
         auth=[],
     )
 )
 class TaggedTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        refresh = request.COOKIES.get(settings.AUTH_COOKIE_NAMES[1]) or (
+            request.data.get("refresh") or ""
+        )
+        if not refresh:
+            return Response(
+                {"success": False, "error": {"detail": "No refresh token supplied."}},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        ser = TokenRefreshSerializer(data={"refresh": refresh})
+        ser.is_valid(raise_exception=True)
+        response = Response({"success": True})
+        return set_auth_cookies(
+            response,
+            ser.validated_data["access"],
+            ser.validated_data.get("refresh"),
+        )
     pass
 
 

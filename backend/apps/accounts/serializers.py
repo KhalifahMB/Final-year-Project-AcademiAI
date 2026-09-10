@@ -245,7 +245,9 @@ class AuthTokenResponseSerializer(serializers.Serializer):
 
 
 class LogoutRequestSerializer(serializers.Serializer):
-    refresh = serializers.CharField()
+    # Optional: the SPA logs out via the HttpOnly refresh cookie; the field
+    # exists for API clients that kept the token out-of-band.
+    refresh = serializers.CharField(required=False, allow_blank=True)
 
 
 class JobStatusResponseSerializer(serializers.Serializer):

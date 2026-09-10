@@ -174,14 +174,23 @@ class PlanListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "updated_at"]
 
+    def _tasks(self, obj):
+        milestones = getattr(obj, "milestones", None)
+        if milestones is None:
+            return []
+        # Iterating milestone/task managers uses the prefetched cache when the
+        # ViewSet prefetched "milestones__tasks", so no extra DB round-trips.
+        return [t for m in milestones.all() for t in m.tasks.all()]
+
     def get_milestone_count(self, obj):
-        return obj.milestones.count() if hasattr(obj, 'milestones') else 0
+        milestones = getattr(obj, "milestones", None)
+        return len(list(milestones.all())) if milestones is not None else 0
 
     def get_task_count(self, obj):
-        return PlanTask.objects.filter(milestone__plan=obj).count() if hasattr(obj, 'milestones') else 0
+        return len(self._tasks(obj))
 
     def get_completed_task_count(self, obj):
-        return PlanTask.objects.filter(milestone__plan=obj, status="done").count() if hasattr(obj, 'milestones') else 0
+        return sum(1 for t in self._tasks(obj) if t.status == "done")
 
 
 def _normalize_template_data(raw):
