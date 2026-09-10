@@ -10,6 +10,8 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from apps.tenants.stats import PublicStatsView
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/auth/", include("apps.accounts.urls")),
@@ -27,6 +29,7 @@ urlpatterns = [
     path("api/v1/", include("apps.agent.urls")),
     path("api/v1/", include("apps.calendar.urls")),
     path("api/v1/", include("apps.notifications.urls")),
+    path("api/public/stats/", PublicStatsView.as_view(), name="public-stats"),
     # OpenAPI
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(

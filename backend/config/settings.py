@@ -4,6 +4,7 @@ Environment-driven. Never commit real secrets.
 """
 import os
 import sys
+import time
 from datetime import timedelta
 from pathlib import Path
 
@@ -15,6 +16,10 @@ load_dotenv()
 TESTING = "pytest" in sys.modules
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Epoch second the Django process booted. Serves as the honest backend
+# uptime anchor exposed by the unauthenticated public stats endpoint.
+APP_STARTED_AT = time.time()
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-dev-only-change-me")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("1", "true", "yes")
@@ -181,6 +186,7 @@ REST_FRAMEWORK = {
         "ai": "30/minute",
         "upload": "120/hour",
         "tenant_request": "5/hour",
+        "public": "600/hour",
     },
 }
 
@@ -235,6 +241,7 @@ SPECTACULAR_SETTINGS = {
         {"name": "Platform", "description": "Platform-wide management for superusers (tenants, analytics, health, announcements)"},
         {"name": "System", "description": "Health and background-job status"},
         {"name": "Agent", "description": "AI agent streaming, tool listing, and session tracking"},
+        {"name": "Public", "description": "Unauthenticated public endpoints (landing-page statistics)"},
     ],
     "ENUM_NAME_OVERRIDES": {
         "UserRoleEnum": "apps.accounts.models.User.Role",

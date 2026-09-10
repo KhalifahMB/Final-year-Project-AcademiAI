@@ -12,8 +12,8 @@ class TimeStampedModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        abstract = True
+    # class Meta:
+    #     abstract = True
 
 
 class UUIDModel(models.Model):
@@ -21,8 +21,8 @@ class UUIDModel(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    class Meta:
-        abstract = True
+    # class Meta:
+    #     abstract = True
 
 
 class TenantScopedModel(UUIDModel, TimeStampedModel):
@@ -34,7 +34,7 @@ class TenantScopedModel(UUIDModel, TimeStampedModel):
     tenant = models.ForeignKey(
         "tenants.Tenant",
         on_delete=models.CASCADE,
-        related_name="%(class)ss",
+        related_name="%(class)s",
         db_index=True,
     )
 

@@ -1455,7 +1455,9 @@ button:active:not(:disabled) {
 .landing-directory-section h2,
 .landing-case-study h2,
 .landing-depth h2,
-.landing-cta h2 {
+.landing-cta h2,
+.landing-faq h2,
+.landing-pricing h2 {
   margin: 0 0 24px;
   color: var(--landing-ink);
   font-family: Georgia, 'Times New Roman', serif;
@@ -1629,7 +1631,9 @@ button:active:not(:disabled) {
   .landing-directory-section h2,
   .landing-case-study h2,
   .landing-depth h2,
-  .landing-cta h2 {
+  .landing-cta h2,
+  .landing-faq h2,
+  .landing-pricing h2 {
   max-width: 11ch;
   font-size: clamp(30px, 4vw, 48px);
 }
@@ -2590,7 +2594,9 @@ button:active:not(:disabled) {
   .landing-knowledge,
   .landing-case-study,
   .landing-depth,
-  .landing-cta {
+  .landing-cta,
+  .landing-pricing,
+  .landing-faq {
     padding-block: 72px;
   }
   .landing-how__grid,
@@ -2755,6 +2761,161 @@ button:active:not(:disabled) {
   border-bottom: 1px solid var(--border);
   padding: 0.45em 0.6em;
   text-align: left;
+}
+
+/* =========================================================
+   Landing — FAQ (details/summary accordions)
+   ========================================================= */
+.landing-faq {
+  padding-block: var(--landing-section-pad);
+  border-top: 1px solid var(--landing-line);
+  background: var(--landing-paper);
+}
+.landing-faq .landing-section__heading {
+  margin-bottom: 40px;
+}
+.landing-faq__list {
+  display: grid;
+  gap: 10px;
+}
+.landing-faq__item {
+  border: 1px solid var(--landing-line);
+  background: var(--landing-panel);
+  transition: border-color 0.25s ease;
+}
+.landing-faq__item[open] {
+  border-color: var(--landing-teal);
+}
+.landing-faq__item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 24px;
+  color: var(--landing-ink);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  list-style: none;
+  cursor: pointer;
+}
+.landing-faq__item summary::-webkit-details-marker {
+  display: none;
+}
+.landing-faq__chevron {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--landing-teal);
+  transition: transform 0.25s ease;
+}
+.landing-faq__item[open] .landing-faq__chevron {
+  transform: rotate(180deg);
+}
+.landing-faq__item > p {
+  max-width: 72ch;
+  margin: 0;
+  padding: 0 24px 22px;
+  color: var(--landing-muted);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+/* =========================================================
+   Landing — Pricing (two honest tiers: free start, on request)
+   ========================================================= */
+.landing-pricing {
+  padding-block: var(--landing-section-pad);
+  border-top: 1px solid var(--landing-line);
+  background: var(--landing-paper);
+}
+.landing-pricing__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 4px;
+}
+.landing-pricing__card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px;
+  border: 1px solid var(--landing-line);
+  background: var(--landing-panel);
+  transition: border-color 0.25s ease;
+}
+.landing-pricing__card:hover {
+  border-color: var(--landing-teal);
+}
+.landing-pricing__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--landing-teal);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.landing-pricing__card h3 {
+  margin: 4px 0 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.landing-pricing__card > p {
+  max-width: 42ch;
+  margin: 0;
+  color: var(--landing-muted);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.landing-pricing__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  color: var(--landing-teal);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.landing-pricing__cta:hover {
+  text-decoration: underline;
+}
+.landing-pricing__card > small {
+  margin-top: auto;
+  color: var(--landing-muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   Landing — FAQ & Pricing responsive
+   ========================================================= */
+@media (max-width: 760px) {
+  .landing-pricing__grid {
+    grid-template-columns: 1fr;
+  }
+  .landing-pricing__card {
+    padding: 24px;
+  }
+  .landing-faq__item summary {
+    padding: 18px;
+    font-size: 17px;
+  }
+  .landing-faq__item > p {
+    padding: 0 18px 20px;
+  }
 }
 .prose-academic th {
   font-weight: 600;

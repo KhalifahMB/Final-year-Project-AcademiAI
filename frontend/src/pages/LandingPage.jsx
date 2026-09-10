@@ -10,6 +10,7 @@ import {
   Calendar,
   CalendarClock,
   Check,
+  ChevronDown,
   Clock,
   GraduationCap,
   Landmark,
@@ -25,7 +26,7 @@ import {
   UserRound,
   UsersRound,
 } from 'lucide-react';
-import api from '@/services/api';
+import api, { publicApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import BrandMark from '@/components/shared/BrandMark';
 import ThemeToggle from '@/components/shared/ThemeToggle';
@@ -121,6 +122,52 @@ const EXTRAS = [
     tag: 'Coming soon',
     title: 'Collaborative study boards',
     text: 'Collaborate with classmates across your university — shared boards with grounded context.',
+  },
+];
+
+const FAQS = [
+  {
+    q: 'Where do answers actually come from?',
+    a: 'Every answer is grounded in your institution\u2019s own authorised resources — slides, notes, and PDFs uploaded by lecturers. Retrieval returns exact passages, and each claim carries the document, page, and score you can open and check.',
+  },
+  {
+    q: 'Is our content kept private between universities?',
+    a: 'Yes. Each institution runs in its own isolated tenant, enforced at the database layer with row-level security and then at the application layer on every query. Content from one university can never surface in another tenant\u2019s answers.',
+  },
+  {
+    q: 'Who gets to see and use what?',
+    a: 'Students, lecturers, and administrators each get a role-shaped workspace with a dedicated agent. Visibility scopes keep materials inside your institution, and administrators control access, announcements, and the audit trail.',
+  },
+  {
+    q: 'Does setting this up need our IT team?',
+    a: 'No on-premises infrastructure. Request your institution and, once approved, you receive an auto-provisioned workspace with its own academic hierarchy, roles, and access rules — ready to add material to.',
+  },
+  {
+    q: 'Can we bring in our existing timetable?',
+    a: 'Yes. Upload it as CSV or XLSX, review the parsed matrix in a preview step, then commit — lectures, exams, and office hours land on the calendar. Any view can also be exported to ICS.',
+  },
+  {
+    q: 'What does it cost to start?',
+    a: 'Free to start for students — create an account and join your university\u2019s workspace. Institutions are provisioned on request, and plan tiers are being finalised, so ask and we\u2019ll confirm the details.',
+  },
+];
+
+const PRICING_TIERS = [
+  {
+    icon: UserRound,
+    label: 'Students',
+    name: 'Free to start',
+    text: 'Join your university\u2019s workspace in under a minute and get the grounded tutor, auto-quizzes, study plans, and calendar — no payment details required.',
+    cta: { label: 'Get started free', to: '/signup' },
+    note: 'Create an account and start learning today.',
+  },
+  {
+    icon: Landmark,
+    label: 'Institutions',
+    name: 'On request',
+    text: 'A private, isolated tenant with your academic hierarchy, roles, and audit trail — plus cohort analytics and timetable import for your whole university.',
+    cta: { label: 'Request your institution', to: '/request-institution' },
+    note: 'Plan tiers are being finalised — request it and we\u2019ll confirm the details.',
   },
 ];
 
@@ -341,17 +388,14 @@ function TutorPanel() {
 export default function LandingPage() {
   const { isAuthenticated } = useAuth();
 
-  const countQuery = useQuery({
-    queryKey: ['landing-directory-count'],
-    queryFn: async () => {
-      const { data } = await api.get('/tenants/directory/');
-      return Array.isArray(data.results) ? data.results : [];
-    },
-    staleTime: 60_000,
+  const statsQuery = useQuery({
+    queryKey: ['landing-public-stats'],
+    queryFn: publicApi.getStats,
+    staleTime: 5 * 60_000,
     retry: 1,
   });
 
-  const institutionCount = countQuery.data?.length ?? 0;
+  const institutionCount = statsQuery.data?.institutions_total ?? 0;
 
   return (
     <div className="landing-page">
@@ -812,6 +856,35 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ------------------------------------------------------ FAQs */}
+        <section id="faq" className="landing-faq">
+          <div className="landing-shell">
+            <div className="landing-section__heading">
+              <div>
+                <h2>Questions, answered straight.</h2>
+              </div>
+              <p>
+                The short version of how grounding, privacy, and getting
+                started actually work.
+              </p>
+            </div>
+            <div className="landing-faq__list">
+              {FAQS.map((item) => (
+                <details key={item.q} className="landing-faq__item">
+                  <summary>
+                    {item.q}
+                    <ChevronDown
+                      className="landing-faq__chevron"
+                      aria-hidden="true"
+                    />
+                  </summary>
+                  <p>{item.a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* --------------------------------------------- On the roadmap */}
         <section className="landing-section">
           <div className="landing-shell">
@@ -854,6 +927,40 @@ export default function LandingPage() {
             <div className="landing-case-study__stamp" aria-hidden="true">
               <span>v1</span>
               <small>Multi-tenant · Isolated workspaces</small>
+            </div>
+          </div>
+        </section>
+
+        {/* --------------------------------------------------- Pricing */}
+        <section id="pricing" className="landing-pricing">
+          <div className="landing-shell">
+            <div className="landing-section__heading">
+              <div>
+                <h2>Simple to start, clear as you grow.</h2>
+              </div>
+              <p>
+                No paywall on day one — students get the full workspace free
+                to begin, and institutions are provisioned on request.
+              </p>
+            </div>
+            <div className="landing-pricing__grid">
+              {PRICING_TIERS.map(
+                ({ icon: Icon, label, name, text, cta, note }) => (
+                  <article key={label} className="landing-pricing__card">
+                    <div className="landing-pricing__top">
+                      <span>{label}</span>
+                      <Icon className="landing-extra__icon" aria-hidden="true" />
+                    </div>
+                    <h3>{name}</h3>
+                    <p>{text}</p>
+                    <Link to={cta.to} className="landing-pricing__cta">
+                      {cta.label}
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Link>
+                    <small>{note}</small>
+                  </article>
+                ),
+              )}
             </div>
           </div>
         </section>

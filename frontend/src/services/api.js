@@ -64,6 +64,23 @@ export const authApi = {
   passwordChange: (payload) => api.post('/auth/password-change/', payload),
 };
 
+/** Public, unauthenticated endpoints — no JWT attached, no refresh
+ * interceptor, no redirect. Must render for visitors on the landing page. */
+const PUBLIC_API_BASE = import.meta.env.VITE_PUBLIC_API_BASE_URL || '/api';
+
+export const publicApi = {
+  /** Landing statistics, server-side cached for exactly 1 hour
+   * (GET /api/public/stats/). */
+  getStats: async () => {
+    const res = await fetch(`${PUBLIC_API_BASE}/public/stats/`, {
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`Public stats request failed (${res.status})`);
+    return res.json();
+  },
+};
+
 /** Dashboard counters — DEPRECATED in favour of aggregate endpoints below. */
 const toList = (res) => {
   const data = res.data;
