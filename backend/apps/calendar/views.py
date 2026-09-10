@@ -215,7 +215,7 @@ class CalendarEventViewSet(TenantModelViewSet):
 class CalendarScheduleViewSet(TenantModelViewSet):
     """Manage bulk-imported timetables (admin upload wizard)."""
     serializer_class = CalendarScheduleSerializer
-    queryset = CalendarSchedule.objects.all()
+    queryset = CalendarSchedule.objects.select_related("uploaded_by")
     permission_classes = [IsTenantMember]
 
     def get_queryset(self):

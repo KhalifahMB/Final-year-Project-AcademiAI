@@ -44,7 +44,7 @@ class Command(BaseCommand):
                         patterns.append(prefix + str(e.pattern))
 
             walk(resolver)
-            must = ["health/", "signup/", "resources/", "chat/sessions/", "quizzes/", "jobs/"]
+            must = ["health/", "health/ready/", "signup/", "resources/", "chat/sessions/", "quizzes/", "jobs/"]
             missing = [m for m in must if not any(m in p for p in patterns)]
             if missing:
                 errors.append(f"routes missing: {missing}")

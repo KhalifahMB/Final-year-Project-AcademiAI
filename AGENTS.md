@@ -10,7 +10,7 @@ AcademiAI: multi-tenant academic AI platform. Monorepo = **Django REST backend**
 
 ## Backend (Django + DRF)
 
-- Modular monolith: apps under `backend/apps/` (`accounts`, `tenants`, `academics`, `resources`, `knowledge`, `chat`, `assessments`, `learning`, `audit`, `common`). Config in `backend/config/`.
+- Modular monolith: apps under `backend/apps/` (`accounts`, `tenants`, `academics`, `agent`, `assessments`, `audit`, `calendar`, `chat`, `common`, `knowledge`, `learning`, `logs`, `notifications`, `platform`, `resources`). Config in `backend/config/`.
 - Custom management commands live in `backend/apps/common/management/commands/` (`apply_rls`, `seed_demo`, `smoke_check`, `evaluate_rag`, `setup_dlq`). Put new admin commands there, not a random app.
 
 ```bash
@@ -23,6 +23,7 @@ cd backend
 
 - **Tests need the Docker DB up** (`docker compose up -d`). They are NOT offline-safe. Backend tests: `cd backend && .\.venv\Scripts\python.exe -m pytest -q` (may need `-p no:xdist` if pytest-xdist missing).
 - **Never trust a client-supplied `tenant_id`** — isolation is enforced by PostgreSQL RLS + application-layer filtering + object permissions (shared-schema multi-tenancy). The app DB role must be non-superuser without `BYPASSRLS`.
+- **Celery tasks MUST open `with tenant_scope(tenant_id):`** around any tenant-scoped ORM access — no middleware runs in the worker, so without it every query dies on RLS. In request code `tenant_scope()` is redundant (middleware already binds the tenant); do not nest it there.
 - **Celery on Windows auto-switches to the `solo` pool** (`config/celery.py`) because prefork crashes on win32. Don't "fix" that.
 
 ## Frontend (React 19 + Vite 8, plain JavaScript — no TypeScript)

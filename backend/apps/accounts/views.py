@@ -1,7 +1,9 @@
 import logging
 import uuid
 
+from django.conf import settings
 from django.contrib.auth import authenticate
+from django.core.files.uploadedfile import UploadedFile
 from django.utils import timezone
 from rest_framework import parsers
 from drf_spectacular.utils import extend_schema, extend_schema_view
@@ -11,7 +13,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .models import User
+from .models import User, EmailVerificationCode
 from .serializers import (
     SignupSerializer,
     VerifyEmailSerializer,
@@ -29,15 +31,22 @@ from .serializers import (
     LogoutRequestSerializer,
 )
 from . import services
+from .tasks import send_verification_email
 from apps.audit.services import log_action
 from apps.common.permissions import IsAdminRole
+from apps.common.throttling import AuthFloodThrottle
+from apps.common.storage import (
+    get_s3_client,
+    delete_object,
+    generate_presigned_download_url,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class SignupView(APIView):
     permission_classes = [permissions.AllowAny]
-    throttle_scope = "auth"
+    throttle_classes = [AuthFloodThrottle]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     @extend_schema(
@@ -107,8 +116,6 @@ class SignupView(APIView):
             )
             if sniffed:
                 content_type, ext = sniffed
-                from django.conf import settings
-                from apps.common.storage import get_s3_client
 
                 key = f"tenants/{user.tenant_id}/avatars/{user.id}/{uuid.uuid4()}{ext}"
                 try:
@@ -129,7 +136,6 @@ class SignupView(APIView):
                 logger.info("Signup avatar rejected (type/size) user=%s", user.id)
         # Dispatch email task (non-blocking)
         try:
-            from .tasks import send_verification_email
 
             send_verification_email(str(user.id), code)
         except Exception:
@@ -146,7 +152,7 @@ class SignupView(APIView):
 
 class VerifyEmailView(APIView):
     permission_classes = [permissions.AllowAny]
-    throttle_scope = "auth"
+    throttle_classes = [AuthFloodThrottle]
 
     @extend_schema(
         tags=["Authentication"],
@@ -183,7 +189,7 @@ class ResendVerificationView(APIView):
     """
 
     permission_classes = [permissions.AllowAny]
-    throttle_scope = "auth"
+    throttle_classes = [AuthFloodThrottle]
 
     @extend_schema(
         tags=["Authentication"],
@@ -206,7 +212,7 @@ class ResendVerificationView(APIView):
 
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
-    throttle_scope = "auth"
+    throttle_classes = [AuthFloodThrottle]
 
     @extend_schema(
         tags=["Authentication"],
@@ -294,9 +300,6 @@ class MeView(generics.RetrieveUpdateAPIView):
             # Email ownership changed: the new address is unverified until the
             # user proves ownership. Reset verification + expire prior codes to
             # keep the "unverified accounts cannot log in" guarantee.
-            from apps.accounts.models import EmailVerificationCode
-            from .tasks import send_verification_email
-
             EmailVerificationCode.objects.filter(user=user, is_used=False).update(
                 expires_at=timezone.now()
             )
@@ -358,7 +361,6 @@ class AvatarView(APIView):
         user = request.user
         if not user.avatar_key:
             return Response({"url": None})
-        from apps.common.storage import generate_presigned_download_url
 
         try:
             url = generate_presigned_download_url(user.avatar_key, expires_in=3600)
@@ -372,7 +374,6 @@ class AvatarView(APIView):
 
     @extend_schema(tags=["Profile"], summary="Upload own avatar picture")
     def post(self, request):
-        from django.core.files.uploadedfile import UploadedFile
 
         f = request.FILES.get("file")
         if not isinstance(f, UploadedFile):
@@ -395,8 +396,6 @@ class AvatarView(APIView):
         content_type, ext = sniffed
         user = request.user
         key = f"tenants/{user.tenant_id}/avatars/{user.id}/{uuid.uuid4()}{ext}"
-        from django.conf import settings
-        from apps.common.storage import get_s3_client, delete_object
 
         try:
             client = get_s3_client()
@@ -438,7 +437,6 @@ class AvatarView(APIView):
         user.save(update_fields=["avatar_key", "updated_at"])
         if old_key:
             try:
-                from apps.common.storage import delete_object
 
                 delete_object(old_key)
             except Exception:
@@ -448,7 +446,7 @@ class AvatarView(APIView):
 
 class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
-    throttle_scope = "auth"
+    throttle_classes = [AuthFloodThrottle]
 
     @extend_schema(
         tags=["Authentication"],
@@ -481,7 +479,7 @@ class PasswordResetRequestView(APIView):
 
 class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
-    throttle_scope = "auth"
+    throttle_classes = [AuthFloodThrottle]
 
     @extend_schema(
         tags=["Authentication"],

@@ -7,13 +7,19 @@ from django.db import models
 
 
 class TimeStampedModel(models.Model):
-    """Abstract base with created/updated timestamps."""
+    """Abstract base with created/updated timestamps.
 
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    created_at is intentionally NOT indexed here: indexing every tenant-scoped
+    table wastes disk + write cost for tables that never order/filter by
+    creation time. Models that actually do (audit trail, chat history, stats
+    filters, etc.) opt in via ``Meta.indexes``.
+    """
+
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    # class Meta:
-    #     abstract = True
+    class Meta:
+        abstract = True
 
 
 class UUIDModel(models.Model):
@@ -21,8 +27,8 @@ class UUIDModel(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    # class Meta:
-    #     abstract = True
+    class Meta:
+        abstract = True
 
 
 class TenantScopedModel(UUIDModel, TimeStampedModel):
@@ -33,8 +39,12 @@ class TenantScopedModel(UUIDModel, TimeStampedModel):
 
     tenant = models.ForeignKey(
         "tenants.Tenant",
-        on_delete=models.CASCADE,
-        related_name="%(class)s",
+        # PROTECT: deleting a tenant is a catastrophic, irreversible event in a
+        # multi-tenant platform. Any row referencing the tenant must be removed
+        # first (the app suspends tenants via status instead of deleting), so an
+        # accidental delete can never cascade through the institution's data.
+        on_delete=models.PROTECT,
+        related_name="%(class)s_set",
         db_index=True,
     )
 

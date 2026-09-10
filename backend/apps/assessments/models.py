@@ -31,6 +31,7 @@ class Quiz(TenantScopedModel):
     class Meta:
         db_table = "quizzes"
         ordering = ["-created_at"]
+        indexes = [models.Index(fields=["created_at"])]
 
 
 class QuizQuestion(TenantScopedModel):
@@ -76,3 +77,4 @@ class QuizAttempt(TenantScopedModel):
     class Meta:
         db_table = "quiz_attempts"
         ordering = ["-started_at"]
+        indexes = [models.Index(fields=["created_at"])]

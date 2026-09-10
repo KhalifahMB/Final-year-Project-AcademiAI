@@ -8,6 +8,40 @@ from apps.common.jobs import get_job_status, is_job_owner
 from apps.common.permissions import IsSuperuser
 
 
+def _check_dependency_ping():
+    """Shallow, fast checks of critical runtime dependencies for probes."""
+    import time
+
+    checks = {}
+    try:
+        from django.db import connection
+
+        start = time.time()
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        checks["postgres"] = {
+            "status": "ok",
+            "latency_ms": round((time.time() - start) * 1000, 2),
+        }
+    except Exception as e:
+        checks["postgres"] = {"status": "error", "error": str(e)[:200]}
+
+    try:
+        from django.core.cache import cache
+
+        start = time.time()
+        cache.set("_health_ping", "ok", 10)
+        ok = cache.get("_health_ping") == "ok"
+        checks["redis"] = {
+            "status": "ok" if ok else "error",
+            "latency_ms": round((time.time() - start) * 1000, 2),
+        }
+    except Exception as e:
+        checks["redis"] = {"status": "error", "error": str(e)[:200]}
+
+    return checks
+
+
 class JobStatusSerializer(serializers.Serializer):
     job_id = serializers.CharField()
     status = serializers.CharField()
@@ -46,6 +80,7 @@ class JobStatusView(APIView):
 @extend_schema(tags=["System"])
 class HealthView(APIView):
     """GET /api/v1/health/ — public liveness."""
+
     permission_classes = [AllowAny]
     authentication_classes = []
 
@@ -55,7 +90,35 @@ class HealthView(APIView):
         auth=[],
     )
     def get(self, request):
-        return Response({"status": "ok", "service": "academiai"})
+        # Liveness stays green as long as the process serves requests; failing
+        # it would make load balancers churn the service. Dependency health is
+        # reported for observability and gated separately by /health/ready/.
+        deps = _check_dependency_ping()
+        return Response({"status": "ok", "service": "academiai", "dependencies": deps})
+
+
+@extend_schema(tags=["System"])
+class ReadinessView(APIView):
+    """GET /api/v1/health/ready/ — readiness probe for K8s / load balancers.
+
+    Returns 503 (with per-dependency status) whenever a critical runtime
+    dependency — PostgreSQL or Redis — is unreachable, so orchestrators can
+    stop routing traffic to this pod. Shallow by design; the superuser-only
+    /api/v1/platform/health/ endpoint performs the heavy deep-dive (queue
+    inventories, storage, Celery).
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(summary="Service readiness probe", auth=[])
+    def get(self, request):
+        checks = _check_dependency_ping()
+        critical = {k: v for k, v in checks.items() if v.get("status") != "ok"}
+        payload = {"ready": not critical, "dependencies": checks}
+        if critical:
+            return Response(payload, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(payload)
 
 
 @extend_schema(

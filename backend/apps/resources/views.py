@@ -1,14 +1,22 @@
 import logging
+import uuid
 
+from django.conf import settings
 from django.db import models, transaction
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
+from apps.academics.models import CourseEnrollment, LecturerCourseAssignment
+from apps.audit.services import log_action
+from apps.common.jobs import claim_job
 from apps.common.throttling import AiRateThrottle, UploadRateThrottle
 from apps.common.viewsets import TenantModelViewSet
+from apps.knowledge.retrieval import _authorized_resource_ids, _viewer_academic_context
 from apps.resources.permissions import IsOwnerOrAdminForWrite
 from .models import Resource, ResourceVersion, ResourceSummary, ResourceAccess
 from .serializers import (
@@ -20,9 +28,12 @@ from apps.common.storage import (
     get_s3_client,
     generate_presigned_upload_post,
     generate_presigned_download_url,
+    delete_object,
 )
 from apps.common.security.file_validation import ALLOWED_MIME_PREFIXES
-import uuid
+from apps.learning.models import Bookmark
+from .tasks import process_resource_ingestion
+from .summary_tasks import summarize_resource_task
 
 logger = logging.getLogger(__name__)
 
@@ -98,8 +109,6 @@ def _preview_kind(resource) -> str:
 
     # Last resort: sniff the first bytes straight from storage.
     try:
-        from django.conf import settings
-
         client = get_s3_client()
         obj = client.get_object(
             Bucket=settings.AWS_STORAGE_BUCKET_NAME,
@@ -139,9 +148,6 @@ def _authorized_resources_q(user) -> Q:
     visibility over all non-private scopes in the tenant, but never over
     another user's private resources.
     """
-    from apps.academics.models import CourseEnrollment, LecturerCourseAssignment
-    from apps.knowledge.retrieval import _viewer_academic_context
-
     role = getattr(user, "role", None)
     is_admin = getattr(user, "is_tenant_admin", False) or bool(getattr(user, "is_superuser", False))
 
@@ -264,8 +270,6 @@ class ResourceViewSet(TenantModelViewSet):
     def perform_create(self, serializer):
         serializer.save(tenant=self.request.user.tenant, uploaded_by=self.request.user)
         try:
-            from apps.audit.services import log_action
-
             log_action(
                 tenant=self.request.user.tenant,
                 actor=self.request.user,
@@ -283,7 +287,6 @@ class ResourceViewSet(TenantModelViewSet):
         tenant = self.request.user.tenant
 
         # If anyone else has bookmarked this, keep it available for them
-        from apps.learning.models import Bookmark
         has_other_bookmarks = Bookmark.objects.filter(
             resource=instance
         ).exclude(user=self.request.user).exists()
@@ -300,8 +303,6 @@ class ResourceViewSet(TenantModelViewSet):
             # Object storage cleanup is best-effort; metadata removal must succeed.
             if instance.storage_key:
                 try:
-                    from apps.common.storage import delete_object
-
                     delete_object(instance.storage_key)
                 except Exception:
                     logger.exception(
@@ -311,8 +312,6 @@ class ResourceViewSet(TenantModelViewSet):
             action = "resource.delete"
 
         try:
-            from apps.audit.services import log_action
-
             log_action(
                 tenant=tenant,
                 actor=self.request.user,
@@ -412,12 +411,9 @@ class ResourceViewSet(TenantModelViewSet):
             resource.processing_status = resource.ProcessingStatus.PENDING
             resource.save(update_fields=["storage_key", "processing_status", "mime_type", "updated_at"])
 
-        from .tasks import process_resource_ingestion
         task = process_resource_ingestion.delay(
             str(resource.id), str(version.id), str(resource.tenant_id)
         )
-        from apps.common.jobs import claim_job
-
         claim_job(task.id, request.user.id)
         return Response({"version_id": str(version.id), "job_id": task.id, "status": "pending"})
 
@@ -444,12 +440,9 @@ class ResourceViewSet(TenantModelViewSet):
         resource.processing_error = ""
         resource.save(update_fields=["processing_status", "processing_error", "updated_at"])
 
-        from .tasks import process_resource_ingestion
         task = process_resource_ingestion.delay(
             str(resource.id), str(version.id), str(resource.tenant_id)
         )
-        from apps.common.jobs import claim_job
-
         claim_job(task.id, request.user.id)
         return Response({"job_id": task.id, "status": "pending"})
 
@@ -488,8 +481,6 @@ class ResourceViewSet(TenantModelViewSet):
             )
 
         if kind == "text":
-            from django.conf import settings
-
             client = get_s3_client()
             obj = client.get_object(
                 Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=resource.storage_key
@@ -535,19 +526,15 @@ class ResourceViewSet(TenantModelViewSet):
             )
 
         # Visibility authorization
-        from apps.knowledge.retrieval import _authorized_resource_ids
         if resource.id not in _authorized_resource_ids(request.user, None):
             return Response(
                 {"success": False, "error": {"detail": "You do not have access to this material."}},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        from .summary_tasks import summarize_resource_task
         task = summarize_resource_task.delay(
             str(resource.id), str(request.user.tenant_id), str(request.user.id)
         )
-        from apps.common.jobs import claim_job
-
         claim_job(task.id, request.user.id)
         return Response({"job_id": task.id, "status": "pending"}, status=status.HTTP_202_ACCEPTED)
 
@@ -612,7 +599,6 @@ class ResourceVersionViewSet(TenantModelViewSet):
     serializer_class = ResourceVersionSerializer
 
     def _parent_resource(self):
-        from django.shortcuts import get_object_or_404
         # Always apply the visibility map (:func:`_authorized_resources_q`).
         # Private materials remain owner-only even for admins; admins may see
         # all non-private resources in the tenant. Using Q() for admins here
@@ -648,7 +634,6 @@ class ResourceVersionViewSet(TenantModelViewSet):
         is_owner = resource.uploaded_by_id == user.id
         is_admin = getattr(user, "is_tenant_admin", False) or getattr(user, "is_superuser", False)
         if not (is_owner or is_admin):
-            from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Only the uploader or an admin may add a new version.")
         last = resource.versions.order_by("-version_number").first()
         next_ver = (last.version_number + 1) if last else 1

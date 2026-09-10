@@ -8,6 +8,9 @@ import time
 
 from django.conf import settings
 
+from apps.common.db import tenant_scope
+from apps.common.constants import AGENT_MAX_TOOL_ITERATIONS, AGENT_HISTORY_SLOTS, AGENT_TITLE_MAX_CHARS
+
 logger = logging.getLogger(__name__)
 
 AGENT_BASE_RULES = """Rules:
@@ -85,7 +88,7 @@ def run_agent_turn(client, model_name, user, message, context_type, history=None
             contents.append({"role": role, "parts": [{"text": content}]})
     contents.append({"role": "user", "parts": [{"text": message}]})
 
-    max_iterations = 5
+    max_iterations = AGENT_MAX_TOOL_ITERATIONS
     full_response = ""
 
     def persist_session_history(final_text: str = "") -> None:
@@ -95,10 +98,10 @@ def run_agent_turn(client, model_name, user, message, context_type, history=None
         session_history.append({"role": "user", "content": message})
         if final_text:
             session_history.append({"role": "assistant", "content": final_text})
-        session.recent_messages = session_history[-20:]
+        session.recent_messages = session_history[-AGENT_HISTORY_SLOTS:]
         update_fields = ["recent_messages", "last_active_at"]
         if session.message_count == 0 and session.title == "New conversation":
-            session.title = message.strip()[:60] or "New conversation"
+            session.title = message.strip()[:AGENT_TITLE_MAX_CHARS] or "New conversation"
             update_fields.append("title")
         session.save(update_fields=update_fields)
 
@@ -139,15 +142,19 @@ def run_agent_turn(client, model_name, user, message, context_type, history=None
 
                 result = execute_tool(tool_name, user, tool_params)
                 if session is not None:
-                    AgentToolExecution.objects.create(
-                        tenant=session.tenant,
-                        session=session,
-                        tool_name=tool_name,
-                        input_params=tool_params,
-                        output_summary=json.dumps(result.get("result", result), default=str)[:2000],
-                        execution_time_ms=result.get("execution_time_ms"),
-                        success=result.get("success", True),
-                    )
+                    # tenant_scope() is a no-op inside a request (the middleware
+                    # already bound the tenant) but REQUIRED if this loop ever
+                    # runs under Celery — without it RLS rejects the insert.
+                    with tenant_scope(session.tenant_id):
+                        AgentToolExecution.objects.create(
+                            tenant=session.tenant,
+                            session=session,
+                            tool_name=tool_name,
+                            input_params=tool_params,
+                            output_summary=json.dumps(result.get("result", result), default=str)[:2000],
+                            execution_time_ms=result.get("execution_time_ms"),
+                            success=result.get("success", True),
+                        )
                 tool_results.append({
                     "function_response": {
                         "name": tool_name,

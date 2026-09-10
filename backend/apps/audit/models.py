@@ -21,4 +21,5 @@ class AuditLog(TenantScopedModel):
         indexes = [
             models.Index(fields=["tenant", "action"]),
             models.Index(fields=["tenant", "entity_type", "entity_id"]),
+            models.Index(fields=["created_at"]),
         ]

@@ -176,3 +176,4 @@ class CalendarSchedule(TenantScopedModel):
     class Meta:
         db_table = "calendar_schedules"
         ordering = ["-created_at"]
+        indexes = [models.Index(fields=["created_at"])]

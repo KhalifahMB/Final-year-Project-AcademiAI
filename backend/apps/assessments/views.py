@@ -115,7 +115,7 @@ class QuizAttemptViewSet(TenantModelViewSet):
     attempt server-side and cannot be repeated.
     """
 
-    queryset = QuizAttempt.objects.all()
+    queryset = QuizAttempt.objects.select_related("quiz").prefetch_related("quiz__questions")
     serializer_class = QuizAttemptSerializer
     http_method_names = ["get", "post", "head", "options"]
 
