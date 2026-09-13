@@ -45,6 +45,7 @@ export const DepartmentDetailPage = lazy(
 );
 export const CourseManagePage = lazy(() => import('@/pages/admin/CourseManagePage'));
 export const AdminCoursesPage = lazy(() => import('@/pages/admin/AdminCoursesPage'));
+export const CalendarUploadPage = lazy(() => import('@/pages/admin/CalendarUploadPage'));
 
 export const PlatformConsolePage = lazy(() => import('@/pages/PlatformConsolePage'));
 export const PlatformTenantsPage = lazy(() => import('@/pages/platform/TenantsPage'));

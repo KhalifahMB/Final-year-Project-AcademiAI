@@ -39,6 +39,7 @@ npm test          # vitest, happy-dom env
 - `@` alias → `frontend/src` (see `vite.config.js`).
 - **Theming source of truth:** `frontend/src/index.css` — Tailwind **v4 CSS-first** with `oklch()` tokens defined as CSS custom properties (`--bg`, `--surface`, `--fg`, `--accent`, etc.). The `tailwind.config.js` maps these colors for shadcn CLI/intellisense **only** — do NOT edit it to change app colors; change the tokens in `index.css`.
 - shadcn/ui (Radix) primitives in `components/ui/`; shared app components in `components/shared/`. Icons: `lucide-react`.
+- **Structure rule:** contexts/providers live in `src/context/`, hooks in `src/hooks/` — never co-locate a `createContext` and a `use*` hook in one file (full inventory in `docs/FRONTEND_STACK.md`).
 - **Design contract:** `DESIGN.md` (glass-first premium material system) + `PRODUCT.md` are authoritative for visuals/voice. Follow them; both light and dark themes are first-class (tokens only, no hardcoded hues).
 
 ## Working docs (read before deep work)

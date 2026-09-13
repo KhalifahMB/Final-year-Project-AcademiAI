@@ -4,6 +4,7 @@
 import axios from 'axios';
 
 import { PAGINATION, SSE_MAX_BUFFER_BYTES, BULK_DELETE_MAX_IDS } from '@/lib/constants';
+import { go } from '@/lib/navigation';
 import { clearSessionFlag } from '@/lib/session';
 import {
   enforceContract,
@@ -32,6 +33,11 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 const api = axios.create({
   baseURL: API_BASE,
   withCredentials: true,
+  // A stalled request must never pin the UI indefinitely. 60s is generous for
+  // compute-heavy endpoints (quiz generation, RAG summaries); long-lived SSE
+  // streams bypass axios entirely (raw fetch in `createSSEStream`), and large
+  // uploads opt out per-call below.
+  timeout: 60_000,
 });
 
 // --- Refresh-token mutex ---
@@ -47,7 +53,7 @@ function doRefresh() {
     .then(() => true)
     .catch((err) => {
       clearSessionFlag();
-      window.location.href = '/login';
+      go('/login');
       throw err;
     });
 }
@@ -81,11 +87,24 @@ async function apiFetch(path, options = {}) {
   return res;
 }
 
+// A 401 on the auth leaf endpoints (login/signup/refresh) means "bad
+// credentials" or "missing token", NOT an expired session. Refreshing there
+// only doubles the failed request, clears the session flag and hard-redirects
+// to /login — which made a wrong-password attempt look like an infra failure.
+const AUTH_LEAF_401 = (url = '') =>
+  ['/auth/login/', '/auth/signup/', '/auth/token/refresh/'].some((p) =>
+    url.includes(p),
+  );
+
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    if (
+      error.response?.status === 401 &&
+      !original._retry &&
+      !AUTH_LEAF_401(original.url)
+    ) {
       original._retry = true;
 
       // If a refresh is already in flight, piggyback on it.
@@ -229,6 +248,10 @@ export const dashboardApi = {
     api
       .post('/dashboard/ai-insight/', { dashboard_type: dashboardType })
       .then((r) => r.data),
+  studentStreak: () =>
+    api.get('/dashboard/student/streak/').then((r) => r.data),
+  studentReminders: () =>
+    api.get('/dashboard/student/reminders/').then((r) => r.data),
 };
 
 export const notesApi = {
@@ -342,7 +365,9 @@ export const chatApi = {
     const form = new FormData();
     form.append('file', file);
     if (sessionId) form.append('session_id', sessionId);
-    return api.post('/chat/upload/', form).then((r) => r.data);
+    return api
+      .post('/chat/upload/', form, { timeout: 300_000 })
+      .then((r) => r.data);
   },
   /**
    * Stream an assistant response as SSE.
@@ -500,7 +525,9 @@ export const agentApi = {
   uploadAvatar: (file) => {
     const form = new FormData();
     form.append('file', file);
-    return api.post('/agent/avatar/', form).then((r) => r.data);
+    return api
+      .post('/agent/avatar/', form, { timeout: 300_000 })
+      .then((r) => r.data);
   },
   listSessions: () => api.get('/agent/sessions/').then((r) => r.data),
   getSession: (id) => api.get(`/agent/sessions/${id}/`).then((r) => r.data),

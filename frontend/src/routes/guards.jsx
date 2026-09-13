@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
-import { RouteLoading } from '@/components/common/NotFoundPage';
+import { RouteLoading } from '@/components/common/RouteLoading';
 import { roleHome } from '@/lib/access';
 
 export function ProtectedRoute({ children, roles, requireSuperuser }) {

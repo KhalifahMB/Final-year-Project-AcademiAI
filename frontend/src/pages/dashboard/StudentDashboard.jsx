@@ -8,6 +8,7 @@
  *  4. Study activity filled area chart (This week / vs last week / Streak stats)
  *  5. Sidebar stats grid (Concept mastery colored bars)
  *  6. New in library (recent resources)
+ *  7. Study streak card (daily streak + 14-day dots + reminders)
  *
  * Backend contracts stay intact — reads the same aggregate payload.
  */
@@ -41,7 +42,7 @@ import {
 
 import { TimeAgo, Meter } from './DashboardPage.helpers';
 import AiInsightCard from '@/components/shared/AiInsightCard';
-import { calendarApi, plansApi } from '@/services/api';
+import { dashboardApi, calendarApi, plansApi } from '@/services/api';
 
 /* ---------------------------------------------------------------- */
 /* Sections                                                          */
@@ -375,6 +376,126 @@ function StudyActivity({ chartData, range, onChangeRange, loading, statsRow }) {
   );
 }
 
+function StudyStreak({ streak, reminders, loading }) {
+  const days = streak?.recent || [];
+  const current = streak?.current_streak || 0;
+  const longest = streak?.longest_streak || 0;
+  const activeDays = streak?.total_active_days || 0;
+  const todayActive = streak?.today_active;
+
+  const KIND_META = {
+    exam: { Icon: GraduationCap, label: 'Exam' },
+    milestone: { Icon: Target, label: 'Milestone' },
+    plan: { Icon: BookOpenCheck, label: 'Plan' },
+  };
+
+  return (
+    <section data-testid="study-streak" className="card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="eyebrow !mb-0">Study streak</p>
+          <h3 className="mt-1 text-[15px] font-[640] tracking-[-0.01em]">
+            {loading
+              ? '…'
+              : current > 0
+                ? `${current} day${current === 1 ? '' : 's'} in a row`
+                : 'Start your streak'}
+          </h3>
+        </div>
+        <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+          <Flame className="h-4 w-4" aria-hidden />
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)]/40 p-3">
+          <p className="text-[11px] font-[600] uppercase tracking-[0.08em] text-[var(--muted)]">Longest</p>
+          <p className="mt-1 text-[18px] font-[650] tracking-[-0.02em] num">{loading ? '…' : longest}</p>
+        </div>
+        <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)]/40 p-3">
+          <p className="text-[11px] font-[600] uppercase tracking-[0.08em] text-[var(--muted)]">Active days</p>
+          <p className="mt-1 text-[18px] font-[650] tracking-[-0.02em] num">{loading ? '…' : activeDays}</p>
+        </div>
+      </div>
+
+      {!loading && days.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center justify-between gap-1" role="img" aria-label="Last 14 days of study activity">
+            {days.map((d) => (
+              <span
+                key={d.date}
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                title={new Date(d.date).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                aria-hidden
+              >
+                <span
+                  className={`block h-2.5 w-2.5 rounded-full ${
+                    d.active
+                      ? 'bg-[var(--accent)] shadow-[0_0_0_3px_var(--accent-soft)]'
+                      : 'border border-[var(--border)] bg-[var(--surface-2)]'
+                  }`}
+                  data-active={d.active}
+                />
+              </span>
+            ))}
+          </div>
+          <p className="mt-2.5 text-center text-[11.5px] text-[var(--muted)]">
+            {todayActive
+              ? 'Studied today — keep it burning'
+              : current > 0
+                ? 'No study logged today yet'
+                : 'Chat, read or take a quiz to start'}
+          </p>
+        </div>
+      )}
+
+      <div className="mt-4 border-t border-[var(--border)] pt-4">
+        <p className="text-[13px] font-[640] tracking-[-0.01em]">Reminders</p>
+        {loading ? (
+          <div className="mt-2 h-16 animate-pulse rounded-[var(--radius-md)] bg-[var(--surface-2)]" />
+        ) : reminders.length === 0 ? (
+          <p className="mt-2 text-[12px] text-[var(--muted)]">
+            Nothing due in the next 7 days. Enjoy the calm.
+          </p>
+        ) : (
+          <ul className="mt-1 -mx-2 space-y-1">
+            {reminders.slice(0, 4).map((r, i) => {
+              const meta = KIND_META[r.kind] || KIND_META.milestone;
+              return (
+                <li key={`${r.kind}-${i}`}>
+                  <Link
+                    to={r.route}
+                    className="group flex items-center gap-3 rounded-[var(--radius-md)] px-2 py-2 transition-colors hover:bg-[var(--hover)]"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+                      <meta.Icon className="h-4 w-4" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-[600]">{r.title}</p>
+                      <p className="mt-0.5 flex items-center gap-1 text-[11.5px] text-[var(--muted)]">
+                        {r.detail}
+                        <span aria-hidden>·</span>
+                        <span className="capitalize">{meta.label}</span>
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[11px] font-[600] text-[var(--muted)] num">
+                      {format(parseISO(r.when), 'MMM d')}
+                    </span>
+                    <ArrowRight
+                      className="h-3.5 w-3.5 text-[var(--faint)] transition-colors group-hover:text-[var(--accent-strong)]"
+                      aria-hidden
+                    />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function NewInLibrary({ items }) {
   return (
     <section className="card p-5">
@@ -671,6 +792,16 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
     queryFn: () => plansApi.list(),
     staleTime: 30_000,
   });
+  const { data: streakData, isLoading: streakLoading } = useQuery({
+    queryKey: ['student-streak'],
+    queryFn: () => dashboardApi.studentStreak(),
+    staleTime: 30_000,
+  });
+  const { data: remindersData, isLoading: remindersLoading } = useQuery({
+    queryKey: ['student-reminders'],
+    queryFn: () => dashboardApi.studentReminders(),
+    staleTime: 30_000,
+  });
   const weekEventsList = weekEvents?.results || weekEvents || [];
   const plans = planData?.results || planData || [];
 
@@ -737,6 +868,11 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
         <div className="space-y-5">
           <QuickCTA firstName={firstName} />
           <UpNext items={upNext} />
+          <StudyStreak
+            streak={streakData}
+            reminders={remindersData?.reminders || []}
+            loading={streakLoading || remindersLoading}
+          />
           <MyWeek events={weekEventsList} />
           <ConceptMastery items={concepts} />
         </div>

@@ -37,7 +37,7 @@
 | File | Route | Description |
 |------|-------|-------------|
 | `DashboardPage.jsx` | `/dashboard` | Role-aware wrapper — delegates to student or lecturer sub-view |
-| `StudentDashboard.jsx` | (child) | Enrolled courses, recent chats, recent materials |
+| `StudentDashboard.jsx` | (child) | Enrolled courses, study activity chart, study streak + reminders card, recent materials |
 | `LecturerDashboard.jsx` | (child) | Pipeline stats, recent uploads, cohort signals |
 | `DashboardPage.helpers.jsx` | — | Shared stat formatting and date helpers |
 
@@ -68,7 +68,7 @@
 |------|-------|-------------|
 | `AssignedCoursesPage.jsx` | `/assigned-courses` | Courses assigned to this lecturer |
 
-### Admin (`pages/admin/`) — tenant_admin role
+### Tenant admin (`pages/admin/`) — tenant_admin role
 
 | File | Route | Description |
 |------|-------|-------------|
@@ -79,18 +79,19 @@
 | `AdminQuizzesPage.jsx` | `/admin/quizzes` | Quiz management — review, publish, delete |
 | `AdminTemplatesPage.jsx` | `/admin/templates` | Plan and quiz template management |
 | `AdminAuditPage.jsx` | `/admin/audit` | Tenant audit log viewer |
-| `TenantStructurePage.jsx` | `/admin/structure` | Faculty → department → programme → course hierarchy |
-| `FacultyDetailPage.jsx` | `/admin/faculty/:id` | Faculty detail — departments, programmes |
+| `TenantLogsPage.jsx` | `/admin/logs` | Tenant request log viewer |
+| `CalendarUploadPage.jsx` | `/admin/upload` | Timetable import wizard — CSV/XLSX template, preview, commit |
+| `TenantStructurePage.jsx` | `/admin/tenant` | Faculty → department → programme → course hierarchy |
+| `FacultyDetailPage.jsx` | `/admin/faculties/:id` | Faculty detail — departments, programmes |
 | `DepartmentDetailPage.jsx` | `/admin/department/:id` | Department detail — programmes, courses |
 
-### Platform (`pages/platform/`) — superuser only
+### Platform admin (`pages/platform/`) — superuser only
 
 | File | Route | Description |
 |------|-------|-------------|
 | `PlatformConsolePage.jsx` | `/platform` | Cross-tenant overview — tenant list, system health |
 | `TenantsPage.jsx` | `/platform/tenants` | Tenant management — create, suspend, reactivate |
 | `TenantDetailPage.jsx` | `/platform/tenants/:id` | Tenant detail — settings, users, stats |
-| `TenantLogsPage.jsx` | `/platform/tenants/:id/logs` | Tenant request log viewer |
 | `RequestsPage.jsx` | `/platform/requests` | Sign-up request queue — approve/reject with plan assignment |
 | `AnnouncementsPage.jsx` | `/platform/announcements` | Platform-wide announcement management |
 | `AnalyticsPage.jsx` | `/platform/analytics` | Cross-tenant analytics charts |
@@ -124,6 +125,33 @@
 
 ---
 
+## Context & providers (`src/context/`)
+
+| Module | Purpose | Exports |
+|--------|---------|---------|
+| `AuthContext.jsx` | Auth session context + provider — cookie-JWT login/logout, session flag, shared cache key | `AuthProvider`, `AuthContext` |
+
+> `USER_QUERY_KEY`, `AUTH_QUERY_OPTIONS` and `fetchUser` (the deduped `/auth/me` query) live in `services/authQuery.js`; the context and hook re-import them from there.
+
+> **Rule:** contexts and providers live in `src/context/`; hooks live in `src/hooks/`. A `createContext` and a `use*` hook must **never** share a file.
+> (UI-primitive exception: `components/ui/form.jsx` and `components/ui/toast.jsx` own Radix-internal contexts for their own components.)
+
+## Hooks (`src/hooks/`)
+
+| Hook | Description |
+|------|-------------|
+| `useAuth.jsx` | Auth session — user, login, logout, reload, isAuthenticated. Consumes `AuthContext`; falls back to a standalone query when rendered outside the provider |
+| `useAgent.js` | AI assistant session state for the floating agent |
+| `useTheme.js` | Light/dark theme state + toggle |
+| `useMediaQuery.js` | `useMediaQuery`, `useIsMobile`, `useIsTablet`, `useIsDesktop`, `usePrefersReducedMotion` |
+| `useNotifications.js` | Notification feed + unread count |
+| `useKeyboardShortcut.js` | Global keyboard shortcut binding |
+| `useReadingPosition.js` | Reading progress + resume position for resources |
+| `useScrollReveal.js` | IntersectionObserver scroll-reveal — `{ ref, isVisible }` |
+| `use-toast.js` | Sonner toast helpers + reducer (context lives in `components/ui/toast.jsx`) |
+
+---
+
 ## Role-gating
 
 Routes are protected by role in `AppShell.jsx`:
@@ -132,5 +160,5 @@ Routes are protected by role in `AppShell.jsx`:
 |------|-------------------|
 | `student` | Dashboard, My Courses, My Programme, Courses, Resources, Chat, Calendar, Plans, Quizzes, Notes, Bookmarks, Progress, Profile |
 | `lecturer` | All student routes + Assigned Courses |
-| `tenant_admin` | All lecturer routes + Admin (users, courses, quizzes, templates, audit, structure) |
-| `superuser` | All routes + Platform Console (tenants, requests, announcements, analytics, health, audit) |
+| `tenant_admin` | All lecturer routes + Tenant admin (users, courses, quizzes, templates, audit, structure, timetable upload) |
+| `superuser` | All routes + Platform admin console (tenants, requests, announcements, analytics, health, audit) |

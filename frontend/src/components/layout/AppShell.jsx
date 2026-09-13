@@ -48,6 +48,7 @@ import {
   MessageSquareText,
   Bookmark,
   CalendarDays,
+  CalendarClock,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -141,7 +142,7 @@ const ADMIN_NAV = [
     ],
   },
   {
-    section: 'Admin',
+    section: 'Tenant admin',
     items: [
       {
         to: '/admin/dashboard',
@@ -152,6 +153,7 @@ const ADMIN_NAV = [
       { to: '/admin/tenant', label: 'Structure', icon: Building2 },
       { to: '/admin/courses', label: 'Manage Courses', icon: BookOpen },
       { to: '/admin/templates', label: 'Plan Templates', icon: LayoutTemplate },
+      { to: '/admin/upload', label: 'Timetable Upload', icon: CalendarClock },
       { to: '/admin/audit', label: 'Audit Logs', icon: ScrollText },
       { to: '/admin/logs', label: 'Logs', icon: Shield },
     ],
@@ -806,7 +808,6 @@ export default function AppShell({
                   className="h-full w-full min-w-0 bg-transparent text-[13px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
                 />
                 <kbd
-                  onClick={() => setPaletteOpen(true)}
                   className="pointer-events-none hidden shrink-0 select-none items-center gap-0.5 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 font-mono text-[10px] font-[550] text-[var(--muted)] sm:inline-flex"
                   title="Open command palette"
                 >

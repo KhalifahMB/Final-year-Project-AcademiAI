@@ -19,7 +19,6 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import rehypeHighlight from 'rehype-highlight';
-import 'highlight.js/styles/github-dark.css';
 import { toast } from 'sonner';
 import {
  ArrowUp,
@@ -52,7 +51,10 @@ import {
  X,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
+import { useAuth } from '@/hooks/useAuth';
+import { useAgent } from '@/hooks/useAgent';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import Avatar from '@/components/shared/Avatar';
 
 const SUGGESTIONS = [
  {
@@ -141,10 +143,21 @@ function MarkdownContent({ content, sources, onSourceClick }) {
  a: ({ href, children }) => (
  <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">{children}</a>
  ),
- code: ({ inline, className, children, ...rest }) =>
- inline
- ? <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[12.5px]" {...rest}>{children}</code>
- : <code className={className} {...rest}>{children}</code>,
+code: ({ className, children, ...rest }) => {
+    // react-markdown v9 removed the `inline` prop on `code`; a class is
+    // present only on block code (rehype-highlight attaches `hljs` +
+    // language). Anything else is inline, so give it the pill treatment.
+    // `node` is the hast element — never spread it onto the DOM element.
+    const { node: _node, ...codeProps } = rest;
+    return (
+      <code
+        className={className ?? 'rounded bg-muted px-1.5 py-0.5 font-mono text-[12.5px]'}
+        {...codeProps}
+      >
+        {children}
+      </code>
+    );
+  },
  pre: ({ children }) => (
  <pre className="mb-3 overflow-x-auto rounded-lg bg-muted/70 p-3 text-[12.5px] last:mb-0">{children}</pre>
  ),
@@ -339,24 +352,24 @@ function MessageActions({ content, onRegenerate, isLastAssistant, messageId, ini
 
 /* ---------------- Message bubble ---------------- */
 
-function MessageBubble({ msg, isLastAssistant, onSourceClick, _onOpenSourceResource, onRegenerate }) {
+function MessageBubble({ msg, isLastAssistant, onSourceClick, _onOpenSourceResource, onRegenerate, user, identity }) {
  const isUser = msg.role === 'user';
  const sources = msg.sources || [];
  const isStreaming = !!msg.streaming;
 
  return (
  <div className={cn('group flex gap-3', isUser && 'flex-row-reverse')}>
- <span
- className={cn(
- 'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs',
- isUser
- ? 'bg-primary text-primary-foreground'
- : 'bg-[var(--accent)] text-[var(--on-accent)]',
+ {isUser ? (
+  <Avatar user={user} className="h-7 w-7" />
+ ) : (
+  <img
+  src={identity?.avatar || '/avatars/tutor.svg'}
+  alt=""
+  aria-hidden
+  className="mt-0.5 h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-[var(--border)]"
+  draggable="false"
+  />
  )}
- aria-hidden
- >
- {isUser ? <GraduationCap className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
- </span>
  <div className={cn('min-w-0 flex-1', isUser ? 'text-right' : '')}>
  <div
  className={cn(
@@ -547,6 +560,7 @@ function HistoryItem({ s, active, onClick, onDelete }) {
  )}
  >
  <span className="flex items-center gap-1.5">
+ <HistoryIcon className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
  <span className="truncate text-[12.5px]">{s.title || 'Untitled chat'}</span>
  </span>
  <span className="flex items-center gap-1.5 text-[10.5px] opacity-70">
@@ -599,6 +613,8 @@ export default function ChatPage() {
  const isMobile = useIsMobile();
  const [searchParams, setSearchParams] = useSearchParams();
  const qc = useQueryClient();
+ const { user } = useAuth();
+ const { identity } = useAgent();
 
  const [sessionId, setSessionId] = useState(null);
  const [sessionTitle, setSessionTitle] = useState('');
@@ -692,8 +708,13 @@ export default function ChatPage() {
   }, []);
 
   // Persist the active conversation so it survives page unmounts between tabs.
+  // Debounced so typing can't serialize the whole message array on every
+  // keystroke; the snapshot only writes once the user pauses.
   useEffect(() => {
-  saveSnapshot({ sessionId, sessionTitle, messages, input });
+    const timer = setTimeout(() => {
+      saveSnapshot({ sessionId, sessionTitle, messages, input });
+    }, 400);
+    return () => clearTimeout(timer);
   }, [sessionId, sessionTitle, messages, input]);
 
 
@@ -1178,6 +1199,8 @@ export default function ChatPage() {
   itemContent={(idx, msg) => (
   <MessageBubble
   msg={msg}
+  user={user}
+  identity={identity}
   isLastAssistant={msg.role === 'assistant' && idx === messages.length - 1 && !loading}
   onSourceClick={(rank) => {
   setActiveSourceRank(rank);

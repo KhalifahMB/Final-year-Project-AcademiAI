@@ -40,21 +40,23 @@ export default function QuizzesPage() {
  },
  });
 
- useQuery({
- queryKey: ['quiz-job', pollJob],
- queryFn: async () => {
- const { data: job } = await api.get(`/jobs/${pollJob}/`);
- if (job.ready) {
- setPollJob(null);
- if (job.successful && job.result?.quiz_id) toast.success('Quiz generated!');
- else toast.error(job.error || job.result?.error || 'Generation failed');
- qc.invalidateQueries({ queryKey: ['quizzes'] });
- }
- return job;
- },
- enabled: !!pollJob,
- refetchInterval: 2500,
- });
+useQuery({
+    queryKey: ['quiz-job', pollJob],
+    queryFn: async () => {
+      const { data } = await api.get(`/jobs/${pollJob}/`);
+      return data;
+    },
+    enabled: !!pollJob,
+    refetchInterval: 2500,
+    onSuccess: (job) => {
+      if (job.ready) {
+        setPollJob(null);
+        if (job.successful && job.result?.quiz_id) toast.success('Quiz generated!');
+        else toast.error(job.error || job.result?.error || 'Generation failed');
+        qc.invalidateQueries({ queryKey: ['quizzes'] });
+      }
+    },
+  });
 
  const gen = useMutation({
  mutationFn: () =>

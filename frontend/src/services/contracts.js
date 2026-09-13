@@ -105,7 +105,7 @@ export const chatMessageContract = z
     role: z.string(),
     content: z.string().nullable().optional(),
     content_type: z.string().nullable().optional(),
-    confidence: z.number().nullable().optional(),
+    confidence: z.string().nullable().optional(),
     rating: z.number().nullable().optional(),
     sources: z.array(chatMessageSourceContract).optional(),
     created_at: z.string(),

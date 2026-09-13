@@ -18,30 +18,36 @@ shadcn/ui provides reusable accessible components while Tailwind CSS controls la
 
 The implementation should keep reusable primitives in a central UI area and feature-specific compositions in domain folders.
 
-## Suggested structure
+## Structure
 
 ```text
 src/
-  app/
+  main.jsx
+  App.jsx
   components/
-    ui/
-    layout/
-  features/
-    auth/
-    tenants/
-    academics/
-    resources/
-    chat/
-    quizzes/
-    learning/
-    admin/
-  pages/
-  routes/
-  services/
-  hooks/
-  lib/
-  utils/
+    ui/            # shadcn/ui + Radix primitives
+    shared/        # cross-app components (StatCard, EmptyState, …)
+    layout/        # AppShell, nav, headers
+    common/        # CommandPalette, ForbiddenPage, …  (app-wide helpers)
+    agent/         # FloatingAgent + agent panels
+    chat/          # chat-specific compositions
+    notifications/ # notification UI
+    resources/     # resource-specific compositions
+  context/         # React contexts + providers — NEVER co-located with a hook
+  hooks/           # use* hooks — NEVER co-located with a context
+  pages/           # route screens (dashboard/, admin/, platform/, …)
+  routes/          # role-gated route definitions + guards
+  services/        # axios client, API wrappers, response contracts
+  lib/             # react-query keys/options, session flag, sentry, theme
+  styles/          # index.css (Tailwind v4 tokens), fonts, etc.
+  test/            # vitest suites
 ```
+
+## Structure rules
+
+- Contexts and providers live in `src/context/`; hooks live in `src/hooks/`. Never define a `createContext` and a `use*` hook in the same file.
+- API clients and their response contracts live in `src/services/`; components never call `axios`/fetch directly.
+- Reusable primitives stay in `src/components/ui/` and `src/components/shared/`; feature-specific compositions go in domain subfolders.
 
 ## Routing
 

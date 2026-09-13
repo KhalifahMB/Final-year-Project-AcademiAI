@@ -48,6 +48,14 @@ export default function AgentSettings({ embedded = false, onClose } = {}) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+      toast.error('Use a PNG, JPEG or WebP image');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be under 2 MB');
+      return;
+    }
     setUploading(true);
     try {
       const { avatar } = await agentApi.uploadAvatar(file);
@@ -225,7 +233,7 @@ export default function AgentSettings({ embedded = false, onClose } = {}) {
             <input
               ref={fileRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              accept="image/png,image/jpeg,image/webp"
               className="hidden"
               onChange={handleAvatarFile}
             />

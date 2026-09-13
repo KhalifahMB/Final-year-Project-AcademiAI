@@ -1888,6 +1888,10 @@
      Landing — FAQ & Pricing responsive
      ========================================================= */
   @media (max-width: 760px) {
+    .landing-pricing,
+    .landing-faq {
+      padding-block: 72px;
+    }
     .landing-pricing__grid {
       grid-template-columns: 1fr;
     }

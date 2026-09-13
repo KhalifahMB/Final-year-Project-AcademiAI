@@ -346,10 +346,7 @@ export function useAgent() {
                 m.id === agentMsg.id
                   ? {
                       ...m,
-                      content:
-                        err?.message === 'Stream failed'
-                          ? 'Failed to connect. Please try again.'
-                          : err?.message || 'Failed to connect. Please try again.',
+                      content: err?.message || 'Failed to connect. Please try again.',
                       streaming: false,
                     }
                   : m,

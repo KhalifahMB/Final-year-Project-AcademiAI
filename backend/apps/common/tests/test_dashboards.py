@@ -12,6 +12,7 @@ import datetime
 from uuid import uuid4
 
 import pytest
+from django.core.cache import cache
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -28,8 +29,9 @@ from apps.academics.models import (
 )
 from apps.assessments.models import Quiz, QuizAttempt
 from apps.audit.models import AuditLog
+from apps.calendar.models import CalendarEvent, CalendarLayer
 from apps.chat.models import ChatMessage, ChatSession
-from apps.learning.models import Note
+from apps.learning.models import Note, Plan, PlanMilestone, ResourceReadingPosition
 from apps.resources.models import Resource
 from apps.tenants.models import Tenant
 
@@ -381,7 +383,149 @@ def test_student_activity_timeline_and_totals():
     assert resp_other.json()["totals"] == {"chats": 0, "quizzes": 0, "notes": 0}
 
 
-# ---------------------------------------------------------------- Audit
+# ---------------------------------------------------------------- Streak
+
+
+@pytest.mark.django_db
+def test_student_streak_counts_distinct_daily_activity():
+    tenant = _tenant("dash-streak")
+    student = _user("stu@dash-streak.edu", tenant, role="student")
+    _fac, _dep, _course, _session, _semester, offering = _campus(tenant)
+
+    today = timezone.localdate()
+    yesterday = today - datetime.timedelta(days=1)
+    day_before = today - datetime.timedelta(days=2)
+
+    # Chat message yesterday.
+    session = ChatSession.objects.create(tenant=tenant, user=student, title="S")
+    msg = ChatMessage.objects.create(
+        tenant=tenant, session=session, role=ChatMessage.Role.USER, content="yesterday",
+    )
+    ChatMessage.objects.filter(id=msg.id).update(
+        created_at=timezone.make_aware(datetime.datetime.combine(yesterday, datetime.time(10, 0))),
+    )
+
+    # Quiz attempt two days ago.
+    quiz = Quiz.objects.create(
+        tenant=tenant, course_offering=offering, created_by=student,
+        title="Streak Quiz", status=Quiz.Status.PUBLISHED,
+        due_date=timezone.now() + datetime.timedelta(days=3),
+    )
+    attempt = QuizAttempt.objects.create(
+        tenant=tenant, quiz=quiz, student=student, score=50.0, submitted_at=timezone.now(),
+    )
+    QuizAttempt.objects.filter(id=attempt.id).update(
+        started_at=timezone.make_aware(datetime.datetime.combine(day_before, datetime.time(9, 0))),
+    )
+
+    # Resource reading today (also counts toward the streak).
+    resource = Resource.objects.create(
+        tenant=tenant, course_offering=offering, uploaded_by=student, title="Slides",
+        mime_type="application/pdf", storage_key="k",
+        processing_status=Resource.ProcessingStatus.READY,
+    )
+    position = ResourceReadingPosition.objects.create(
+        tenant=tenant, user=student, resource=resource, scroll_percentage=10.0,
+    )
+    ResourceReadingPosition.objects.filter(id=position.id).update(
+        last_read_at=timezone.make_aware(datetime.datetime.combine(today, datetime.time(8, 0))),
+    )
+
+    resp = _auth(student).get("/api/v1/dashboard/student/streak/")
+    assert resp.status_code == 200
+    payload = resp.json()
+    assert payload["current_streak"] == 3
+    assert payload["longest_streak"] == 3
+    assert payload["total_active_days"] == 3
+    assert payload["today_active"] is True
+    assert payload["last_active_date"] == today.isoformat()
+    assert len(payload["recent"]) == 14
+    assert payload["recent"][-1] == {"date": today.isoformat(), "active": True}
+    assert payload["recent"][-2] == {"date": yesterday.isoformat(), "active": True}
+
+    # A gap breaks the streak: today's only activity (the reading) is removed,
+    # so the streak now ends yesterday. (Clear the 60s response cache so the
+    # recomputation actually runs.)
+    position.delete()
+    cache.clear()
+    resp_gap = _auth(student).get("/api/v1/dashboard/student/streak/")
+    assert resp_gap.json()["current_streak"] == 2
+    assert resp_gap.json()["today_active"] is False
+
+    # Streaks are per-user and cached per user id: a fresh student sees zero.
+    other = _user("other@dash-streak.edu", _tenant("dash-streak-b"), role="student")
+    resp_other = _auth(other).get("/api/v1/dashboard/student/streak/")
+    other_payload = resp_other.json()
+    assert other_payload["current_streak"] == 0
+    assert other_payload["longest_streak"] == 0
+    assert other_payload["total_active_days"] == 0
+    assert other_payload["today_active"] is False
+    assert other_payload["last_active_date"] is None
+    assert [r["date"] for r in other_payload["recent"]] == [r["date"] for r in payload["recent"]]
+    assert all(not r["active"] for r in other_payload["recent"])
+
+
+# ---------------------------------------------------------------- Reminders
+
+
+@pytest.mark.django_db
+def test_student_reminders_only_due_exams_and_milestones():
+    tenant = _tenant("dash-remind")
+    student = _user("stu@dash-remind.edu", tenant, role="student")
+    _fac, _dep, _course, _session, _semester, offering = _campus(tenant)
+
+    today = timezone.localdate()
+    in3 = today + datetime.timedelta(days=3)
+    in9 = today + datetime.timedelta(days=9)
+
+    CalendarEvent.objects.create(
+        tenant=tenant, title="CS101 Finals",
+        event_type=CalendarEvent.EventType.EXAM, layer=CalendarLayer.EXAMS,
+        start=timezone.make_aware(datetime.datetime.combine(in3, datetime.time(9, 0))),
+        end=timezone.make_aware(datetime.datetime.combine(in3, datetime.time(11, 0))),
+        course_offering=offering,
+    )
+    # Out of scope: past exam and an exam beyond the 7-day horizon.
+    CalendarEvent.objects.create(
+        tenant=tenant, title="Old Exam",
+        event_type=CalendarEvent.EventType.EXAM, layer=CalendarLayer.EXAMS,
+        start=timezone.make_aware(datetime.datetime.combine(today - datetime.timedelta(days=2), datetime.time(9, 0))),
+    )
+    CalendarEvent.objects.create(
+        tenant=tenant, title="Far Exam",
+        event_type=CalendarEvent.EventType.EXAM, layer=CalendarLayer.EXAMS,
+        start=timezone.make_aware(datetime.datetime.combine(in9, datetime.time(9, 0))),
+    )
+
+    plan = Plan.objects.create(tenant=tenant, user=student, title="Revise CS101", plan_type="study")
+    PlanMilestone.objects.create(tenant=tenant, plan=plan, title="Finish review", due_date=today, order=1)
+    PlanMilestone.objects.create(
+        tenant=tenant, plan=plan, title="Done milestone", due_date=in3, order=2, status="completed",
+    )
+    PlanMilestone.objects.create(tenant=tenant, plan=plan, title="Far milestone", due_date=in9, order=3)
+
+    resp = _auth(student).get("/api/v1/dashboard/student/reminders/")
+    assert resp.status_code == 200
+    reminders = resp.json()["reminders"]
+
+    titles = {r["title"] for r in reminders}
+    assert "CS101 Finals" in titles
+    assert "Finish review" in titles
+    assert not ({"Old Exam", "Far Exam", "Done milestone", "Far milestone"} & titles)
+
+    exam = next(r for r in reminders if r["kind"] == "exam")
+    assert exam["when"] == in3.isoformat()
+    assert exam["detail"] == "3d"
+    assert exam["route"] == "/calendar"
+
+    today_mile = next(r for r in reminders if r["title"] == "Finish review")
+    assert today_mile["kind"] == "milestone"
+    assert today_mile["when"] == today.isoformat()
+    assert today_mile["detail"] == "Revise CS101"
+    assert today_mile["route"] == "/planner"
+
+    # Reminders are sorted by date (today's milestone first).
+    assert reminders[0]["when"] == today.isoformat()
 
 
 @pytest.mark.django_db

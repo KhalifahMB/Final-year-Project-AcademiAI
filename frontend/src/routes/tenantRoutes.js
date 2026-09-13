@@ -35,6 +35,7 @@ import {
   DepartmentDetailPage,
   CourseManagePage,
   AdminCoursesPage,
+  CalendarUploadPage,
 } from './pages';
 
 export const tenantRoutes = [
@@ -60,6 +61,7 @@ export const tenantRoutes = [
   { path: '/admin/courses/:id', Page: CourseManagePage, roles: TENANT_ADMIN_ONLY },
   { path: '/admin/logs', Page: TenantLogsPage, roles: TENANT_ADMIN_ONLY },
   { path: '/admin/templates', Page: AdminTemplatesPage, roles: TENANT_ADMIN_ONLY },
+  { path: '/admin/upload', Page: CalendarUploadPage, roles: TENANT_ADMIN_ONLY },
   { path: '/notes', Page: NotesPage, roles: EVERYONE },
   { path: '/bookmarks', Page: BookmarksPage, roles: EVERYONE },
   { path: '/progress', Page: ProgressPage, roles: EVERYONE },

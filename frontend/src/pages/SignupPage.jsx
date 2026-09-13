@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,6 +35,14 @@ export default function SignupPage() {
   const [avatarPreset, setAvatarPreset] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
+
+  // Object URLs created by URL.createObjectURL must be revoked; revoke the
+  // previous preview whenever a new one replaces it (and on unmount).
+  useEffect(() => {
+    return () => {
+      if (avatarPreview?.startsWith('blob:')) URL.revokeObjectURL(avatarPreview);
+    };
+  }, [avatarPreview]);
 
   const form = useForm({
     resolver: zodResolver(signupSchema),

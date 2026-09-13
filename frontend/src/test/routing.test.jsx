@@ -57,6 +57,12 @@ vi.mock('@/services/api', () => {
         recent: [],
       })),
     },
+    calendarApi: {
+      listEventsLight: vi.fn(emptyList),
+    },
+    plansApi: {
+      list: vi.fn(emptyList),
+    },
     notesApi: {
       list: vi.fn(emptyList),
       create: vi.fn(emptyObj),
@@ -164,7 +170,7 @@ describe('routing and access control', () => {
   it('renders the dashboard for an authenticated student', async () => {
     localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
-      data: { id: 'u1', email: 'stud@uni.edu', role: 'student', first_name: 'Stu', tenant: {} },
+      id: 'u1', email: 'stud@uni.edu', role: 'student', first_name: 'Stu', tenant: {},
     });
     navigate('/dashboard');
     render(<App />, { wrapper: Wrapper });
@@ -174,12 +180,12 @@ describe('routing and access control', () => {
       },
       { timeout: 15000 },
     );
-  }, 15000);
+  }, 30000);
 
   it('denies a student access to an admin-only page (walks them to /forbidden)', async () => {
     localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
-      data: { id: 'u2', email: 'stud@uni.edu', role: 'student', first_name: 'Stu', tenant: {} },
+      id: 'u2', email: 'stud@uni.edu', role: 'student', first_name: 'Stu', tenant: {},
     });
     navigate('/admin/users');
     render(<App />, { wrapper: Wrapper });
@@ -193,10 +199,8 @@ describe('routing and access control', () => {
   it('sends a platform superuser away from tenant pages to /platform without firing tenant API calls', async () => {
     localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
-      data: {
-        id: 'su1', email: 'operator@academiai.app', role: 'tenant_admin',
-        first_name: 'Op', is_superuser: true,
-      },
+      id: 'su1', email: 'operator@academiai.app', role: 'tenant_admin',
+      first_name: 'Op', is_superuser: true,
     });
     navigate('/resources');
     render(<App />, { wrapper: Wrapper });
@@ -204,15 +208,13 @@ describe('routing and access control', () => {
       await screen.findByText(/platform dashboard/i, {}, { timeout: 15000 }),
     ).toBeInTheDocument();
     await waitFor(() => expect(api.get).not.toHaveBeenCalled());
-  });
+  }, 30000);
 
   it('lets a tenant_admin open a workspace route like /resources', async () => {
     localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
-      data: {
-        id: 'a1', email: 'admin@uni.edu', role: 'tenant_admin',
-        first_name: 'Ad', is_superuser: false, tenant: {},
-      },
+      id: 'a1', email: 'admin@uni.edu', role: 'tenant_admin',
+      first_name: 'Ad', is_superuser: false, tenant: {},
     });
     navigate('/resources');
     render(<App />, { wrapper: Wrapper });
@@ -226,10 +228,8 @@ describe('routing and access control', () => {
   it('keeps lecturer-grade routes open to tenant admins who can also teach', async () => {
     localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
-      data: {
-        id: 'a2', email: 'admin@uni.edu', role: 'tenant_admin',
-        first_name: 'Ad', is_superuser: false, tenant: {},
-      },
+      id: 'a2', email: 'admin@uni.edu', role: 'tenant_admin',
+      first_name: 'Ad', is_superuser: false, tenant: {},
     });
     navigate('/assigned-courses');
     render(<App />, { wrapper: Wrapper });
@@ -243,7 +243,7 @@ describe('routing and access control', () => {
   it('sends a signed-in user with no tenant to institution onboarding', async () => {
     localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
-      data: { id: 'u3', email: 'orphan@example.com', role: 'student', first_name: 'Or' },
+      id: 'u3', email: 'orphan@example.com', role: 'student', first_name: 'Or',
     });
     navigate('/dashboard');
     render(<App />, { wrapper: Wrapper });

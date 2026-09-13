@@ -74,8 +74,8 @@ services:
     image: axllent/mailpit:v1.31
     container_name: academiai-mailpit
     ports:
-      - '1025:1025'   # SMTP (plaintext — used by Django smtp backend)
-      - '8025:8025'   # Web UI
+      - '1025:1025' # SMTP (plaintext — used by Django smtp backend)
+      - '8025:8025' # Web UI
     environment:
       MP_MAX_MESSAGES: '5000'
       MP_DATABASE: /data/mailpit.db
@@ -87,43 +87,43 @@ services:
       timeout: 5s
       retries: 5
 
-  # MOVED OUT OF THE VOLUMES BLOCK AND BACK INTO SERVICES
-  backend:
-    build: ./backend
-    profiles: ['app']
-    env_file: .env
-    environment:
-      # In-Docker backend reaches Mailpit via the compose service name.
-      EMAIL_HOST: mailpit
-      EMAIL_PORT: '1025'
-    ports:
-      - '8000:8000'
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py apply_rls &&
-             python manage.py runserver 0.0.0.0:8000"
+  # # MOVED OUT OF THE VOLUMES BLOCK AND BACK INTO SERVICES
+  # # backend:
+  #   build: ./backend
+  #   profiles: ['app']
+  #   env_file: .env
+  #   environment:
+  #     # In-Docker backend reaches Mailpit via the compose service name.
+  #     EMAIL_HOST: mailpit
+  #     EMAIL_PORT: '1025'
+  #   ports:
+  #     - '8000:8000'
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     minio:
+  #       condition: service_healthy
+  #   command: >
+  #     sh -c "python manage.py migrate &&
+  #            python manage.py apply_rls &&
+  #            python manage.py runserver 0.0.0.0:8000"
 
-  worker:
-    build: ./backend
-    profiles: ['app']
-    env_file: .env
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    command: celery -A config worker -l info -Q ai,ingestion,email,celery
+  # worker:
+  #   build: ./backend
+  #   profiles: ['app']
+  #   env_file: .env
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   command: celery -A config worker -l info -Q ai,ingestion,email,celery
 
 volumes:
   postgres_data:
