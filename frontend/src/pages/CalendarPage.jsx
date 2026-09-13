@@ -1058,8 +1058,9 @@ function EventDialog({
 
         <div className="space-y-4">
           <div>
-            <Label>Title</Label>
+            <Label htmlFor="evt-title">Title</Label>
             <Input
+              id="evt-title"
               value={form.title}
               onChange={(e) =>
                 setForm((f) => ({ ...f, title: e.target.value }))
@@ -1070,12 +1071,12 @@ function EventDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Layer</Label>
+              <Label htmlFor="evt-layer">Layer</Label>
               <Select
                 value={form.layer}
                 onValueChange={(v) => setForm((f) => ({ ...f, layer: v }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="evt-layer">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1093,12 +1094,12 @@ function EventDialog({
               </Select>
             </div>
             <div>
-              <Label>Event type</Label>
+              <Label htmlFor="evt-type">Event type</Label>
               <Select
                 value={form.event_type}
                 onValueChange={(v) => setForm((f) => ({ ...f, event_type: v }))}
               >
-                <SelectTrigger>
+                <SelectTrigger id="evt-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1114,8 +1115,9 @@ function EventDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Start</Label>
+              <Label htmlFor="evt-start">Start</Label>
               <Input
+                id="evt-start"
                 type="datetime-local"
                 value={form.start}
                 onChange={(e) =>
@@ -1124,8 +1126,9 @@ function EventDialog({
               />
             </div>
             <div>
-              <Label>End</Label>
+              <Label htmlFor="evt-end">End</Label>
               <Input
+                id="evt-end"
                 type="datetime-local"
                 value={form.end}
                 onChange={(e) =>
@@ -1137,8 +1140,9 @@ function EventDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Venue</Label>
+              <Label htmlFor="evt-venue">Venue</Label>
               <Input
+                id="evt-venue"
                 value={form.venue}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, venue: e.target.value }))
@@ -1147,8 +1151,9 @@ function EventDialog({
               />
             </div>
             <div>
-              <Label>Course code</Label>
+              <Label htmlFor="evt-course">Course code</Label>
               <Input
+                id="evt-course"
                 value={form.course_code}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, course_code: e.target.value }))
@@ -1202,6 +1207,7 @@ function EventDialog({
                 <button
                   key={m}
                   type="button"
+                  aria-pressed={form.reminders_minutes.includes(m)}
                   onClick={() =>
                     setForm((f) => ({
                       ...f,

@@ -160,7 +160,11 @@ export default function AdminQuizzesPage() {
   const questions = useQuery({
     queryKey: ['quiz-questions', questionsFor?.id],
     queryFn: async () =>
-      toList(await api.get('/quiz-questions/', { params: { quiz: questionsFor.id } })),
+      toList(
+        await api.get('/quiz-questions/', {
+          params: { quiz: questionsFor.id, page_size: 100 },
+        }),
+      ),
     enabled: !!questionsFor,
   });
 

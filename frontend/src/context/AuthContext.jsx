@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '@/services/api';
 import { AUTH_QUERY_OPTIONS, USER_QUERY_KEY } from '@/services/authQuery';
 import { go } from '@/lib/navigation';
-import { clearSessionFlag, setSessionFlag } from '@/lib/session';
+import { clearSessionFlag, clearUserScopedStorage, setSessionFlag } from '@/lib/session';
 
 export const AuthContext = createContext(null);
 
@@ -27,6 +27,7 @@ export function AuthProvider({ children }) {
       /* ignore — local cleanup must happen regardless */
     }
     clearSessionFlag();
+    clearUserScopedStorage();
     qc.setQueryData(USER_QUERY_KEY, null);
     qc.clear();
     go('/');

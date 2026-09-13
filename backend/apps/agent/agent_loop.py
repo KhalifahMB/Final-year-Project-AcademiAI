@@ -79,13 +79,19 @@ def run_agent_turn(client, model_name, user, message, context_type, history=None
         agent_key = agent_key or getattr(session, "agent_key", "") or agent_key
     system_prompt = build_agent_prompt(user, context_type, history, agent_key=agent_key)
 
-    # Build conversation
+    # Build conversation. Stored history uses the product-level role
+    # "assistant", but Gemini's contents API only accepts "user"/"model"
+    # (plus function/tool) — replaying "assistant" verbatim makes every
+    # resumed conversation fail with INVALID_ARGUMENT. Map to "model".
+    GEMINI_ROLE = {"user": "user", "assistant": "model", "model": "model"}
     contents = []
     for msg in history:
         role = msg.get("role") if isinstance(msg, dict) else None
         content = msg.get("content") if isinstance(msg, dict) else None
         if role and content is not None:
-            contents.append({"role": role, "parts": [{"text": content}]})
+            contents.append(
+                {"role": GEMINI_ROLE.get(role, "user"), "parts": [{"text": content}]}
+            )
     contents.append({"role": "user", "parts": [{"text": message}]})
 
     max_iterations = AGENT_MAX_TOOL_ITERATIONS

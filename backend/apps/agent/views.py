@@ -7,7 +7,9 @@ import uuid
 
 from django.conf import settings
 from django.core.files.storage import default_storage
+from django.db.models import F
 from django.http import StreamingHttpResponse
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -77,10 +79,13 @@ def _stream_events(client, user, message, context_type, session, agent_key=""):
                 "response": data.get("response", full_response),
             })
 
-    # Update session
+    # Update session — atomic increment so two concurrent streams on the same
+    # session can't both write a stale message_count.
     with tenant_scope(user.tenant_id):
-        session.message_count += 1
-        session.save(update_fields=["message_count", "last_active_at"])
+        AgentSession.objects.filter(pk=session.pk).update(
+            message_count=F("message_count") + 1,
+            last_active_at=timezone.now(),
+        )
 
 
 class AgentStreamView(APIView):
@@ -117,6 +122,15 @@ class AgentStreamView(APIView):
         if not message:
             return Response(
                 {"success": False, "error": {"detail": "message field is required."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(message) > 10000:
+            return Response(
+                {
+                    "success": False,
+                    "error": {"detail": "message must be at most 10000 characters."},
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

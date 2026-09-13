@@ -5,7 +5,7 @@ import axios from 'axios';
 
 import { PAGINATION, SSE_MAX_BUFFER_BYTES, BULK_DELETE_MAX_IDS } from '@/lib/constants';
 import { go } from '@/lib/navigation';
-import { clearSessionFlag } from '@/lib/session';
+import { clearSessionFlag, clearUserScopedStorage } from '@/lib/session';
 import {
   enforceContract,
   tokenResponseContract,
@@ -48,14 +48,21 @@ const api = axios.create({
 let refreshPromise = null;
 
 function doRefresh() {
-  return api
-    .post('/auth/token/refresh/')
-    .then(() => true)
-    .catch((err) => {
-      clearSessionFlag();
-      go('/login');
-      throw err;
-    });
+  if (!refreshPromise) {
+    refreshPromise = api
+      .post('/auth/token/refresh/')
+      .then(() => true)
+      .catch((err) => {
+        clearSessionFlag();
+        clearUserScopedStorage();
+        go('/login');
+        throw err;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
 }
 
 /**
@@ -107,15 +114,11 @@ api.interceptors.response.use(
     ) {
       original._retry = true;
 
-      // If a refresh is already in flight, piggyback on it.
-      if (!refreshPromise) {
-        refreshPromise = doRefresh().finally(() => {
-          refreshPromise = null;
-        });
-      }
-
+      // `doRefresh` holds the single-flight mutex, so interceptor 401s and
+      // raw-fetch `apiFetch` 401s all share one in-flight refresh and replay
+      // once it resolves.
       try {
-        await refreshPromise;
+        await doRefresh();
         return api(original);
       } catch {
         // doRefresh already cleared the session flag and redirected.

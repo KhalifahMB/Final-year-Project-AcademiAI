@@ -428,7 +428,7 @@ export default function FloatingAgent() {
                         type="button"
                         onClick={() => deleteSession(s.id)}
                         aria-label="Delete conversation"
-                        className="rounded p-1 text-[var(--muted)] opacity-0 hover:bg-[var(--surface-2)] hover:text-[var(--danger)] group-hover:opacity-100"
+                        className="rounded p-1 text-[var(--muted)] opacity-0 hover:bg-[var(--surface-2)] hover:text-[var(--danger)] group-hover:opacity-100 focus-visible:opacity-100 max-md:opacity-100"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>

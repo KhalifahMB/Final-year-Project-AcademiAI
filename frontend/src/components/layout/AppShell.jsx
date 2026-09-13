@@ -735,6 +735,13 @@ export default function AppShell({
   return (
     <TooltipProvider delayDuration={300}>
       <div className="app-canvas min-h-screen text-[var(--fg)]">
+        {/* Skip navigation — first focusable element for keyboard users */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:text-foreground focus:shadow-lg focus:ring-2 focus:ring-[var(--accent)]"
+        >
+          Skip to main content
+        </a>
         {/* Desktop sidebar */}
         <SidebarDesktop
           sections={sections}
@@ -828,11 +835,12 @@ export default function AppShell({
           )}
 
           {fullBleed ? (
-            <main className="flex h-screen w-full flex-col overflow-hidden">
+            <main id="main-content" className="flex h-screen w-full flex-col overflow-hidden">
               {children}
             </main>
           ) : (
             <main
+              id="main-content"
               className={cn(
                 'mx-auto w-full flex-1',
                 'px-4 py-5 sm:px-7 sm:py-6',
