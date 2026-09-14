@@ -6,5 +6,6 @@
     "file.write": "allow",
     "websearch": "allow",
     "webfetch": "allow"
-  }
+  },
+  "snapshot": false
 }

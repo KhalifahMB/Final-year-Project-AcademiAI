@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { dashboardApi } from '@/services/api';
+import { dashboardApi, logsApi } from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatCard from '@/components/shared/StatCard';
 import SkeletonRows from '@/components/shared/SkeletonRows';
@@ -33,6 +33,9 @@ import {
   Users,
   MessageSquareText,
   ScrollText,
+  Activity,
+  Gauge,
+  ShieldAlert,
 } from 'lucide-react';
 
 const PIE_COLORS = ['var(--accent-strong)', 'var(--accent)', 'var(--info)'];
@@ -71,6 +74,12 @@ export default function AdminDashboardPage() {
   const auditSummary = useQuery({
     queryKey: ['admin-audit-summary', auditDays],
     queryFn: () => dashboardApi.adminAuditSummary(auditDays),
+    staleTime: 60_000,
+  });
+
+  const logAnalyzer = useQuery({
+    queryKey: ['admin-log-analyzer'],
+    queryFn: () => logsApi.analyze(),
     staleTime: 60_000,
   });
 
@@ -492,8 +501,176 @@ export default function AdminDashboardPage() {
           <p className="mt-6 text-xs text-muted-foreground">
             Signed in as {user?.email} · figures refresh every minute.
           </p>
+
+          <SystemHealth data={logAnalyzer.data} isLoading={logAnalyzer.isLoading} />
         </>
       )}
     </AppShell>
+  );
+}
+
+/* ================================================================ */
+/* System health / log analyzer                                      */
+/* ================================================================ */
+
+function MetricTile({ icon: Icon, label, value, hint, tone }) {
+  return (
+    <div className="card-glass p-4">
+      <div className="flex items-center gap-2">
+        <span
+          className={`flex h-8 w-8 items-center justify-center rounded-lg ${tone || 'bg-primary/10 text-primary'}`}
+        >
+          <Icon className="h-4 w-4" aria-hidden />
+        </span>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </p>
+      </div>
+      <p className="mt-3 text-2xl font-semibold leading-none tabular-nums">
+        {value}
+      </p>
+      {hint && (
+        <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+      )}
+    </div>
+  );
+}
+
+function SystemHealth({ data, isLoading }) {
+  if (isLoading) {
+    return (
+      <section className="mt-6 card-glass p-5">
+        <div className="h-40 animate-pulse rounded-lg bg-muted/40" />
+      </section>
+    );
+  }
+
+  const errorCount = data?.error_count ?? 0;
+
+  return (
+    <section className="mt-6 card-glass p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-sm font-semibold">
+          <Activity className="h-4 w-4 text-primary" aria-hidden />
+          System health
+        </h2>
+        <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+          {data?.total ?? 0} log events
+        </span>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricTile
+          icon={ScrollText}
+          label="Events"
+          value={(data?.total ?? 0).toLocaleString()}
+          hint="In the audited window"
+        />
+        <MetricTile
+          icon={ShieldAlert}
+          label="Errors"
+          value={errorCount}
+          hint={`${data?.error_rate ?? 0}% of events`}
+          tone={
+            errorCount > 0
+              ? 'bg-red-500/15 text-red-700 dark:text-red-400'
+              : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+          }
+        />
+        <MetricTile
+          icon={Gauge}
+          label="Avg response"
+          value={data?.avg_response_time_ms != null ? `${data.avg_response_time_ms}ms` : '—'}
+          hint={`p95 ${data?.p95_response_time_ms ?? '—'}ms`}
+        />
+        <MetricTile
+          icon={Users}
+          label="Active actors"
+          value={data?.active_actors ?? 0}
+          hint="Distinct users acting"
+        />
+      </div>
+
+      {data && data.total > 0 && (
+        <div className="mt-5 grid gap-5 lg:grid-cols-2">
+          <div>
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Volume by category
+            </p>
+            <ul className="space-y-1.5">
+              {(data.by_category || []).map((c) => (
+                <li key={c.name} className="flex items-center gap-2 text-[12.5px]">
+                  <span className="w-24 shrink-0 truncate capitalize text-muted-foreground">
+                    {c.name}
+                  </span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${Math.max(c.pct, 2)}%` }}
+                    />
+                  </div>
+                  <span className="w-10 shrink-0 text-right font-semibold tabular-nums">
+                    {c.value}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Top actions
+            </p>
+            <ul className="space-y-1">
+              {(data.top_actions || []).slice(0, 6).map((a) => (
+                <li
+                  key={a.name}
+                  className="flex items-center justify-between gap-3 text-[12.5px]"
+                >
+                  <code className="truncate rounded bg-muted px-1.5 py-0.5 text-[11px]">
+                    {a.name}
+                  </code>
+                  <span className="font-semibold tabular-nums">{a.value}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {data?.recent_errors?.length > 0 && (
+        <div className="mt-5">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Recent errors & warnings
+          </p>
+          <div className="space-y-1">
+            {data.recent_errors.slice(0, 5).map((e, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between gap-3 rounded-md bg-muted/40 px-3 py-2 text-[12.5px]"
+              >
+                <div className="min-w-0">
+                  <code className="rounded bg-muted/60 px-1.5 py-0.5 text-[11px] font-medium">
+                    {e.action}
+                  </code>
+                  <span className="ml-2 truncate text-muted-foreground">
+                    {e.request_path || '—'}
+                  </span>
+                </div>
+                <span
+                  className={`shrink-0 text-[10px] font-bold uppercase tracking-wide ${
+                    e.level === 'error'
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-amber-600 dark:text-amber-400'
+                  }`}
+                >
+                  {e.level}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

@@ -117,7 +117,7 @@ def test_preview_text_and_pdf():
     )
     client = auth_client(owner)
 
-    with patch("apps.resources.views.get_s3_client") as s3:
+    with patch("apps.resources.services.upload_service.get_s3_client") as s3:
         obj = MagicMock()
         obj["Body"].read.return_value = b"Hello preview content"
         s3.return_value.get_object.return_value = obj

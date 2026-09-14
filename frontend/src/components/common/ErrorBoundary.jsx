@@ -1,6 +1,7 @@
 import { Component } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { reportError } from '@/lib/sentry';
 
 /**
  * Simple ErrorBoundary that catches render errors in its subtree and shows
@@ -17,8 +18,8 @@ export class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // eslint-disable-next-line no-console
     console.error('UI error:', error, info);
+    reportError(error, { componentStack: info?.componentStack });
   }
 
   handleReset = () => {

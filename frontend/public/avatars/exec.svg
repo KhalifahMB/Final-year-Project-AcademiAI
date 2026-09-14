@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Exec Assistant agent avatar">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#115e59"/>
+    </linearGradient>
+    <linearGradient id="case" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#99f6e4"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#bg)"/>
+  <circle cx="64" cy="64" r="42" fill="#ffffff" opacity="0.12"/>
+  <g>
+    <path d="M44 46 L84 46 L84 78 L44 78 Z" rx="6" fill="url(#case)" opacity="0.95"/>
+    <rect x="50" y="40" width="28" height="10" rx="4" fill="url(#case)"/>
+    <path d="M56 62 l6 6 10 -12" stroke="#0f766e" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M70 40 l-6 4 -4 4 0 -0 L60 50" stroke="#0f766e" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

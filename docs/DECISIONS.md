@@ -222,3 +222,95 @@ Frontend (`npm test`, 6 passing):
 - unauthenticated redirect to login; authenticated dashboard render
 - role gate: student denied admin page; admin allowed
 - login form: invalid email blocked client-side; API error surfaced
+
+## D19 — Landing page section architecture
+
+**Decision:** The landing page uses a flat list of `<section>` elements inside a
+single `.landing-page` wrapper. Each section is independently styled with
+oklch tokens from `index.css`. Nav links use hash anchors. No client-side
+router is involved — the landing page is a single rendered component
+(`LandingPage.jsx`) with no role gating.
+
+**Section stack (top to bottom):** Hero → Signal bar → What-is (manifesto) →
+Product (3-card principles grid) → Photo band → How → Knowledge → Agents →
+Planner → Calendar → Platform depth → Audiences → Directory → Roadmap →
+Case study → CTA → Footer.
+
+**Design-system compliance:** All sections use the shared glass-material
+palette (paper, panel, line tokens) and the unified section spacing token
+`--landing-section-pad: 104px` (76px on mobile). The design-taste-frontend
+skill was applied to eliminate AI slop patterns (hero copy, section
+repetition, buzzword vocabulary).
+
+## D20 — `evaluate_rag` path resolution
+
+**Problem:** The `evaluate_rag` management command assumed a fixed relative
+path to `rag_queries.json` that broke when invoked from different working
+directories.
+
+**Decision:** Added `_resolve_queries_path()` that searches CWD,
+`settings.BASE_DIR`, `BASE_DIR/data`, and `BASE_DIR/fixtures` in order.
+File is opened with `encoding="utf-8-sig"` for BOM robustness. On missing
+file, raises `CommandError` with actionable guidance pointing to
+`build_rag_testset` and the expected JSON format. Three new DB-free unit
+tests added to `test_rag_metrics.py`.
+
+## D21 — Unified section spacing token
+
+**Decision:** All landing-page sections use a single CSS custom property for
+vertical padding: `--landing-section-pad: 104px` (desktop), `72px` (mobile
+≤760px). This replaces per-section inline padding values and eliminates
+double-padding where wrapper and inner elements both added spacing (e.g.
+`.landing-planner` and `.landing-calendar` had 104px on both wrapper and
+inner, producing 208px visual gaps).
+
+## D22 — AI slop vocabulary cleanup
+
+**Decision:** Systematic grep-and-replace of AI-slop vocabulary across all
+user-facing copy (landing page, README, docs). Banned terms: seamless,
+robust, cutting-edge, revolutionary, leverage, empower, transformative,
+holistic, synergy, paradigm, state-of-the-art, next-gen, unlock,
+world-class, comprehensive (when used as filler), "in today's fast-paced
+world", "it's important to note".
+
+**Specific fixes:** "Beyond the headline — the everyday depth" → "Beyond the
+headline" (removed vague filler). "The platform stays dense past the first
+screen" → concrete feature list. "scale seamlessly" → "grow across".
+
+**Verification:** Full regex grep across all markdown, JSX, and CSS files
+returned zero matches for the banned vocabulary list. Impeccable detector
+confirms clean (`[]`) on `LandingPage.jsx`.
+
+## D23 — Study streaks are computed, not stored
+
+**Decision:** No `StudyActivity` table, no write-path hooks, no migration. The
+student dashboard derives the streak and due-soon reminders on the fly from
+live rows:
+
+- Streak (`GET /dashboard/student/streak/`): distinct calendar days across
+  `ChatMessage` (USER), `QuizAttempt`, `Note`, and `ResourceReadingPosition`;
+  current/longest streak, active days, today-active flag, and the last 14 days
+  for the dots row. Cached 60 s per user.
+- Reminders (`GET /dashboard/student/reminders/`): `CalendarEvent` (layer
+  `EXAMS`), `PlanMilestone` (excluding completed/skipped), and `Plan` due
+  within the next 7 days, capped at 6, `kind` = exam/milestone/plan, routed to
+  `/calendar` and `/planner`. Cached 60 s per user.
+
+**Impact:** The two numbers shown for "Streak" always agree — the activity
+stats row prefers the authoritative backend streak over the old client-side
+bucket count. Tests in `apps/common/tests/test_dashboards.py`.
+
+## D24 — Chat `?session=` deep link and streak unification fixes
+
+**Decision:** While verifying the streak work, two frontend correctness fixes
+landed in `ChatPage.jsx` and `StudentDashboard.jsx`:
+
+1. `/chat?session=<id>` deep links: the previous effect only fired when the
+   sidebar list changed and silently no-oped when the session was outside the
+   loaded page (100 per page) or the list query errored. It now opens the
+   session once the list settles, and falls back to opening the id directly
+   (messages + error handling) if the list settled without it.
+2. The dashboard "Streak" stat uses the authoritative backend streak
+   (`dashboardApi.studentStreak()`) instead of deriving a trailing-bucket
+   count that disagreed with the Study streak card (which also counted
+   resource reading).

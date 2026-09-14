@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Virtuoso } from 'react-virtuoso';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
@@ -18,7 +19,6 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import rehypeHighlight from 'rehype-highlight';
-import 'highlight.js/styles/github-dark.css';
 import { toast } from 'sonner';
 import {
  ArrowUp,
@@ -51,7 +51,10 @@ import {
  X,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
+import { useAuth } from '@/hooks/useAuth';
+import { useAgent } from '@/hooks/useAgent';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import Avatar from '@/components/shared/Avatar';
 
 const SUGGESTIONS = [
  {
@@ -140,10 +143,21 @@ function MarkdownContent({ content, sources, onSourceClick }) {
  a: ({ href, children }) => (
  <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-2 hover:underline">{children}</a>
  ),
- code: ({ inline, className, children, ...rest }) =>
- inline
- ? <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[12.5px]" {...rest}>{children}</code>
- : <code className={className} {...rest}>{children}</code>,
+code: ({ className, children, ...rest }) => {
+    // react-markdown v9 removed the `inline` prop on `code`; a class is
+    // present only on block code (rehype-highlight attaches `hljs` +
+    // language). Anything else is inline, so give it the pill treatment.
+    // `node` is the hast element — never spread it onto the DOM element.
+    const { node: _node, ...codeProps } = rest;
+    return (
+      <code
+        className={className ?? 'rounded bg-muted px-1.5 py-0.5 font-mono text-[12.5px]'}
+        {...codeProps}
+      >
+        {children}
+      </code>
+    );
+  },
  pre: ({ children }) => (
  <pre className="mb-3 overflow-x-auto rounded-lg bg-muted/70 p-3 text-[12.5px] last:mb-0">{children}</pre>
  ),
@@ -338,24 +352,24 @@ function MessageActions({ content, onRegenerate, isLastAssistant, messageId, ini
 
 /* ---------------- Message bubble ---------------- */
 
-function MessageBubble({ msg, isLastAssistant, onSourceClick, _onOpenSourceResource, onRegenerate }) {
+function MessageBubble({ msg, isLastAssistant, onSourceClick, _onOpenSourceResource, onRegenerate, user, identity }) {
  const isUser = msg.role === 'user';
  const sources = msg.sources || [];
  const isStreaming = !!msg.streaming;
 
  return (
  <div className={cn('group flex gap-3', isUser && 'flex-row-reverse')}>
- <span
- className={cn(
- 'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs',
- isUser
- ? 'bg-primary text-primary-foreground'
- : 'bg-[var(--accent)] text-[var(--on-accent)]',
+ {isUser ? (
+  <Avatar user={user} className="h-7 w-7" />
+ ) : (
+  <img
+  src={identity?.avatar || '/avatars/tutor.svg'}
+  alt=""
+  aria-hidden
+  className="mt-0.5 h-7 w-7 shrink-0 rounded-full object-cover ring-1 ring-[var(--border)]"
+  draggable="false"
+  />
  )}
- aria-hidden
- >
- {isUser ? <GraduationCap className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
- </span>
  <div className={cn('min-w-0 flex-1', isUser ? 'text-right' : '')}>
  <div
  className={cn(
@@ -546,6 +560,7 @@ function HistoryItem({ s, active, onClick, onDelete }) {
  )}
  >
  <span className="flex items-center gap-1.5">
+ <HistoryIcon className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
  <span className="truncate text-[12.5px]">{s.title || 'Untitled chat'}</span>
  </span>
  <span className="flex items-center gap-1.5 text-[10.5px] opacity-70">
@@ -598,6 +613,8 @@ export default function ChatPage() {
  const isMobile = useIsMobile();
  const [searchParams, setSearchParams] = useSearchParams();
  const qc = useQueryClient();
+ const { user } = useAuth();
+ const { identity } = useAgent();
 
  const [sessionId, setSessionId] = useState(null);
  const [sessionTitle, setSessionTitle] = useState('');
@@ -613,16 +630,20 @@ export default function ChatPage() {
  const [attachedResources, setAttachedResources] = useState([]);
  const [uploadingFiles, setUploadingFiles] = useState(false);
  const [error, setError] = useState('');
-  const endRef = useRef(null);
   const textareaRef = useRef(null);
   const localIdCounter = useRef(0);
-  // Only auto-scroll when the reader is already near the bottom — never
-  // yank them away from history they scrolled up to read.
-  const scrollBoxRef = useRef(null);
-  const stuckToBottomRef = useRef(true);
-  const [reducedMotion] = useState(
+  const reducedMotion = useMemo(
   () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+  [],
   );
+
+  // Feed Virtuoso the same "stuck at bottom" flag the old manual scroll
+  // handler tracked (also reset back to `true` when opening a session,
+  // see openSession).
+  const stuckToBottomRef = useRef(true);
+  const handleAtBottomChange = useCallback((atBottom) => {
+  stuckToBottomRef.current = atBottom;
+  }, []);
 
  // Sources rail state
  const [sourcesRailOpen, setSourcesRailOpen] = useState(!isMobile);
@@ -658,26 +679,24 @@ export default function ChatPage() {
  if (currentSources.length > 0 && !isMobile) setSourcesRailOpen(true);
  }, [currentSources.length, isMobile]);
 
-  // Scroll to bottom on new messages — only when already near it.
+  // Deep-link session via ?session=. Opens the matching conversation once the
+  // sidebar list is available so we get the real title; if the list settled
+  // without the session (paged out, deleted, or list error) we still open the
+  // id directly — getMessages needs only the id, and failures surface in the
+  // chat pane — so a deep link never silently no-ops.
   useEffect(() => {
-  if (!stuckToBottomRef.current) return;
-  endRef.current?.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'end' });
-  }, [messages, loading, reducedMotion]);
-
-  const onMessagesScroll = (e) => {
-  const el = e.currentTarget;
-  stuckToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-  };
-
-  // Deep-link session via ?session=
-  useEffect(() => {
+  if (sessionId) return;
   const sid = searchParams.get('session');
-  if (sid && !sessionId && sessions.length) {
+  if (!sid) return;
   const existing = sessions.find((s) => s.id === sid);
-  if (existing) openSession(existing);
+  if (existing) {
+  openSession(existing);
+  return;
   }
+  if (sessionsQ.isLoading) return;
+  openSession({ id: sid });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessions.length, searchParams]);
+  }, [sessionId, searchParams, sessions, sessionsQ.isLoading]);
 
   // Restore the in-progress conversation from sessionStorage when the page is
   // (re)mounted — e.g. after switching sidebar tabs in the same browser tab.
@@ -698,8 +717,13 @@ export default function ChatPage() {
   }, []);
 
   // Persist the active conversation so it survives page unmounts between tabs.
+  // Debounced so typing can't serialize the whole message array on every
+  // keystroke; the snapshot only writes once the user pauses.
   useEffect(() => {
-  saveSnapshot({ sessionId, sessionTitle, messages, input });
+    const timer = setTimeout(() => {
+      saveSnapshot({ sessionId, sessionTitle, messages, input });
+    }, 400);
+    return () => clearTimeout(timer);
   }, [sessionId, sessionTitle, messages, input]);
 
 
@@ -711,24 +735,24 @@ export default function ChatPage() {
  ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
  }, [input]);
 
- const openSession = useCallback(async (s) => {
- if (activeStream.current) { activeStream.current.abort(); activeStream.current = null; }
- setPickerOpen(false);
- setError('');
- setAttachedResources([]);
- setActiveSourceRank(null);
- setSessionId(s.id);
- setSessionTitle(s.title || 'Conversation');
- setTitleDraft(s.title || '');
- try {
- const msgs = await chatApi.getMessages(s.id);
- setMessages(msgs);
- } catch {
- setError('Could not load that conversation.');
- }
- setSearchParams({ session: s.id }, { replace: true });
- if (isMobile) setHistoryOpen(false);
- }, [isMobile, setSearchParams]);
+const openSession = useCallback(async (s) => {
+  if (activeStream.current) { activeStream.current.abort(); activeStream.current = null; }
+  setPickerOpen(false);
+  setError('');
+  setAttachedResources([]);
+  setActiveSourceRank(null);
+  setSessionId(s.id);
+  setSessionTitle(s.title || 'Conversation');
+  setTitleDraft(s.title || '');
+  try {
+  const msgs = await chatApi.getMessages(s.id);
+  setMessages(msgs);
+  } catch {
+  setError('Could not load that conversation.');
+  }
+  setSearchParams({ session: s.id }, { replace: true });
+  if (isMobile) setHistoryOpen(false);
+  }, [isMobile, setSearchParams]);
 
  const startNewChat = useCallback(() => {
  if (activeStream.current) { activeStream.current.abort(); activeStream.current = null; }
@@ -1113,7 +1137,7 @@ export default function ChatPage() {
 
   {/* Messages */}
   <div className="relative flex min-h-0 flex-1 overflow-hidden">
-  <div ref={scrollBoxRef} onScroll={onMessagesScroll} className="flex-1 overflow-y-auto">
+  <div className="min-w-0 flex-1">
   {/* Streaming announces one concise status instead of every token:
   the full log stays out of the live region to avoid SR spam. */}
   <p role="status" className="sr-only">
@@ -1159,25 +1183,45 @@ export default function ChatPage() {
  })}
  </div>
  </div>
-  ) : (
-  <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6" aria-label="Conversation messages">
-  {messages.map((msg, idx) => (
- <MessageBubble
- key={msg.id}
- msg={msg}
- isLastAssistant={msg.role === 'assistant' && idx === messages.length - 1 && !loading}
- onSourceClick={(rank) => {
- setActiveSourceRank(rank);
- if (!sourcesRailOpen) setSourcesRailOpen(true);
- }}
- onOpenSourceResource={openSourceResource}
- onRegenerate={regenerate}
- />
- ))}
- <div ref={endRef} />
- </div>
- )}
- </div>
+) : (
+  <Virtuoso
+  data={messages}
+  alignToBottom
+  initialTopMostItemIndex={messages.length - 1}
+  style={{ height: '100%' }}
+  className="min-w-0"
+  followOutput={(isAtBottom) => (isAtBottom ? (reducedMotion ? 'auto' : 'smooth') : false)}
+  atBottomStateChange={handleAtBottomChange}
+  computeItemKey={(_, msg) => msg.id}
+  components={{
+  List: forwardRef(({ style, children, ...props }, ref) => (
+  <div
+  ref={ref}
+  {...props}
+  style={style}
+  className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6"
+  >
+  {children}
+  </div>
+  )),
+  }}
+  itemContent={(idx, msg) => (
+  <MessageBubble
+  msg={msg}
+  user={user}
+  identity={identity}
+  isLastAssistant={msg.role === 'assistant' && idx === messages.length - 1 && !loading}
+  onSourceClick={(rank) => {
+  setActiveSourceRank(rank);
+  setSourcesRailOpen(true);
+  }}
+  onOpenSourceResource={openSourceResource}
+  onRegenerate={regenerate}
+  />
+  )}
+  />
+  )}
+  </div>
 
  {/* Sources rail */}
  {sourcesRailOpen && currentSources.length > 0 && (

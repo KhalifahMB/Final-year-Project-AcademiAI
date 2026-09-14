@@ -242,6 +242,52 @@ class CourseOfferingViewSet(AdminWriteViewSet):
     serializer_class = CourseOfferingSerializer
     filterset_fields = ["course", "academic_session", "semester", "status"]
 
+    @extend_schema(
+        tags=["Course Analytics"],
+        summary="Per-offering analytics (lecturer power tool)",
+        description=(
+            "Aggregates for one course offering: cohort engagement on its "
+            "materials, per-quiz performance with weakest questions, and "
+            "per-student risk. Lecturers may only view offerings they are "
+            "assigned to; tenant admins may view the whole tenant."
+        ),
+    )
+    @action(detail=True, methods=["get"], url_path="analytics")
+    def analytics(self, request, pk=None):
+        from .analytics import CourseOfferingAnalytics, can_view_offering_analytics
+
+        offering = self.get_object()
+        if not can_view_offering_analytics(offering, request.user):
+            return Response(
+                {"detail": "You are not assigned to this offering."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return Response(CourseOfferingAnalytics.build(offering, request.user))
+
+    @extend_schema(
+        tags=["Course Analytics"],
+        summary="Per-offering content intelligence (lecturer power tool)",
+        description=(
+            "Content intelligence for one course offering: resource quality "
+            "scores (successful quiz-answer references + chat citations), "
+            "duplicate detection (checksum + chunk similarity), and suggested "
+            "resources per topic derived from the course description. Same "
+            "access rules as the analytics endpoint."
+        ),
+    )
+    @action(detail=True, methods=["get"], url_path="content-intelligence")
+    def content_intelligence(self, request, pk=None):
+        from apps.resources.content_intelligence import build as build_content_intelligence
+        from .analytics import can_view_offering_analytics
+
+        offering = self.get_object()
+        if not can_view_offering_analytics(offering, request.user):
+            return Response(
+                {"detail": "You are not assigned to this offering."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return Response(build_content_intelligence(offering))
+
 
 @extend_schema(tags=["Lecturer Assignments"])
 class LecturerAssignmentViewSet(AdminWriteViewSet):

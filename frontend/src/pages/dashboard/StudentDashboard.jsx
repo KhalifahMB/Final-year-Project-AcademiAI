@@ -8,11 +8,13 @@
  *  4. Study activity filled area chart (This week / vs last week / Streak stats)
  *  5. Sidebar stats grid (Concept mastery colored bars)
  *  6. New in library (recent resources)
+ *  7. Study streak card (daily streak + 14-day dots + reminders)
  *
  * Backend contracts stay intact — reads the same aggregate payload.
  */
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { addDays, endOfDay, format, isToday, parseISO, startOfDay } from 'date-fns';
 import {
   Area,
   AreaChart,
@@ -26,6 +28,7 @@ import {
   ArrowRight,
   BookOpenCheck,
   CalendarClock,
+  CalendarDays,
   ClipboardList,
   Clock,
   FileText,
@@ -33,13 +36,13 @@ import {
   GraduationCap,
   MessageSquareText,
   Sparkles,
+  Target,
   TrendingUp,
 } from 'lucide-react';
 
 import { TimeAgo, Meter } from './DashboardPage.helpers';
-import { greeting } from '@/lib/utils';
-import { dashboardApi } from '@/services/api';
 import AiInsightCard from '@/components/shared/AiInsightCard';
+import { dashboardApi, calendarApi, plansApi } from '@/services/api';
 
 /* ---------------------------------------------------------------- */
 /* Sections                                                          */
@@ -373,6 +376,126 @@ function StudyActivity({ chartData, range, onChangeRange, loading, statsRow }) {
   );
 }
 
+function StudyStreak({ streak, reminders, loading }) {
+  const days = streak?.recent || [];
+  const current = streak?.current_streak || 0;
+  const longest = streak?.longest_streak || 0;
+  const activeDays = streak?.total_active_days || 0;
+  const todayActive = streak?.today_active;
+
+  const KIND_META = {
+    exam: { Icon: GraduationCap, label: 'Exam' },
+    milestone: { Icon: Target, label: 'Milestone' },
+    plan: { Icon: BookOpenCheck, label: 'Plan' },
+  };
+
+  return (
+    <section data-testid="study-streak" className="card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="eyebrow !mb-0">Study streak</p>
+          <h3 className="mt-1 text-[15px] font-[640] tracking-[-0.01em]">
+            {loading
+              ? '…'
+              : current > 0
+                ? `${current} day${current === 1 ? '' : 's'} in a row`
+                : 'Start your streak'}
+          </h3>
+        </div>
+        <span className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+          <Flame className="h-4 w-4" aria-hidden />
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)]/40 p-3">
+          <p className="text-[11px] font-[600] uppercase tracking-[0.08em] text-[var(--muted)]">Longest</p>
+          <p className="mt-1 text-[18px] font-[650] tracking-[-0.02em] num">{loading ? '…' : longest}</p>
+        </div>
+        <div className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)]/40 p-3">
+          <p className="text-[11px] font-[600] uppercase tracking-[0.08em] text-[var(--muted)]">Active days</p>
+          <p className="mt-1 text-[18px] font-[650] tracking-[-0.02em] num">{loading ? '…' : activeDays}</p>
+        </div>
+      </div>
+
+      {!loading && days.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center justify-between gap-1" role="img" aria-label="Last 14 days of study activity">
+            {days.map((d) => (
+              <span
+                key={d.date}
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                title={new Date(d.date).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                aria-hidden
+              >
+                <span
+                  className={`block h-2.5 w-2.5 rounded-full ${
+                    d.active
+                      ? 'bg-[var(--accent)] shadow-[0_0_0_3px_var(--accent-soft)]'
+                      : 'border border-[var(--border)] bg-[var(--surface-2)]'
+                  }`}
+                  data-active={d.active}
+                />
+              </span>
+            ))}
+          </div>
+          <p className="mt-2.5 text-center text-[11.5px] text-[var(--muted)]">
+            {todayActive
+              ? 'Studied today — keep it burning'
+              : current > 0
+                ? 'No study logged today yet'
+                : 'Chat, read or take a quiz to start'}
+          </p>
+        </div>
+      )}
+
+      <div className="mt-4 border-t border-[var(--border)] pt-4">
+        <p className="text-[13px] font-[640] tracking-[-0.01em]">Reminders</p>
+        {loading ? (
+          <div className="mt-2 h-16 animate-pulse rounded-[var(--radius-md)] bg-[var(--surface-2)]" />
+        ) : reminders.length === 0 ? (
+          <p className="mt-2 text-[12px] text-[var(--muted)]">
+            Nothing due in the next 7 days. Enjoy the calm.
+          </p>
+        ) : (
+          <ul className="mt-1 -mx-2 space-y-1">
+            {reminders.slice(0, 4).map((r, i) => {
+              const meta = KIND_META[r.kind] || KIND_META.milestone;
+              return (
+                <li key={`${r.kind}-${i}`}>
+                  <Link
+                    to={r.route}
+                    className="group flex items-center gap-3 rounded-[var(--radius-md)] px-2 py-2 transition-colors hover:bg-[var(--hover)]"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+                      <meta.Icon className="h-4 w-4" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-[600]">{r.title}</p>
+                      <p className="mt-0.5 flex items-center gap-1 text-[11.5px] text-[var(--muted)]">
+                        {r.detail}
+                        <span aria-hidden>·</span>
+                        <span className="capitalize">{meta.label}</span>
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[11px] font-[600] text-[var(--muted)] num">
+                      {format(parseISO(r.when), 'MMM d')}
+                    </span>
+                    <ArrowRight
+                      className="h-3.5 w-3.5 text-[var(--faint)] transition-colors group-hover:text-[var(--accent-strong)]"
+                      aria-hidden
+                    />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function NewInLibrary({ items }) {
   return (
     <section className="card p-5">
@@ -425,6 +548,158 @@ function NewInLibrary({ items }) {
   );
 }
 
+function MyWeek({ events }) {
+  const sorted = [...events].sort(
+    (a, b) => new Date(a.start) - new Date(b.start),
+  );
+  return (
+    <section className="card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="eyebrow !mb-0">My week</p>
+          <h3 className="mt-1 text-[15px] font-[640] tracking-[-0.01em]">
+            Next 7 days
+          </h3>
+        </div>
+        <Link
+          to="/calendar"
+          className="inline-flex items-center gap-0.5 text-[12px] font-[600] text-[var(--accent-strong)] hover:underline"
+        >
+          Calendar
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      {sorted.length === 0 ? (
+        <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] px-4 py-8 text-center">
+          <CalendarDays className="mx-auto h-5 w-5 text-[var(--muted)]" aria-hidden />
+          <p className="mt-2 text-[13px] font-[600]">A clear week</p>
+          <p className="mt-0.5 text-[12px] text-[var(--muted)]">
+            Lectures, exams and study sessions will appear here.
+          </p>
+        </div>
+      ) : (
+        <ul className="-mx-2 space-y-1">
+          {sorted.slice(0, 5).map((e) => {
+            const start = parseISO(e.start);
+            const today = isToday(start);
+            return (
+              <li key={e.id}>
+                <Link
+                  to="/calendar"
+                  className="group flex items-center gap-3 rounded-[var(--radius-md)] px-2 py-2 transition-colors hover:bg-[var(--hover)]"
+                >
+                  <span
+                    className={`inline-flex h-9 w-12 shrink-0 flex-col items-center justify-center rounded-[var(--radius-md)] text-center ${
+                      today
+                        ? 'bg-[var(--accent)] text-[var(--on-accent)]'
+                        : 'bg-[var(--surface-2)]'
+                    }`}
+                  >
+                    <span className="text-[10px] font-[650] uppercase tracking-wide">
+                      {today ? 'Today' : format(start, 'EEE')}
+                    </span>
+                    <span className={`num text-[14px] font-[680] leading-none ${today ? '' : 'text-[var(--fg)]'}`}>
+                      {format(start, 'd')}
+                    </span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-[600]">{e.title}</p>
+                    <p className="mt-0.5 flex items-center gap-1 text-[11.5px] text-[var(--muted)]">
+                      <Clock className="h-3 w-3" aria-hidden />
+                      {format(start, 'h:mm a')}
+                      {e.end ? ` – ${format(parseISO(e.end), 'h:mm a')}` : ''}
+                      {e.venue && (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span className="truncate">{e.venue}</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-[550] uppercase tracking-wide text-[var(--muted)]">
+                    {e.layer === 'office_hours'
+                      ? 'Office hours'
+                      : e.layer === 'exams'
+                        ? 'Exam'
+                        : e.layer === 'institution'
+                          ? 'Institution'
+                          : e.layer === 'academic'
+                            ? 'Lecture'
+                            : 'Study'}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function ActivePlans({ items }) {
+  const plans = items.filter((p) => p.status === 'active');
+  return (
+    <section className="card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="eyebrow !mb-0">Active plans</p>
+          <h3 className="mt-1 text-[15px] font-[640] tracking-[-0.01em]">
+            Keep your study on track
+          </h3>
+        </div>
+        <Link
+          to="/planner"
+          className="inline-flex items-center gap-0.5 text-[12px] font-[600] text-[var(--accent-strong)] hover:underline"
+        >
+          Planner
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+      {plans.length === 0 ? (
+        <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] px-4 py-8 text-center">
+          <Target className="mx-auto h-5 w-5 text-[var(--muted)]" aria-hidden />
+          <p className="mt-2 text-[13px] font-[600]">No active plans</p>
+          <p className="mt-0.5 text-[12px] text-[var(--muted)]">
+            Create a study plan in the planner and it will show up here.
+          </p>
+        </div>
+      ) : (
+        <ul className="-mx-2 space-y-1">
+          {plans.slice(0, 4).map((p) => {
+            const done = p.completed_task_count || 0;
+            const total = p.task_count || 0;
+            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+            return (
+              <li key={p.id}>
+                <Link
+                  to="/planner"
+                  className="group block rounded-[var(--radius-md)] px-2 py-2 transition-colors hover:bg-[var(--hover)]"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-[13px] font-[600]">{p.title}</p>
+                    {p.target_date && (
+                      <span className="shrink-0 text-[11px] text-[var(--muted)]">
+                        due {format(parseISO(p.target_date), 'MMM d')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Meter pct={pct} tone={pct >= 75 ? 'ok' : 'accent'} />
+                    <span className="shrink-0 text-[11px] font-[600] text-[var(--muted)] num">
+                      {done}/{total}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function QuickCTA({ firstName }) {
   return (
     <section className="relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--accent)]/20 bg-[var(--accent-soft)] p-5 dark:bg-[var(--accent-soft)]">
@@ -458,7 +733,7 @@ function QuickCTA({ firstName }) {
 /* Compute stats for the Study Activity summary row                  */
 /* ---------------------------------------------------------------- */
 
-function deriveActivityStats(timeline) {
+function deriveActivityStats(timeline, streakData) {
   if (!timeline || timeline.length === 0) {
     return [
       { label: 'This period', value: '0', hint: 'No activity yet', icon: <Clock className="mr-1 h-3 w-3" aria-hidden /> },
@@ -472,18 +747,23 @@ function deriveActivityStats(timeline) {
   const prior = timeline.slice(0, mid).reduce((a, p) => a + (p.chats + p.quizzes + p.notes), 0);
   const diff = recent - prior;
   const diffStr = diff >= 0 ? `+${diff}` : `-${Math.abs(diff)}`;
-  // streak = trailing consecutive buckets with >=1 event
-  let streak = 0;
-  for (let i = timeline.length - 1; i >= 0; i--) {
-    const p = timeline[i];
-    if ((p.chats + p.quizzes + p.notes) > 0) streak += 1;
-    else break;
-  }
-  return [
+  const out = [
     { label: 'This period', value: `${recent}`, hint: 'Chats, quizzes & notes', icon: <Clock className="mr-1 h-3 w-3" aria-hidden /> },
     { label: 'vs last', value: diffStr, hint: prior === 0 ? 'New activity' : 'Period over period', icon: <TrendingUp className="mr-1 h-3 w-3" aria-hidden /> },
-    { label: 'Streak', value: `${streak} day${streak === 1 ? '' : 's'}`, hint: 'Active days in a row', icon: <Flame className="mr-1 h-3 w-3" aria-hidden /> },
+    { label: 'Streak', value: '0 days', hint: 'Active days in a row', icon: <Flame className="mr-1 h-3 w-3" aria-hidden /> },
   ];
+  // Prefer the authoritative calendar-day streak from the backend so the
+  // stats row and the Study streak card always agree.
+  if (streakData && typeof streakData.current_streak === 'number') {
+    const days = streakData.current_streak;
+    out[2] = {
+      label: 'Streak',
+      value: `${days} day${days === 1 ? '' : 's'}`,
+      hint: streakData.today_active ? 'Active days in a row' : 'Study today to keep it going',
+      icon: <Flame className="mr-1 h-3 w-3" aria-hidden />,
+    };
+  }
+  return out;
 }
 
 function buildTotalSeries(timeline) {
@@ -500,15 +780,35 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
   const continueCourses = dash?.continue_courses || [];
   const concepts = dash?.concept_mastery || [];
   const recentResources = dash?.recent_resources || [];
-  const timeline = studentActivity?.timeline || [];
+  const timeline = studentActivity?.data?.timeline || [];
   const chartData = buildTotalSeries(timeline);
 
-  const { data: aiGreeting } = useQuery({
-    queryKey: ['ai-greeting'],
-    queryFn: dashboardApi.aiGreeting,
-    staleTime: 3600000, // 1 hour
-    retry: 1,
+  const { data: weekEvents } = useQuery({
+    queryKey: ['student-week'],
+    queryFn: () =>
+      calendarApi.listEventsLight({
+        start: startOfDay(new Date()).toISOString(),
+        end: endOfDay(addDays(new Date(), 7)).toISOString(),
+      }),
+    staleTime: 30_000,
   });
+  const { data: planData } = useQuery({
+    queryKey: ['student-plans'],
+    queryFn: () => plansApi.list(),
+    staleTime: 30_000,
+  });
+  const { data: streakData, isLoading: streakLoading } = useQuery({
+    queryKey: ['student-streak'],
+    queryFn: () => dashboardApi.studentStreak(),
+    staleTime: 30_000,
+  });
+  const { data: remindersData, isLoading: remindersLoading } = useQuery({
+    queryKey: ['student-reminders'],
+    queryFn: () => dashboardApi.studentReminders(),
+    staleTime: 30_000,
+  });
+  const weekEventsList = weekEvents?.results || weekEvents || [];
+  const plans = planData?.results || planData || [];
 
   // KPI strip
   const kpis = [
@@ -521,22 +821,10 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
   return (
     <>
       {/* Greeting */}
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3" data-testid="student-dashboard">
-        <div className="min-w-0">
-          <p className="eyebrow flex items-center gap-1.5">
-            <Flame className="h-3 w-3 text-[var(--warn)]" aria-hidden />
-            {aiGreeting?.greeting || greeting()}
-          </p>
-          <h1 className="mt-1 text-[30px] font-[650] leading-[1.08] tracking-[-0.02em]">
-            Hi {firstName}
-            <span className="text-[var(--muted)] font-[450]"> — here’s your study workspace.</span>
-          </h1>
-          <p className="mt-1 text-[13.5px] text-[var(--muted)]">
-            {dash?.up_next?.length
-              ? 'Jump straight in, or ask the AI tutor about any enrolled course.'
-              : 'Enrol in a course or ask the AI tutor to get started.'}
-          </p>
-        </div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3" data-testid="student-dashboard">
+        <h1 className="text-[22px] font-[650] leading-tight tracking-[-0.02em]">
+          Hi {firstName}
+        </h1>
         <Link
           to="/chat"
           data-testid="dashboard-ask-ai"
@@ -578,12 +866,19 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
             range={studentRange}
             onChangeRange={setStudentRange}
             loading={studentActivity.isLoading}
-            statsRow={deriveActivityStats(timeline)}
+            statsRow={deriveActivityStats(timeline, streakData)}
           />
+          <ActivePlans items={plans} />
         </div>
         <div className="space-y-5">
           <QuickCTA firstName={firstName} />
           <UpNext items={upNext} />
+          <StudyStreak
+            streak={streakData}
+            reminders={remindersData?.reminders || []}
+            loading={streakLoading || remindersLoading}
+          />
+          <MyWeek events={weekEventsList} />
           <ConceptMastery items={concepts} />
         </div>
       </div>

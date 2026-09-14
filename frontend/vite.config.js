@@ -41,7 +41,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
+        globPatterns: [
+          '**/*.{js,css,html,svg,png,ico,woff,woff2,webp}',
+          '!design-variants/**',
+        ],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: '/index.html',
         cleanupOutdatedCaches: true,
@@ -60,15 +63,17 @@ export default defineConfig({
             },
           },
           {
-            // API GETs: NetworkFirst so the app still renders recently seen
-            // data when offline. Never cache non-GET or errors.
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
+            // Public GETs (landing stats) only: caching authenticated /api/
+            // responses in the service worker would serve one user's data to
+            // the next person using a shared device. Auth traffic must stay
+            // uncached — the browser HTTP cache already handles assets.
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/public/'),
             method: 'GET',
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
+              cacheName: 'app-cache',
               networkTimeoutSeconds: 4,
-              expiration: { maxEntries: 80, maxAgeSeconds: 60 * 15 },
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 15 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
@@ -82,7 +87,10 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     allowedHosts: true,
-    proxy: { '/api': { target: 'http://localhost:8000', changeOrigin: true } },
+    proxy: {
+      '/api': { target: 'http://localhost:8000', changeOrigin: true },
+      '/media': { target: 'http://localhost:8000', changeOrigin: true },
+    },
   },
   test: {
     environment: 'happy-dom',

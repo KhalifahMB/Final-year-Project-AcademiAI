@@ -81,6 +81,15 @@ def test_signup_verify_login_me_flow():
     access = resp.data["access"]
     refresh = resp.data["refresh"]
 
+    # HttpOnly JWT cookies are set for the SPA: SameSite=Strict, path-scoped
+    # to the API, and not readable from JS.
+    cookie = resp.cookies.get("access_token")
+    assert cookie is not None
+    assert cookie["httponly"] is True
+    assert cookie["samesite"].lower() == "strict"
+    assert cookie["path"] == "/api/v1"
+    assert resp.cookies.get("refresh_token") is not None
+
     # /auth/me works with the access token.
     client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
     resp = client.get("/api/v1/auth/me/")

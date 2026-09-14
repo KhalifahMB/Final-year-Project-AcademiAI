@@ -36,6 +36,7 @@ class Bookmark(TenantScopedModel):
             models.UniqueConstraint(fields=["user", "resource"], name="uniq_user_resource_bookmark")
         ]
         ordering = ["-created_at"]
+        indexes = [models.Index(fields=["created_at"])]
 
 
 class ProgressRecord(TenantScopedModel):
@@ -202,6 +203,7 @@ class PlanTask(TenantScopedModel):
     class Meta:
         db_table = "plan_tasks"
         ordering = ["created_at"]
+        indexes = [models.Index(fields=["created_at"])]
 
 
 class PlanTemplate(TenantScopedModel):

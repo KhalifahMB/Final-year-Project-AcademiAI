@@ -70,6 +70,7 @@ class Announcement(UUIDModel, TimeStampedModel):
     class Meta:
         db_table = "platform_announcements"
         ordering = ["-created_at"]
+        indexes = [models.Index(fields=["created_at"])]
 
     def __str__(self):
         return self.title

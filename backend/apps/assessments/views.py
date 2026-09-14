@@ -115,9 +115,13 @@ class QuizAttemptViewSet(TenantModelViewSet):
     attempt server-side and cannot be repeated.
     """
 
-    queryset = QuizAttempt.objects.all()
+    queryset = QuizAttempt.objects.select_related("quiz").prefetch_related("quiz__questions")
     serializer_class = QuizAttemptSerializer
     http_method_names = ["get", "post", "head", "options"]
+    # Without these, global DjangoFilterBackend silently ignores ?quiz=<id>,
+    # and the quiz page's "Past attempts" pane shows attempts from other
+    # quizzes. Student entries are re-scoped to the request user below.
+    filterset_fields = ["quiz", "student"]
 
     def get_queryset(self):
         qs = super().get_queryset()

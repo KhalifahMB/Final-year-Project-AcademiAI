@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
  * Options: [{ value: string, label: string, hint?: string }]
  */
 const RENDER_LIMIT = 100;
+const FILTER_DEBOUNCE_MS = 80;
 
 function matches(option, query) {
   const q = query.trim().toLowerCase();
@@ -41,6 +42,7 @@ export default function SearchableSelect({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const rootRef = useRef(null);
   const inputRef = useRef(null);
@@ -55,10 +57,26 @@ export default function SearchableSelect({
   // selected label. Opening always starts from a blank filter (an event).
   const displayValue = open ? query : (selected ? selected.label : '');
 
+  // Filtering several hundred options on every keystroke is wasted work; the
+  // filter only consumes the debounced query so the list is rescanned ~80ms
+  // after typing pauses, not per character. Typing itself stays instant.
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setDebouncedQuery(query),
+      FILTER_DEBOUNCE_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  const filterOptions = useCallback(
+    (opts, q) => (q ? opts.filter((o) => matches(o, q)) : opts),
+    [],
+  );
+
   const filtered = useMemo(() => {
     if (!open) return options;
-    return options.filter((o) => matches(o, query));
-  }, [options, open, query]);
+    return filterOptions(options, debouncedQuery);
+  }, [options, open, debouncedQuery, filterOptions]);
 
   const capped = filtered.length > RENDER_LIMIT;
   const visible = capped ? filtered.slice(0, RENDER_LIMIT) : filtered;

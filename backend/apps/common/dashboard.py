@@ -763,6 +763,176 @@ class StudentActivityView(APIView):
         )
 
 
+@extend_schema(
+    tags=["Dashboard"],
+    summary="Student daily study streak",
+    description=(
+        "Real calendar-day study streak derived from live activity: chat "
+        "messages, quiz attempts, notes, and resource reading. Also returns "
+        "the last 14 days (for the flame-dot strip) and longest streak. "
+        "Cached 60s."
+    ),
+)
+class StudentStreakView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        tid = user.tenant_id
+        key = f"dashboard:{tid}:student-streak:{user.id}:v1"
+        data = cache.get(key)
+        if data is not None:
+            return Response(data)
+        data = self._build(tid, user)
+        cache.set(key, data, STALE_SECONDS)
+        return Response(data)
+
+    @staticmethod
+    def _active_days(tid, user):
+        """All distinct calendar days with any study activity (real data only)."""
+        from apps.chat.models import ChatMessage
+        from apps.assessments.models import QuizAttempt
+        from apps.learning.models import Note, ResourceReadingPosition
+
+        days = {
+            *ChatMessage.objects.filter(
+                tenant_id=tid, session__user=user, role=ChatMessage.Role.USER,
+            ).values_list("created_at__date", flat=True),
+            *QuizAttempt.objects.filter(
+                tenant_id=tid, student=user,
+            ).values_list("started_at__date", flat=True),
+            *Note.objects.filter(
+                tenant_id=tid, user=user,
+            ).values_list("created_at__date", flat=True),
+            *ResourceReadingPosition.objects.filter(
+                tenant_id=tid, user=user,
+            ).values_list("last_read_at__date", flat=True),
+        }
+        return {d for d in days if d is not None}
+
+    @classmethod
+    def _build(cls, tid, user):
+        active = sorted(cls._active_days(tid, user))
+        today = timezone.localdate()
+
+        # A streak is still "alive" if the last active day is yesterday (today
+        # may simply not have happened yet).
+        cursor = today if today in active else today - timedelta(days=1)
+        current_streak = 0
+        while cursor in active:
+            current_streak += 1
+            cursor -= timedelta(days=1)
+
+        longest = 0
+        run = 0
+        prev = None
+        for d in active:
+            run = run + 1 if prev is not None and (d - prev).days == 1 else 1
+            longest = max(longest, run)
+            prev = d
+
+        recent = []
+        for i in range(13, -1, -1):
+            day = today - timedelta(days=i)
+            recent.append({"date": day.isoformat(), "active": day in active})
+
+        return {
+            "current_streak": current_streak,
+            "longest_streak": longest,
+            "total_active_days": len(active),
+            "today_active": today in active,
+            "last_active_date": active[-1].isoformat() if active else None,
+            "recent": recent,
+        }
+
+
+@extend_schema(
+    tags=["Dashboard"],
+    summary="Student study reminders",
+    description=(
+        "Deterministic reminders computed from real schedule/plan data only: "
+        "events on the exam-timetable layer within the next 7 days, plus "
+        "study-plan milestones and plan target dates due within 7 days. "
+        "No AI calls, no invented data. Cached 60s."
+    ),
+)
+class StudentRemindersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        tid = user.tenant_id
+        key = f"dashboard:{tid}:student-reminders:{user.id}:v1"
+        data = cache.get(key)
+        if data is not None:
+            return Response(data)
+        data = self._build(tid, user)
+        cache.set(key, data, STALE_SECONDS)
+        return Response(data)
+
+    @classmethod
+    def _build(cls, tid, user):
+        from apps.calendar.models import CalendarEvent, CalendarLayer
+        from apps.learning.models import Plan, PlanMilestone
+
+        today = timezone.localdate()
+        horizon = today + timedelta(days=7)
+        reminders = []
+
+        # Exams from the institution exam timetable.
+        for ev in CalendarEvent.objects.filter(
+            tenant_id=tid,
+            layer=CalendarLayer.EXAMS,
+            start__date__gte=today,
+            start__date__lte=horizon,
+        ).select_related("course_offering", "course_offering__course").order_by("start"):
+            course = getattr(ev.course_offering, "course", None)
+            title = ev.title or (course.title if course else None) or "Exam"
+            days_left = (ev.start.date() - today).days
+            reminders.append({
+                "kind": "exam",
+                "title": title,
+                "detail": "Today" if days_left == 0 else f"{days_left}d",
+                "when": ev.start.date().isoformat(),
+                "route": "/calendar",
+            })
+
+        # Milestones of active plans that are due within the horizon.
+        for m in PlanMilestone.objects.filter(
+            tenant_id=tid,
+            plan__user=user,
+            plan__status="active",
+            due_date__gte=today,
+            due_date__lte=horizon,
+        ).exclude(status__in=("completed", "skipped")).select_related("plan").order_by("due_date"):
+            reminders.append({
+                "kind": "milestone",
+                "title": m.title,
+                "detail": m.plan.title,
+                "when": m.due_date.isoformat(),
+                "route": "/planner",
+            })
+
+        # Active plans whose own target date is due within the horizon.
+        for p in Plan.objects.filter(
+            tenant_id=tid,
+            user=user,
+            status="active",
+            target_date__gte=today,
+            target_date__lte=horizon,
+        ).order_by("target_date"):
+            reminders.append({
+                "kind": "plan",
+                "title": p.title,
+                "detail": "Plan target date",
+                "when": p.target_date.isoformat(),
+                "route": "/planner",
+            })
+
+        reminders.sort(key=lambda r: r["when"])
+        return {"reminders": reminders[:6]}
+
+
 # ----------------------------------------------------------------------
 # Admin audit summary (aggregate analytics over audit logs)
 # ----------------------------------------------------------------------

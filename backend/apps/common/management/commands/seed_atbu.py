@@ -1,8 +1,7 @@
 """
 Seed the real ATBU academic structure: Faculties -> Departments -> Programmes.
 
-Data sourced from the official ATBU website (faculties page) and the
-documented programme list (see atbu-university.md at repo root).
+Data sourced from the official ATBU website (faculties page).
 
 Idempotent: uses get_or_create on (tenant, code) for every level, so it can be
 re-run safely. Existing placeholder rows (e.g. FOC / Faculty of Computing) are

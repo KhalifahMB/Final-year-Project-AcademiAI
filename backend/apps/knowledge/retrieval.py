@@ -11,6 +11,7 @@ from pgvector.django import CosineDistance
 
 from apps.resources.models import Resource, ResourceChunk
 from apps.academics.models import CourseEnrollment, LecturerCourseAssignment
+from apps.common.constants import RAG_TOP_K
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,27 @@ def _authorized_resource_ids(user, course_offering_id=None):
     lecturers; programme/department/faculty scopes follow the viewer's
     academic profile; private resources only to the uploader. Admins see
     everything in the tenant.
+
+    Results are memoized on the ``user`` instance for the lifetime of a
+    request/task. Django fetches a fresh user per request, so the cache can
+    never go stale across requests, and a mutation inside one request (e.g.
+    an upload flipping processing_status) can't affect an earlier caller of
+    the same request that already resolved ids. Keying by offering keeps
+    distinct offering filters correct.
     """
+    key = str(course_offering_id) if course_offering_id else "*"
+    memo = getattr(user, "_authorized_resource_ids_cache", None)
+    if memo is not None and key in memo:
+        return memo[key]
+    ids = _compute_authorized_resource_ids(user, course_offering_id)
+    if memo is None:
+        memo = {}
+        user._authorized_resource_ids_cache = memo
+    memo[key] = ids
+    return ids
+
+
+def _compute_authorized_resource_ids(user, course_offering_id=None):
     tenant_id = user.tenant_id
     qs = Resource.objects.filter(
         tenant_id=tenant_id,
@@ -162,7 +183,7 @@ def _concept_related_chunk_ids(tenant_id, query: str, resource_ids, limit=20):
         ).values_list("id", flat=True)[:limit]
     )
 
-def hybrid_retrieve(query: str, tenant_id, user, course_offering_id=None, top_k=8):
+def hybrid_retrieve(query: str, tenant_id, user, course_offering_id=None, top_k=RAG_TOP_K):
     """
     Returns list of dicts: id, content, score, method
     """

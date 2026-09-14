@@ -11,6 +11,10 @@ Metrics: Precision@K, Recall@K, MRR.
 Usage:
     python manage.py evaluate_rag --queries path/to/queries.json --k 5
 
+The `--queries` path is resolved against the current directory, the Django
+project root (backend/), and backend/data and backend/fixtures — so a plain
+filename works even when run from elsewhere.
+
 Query file format (JSON list):
     [
       {
@@ -22,6 +26,13 @@ Query file format (JSON list):
       }
     ]
 
+If you do not have a labelled set, generate a self-checking one from the
+seeded corpus first:
+
+    python manage.py build_rag_testset --tenant <slug> \\
+        --user student@demo.local --out testset.json --n 40
+    python manage.py evaluate_rag --queries testset.json --k 5
+
 Ground truth must be produced by human labelling against YOUR corpus.
 This command reports measured numbers for the supplied dataset and makes no
 claims beyond it.
@@ -29,6 +40,7 @@ claims beyond it.
 import json
 import statistics
 import time
+from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 from pgvector.django import CosineDistance
@@ -65,17 +77,51 @@ class Command(BaseCommand):
         parser.add_argument("--queries", required=True)
         parser.add_argument("--k", type=int, default=5)
 
+    @staticmethod
+    def _resolve_queries_path(raw):
+        from django.conf import settings
+
+        cands = [Path(raw).expanduser()]
+        if not cands[0].is_absolute():
+            bases = [
+                Path.cwd(),
+                Path(settings.BASE_DIR),
+                Path(settings.BASE_DIR) / "data",
+                Path(settings.BASE_DIR) / "fixtures",
+            ]
+            for base in bases:
+                cands.append(base / raw)
+        seen = []
+        for cand in cands:
+            if cand in seen:
+                continue
+            seen.append(cand)
+            if cand.is_file():
+                return cand, seen
+        return seen[0], seen
+
     def handle(self, *args, **options):
         from apps.accounts.models import User
         from apps.knowledge.retrieval import hybrid_retrieve
         from apps.tenants.models import Tenant
 
         k = options["k"]
+        queries_path, searched = self._resolve_queries_path(options["queries"])
         try:
-            with open(options["queries"], encoding="utf-8") as fh:
+            with open(queries_path, encoding="utf-8-sig") as fh:
                 cases = json.load(fh)
         except OSError as exc:
-            raise CommandError(f"Cannot read queries file: {exc}")
+            searched_lines = "\n  - ".join(str(p) for p in searched)
+            raise CommandError(
+                f"Cannot read queries file: {exc}\n\n"
+                f"Searched:\n  - {searched_lines}\n\n"
+                "The evaluation needs a labelled query set. Either create one\n"
+                "matching the schema in this command's docstring, or generate a\n"
+                "self-checking set from the tenant's corpus:\n\n"
+                "  python manage.py build_rag_testset --tenant <slug> \\\n"
+                "      --user student@demo.local --out testset.json --n 40\n"
+                "  python manage.py evaluate_rag --queries testset.json --k 5"
+            )
 
         if not cases:
             raise CommandError("Query set is empty.")

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { invalidatePlannerCaches } from '@/lib/plannerSync';
 import {
   ArrowLeft,
   CalendarClock,
@@ -97,7 +98,7 @@ export default function PlanDetailPage() {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['plan', id] });
-    qc.invalidateQueries({ queryKey: ['plans'] });
+    invalidatePlannerCaches(qc);
   };
 
   const updatePlan = useMutation({
@@ -119,7 +120,8 @@ export default function PlanDetailPage() {
     mutationFn: () => plansApi.delete(id),
     onSuccess: () => {
       toast.success('Plan deleted');
-      qc.invalidateQueries({ queryKey: ['plans'] });
+      invalidatePlannerCaches(qc);
+      qc.invalidateQueries({ queryKey: ['plan', id] });
       navigate('/plans', { replace: true });
     },
     onError: () => toast.error('Could not delete plan'),

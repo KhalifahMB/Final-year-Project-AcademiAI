@@ -6,9 +6,12 @@ no ad-hoc create/destroy endpoint. Only the platform superuser may change a
 tenant's status (suspend / reactivate); all other tenant details are read-only.
 """
 import pytest
+from django.db import transaction
+from django.db.models import ProtectedError
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
+from apps.academics.models import Faculty
 from apps.tenants.models import Tenant
 
 PASSWORD = "StrongPass!2026"
@@ -57,6 +60,18 @@ def test_delete_tenant_disabled_even_for_superuser():
     resp = _client(superuser).delete(f"/api/v1/tenants/{t.id}/")
     assert resp.status_code == 405, resp.data
     assert Tenant.objects.filter(id=t.id).exists()
+
+
+@pytest.mark.django_db
+def test_tenant_with_data_cannot_be_deleted_model_level():
+    """PROTECT on the tenant FK: a tenant with any referencing row is undeletable."""
+    t = _make_tenant()
+    Faculty.objects.create(tenant=t, name="Fac", code="FAC")
+    with pytest.raises(ProtectedError):
+        with transaction.atomic():
+            t.delete()
+    assert Tenant.objects.filter(id=t.id).exists()
+    assert Faculty.objects.filter(tenant=t).exists()
 
 
 @pytest.mark.django_db

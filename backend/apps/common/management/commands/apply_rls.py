@@ -6,8 +6,10 @@ from apps.common import rls
 
 class Command(BaseCommand):
     help = (
-        "Apply PostgreSQL RLS policies to all tenant-scoped tables "
-        "(also applied automatically by the 0001_rls_tenant_isolation migration)."
+        "Apply PostgreSQL RLS policies to every tenant-scoped table "
+        "(also applied automatically by the 0001_rls_tenant_isolation migration). "
+        "The table list is derived from the model registry at runtime, so re-run "
+        "this after adding any new tenant-scoped model."
     )
 
     def handle(self, *args, **options):

@@ -10,6 +10,8 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
+from apps.tenants.stats import PublicStatsView
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/auth/", include("apps.accounts.urls")),
@@ -25,6 +27,9 @@ urlpatterns = [
     path("api/v1/", include("apps.platform.urls")),
     path("api/v1/", include("apps.logs.urls")),
     path("api/v1/", include("apps.agent.urls")),
+    path("api/v1/", include("apps.calendar.urls")),
+    path("api/v1/", include("apps.notifications.urls")),
+    path("api/public/stats/", PublicStatsView.as_view(), name="public-stats"),
     # OpenAPI
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
@@ -43,3 +48,7 @@ if settings.DEBUG and not getattr(settings, "TESTING", False):
     import debug_toolbar
 
     urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns
+    # Serve user uploads (custom agent avatars etc.) in development.
+    from django.conf.urls.static import static
+
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

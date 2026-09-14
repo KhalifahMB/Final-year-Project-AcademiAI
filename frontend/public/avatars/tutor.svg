@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Tutor agent avatar">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="cap" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e0e7ff"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#bg)"/>
+  <circle cx="64" cy="64" r="42" fill="#ffffff" opacity="0.12"/>
+  <g fill="url(#cap)" opacity="0.98">
+    <path d="M64 38 L94 50 L64 62 L34 50 Z"/>
+    <path d="M40 57 l0 11 c0 7 10 12 24 12 c14 0 24 -5 24 -12 l0 -11 l-6 3 l0 8 c0 4 -7 8 -18 8 c-11 0 -18 -4 -18 -8 l0 -8 Z"/>
+    <rect x="61" y="59" width="6" height="16" rx="3"/>
+  </g>
+  <circle cx="64" cy="50" r="4" fill="#ffffff"/>
+</svg>

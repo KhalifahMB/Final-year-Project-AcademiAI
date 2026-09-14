@@ -7,6 +7,7 @@ from pgvector.django import VectorField
 
 from apps.common.models import TenantScopedModel
 from django.conf import settings
+from django.utils import timezone
 
 
 class Resource(TenantScopedModel):
@@ -77,6 +78,7 @@ class Resource(TenantScopedModel):
             models.Index(fields=["tenant", "processing_status"]),
             models.Index(fields=["tenant", "visibility_scope"]),
             models.Index(fields=["course_offering"]),
+            models.Index(fields=["created_at"]),
         ]
         ordering = ["-created_at"]
 
@@ -145,6 +147,41 @@ class ResourcePermission(TenantScopedModel):
         db_table = "resource_permissions"
 
 
+class ResourceAccess(TenantScopedModel):
+    """Structured view/download event used by lecturer analytics.
+
+    Written once per preview ("view") and presigned-download ("download")
+    request with the acting user; aggregation filters to enrolled students
+    so lecturers' own usage never pollutes cohort metrics.
+    """
+
+    class AccessType(models.TextChoices):
+        VIEW = "view", "View"
+        DOWNLOAD = "download", "Download"
+
+    resource = models.ForeignKey(
+        Resource, on_delete=models.CASCADE, related_name="accesses"
+    )
+    user = models.ForeignKey(
+        "accounts.User", on_delete=models.CASCADE, null=True, related_name="resource_accesses"
+    )
+    access_type = models.CharField(
+        max_length=20, choices=AccessType.choices, default=AccessType.VIEW
+    )
+    occurred_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        db_table = "resource_accesses"
+        indexes = [
+            models.Index(fields=["tenant", "resource", "-occurred_at"]),
+            models.Index(fields=["tenant", "user", "-occurred_at"]),
+        ]
+        ordering = ["-occurred_at"]
+
+    def __str__(self):
+        return f"{self.access_type} {self.resource_id}"
+
+
 class ResourceSummary(TenantScopedModel):
     """Persisted AI summary for a resource version.
 
@@ -173,6 +210,7 @@ class ResourceSummary(TenantScopedModel):
     class Meta:
         db_table = "resource_summaries"
         ordering = ["-created_at"]
+        indexes = [models.Index(fields=["created_at"])]
         indexes = [
             models.Index(fields=["tenant", "resource", "-created_at"]),
         ]

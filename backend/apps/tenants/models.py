@@ -24,7 +24,7 @@ class Tenant(UUIDModel, TimeStampedModel):
     # login-restriction scheduled task. Cleared on reactivation.
     suspended_at = models.DateTimeField(null=True, blank=True)
     # Future: restrict signups to institutional email domains, e.g.
-    # ["atbu.edu.ng"]. Not enforced anywhere yet (documented roadmap item).
+    # ["university.example.edu"]. Not enforced anywhere yet (documented roadmap item).
     allowed_email_domains = models.JSONField(default=list, blank=True)
     # Future: per-tenant branding (logo key, primary colour, tagline).
     branding = models.JSONField(default=dict, blank=True)
@@ -97,7 +97,10 @@ class TenantRequest(UUIDModel, TimeStampedModel):
     class Meta:
         db_table = "tenant_requests"
         ordering = ["-created_at"]
-        indexes = [models.Index(fields=["status", "created_at"])]
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["created_at"]),
+        ]
 
     def __str__(self):
         return f"{self.institution_name} — {self.status}"

@@ -1,4 +1,7 @@
 import logging
+
+from django.conf import settings
+
 logger = logging.getLogger(__name__)
 ALLOWED_MIME_PREFIXES = (
     "text/", "application/pdf", "application/json", "application/msword",
@@ -28,9 +31,16 @@ def validate_upload_bytes(data: bytes, content_type: str = "", filename: str = "
         status = result.get("stream", ("OK",))[0]
         if status != "OK":
             raise FileValidationError(f"Malware scan failed: {status}")
-    except ImportError:
-        logger.debug("clamd not installed; signature-only scan applied")
     except FileValidationError:
         raise
     except Exception as exc:
-        logger.warning("Malware scanner unavailable: %s", exc)
+        # CLAMAV_STRICT (production default True): a scanner outage is a
+        # security event, not a reason to accept an unscanned upload. Fail
+        # closed so malware can never pass through because clamd is down or
+        # misconfigured. Local/dev environments opt out explicitly.
+        if settings.CLAMAV_STRICT:
+            raise FileValidationError(f"Malware scanner unavailable: {exc}")
+        if isinstance(exc, ImportError):
+            logger.debug("clamd not installed; signature-only scan applied")
+        else:
+            logger.warning("Malware scanner unavailable; upload accepted in non-strict mode: %s", exc)

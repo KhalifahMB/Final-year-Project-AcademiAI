@@ -60,7 +60,9 @@ export default function QuizTakePage() {
  const questions = useQuery({
  queryKey: ['quiz-questions', id],
  queryFn: async () => {
- const { data } = await api.get('/quiz-questions/', { params: { quiz: id } });
+ const { data } = await api.get('/quiz-questions/', {
+    params: { quiz: id, page_size: 100 },
+  });
  return data.results || data;
  },
  enabled: !!id,

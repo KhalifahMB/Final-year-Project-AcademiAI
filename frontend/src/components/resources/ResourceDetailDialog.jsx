@@ -54,7 +54,12 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
   // If only a resource ID is provided (e.g. from a chat citation), fetch
   // the full resource payload so the dialog can render correctly.
   const needsFetch = open && resourceProp && resourceProp.id && !resourceProp.title;
-  const { data: fetchedResource, isLoading: fetchingResource } = useQuery({
+  const {
+    data: fetchedResource,
+    isLoading: fetchingResource,
+    isError: fetchFailed,
+    refetch: retryFetch,
+  } = useQuery({
     queryKey: ['resource-by-id', resourceProp?.id],
     queryFn: async () => {
       if (!resourceProp?.id) return null;
@@ -396,19 +401,38 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
 
   // If we're still fetching a resource stub (id-only), show a minimal
   // loading dialog so the portal doesn't crash accessing undefined fields.
-  if (needsFetch && (fetchingResource || !resource || !resource.title)) {
+  if (needsFetch && (fetchFailed || fetchingResource || !resource || !resource.title)) {
     const loadingContent = (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur">
         <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6 shadow-lg">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden />
-          <p className="text-xs text-muted-foreground">Loading material…</p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-1 text-[11px] text-muted-foreground underline-offset-2 hover:underline"
-          >
-            Cancel
-          </button>
+          {fetchFailed ? (
+            <p className="text-xs text-muted-foreground">
+              Could not load this material. It may have been removed.
+            </p>
+          ) : (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden />
+              <p className="text-xs text-muted-foreground">Loading material…</p>
+            </>
+          )}
+          <div className="flex gap-2">
+            {fetchFailed && (
+              <button
+                type="button"
+                onClick={() => retryFetch()}
+                className="rounded-md bg-primary px-3 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Retry
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-1 text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+            >
+              {fetchFailed ? 'Close' : 'Cancel'}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -671,6 +695,8 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
                 <iframe
                   src={preview.preview_url}
                   title={`Preview of ${resource.title}`}
+                  sandbox="allow-same-origin"
+                  referrerPolicy="no-referrer"
                   className="h-full w-full bg-background"
                 />
               ) : preview?.kind === 'image' ? (

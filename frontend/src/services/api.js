@@ -3,60 +3,206 @@
  */
 import axios from 'axios';
 
+import { PAGINATION, SSE_MAX_BUFFER_BYTES, BULK_DELETE_MAX_IDS } from '@/lib/constants';
+import { go } from '@/lib/navigation';
+import { clearSessionFlag, clearUserScopedStorage } from '@/lib/session';
+import {
+  enforceContract,
+  tokenResponseContract,
+  signupResponseContract,
+  userContract,
+  sessionListContract,
+  messageListContract,
+  chatSessionContract,
+  chatTokenEventContract,
+  chatDoneEventContract,
+  agentTokenEventContract,
+  agentErrorEventContract,
+  noteListContract,
+} from '@/services/contracts';
+
 // In dev, use relative /api/v1 so Vite proxy handles CORS.
 // In prod, VITE_API_BASE_URL should be the full backend URL.
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
+// No default Content-Type: axios v1 sets it per-payload type (JSON for plain
+// objects, multipart/form-data with boundary for FormData), so uploads don't
+// need the old `{ 'Content-Type': undefined }` override hack.
+// JWT auth travels in HttpOnly SameSite=Strict cookies, so we must send and
+// accept credentials on every request (no JS-accessible tokens exist).
 const api = axios.create({
   baseURL: API_BASE,
-  headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,
+  // A stalled request must never pin the UI indefinitely. 60s is generous for
+  // compute-heavy endpoints (quiz generation, RAG summaries); long-lived SSE
+  // streams bypass axios entirely (raw fetch in `createSSEStream`), and large
+  // uploads opt out per-call below.
+  timeout: 60_000,
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// --- Refresh-token mutex ---
+// Only one refresh request is in flight at a time. Concurrent 401s queue
+// behind the same promise and all replay once it resolves. Without this, N
+// simultaneous 401s each fire independent refresh requests; the first rotates
+// the refresh cookie and the rest fail, kicking the user to /login mid-session.
+let refreshPromise = null;
+
+function doRefresh() {
+  if (!refreshPromise) {
+    refreshPromise = api
+      .post('/auth/token/refresh/')
+      .then(() => true)
+      .catch((err) => {
+        clearSessionFlag();
+        clearUserScopedStorage();
+        go('/login');
+        throw err;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
   }
-  return config;
-});
+  return refreshPromise;
+}
+
+/**
+ * apiFetch: raw `fetch` with the same auth semantics as the axios
+ * interceptor. SSE streaming needs raw fetch (axios buffers whole responses),
+ * so this wrapper sends the auth cookies (`credentials: 'include'`) and on a
+ * 401 performs a single-flight refresh (piggybacking on an in-flight one)
+ * then retries exactly once. On refresh failure it throws a uniform
+ * "Session expired" error (doRefresh has already cleared the session flag and
+ * redirected to /login).
+ */
+async function apiFetch(path, options = {}) {
+  const run = () =>
+    fetch(`${api.defaults.baseURL}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    });
+  let res = await run();
+  if (res.status === 401) {
+    await doRefresh().catch(() => {
+      throw new Error('Session expired. Please log in again.');
+    });
+    res = await run();
+  }
+  return res;
+}
+
+// A 401 on the auth leaf endpoints (login/signup/refresh) means "bad
+// credentials" or "missing token", NOT an expired session. Refreshing there
+// only doubles the failed request, clears the session flag and hard-redirects
+// to /login — which made a wrong-password attempt look like an infra failure.
+const AUTH_LEAF_401 = (url = '') =>
+  ['/auth/login/', '/auth/signup/', '/auth/token/refresh/'].some((p) =>
+    url.includes(p),
+  );
 
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    if (
+      error.response?.status === 401 &&
+      !original._retry &&
+      !AUTH_LEAF_401(original.url)
+    ) {
       original._retry = true;
-      const refresh = localStorage.getItem('refresh_token');
-      if (refresh) {
-        try {
-          const { data } = await axios.post(`${API_BASE}/auth/token/refresh/`, {
-            refresh,
-          });
-          localStorage.setItem('access_token', data.access);
-          original.headers.Authorization = `Bearer ${data.access}`;
-          return api(original);
-        } catch {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
-        }
+
+      // `doRefresh` holds the single-flight mutex, so interceptor 401s and
+      // raw-fetch `apiFetch` 401s all share one in-flight refresh and replay
+      // once it resolves.
+      try {
+        await doRefresh();
+        return api(original);
+      } catch {
+        // doRefresh already cleared the session flag and redirected.
       }
     }
     return Promise.reject(error);
   },
 );
 
+// Maximum SSE accumulator size (bytes). If a stream grows past this without
+// a complete event delimiter (\n\n), the connection is aborted — otherwise a
+// slow consumer + runaway stream would balloon memory without limit.
+export const MAX_SSE_BUFFER = SSE_MAX_BUFFER_BYTES;
+const SSE_OVERFLOW = 'SSE stream buffer overflow';
+
+/**
+ * Shared SSE reader over raw `fetch`. Handles everything both streaming
+ * endpoints need: auth header + single-flight 401 refresh (via apiFetch),
+ * buffering with overflow protection, chunk accumulation, and `\n\n`
+ * event framing + JSON parse. Event-specific processing stays in the
+ * caller's `onEvent(type, data)` dispatch — return `false` from it to stop
+ * reading (e.g. after a `done` event).
+ */
+async function createSSEStream(path, { method = 'POST', body, signal }, onEvent) {
+  const res = await apiFetch(path, { method, body, signal });
+  if (!res.ok || !res.body) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    if (buf.length > SSE_MAX_BUFFER_BYTES) {
+      throw new Error(SSE_OVERFLOW);
+    }
+    let idx;
+    while ((idx = buf.indexOf('\n\n')) !== -1) {
+      const raw = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      let event = 'message';
+      let data = '';
+      for (const line of raw.split('\n')) {
+        if (line.startsWith('event: ')) event = line.slice(7).trim();
+        else if (line.startsWith('data: ')) data += line.slice(6);
+      }
+      if (!data) continue;
+      let parsed;
+      try {
+        parsed = JSON.parse(data);
+      } catch {
+        throw new Error('Malformed SSE chunk received.');
+      }
+      if (onEvent(event, parsed) === false) return;
+    }
+  }
+}
+
 export default api;
 
 export const authApi = {
-  signup: (payload) => api.post('/auth/signup/', payload),
-  login: (payload) => api.post('/auth/login/', payload),
+  signup: (payload) =>
+    api.post('/auth/signup/', payload).then((r) =>
+      enforceContract(signupResponseContract, r.data, 'auth.signup'),
+    ),
+  login: (payload) =>
+    api.post('/auth/login/', payload).then((r) =>
+      enforceContract(tokenResponseContract, r.data, 'auth.login'),
+    ),
   verifyEmail: (payload) => api.post('/auth/verify-email/', payload),
   resendVerification: (payload) =>
     api.post('/auth/resend-verification/', payload),
-  me: () => api.get('/auth/me/'),
-  updateMe: (payload) => api.patch('/auth/me/', payload),
-  logout: (refresh) => api.post('/auth/logout/', { refresh }),
+  me: () =>
+    api.get('/auth/me/').then((r) =>
+      enforceContract(userContract, r.data, 'auth.me'),
+    ),
+  updateMe: (payload) =>
+    api.patch('/auth/me/', payload).then((r) =>
+      enforceContract(userContract, r.data, 'auth.updateMe'),
+    ),
+  logout: () => api.post('/auth/logout/'),
   passwordResetRequest: (payload) =>
     api.post('/auth/password-reset/request/', payload),
   passwordResetConfirm: (payload) =>
@@ -64,17 +210,27 @@ export const authApi = {
   passwordChange: (payload) => api.post('/auth/password-change/', payload),
 };
 
+/** Public, unauthenticated endpoints — no JWT attached, no refresh
+ * interceptor, no redirect. Must render for visitors on the landing page. */
+const PUBLIC_API_BASE = import.meta.env.VITE_PUBLIC_API_BASE_URL || '/api';
+
+export const publicApi = {
+  /** Landing statistics, server-side cached for exactly 1 hour
+   * (GET /api/public/stats/). */
+  getStats: async () => {
+    const res = await fetch(`${PUBLIC_API_BASE}/public/stats/`, {
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`Public stats request failed (${res.status})`);
+    return res.json();
+  },
+};
+
 /** Dashboard counters — DEPRECATED in favour of aggregate endpoints below. */
 const toList = (res) => {
   const data = res.data;
   return Array.isArray(data) ? data : data?.results || [];
-};
-
-export const dashApi = {
-  courses: () => api.get('/courses/').then(toList),
-  resources: () => api.get('/resources/').then(toList),
-  quizzes: () => api.get('/quizzes/').then(toList),
-  notes: () => api.get('/notes/').then(toList),
 };
 
 /** Aggregate dashboard endpoints — one round-trip per role. */
@@ -95,15 +251,47 @@ export const dashboardApi = {
     api
       .post('/dashboard/ai-insight/', { dashboard_type: dashboardType })
       .then((r) => r.data),
+  studentStreak: () =>
+    api.get('/dashboard/student/streak/').then((r) => r.data),
+  studentReminders: () =>
+    api.get('/dashboard/student/reminders/').then((r) => r.data),
 };
 
 export const notesApi = {
-  list: () => api.get('/notes/').then(toList),
+  list: () =>
+    api.get('/notes/').then(toList).then((list) =>
+      enforceContract(noteListContract, list, 'notes.list'),
+    ),
   create: (payload) => api.post('/notes/', payload),
   update: (id, payload) => api.patch(`/notes/${id}/`, payload),
   delete: (id) => api.delete(`/notes/${id}/`),
-  bulkDelete: (ids) =>
-    Promise.all(ids.map((id) => api.delete(`/notes/${id}/`))),
+  /**
+   * Delete notes in a single round-trip (POST /notes/bulk-delete/).
+   * Chunks over BULK_DELETE_MAX_IDS so payloads stay within server limits —
+   * each chunk is still one request (never N-per-item).
+   */
+  bulkDelete: (ids) => {
+    const list = Array.isArray(ids) ? ids : [ids];
+    const chunks = [];
+    for (let i = 0; i < list.length; i += BULK_DELETE_MAX_IDS) {
+      chunks.push(list.slice(i, i + BULK_DELETE_MAX_IDS));
+    }
+    return Promise.all(
+      chunks.map((chunk) => api.post('/notes/bulk-delete/', { ids: chunk })),
+    );
+  },
+};
+
+/** Course tooling — per-offering analytics + content intelligence for
+ * lecturers/admins (GET /course-offerings/{id}/analytics/ and
+ * /course-offerings/{id}/content-intelligence/). */
+export const courseApi = {
+  analytics: (offeringId) =>
+    api.get(`/course-offerings/${offeringId}/analytics/`).then((r) => r.data),
+  contentIntelligence: (offeringId) =>
+    api
+      .get(`/course-offerings/${offeringId}/content-intelligence/`)
+      .then((r) => r.data),
 };
 
 export const platformApi = {
@@ -134,17 +322,34 @@ export const platformApi = {
   },
 };
 
+/** Tenant log analyzer (tenant_admin only) — /api/v1/logs/ */
+export const logsApi = {
+  list: (params) => api.get('/logs/', { params }).then((r) => r.data),
+  analyze: (params) => api.get('/logs/analyze/', { params }).then((r) => r.data),
+};
+
 /** Chat session helpers — streaming send + rename/delete. */
 export const chatApi = {
-  listSessions: () =>
+  listSessions: ({ pageSize = PAGINATION.CHAT_SESSIONS_PAGE_SIZE } = {}) =>
     api
-      .get('/chat/sessions/?page_size=100')
-      .then((r) => r.data.results || r.data || []),
-  getMessages: (sessionId) =>
+      .get('/chat/sessions/', { params: { page_size: pageSize } })
+      .then((r) => r.data.results || r.data || [])
+      .then((list) => enforceContract(sessionListContract, list, 'chat.sessions')),
+  /** Read message history. Pass `before` (ISO created_at) to page backwards. */
+  getMessages: (
+    sessionId,
+    { pageSize = PAGINATION.CHAT_MESSAGES_PAGE_SIZE, before } = {},
+  ) =>
     api
-      .get(`/chat/messages/?session=${sessionId}&page_size=200`)
-      .then((r) => r.data.results || r.data || []),
-  createSession: (payload = {}) => api.post('/chat/sessions/', payload),
+      .get(`/chat/messages/?session=${sessionId}`, {
+        params: { page_size: pageSize, before },
+      })
+      .then((r) => r.data.results || r.data || [])
+      .then((list) => enforceContract(messageListContract, list, 'chat.messages')),
+  createSession: (payload = {}) =>
+    api.post('/chat/sessions/', payload).then((r) =>
+      enforceContract(chatSessionContract, r.data, 'chat.createSession'),
+    ),
   renameSession: (id, title) =>
     api.patch(`/chat/sessions/${id}/rename/`, { title }),
   deleteSession: (id) => api.delete(`/chat/sessions/${id}/`),
@@ -164,9 +369,7 @@ export const chatApi = {
     form.append('file', file);
     if (sessionId) form.append('session_id', sessionId);
     return api
-      .post('/chat/upload/', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      .post('/chat/upload/', form, { timeout: 300_000 })
       .then((r) => r.data);
   },
   /**
@@ -182,67 +385,28 @@ export const chatApi = {
     content,
     { onToken, onDone, onMeta, onError, resourceIds = [] },
   ) => {
-    const token = localStorage.getItem('access_token');
     const ctrl = new AbortController();
     (async () => {
       try {
-        const res = await fetch(
-          `${api.defaults.baseURL}/chat/sessions/${sessionId}/messages/stream/`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: token ? `Bearer ${token}` : '',
-            },
-            body: JSON.stringify({ content, resource_ids: resourceIds }),
-            signal: ctrl.signal,
+        await createSSEStream(
+          `/chat/sessions/${sessionId}/messages/stream/`,
+          { body: JSON.stringify({ content, resource_ids: resourceIds }), signal: ctrl.signal },
+          (event, parsed) => {
+            if (event === 'token') {
+              enforceContract(chatTokenEventContract, parsed, 'chat.stream.token');
+              if (onToken) onToken(parsed.text || '');
+            } else if (event === 'user_message') {
+              if (onMeta) onMeta({ user_message: parsed });
+            } else if (event === 'meta') {
+              if (onMeta) onMeta(parsed);
+            } else if (event === 'done') {
+              enforceContract(chatDoneEventContract, parsed, 'chat.stream.done');
+              if (onDone) onDone(parsed.assistant_message);
+              return false;
+            }
+            return undefined;
           },
         );
-        if (!res.ok || !res.body) {
-          const text = await res.text().catch(() => '');
-          throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = '';
-        let doneReading = false;
-        while (!doneReading) {
-          const { value, done } = await reader.read();
-          if (done) {
-            doneReading = true;
-            break;
-          }
-          buf += decoder.decode(value, { stream: true });
-          // Parse SSE events separated by double newlines
-          let idx;
-          while ((idx = buf.indexOf('\n\n')) !== -1) {
-            const raw = buf.slice(0, idx);
-            buf = buf.slice(idx + 2);
-            const lines = raw.split('\n');
-            let event = 'message';
-            let data = '';
-            for (const line of lines) {
-              if (line.startsWith('event: ')) event = line.slice(7).trim();
-              else if (line.startsWith('data: ')) data += line.slice(6);
-            }
-            if (!data) continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (event === 'token') {
-                if (onToken) onToken(parsed.text || '');
-              } else if (event === 'user_message') {
-                if (onMeta) onMeta({ user_message: parsed });
-              } else if (event === 'meta') {
-                if (onMeta) onMeta(parsed);
-              } else if (event === 'done') {
-                if (onDone) onDone(parsed.assistant_message);
-                return;
-              }
-            } catch {
-              // malformed chunk, ignore
-            }
-          }
-        }
       } catch (err) {
         if (err.name === 'AbortError') return;
         if (onError) onError(err);
@@ -292,4 +456,119 @@ export const readingApi = {
       .then((r) => r.data),
   updatePosition: (id, data) =>
     api.patch(`/reading-positions/${id}/`, data).then((r) => r.data),
+};
+
+/** Notifications feed — sync-on-read alerts surfaced as a badge + toasts. */
+export const notificationsApi = {
+  list: () => api.get('/notifications/').then((r) => r.data),
+  unreadCount: () => api.get('/notifications/unread-count/').then((r) => r.data),
+  markRead: (id) => api.post(`/notifications/${id}/read/`).then((r) => r.data),
+  markAllRead: () => api.post('/notifications/read-all/').then((r) => r.data),
+  preferences: () => api.get('/notifications/preferences/').then((r) => r.data),
+  setPreference: (kind, enabled) =>
+    api.patch('/notifications/preferences/', { kind, enabled }).then((r) => r.data),
+};
+
+/** Calendar — layered, role-aware events + ICS export + timetable schedules. */
+export const calendarApi = {
+  listEvents: (params = {}) =>
+    api.get('/calendar/events/', { params }).then((r) => r.data),
+  listEventsLight: (params = {}) =>
+    api.get('/calendar/events/', { params: { ...params, light: true } }).then((r) => r.data),
+  getEvent: (id) => api.get(`/calendar/events/${id}/`).then((r) => r.data),
+  createEvent: (payload) => api.post('/calendar/events/', payload).then((r) => r.data),
+  updateEvent: (id, payload) =>
+    api.patch(`/calendar/events/${id}/`, payload).then((r) => r.data),
+  deleteEvent: (id) => api.delete(`/calendar/events/${id}/`),
+  upcoming: (limit = 10) =>
+    api.get('/calendar/events/upcoming/', { params: { limit } }).then((r) => r.data),
+  exportIcs: (params = {}) =>
+    api.get('/calendar/events/export/', { params, responseType: 'blob' }).then((r) => r.data),
+  listSchedules: (params = {}) =>
+    api.get('/calendar/schedules/', { params }).then((r) => r.data),
+  createSchedule: (payload) =>
+    api.post('/calendar/schedules/', payload).then((r) => r.data),
+  getSchedule: (id) => api.get(`/calendar/schedules/${id}/`).then((r) => r.data),
+  deleteSchedule: (id) => api.delete(`/calendar/schedules/${id}/`),
+  layers: () => api.get('/calendar/events/layers/').then((r) => r.data),
+  scheduleTemplate: () =>
+    api
+      .get('/calendar/schedules/template/', { responseType: 'blob' })
+      .then((r) => r.data),
+  previewSchedule: (file, { sourceFormat = 'csv', importType = 'lecture' } = {}) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('source_format', sourceFormat);
+    form.append('import_type', importType);
+    return api
+      .post('/calendar/schedules/preview/', form)
+      .then((r) => r.data);
+  },
+  commitSchedule: (file, { title, importType = 'lecture', sourceFormat = 'csv' } = {}) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('title', title || '');
+    form.append('import_type', importType);
+    form.append('source_format', sourceFormat);
+    return api
+      .post('/calendar/schedules/preview-commit/', form)
+      .then((r) => r.data);
+  },
+};
+
+/**
+ * Agent subsystem (apps.agent) — identity manifest, settings, sessions and
+ * the raw SSE streaming endpoint. `stream` returns an abort controller.
+ */
+export const agentApi = {
+  identities: () => api.get('/agent/identities/').then((r) => r.data),
+  getSettings: () => api.get('/agent/settings/').then((r) => r.data),
+  updateSettings: (payload) =>
+    api.put('/agent/settings/', payload).then((r) => r.data),
+  uploadAvatar: (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api
+      .post('/agent/avatar/', form, { timeout: 300_000 })
+      .then((r) => r.data);
+  },
+  listSessions: () => api.get('/agent/sessions/').then((r) => r.data),
+  getSession: (id) => api.get(`/agent/sessions/${id}/`).then((r) => r.data),
+  createSession: (payload = {}) =>
+    api.post('/agent/sessions/', payload).then((r) => r.data),
+  renameSession: (id, title) =>
+    api.patch(`/agent/sessions/${id}/`, { title }).then((r) => r.data),
+  deleteSession: (id) => api.delete(`/agent/sessions/${id}/`),
+  stream: ({ message, contextType = 'dashboard', sessionId, agent, title }, callbacks = {}) => {
+    const { onToken, onToolCall, onToolResult, onDone, onError } = callbacks;
+    const ctrl = new AbortController();
+    const body = JSON.stringify({ message, context_type: contextType, session_id: sessionId, agent, title });
+    (async () => {
+      try {
+        await createSSEStream(
+          '/agent/stream/',
+          { body, signal: ctrl.signal },
+          (eventType, parsed) => {
+            if (eventType === 'token') {
+              enforceContract(agentTokenEventContract, parsed, 'agent.stream.token');
+              onToken?.(parsed);
+            } else if (eventType === 'tool_call') onToolCall?.(parsed);
+            else if (eventType === 'tool_result') onToolResult?.(parsed);
+            else if (eventType === 'done') {
+              onDone?.(parsed);
+              return false;
+            } else if (eventType === 'error') {
+              enforceContract(agentErrorEventContract, parsed, 'agent.stream.error');
+              onError?.(new Error(parsed.message || 'Agent error'));
+              return false;
+            }
+            return undefined;
+          },
+        );
+      } catch (err) {
+        if (err.name !== 'AbortError') onError?.(err);
+      }
+    })();
+    return ctrl;
+  },
 };

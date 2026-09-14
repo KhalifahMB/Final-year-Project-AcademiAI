@@ -2,12 +2,14 @@ import { useParams, Link } from 'react-router-dom';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import api from '@/services/api';
+import api, { courseApi } from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import ResourceCard from '@/components/resources/ResourceCard';
 import ResourceDetailDialog from '@/components/resources/ResourceDetailDialog';
 import EmptyState from '@/components/shared/EmptyState';
+import StatTile from '@/components/shared/StatTile';
+import { Meter, TimeAgo } from '@/pages/dashboard/DashboardPage.helpers';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,21 +20,31 @@ import {
  DialogTitle,
  DialogTrigger,
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
+import { cn, formatRelativeTime } from '@/lib/utils';
 import { formatBytes } from '@/lib/filetypes';
 import { useAuth } from '@/hooks/useAuth';
 import {
+ Activity,
+ AlertTriangle,
  UserRound,
  Mail,
  ArrowLeft,
  BookOpen,
  CalendarDays,
  Clock,
+ Copy,
+ Download,
+ Eye,
  FileText,
  GraduationCap,
+ Layers,
  Loader2,
+ Sparkles,
+ Target,
+ TrendingUp,
  Upload,
  UploadCloud,
+ Users,
  X,
 } from 'lucide-react';
 
@@ -165,6 +177,20 @@ export default function CourseDetailPage() {
 
  const canManage = offering.data?.can_manage_materials === true;
  const departmentName = offering.data?.department_name;
+
+ const analytics = useQuery({
+  queryKey: ['course-offering', id, 'analytics'],
+  queryFn: () => courseApi.analytics(id),
+  enabled: !!id && canManage,
+  staleTime: 30_000,
+ });
+
+ const contentIntel = useQuery({
+  queryKey: ['course-offering', id, 'content-intelligence'],
+  queryFn: () => courseApi.contentIntelligence(id),
+  enabled: !!id && canManage,
+  staleTime: 60_000,
+ });
 
  const dropHandlers = {
   onDragOver: (e) => { e.preventDefault(); setIsDragging(true); },
@@ -442,13 +468,301 @@ export default function CourseDetailPage() {
  />
  </li>
  ))}
- </ul>
- )}
- </div>
- </div>
- )}
+</ul>
+  )}
+  </div>
 
- <ResourceDetailDialog
+  {/* Lecturer analytics (power tool) — gated by can_manage_materials */}
+  {canManage && (
+  <div data-testid="course-analytics" className="space-y-4">
+  <div className="flex items-center justify-between">
+  <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+  <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+  <Activity className="h-3.5 w-3.5" aria-hidden />
+  </span>
+  Analytics
+  </h2>
+  {analytics.data ? (
+  <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+  updated {formatRelativeTime(analytics.dataUpdatedAt)}
+  </span>
+  ) : null}
+  </div>
+
+  {analytics.isLoading ? (
+  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  {Array.from({ length: 6 }).map((_, i) => (
+  <div key={i} className="skeleton h-[68px] rounded-xl" style={{ animationDelay: `${i * 60}ms` }} />
+  ))}
+  </div>
+  ) : analytics.isError ? (
+  <Alert variant="destructive" role="alert">
+  <AlertDescription className="text-xs">Analytics could not be loaded — try again in a moment.</AlertDescription>
+  </Alert>
+  ) : analytics.data ? (() => {
+  const a = analytics.data;
+  const k = a.kpis || {};
+  const quizzes = (a.quiz_performance || []).filter((q) => q.attempts > 0);
+  return (
+  <>
+  {/* KPI row */}
+  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  <StatTile label="Enrolled" value={k.enrolled} icon={Users} tone="indigo" />
+  <StatTile label="Active" value={k.active_students} icon={Activity} tone="emerald" />
+  <StatTile label="Materials" value={k.materials} icon={FileText} tone="violet" />
+  <StatTile label="Quizzes" value={k.quizzes} icon={BookOpen} tone="sky" />
+  <StatTile label="Avg score" value={k.avg_score_pct ?? '—'} suffix="%" icon={Target} tone={k.avg_score_pct == null ? 'indigo' : PctTone(k.avg_score_pct)} />
+  <StatTile label="Completion" value={k.completion_pct ?? '—'} suffix="%" icon={TrendingUp} tone={k.completion_pct == null || k.completion_pct >= 60 ? 'emerald' : 'amber'} />
+  </div>
+
+  {/* Engagement + quiz performance */}
+  <div className="grid gap-4 lg:grid-cols-2">
+  <AnalyticsCard title="Material engagement" icon={Eye}>
+  {(a.engagement?.items || []).length === 0 ? (
+  <p className="text-[12.5px] text-muted-foreground">No student opens yet — engagement appears once students preview or download materials.</p>
+  ) : (
+  <ul className="divide-y">
+  {(a.engagement.items || []).map((r) => (
+  <li key={r.resource_id} className="flex items-center gap-3 py-2.5">
+  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+  <FileText className="h-4 w-4" aria-hidden />
+  </span>
+  <div className="min-w-0 flex-1">
+  <p className="truncate text-[13px] font-medium">{r.title}</p>
+  <p className="text-[11px] text-muted-foreground">
+  {r.unique_students} student{r.unique_students === 1 ? '' : 's'} opened · last {r.last_accessed ? <TimeAgo iso={r.last_accessed} /> : 'recently'}
+  </p>
+  </div>
+  <div className="flex shrink-0 items-center gap-3 text-[11px] text-muted-foreground">
+  <span className="inline-flex items-center gap-1"><Eye className="h-3 w-3" aria-hidden /> {r.views}</span>
+  <span className="inline-flex items-center gap-1"><Download className="h-3 w-3" aria-hidden /> {r.downloads}</span>
+  </div>
+  </li>
+  ))}
+  </ul>
+  )}
+  </AnalyticsCard>
+
+  <AnalyticsCard title="Quiz performance" icon={Target}>
+  {quizzes.length === 0 ? (
+  <p className="text-[12.5px] text-muted-foreground">No submissions recorded for this offering's quizzes.</p>
+  ) : (
+  <ul className="divide-y">
+  {quizzes.map((q) => (
+  <li key={q.quiz_id} className="py-2.5">
+  <div className="flex items-center justify-between gap-3">
+  <p className="truncate text-[13px] font-medium">{q.title}</p>
+  <p className="shrink-0 text-[11px] font-medium tabular-nums">
+  {q.avg_score_pct}% <span className="font-normal text-muted-foreground">· {q.attempts} attempt{q.attempts === 1 ? '' : 's'}</span>
+  </p>
+  </div>
+  <div className="mt-1.5 flex items-center gap-2">
+  <Meter pct={q.avg_score_pct} tone={PctTone(q.avg_score_pct)} />
+  <span className="w-16 shrink-0 text-right text-[10px] text-muted-foreground">
+  {q.completion_rate != null ? `${q.completion_rate}% done` : '—'}
+  </span>
+  </div>
+  </li>
+  ))}
+  </ul>
+  )}
+  </AnalyticsCard>
+  </div>
+
+  {/* Weakest questions + students */}
+  <div className="grid gap-4 lg:grid-cols-2">
+  <AnalyticsCard title="Weakest questions" icon={AlertTriangle}>
+  {(a.weakest_questions || []).length === 0 ? (
+  <p className="text-[12.5px] text-muted-foreground">Not enough attempts yet to rank questions.</p>
+  ) : (
+  <ul className="divide-y">
+  {(a.weakest_questions || []).map((w) => (
+  <li key={w.question_id} className="py-2.5">
+  <p className="truncate text-[12.5px] font-medium" title={w.text_preview}>{w.text_preview}</p>
+  <p className="mt-0.5 text-[10.5px] text-muted-foreground">{w.quiz_title} · {w.attempts} attempt{w.attempts === 1 ? '' : 's'}</p>
+  <div className="mt-1.5">
+  <Meter pct={w.correct_pct} tone={PctTone(w.correct_pct)} />
+  <p className="mt-0.5 text-[10px] text-muted-foreground">{w.correct_pct}% answered correctly</p>
+  </div>
+  </li>
+  ))}
+  </ul>
+  )}
+  </AnalyticsCard>
+
+  <AnalyticsCard title={`Students · ${k.at_risk_students ?? 0} at risk`} icon={Users}>
+  {(a.at_risk || []).length === 0 ? (
+  <p className="text-[12.5px] text-muted-foreground">No enrolled students yet.</p>
+  ) : (
+  <ul className="divide-y">
+  {(a.at_risk || []).map((s) => (
+  <li key={s.student_id} className="flex items-center gap-3 py-2.5">
+  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--info-soft)] text-[var(--info)]">
+  <UserRound className="h-4 w-4" aria-hidden />
+  </span>
+  <div className="min-w-0 flex-1">
+  <p className="truncate text-[13px] font-medium capitalize">{s.name}</p>
+  <p className="text-[11px] text-muted-foreground">
+  {s.attempts} attempt{s.attempts === 1 ? '' : 's'} · {s.resources_opened} material{s.resources_opened === 1 ? '' : 's'} opened · {s.last_activity_days == null ? 'no activity' : `${s.last_activity_days}d ago`}
+  </p>
+  </div>
+  <div className="shrink-0 text-right">
+  <StudentStatus status={s.status} />
+  <p className="mt-1 text-[11px] font-medium tabular-nums">{s.avg_score}%</p>
+  </div>
+  </li>
+  ))}
+  </ul>
+  )}
+  </AnalyticsCard>
+  </div>
+  </>
+  );
+  })() : null}
+  </div>
+  )}
+
+  {/* Content intelligence (power tool) — gated by can_manage_materials */}
+  {canManage && (
+  <div data-testid="content-intelligence" className="space-y-4">
+  <div className="flex items-center justify-between">
+  <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+  <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+  <Sparkles className="h-3.5 w-3.5" aria-hidden />
+  </span>
+  Content intelligence
+  </h2>
+  {contentIntel.data ? (
+  <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+  updated {formatRelativeTime(contentIntel.dataUpdatedAt)}
+  </span>
+  ) : null}
+  </div>
+
+  {contentIntel.isLoading ? (
+  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  {Array.from({ length: 3 }).map((_, i) => (
+  <div key={i} className="skeleton h-40 rounded-xl" style={{ animationDelay: `${i * 70}ms` }} />
+  ))}
+  </div>
+  ) : contentIntel.isError ? (
+  <Alert variant="destructive" role="alert">
+  <AlertDescription className="text-xs">Content intelligence could not be loaded — try again in a moment.</AlertDescription>
+  </Alert>
+  ) : contentIntel.data ? (() => {
+  const ci = contentIntel.data;
+  const resources = ci.resources || [];
+  const duplicates = ci.duplicates || [];
+  const topics = ci.topics || [];
+  return (
+  <>
+  {resources.length === 0 && duplicates.length === 0 && topics.length === 0 ? (
+  <Alert role="alert">
+  <AlertDescription className="text-xs">Upload materials and add a course description, then revisit — quality, duplicates, and topic suggestions are computed on demand.</AlertDescription>
+  </Alert>
+  ) : null}
+
+  <div className="grid gap-4 lg:grid-cols-2">
+  {/* Resource quality */}
+  <AnalyticsCard title="Resource quality" icon={Layers}>
+  {resources.length === 0 ? (
+  <p className="text-[12.5px] text-muted-foreground">No ready materials yet — quality is scored from successful quiz answers and chat citations.</p>
+  ) : (
+  <ul className="divide-y">
+  {resources.map((r) => (
+  <li key={r.resource_id} className="flex items-center gap-3 py-2.5">
+  <div className="min-w-0 flex-1">
+  <div className="flex items-center gap-2">
+  <p className="truncate text-[13px] font-medium">{r.title}</p>
+  {r.duplicate_of ? (
+  <span title={`Duplicate of ${r.duplicate_of.title}`} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--warn)]/30 bg-[var(--warn-soft)] px-1.5 py-px text-[9px] font-medium uppercase tracking-wide text-[var(--warn)]">
+  <Copy className="h-2.5 w-2.5" aria-hidden /> dup
+  </span>
+  ) : null}
+  </div>
+  <p className="text-[11px] text-muted-foreground">
+  {r.quiz_citations} quiz answer{r.quiz_citations === 1 ? '' : 's'} · {r.chat_citations} chat citation{r.chat_citations === 1 ? '' : 's'}
+  </p>
+  <div className="mt-1.5 flex items-center gap-2">
+  <Meter pct={r.quality_score} tone={QualityTone(r.quality_score)} />
+  </div>
+  </div>
+  <div className="shrink-0 text-right">
+  <TierBadge tier={r.quality_tier} />
+  <p className="mt-1 text-[11px] font-medium tabular-nums">{r.quality_score}<span className="text-[9px] text-muted-foreground">/100</span></p>
+  </div>
+  </li>
+  ))}
+  </ul>
+  )}
+  </AnalyticsCard>
+
+  {/* Duplicate materials */}
+  <AnalyticsCard title={`Duplicate materials · ${duplicates.length}`} icon={Copy}>
+  {duplicates.length === 0 ? (
+  <p className="text-[12.5px] text-muted-foreground">No identical or overlapping materials detected.</p>
+  ) : (
+  <ul className="divide-y">
+  {duplicates.map((d) => (
+  <li key={`${d.a.resource_id}-${d.b.resource_id}`} className="py-2.5">
+  <p className="truncate text-[12.5px] font-medium">{d.a.title}</p>
+  <p className="flex items-center justify-between gap-3 truncate text-[11px] text-muted-foreground">
+  <span className="truncate">overlaps · {d.b.title}</span>
+  <span className="shrink-0 rounded-full border border-[var(--warn)]/30 bg-[var(--warn-soft)] px-1.5 py-px text-[9px] font-medium uppercase tracking-wide text-[var(--warn)]">
+  {d.kind === 'exact' ? 'identical' : `${Math.round(d.similarity * 100)}%`}
+  </span>
+  </p>
+  </li>
+  ))}
+  </ul>
+  )}
+  </AnalyticsCard>
+  </div>
+
+  {/* Topic coverage */}
+  <AnalyticsCard title="Suggested resources per topic" icon={Sparkles}>
+  {topics.length === 0 ? (
+  <p className="text-[12.5px] text-muted-foreground">Add a course description so topics can be derived and matched to materials.</p>
+  ) : (
+  <ul className="divide-y">
+  {topics.map((t) => (
+  <li key={t.topic} className="py-2.5">
+  <div className="flex items-center justify-between gap-3">
+  <p className="truncate text-[12.5px] font-medium">{t.topic}</p>
+  {t.best_similarity > 0 ? (
+  <p className="shrink-0 text-[10px] text-muted-foreground">best match {Math.round(t.best_similarity * 100)}%</p>
+  ) : null}
+  </div>
+  {(t.resources || []).length === 0 ? (
+  <p className="mt-0.5 text-[11px] text-muted-foreground">No materials cover this topic yet.</p>
+  ) : (
+  <ul className="mt-1.5 space-y-1">
+  {t.resources.map((r) => (
+  <li key={r.resource_id} className="flex items-center gap-2 text-[11px]">
+  <FileText className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+  <span className="min-w-0 truncate">{r.title}</span>
+  {r.similarity > 0 ? (
+  <span className="ml-auto shrink-0 tabular-nums text-muted-foreground">{Math.round(r.similarity * 100)}%</span>
+  ) : null}
+  </li>
+  ))}
+  </ul>
+  )}
+  </li>
+  ))}
+  </ul>
+  )}
+  </AnalyticsCard>
+  </>
+  );
+  })() : null}
+  </div>
+  )}
+
+  </div>
+  )}
+
+  <ResourceDetailDialog
  resource={selected}
  open={!!selected}
  onClose={() => setSelected(null)}
@@ -482,4 +796,68 @@ function DetailRow({ label, value }) {
  <dd className={cn('font-medium')}>{value}</dd>
  </div>
  );
+}
+
+const STUDENT_STATUS_STYLES = {
+  at_risk: 'border-[var(--danger)]/30 bg-[var(--danger-soft)] text-[var(--danger)]',
+  watch: 'border-[var(--warn)]/30 bg-[var(--warn-soft)] text-[var(--warn)]',
+  inactive: 'border-border bg-muted text-muted-foreground',
+  ok: 'border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)]',
+};
+
+const STUDENT_STATUS_LABELS = {
+  at_risk: 'at risk',
+  watch: 'watch',
+  inactive: 'inactive',
+  ok: 'on track',
+};
+
+function PctTone(pct) {
+  return pct < 50 ? 'bad' : pct < 65 ? 'warn' : 'ok';
+}
+
+function StudentStatus({ status }) {
+  const tone = STUDENT_STATUS_STYLES[status] || STUDENT_STATUS_STYLES.ok;
+  const label = STUDENT_STATUS_LABELS[status] || status;
+  return (
+  <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize', tone)}>
+  {label}
+  </span>
+  );
+}
+
+function AnalyticsCard({ title, icon: Icon, children }) {
+  return (
+  <div className="rounded-xl border bg-card p-4">
+  <div className="mb-3 flex items-center gap-2">
+  <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+  <Icon className="h-3.5 w-3.5" aria-hidden />
+  </span>
+  <h3 className="text-xs font-semibold uppercase tracking-wider">{title}</h3>
+  </div>
+  {children}
+  </div>
+  );
+}
+
+function QualityTone(score) {
+  return score === 0 ? 'bad' : score < 50 ? 'warn' : 'ok';
+}
+
+const TIER_STYLES = {
+  core: 'border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)]',
+  emerging: 'border-[var(--warn)]/30 bg-[var(--warn-soft)] text-[var(--warn)]',
+  unused: 'border-border bg-muted text-muted-foreground',
+};
+
+const TIER_LABELS = { core: 'core', emerging: 'emerging', unused: 'unused' };
+
+function TierBadge({ tier }) {
+  const tone = TIER_STYLES[tier] || TIER_STYLES.unused;
+  const label = TIER_LABELS[tier] || tier;
+  return (
+  <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize', tone)}>
+  {label}
+  </span>
+  );
 }

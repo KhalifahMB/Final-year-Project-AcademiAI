@@ -1,14 +1,20 @@
 """
-Platform-level aggregate statistics (superuser only).
+Platform-level aggregate statistics (superuser only) plus the public landing
+statistics endpoint (unauthenticated, Redis-cached for exactly one hour).
 """
+import time
 from datetime import timedelta
 
-from django.db.models import Count, Q, Sum, F
+from django.conf import settings
+from django.core.cache import cache
+from django.db.models import Avg, Count, F, Q, Sum
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import serializers
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.common.db import tenant_scope
@@ -444,3 +450,81 @@ class PlatformAuditLogView(APIView):
             })
 
         return paginator.get_paginated_response(results)
+
+
+class PublicStatsSerializer(serializers.Serializer):
+    students_total = serializers.IntegerField()
+    institutions_total = serializers.IntegerField()
+    avg_study_time_minutes = serializers.IntegerField()
+    uptime_seconds = serializers.IntegerField()
+    generated_at = serializers.CharField()
+
+
+@extend_schema(
+    tags=["Public"],
+    summary="Public platform statistics",
+    description=(
+        "Unauthenticated aggregates for the landing page, cached server-side "
+        "for exactly one hour. Returns only coarse platform-wide totals: total "
+        "students, total active institutions, average study time per completed "
+        "session, and backend service uptime. No per-tenant or per-user rows "
+        "are ever exposed."
+    ),
+    auth=[],
+)
+class PublicStatsView(APIView):
+    """GET /api/public/stats/ — public landing-page statistics."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "public"
+
+    CACHE_KEY = "public_stats_v1"
+    CACHE_TTL_SECONDS = 60 * 60
+
+    @extend_schema(
+        responses={200: PublicStatsSerializer},
+        summary="Read landing-page statistics",
+    )
+    def get(self, request):
+        try:
+            payload = cache.get(self.CACHE_KEY)
+        except Exception:
+            payload = None
+
+        if payload is None:
+            payload = self._compute()
+            try:
+                cache.set(self.CACHE_KEY, payload, timeout=self.CACHE_TTL_SECONDS)
+            except Exception:
+                pass
+
+        return Response(payload)
+
+    def _compute(self):
+        from apps.accounts.models import User
+        from apps.learning.models import StudySession
+
+        active_qs = Tenant.objects.filter(status=Tenant.Status.ACTIVE)
+
+        students_total = User.objects.filter(
+            role=User.Role.STUDENT,
+            tenant__isnull=False,
+            tenant__status=Tenant.Status.ACTIVE,
+        ).count()
+
+        avg_agg = (
+            StudySession.objects.exclude(duration_seconds__isnull=True)
+            .exclude(duration_seconds__lte=0)
+            .aggregate(avg=Avg("duration_seconds"))
+        )
+        avg_study_seconds = int(round(avg_agg["avg"])) if avg_agg["avg"] else 0
+
+        return {
+            "students_total": students_total,
+            "institutions_total": active_qs.count(),
+            "avg_study_time_minutes": round(avg_study_seconds / 60),
+            "uptime_seconds": max(0, int(time.time() - settings.APP_STARTED_AT)),
+            "generated_at": timezone.now().isoformat(),
+        }

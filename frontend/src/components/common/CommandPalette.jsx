@@ -75,7 +75,7 @@ export default function CommandPalette({ open, onOpen }) {
     >
       <CommandInput
         placeholder="Jump to a page, search materials, or change theme…"
-        className="flex h-11 w-full border-0 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
+        className="flex h-11 w-full border-0 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50"
       />
       <CommandList className="max-h-[60vh] overflow-y-auto pb-2">
         <CommandEmpty>

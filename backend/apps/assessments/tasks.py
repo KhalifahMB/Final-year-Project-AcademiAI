@@ -2,6 +2,9 @@
 
 Runs under the requesting user's tenant scope so retrieval and persistence
 are both RLS-enforced. Model output is schema-validated before persisting.
+Each generated question is attributed to the authorized chunk whose content
+best matches it (embedding cosine) so quiz answers can later feed resource
+quality scoring.
 """
 import logging
 
@@ -9,6 +12,11 @@ from celery import shared_task
 from django.db import transaction
 
 logger = logging.getLogger(__name__)
+
+# Cosine threshold between a generated question and its presumed source chunk.
+# Below this we leave source_chunk unset (no attribution) rather than risk a
+# wrong link on a quiz answer.
+ATTRIBUTION_MIN_SIMILARITY = 0.65
 
 
 def _validate_quiz_payload(data: dict) -> list:
@@ -36,6 +44,36 @@ def _validate_quiz_payload(data: dict) -> list:
             }
         )
     return valid
+
+
+def _attribute_question_sources(questions: list[dict], chunks) -> list[dict]:
+    """Set ``source_chunk_id`` on each validated question (in place)."""
+    from apps.common.ai import generate_embeddings
+    from apps.common.vectors import cosine_similarity
+
+    chunk_rows = [
+        (c.id, list(c.embedding)) for c in chunks if getattr(c, "embedding", None)
+    ]
+    if not chunk_rows:
+        for q in questions:
+            q["source_chunk_id"] = None
+        return questions
+
+    texts = [str(q.get("question_text") or "") for q in questions]
+    vectors = generate_embeddings(texts) if texts else []
+    for q, vec in zip(questions, vectors):
+        if vec is None:
+            q["source_chunk_id"] = None
+            continue
+        best_id, best_sim = None, 0.0
+        for chunk_id, embedding in chunk_rows:
+            sim = cosine_similarity(vec, embedding)
+            if sim > best_sim:
+                best_sim, best_id = sim, chunk_id
+        q["source_chunk_id"] = (
+            best_id if best_sim >= ATTRIBUTION_MIN_SIMILARITY else None
+        )
+    return questions
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=60)
@@ -83,6 +121,8 @@ def generate_quiz_task(self, user_id: str, tenant_id: str, params: dict):
     if not validated:
         return {"status": "failed", "error": "invalid model output"}
 
+    validated = _attribute_question_sources(validated, chunks)
+
     with tenant_scope(tenant_id), transaction.atomic():
         quiz = Quiz.objects.create(
             tenant_id=tenant_id,
@@ -93,5 +133,10 @@ def generate_quiz_task(self, user_id: str, tenant_id: str, params: dict):
             generation_job_id=self.request.id or "",
         )
         for q in validated:
-            QuizQuestion.objects.create(tenant_id=tenant_id, quiz=quiz, **q)
+            QuizQuestion.objects.create(
+                tenant_id=tenant_id,
+                quiz=quiz,
+                source_chunk_id=q.pop("source_chunk_id"),
+                **q,
+            )
     return {"status": "completed", "quiz_id": str(quiz.id)}

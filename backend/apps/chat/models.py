@@ -22,6 +22,7 @@ class ChatSession(TenantScopedModel):
     class Meta:
         db_table = "chat_sessions"
         ordering = ["-updated_at"]
+        indexes = [models.Index(fields=["created_at"])]
 
 
 class ChatMessage(TenantScopedModel):
@@ -61,6 +62,7 @@ class ChatMessage(TenantScopedModel):
     class Meta:
         db_table = "chat_messages"
         ordering = ["created_at"]
+        indexes = [models.Index(fields=["created_at"])]
 
 
 class ChatMessageSource(TenantScopedModel):

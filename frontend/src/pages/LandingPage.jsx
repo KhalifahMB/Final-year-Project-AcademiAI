@@ -5,18 +5,28 @@ import {
   ArrowRight,
   Bookmark,
   BookOpen,
+  BookOpenCheck,
   Bot,
+  Calendar,
+  CalendarClock,
   Check,
+  ChevronDown,
+  Clock,
   GraduationCap,
   Landmark,
+  ListChecks,
+  Megaphone,
+  Palette,
+  Paperclip,
   Search,
   ShieldCheck,
   Smartphone,
   Sparkles,
   TrendingUp,
+  UserRound,
   UsersRound,
 } from 'lucide-react';
-import api from '@/services/api';
+import api, { publicApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import BrandMark from '@/components/shared/BrandMark';
 import ThemeToggle from '@/components/shared/ThemeToggle';
@@ -112,6 +122,155 @@ const EXTRAS = [
     tag: 'Coming soon',
     title: 'Collaborative study boards',
     text: 'Collaborate with classmates across your university — shared boards with grounded context.',
+  },
+];
+
+const FAQS = [
+  {
+    q: 'Where do answers actually come from?',
+    a: 'Every answer is grounded in your institution\u2019s own authorised resources — slides, notes, and PDFs uploaded by lecturers. Retrieval returns exact passages, and each claim carries the document, page, and score you can open and check.',
+  },
+  {
+    q: 'Is our content kept private between universities?',
+    a: 'Yes. Each institution runs in its own isolated tenant, enforced at the database layer with row-level security and then at the application layer on every query. Content from one university can never surface in another tenant\u2019s answers.',
+  },
+  {
+    q: 'Who gets to see and use what?',
+    a: 'Students, lecturers, and administrators each get a role-shaped workspace with a dedicated agent. Visibility scopes keep materials inside your institution, and administrators control access, announcements, and the audit trail.',
+  },
+  {
+    q: 'Does setting this up need our IT team?',
+    a: 'No on-premises infrastructure. Request your institution and, once approved, you receive an auto-provisioned workspace with its own academic hierarchy, roles, and access rules — ready to add material to.',
+  },
+  {
+    q: 'Can we bring in our existing timetable?',
+    a: 'Yes. Upload it as CSV or XLSX, review the parsed matrix in a preview step, then commit — lectures, exams, and office hours land on the calendar. Any view can also be exported to ICS.',
+  },
+  {
+    q: 'What does it cost to start?',
+    a: 'Free to start for students — create an account and join your university\u2019s workspace. Institutions are provisioned on request, and plan tiers are being finalised, so ask and we\u2019ll confirm the details.',
+  },
+];
+
+const PRICING_TIERS = [
+  {
+    icon: UserRound,
+    label: 'Students',
+    name: 'Free to start',
+    text: 'Join your university\u2019s workspace in under a minute and get the grounded tutor, auto-quizzes, study plans, and calendar — no payment details required.',
+    cta: { label: 'Get started free', to: '/signup' },
+    note: 'Create an account and start learning today.',
+  },
+  {
+    icon: Landmark,
+    label: 'Institutions',
+    name: 'On request',
+    text: 'A private, isolated tenant with your academic hierarchy, roles, and audit trail — plus cohort analytics and timetable import for your whole university.',
+    cta: { label: 'Request your institution', to: '/request-institution' },
+    note: 'Plan tiers are being finalised — request it and we\u2019ll confirm the details.',
+  },
+];
+
+const AGENTS = [
+  {
+    avatar: '/avatars/tutor.svg',
+    role: 'Student · Study partner',
+    name: 'Understand more, nail every deadline.',
+    text: 'Explains concepts at your level, diagnoses weak points behind wrong answers, and turns a vague goal into a plan with milestones and tasks — always citing the material you are authorised to see.',
+    icon: UserRound,
+  },
+  {
+    avatar: '/avatars/librarian.svg',
+    role: 'Lecturer · Course co-pilot',
+    name: 'Prep, teach, know your class.',
+    text: 'Structures lectures and office hours, orders deadlines, flags conflicts, and answers “who needs attention” — grounded in quiz results, progress, and what students actually ask.',
+    icon: BookOpen,
+  },
+  {
+    avatar: '/avatars/exec.svg',
+    role: 'Administrator · Institution operator',
+    name: 'Run the institution smoothly.',
+    text: 'Instrument-wide views of analytics, calendars, schedules, users, and logs — with a single actionable take on the day and an eye on what needs human attention.',
+    icon: ShieldCheck,
+  },
+];
+
+const PLANNER = [
+  {
+    icon: ListChecks,
+    title: 'Plans with milestones & tasks',
+    text: 'Each plan holds dated milestones and tasks with estimated minutes — study plans, workflows, or personal goals, tracked to a target date.',
+  },
+  {
+    icon: Sparkles,
+    title: 'Start from a template… or from a chat',
+    text: 'Pick an institution or personal template and instantiate it, or simply ask your agent to turn a goal into a plan with milestones and tasks.',
+  },
+  {
+    icon: CalendarClock,
+    title: 'Everything lands on the calendar',
+    text: 'Dated plans and milestones sync to your personal study layer automatically — and events you add there flow straight back into your plans.',
+  },
+];
+
+const CALENDAR_LAYERS = [
+  {
+    icon: UserRound,
+    title: 'Personal',
+    text: 'Study plans and milestones render as all-day events on your own layer.',
+  },
+  {
+    icon: BookOpen,
+    title: 'Academic',
+    text: 'Lectures for the course offerings you are enrolled in or assigned to teach.',
+  },
+  {
+    icon: CalendarClock,
+    title: 'Exams',
+    text: 'The exam timetable, slotted into the same view as your study plan.',
+  },
+  {
+    icon: Clock,
+    title: 'Office hours',
+    text: 'When lecturers are available — visible to students and staff alike.',
+  },
+  {
+    icon: Landmark,
+    title: 'Institution',
+    text: 'University-wide events published by administrators, broadcast to everyone.',
+  },
+];
+
+const PLATFORM_DEPTH = [
+  {
+    icon: TrendingUp,
+    title: 'Cohort analytics',
+    text: 'Per-offering analytics give lecturers resource-quality scores, duplicate detection, topic suggestions, and confusion ranked by real usage.',
+  },
+  {
+    icon: Paperclip,
+    title: 'Attach files to a chat',
+    text: 'Drop a document into a conversation and the agent answers with that file in context.',
+  },
+  {
+    icon: Palette,
+    title: 'Make the agent yours',
+    text: 'Custom avatars and tone adjustments, plus accessibility-first reading filters.',
+  },
+  {
+    icon: BookOpenCheck,
+    title: 'Resume where you left off',
+    text: 'Reading positions remember your scroll position and section in every resource.',
+  },
+  {
+    icon: Landmark,
+    title: 'Request your institution',
+    text: 'Not listed in the directory? Submit a request and get an auto-provisioned workspace once approved.',
+  },
+  {
+    icon: Megaphone,
+    title: 'Institution announcements',
+    text: 'University-wide announcements with email dispatch and per-user opt-out.',
   },
 ];
 
@@ -229,17 +388,14 @@ function TutorPanel() {
 export default function LandingPage() {
   const { isAuthenticated } = useAuth();
 
-  const countQuery = useQuery({
-    queryKey: ['landing-directory-count'],
-    queryFn: async () => {
-      const { data } = await api.get('/tenants/directory/');
-      return Array.isArray(data.results) ? data.results : [];
-    },
-    staleTime: 60_000,
+  const statsQuery = useQuery({
+    queryKey: ['landing-public-stats'],
+    queryFn: publicApi.getStats,
+    staleTime: 5 * 60_000,
     retry: 1,
   });
 
-  const institutionCount = countQuery.data?.length ?? 0;
+  const institutionCount = statsQuery.data?.institutions_total ?? 0;
 
   return (
     <div className="landing-page">
@@ -254,6 +410,11 @@ export default function LandingPage() {
             aria-label="Landing page sections"
           >
             <a href="#model">The model</a>
+            <a href="#agent">Personal agent</a>
+            <a href="#planner">Study planner</a>
+            <a href="#calendar">Calendar</a>
+            <a href="#how">How it works</a>
+            <a href="#audiences">Who it serves</a>
             <a href="#institutions">Institutions</a>
           </nav>
           <div className="landing-nav__actions">
@@ -292,19 +453,13 @@ export default function LandingPage() {
         <section className="landing-hero">
           <div className="landing-shell landing-hero__grid">
             <div>
-              <p className="landing-eyebrow">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-                Academic intelligence, with provenance
-              </p>
               <h1 className="landing-hero__heading">
                 Every answer comes from your institution&rsquo;s own materials.
               </h1>
               <p className="landing-lede">
-                AcademiAI gives every university its own AI tutor. Students
-                access, understand and excel with their course materials through
-                intelligent chat, personalised quizzes and cohort insight — all
-                grounded in authorised resources. Implemented as a case study at
-                Abubakar Tafawa Balewa University, Bauchi.
+                AcademiAI gives every university its own AI tutor — grounded
+                chat, personalised quizzes and cohort insight from authorised
+                materials.
               </p>
               <div className="landing-actions">
                 {isAuthenticated ? (
@@ -328,20 +483,6 @@ export default function LandingPage() {
                     </a>
                   </>
                 )}
-              </div>
-              <div className="landing-proofline">
-                <span>
-                  <Check className="h-4 w-4" aria-hidden="true" />
-                  Live implementation
-                </span>
-                <span>
-                  <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-                  Secure &amp; tenant-isolated
-                </span>
-                <span>
-                  <Landmark className="h-4 w-4" aria-hidden="true" />
-                  Scales to any faculty
-                </span>
               </div>
             </div>
 
@@ -374,12 +515,74 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* -------------------------------------- What is AcademiAI */}
+        <section className="landing-section">
+          <div className="landing-shell">
+            <div className="landing-section__heading">
+              <div>
+                <h2>A grounded AI tutor for your whole institution.</h2>
+              </div>
+              <p>
+                AcademiAI is a multi-tenant academic assistant. It brings
+                classes, materials, planning, and an AI tutor into one
+                workspace — every answer grounded in your institution&rsquo;s
+                own authorised resources, with no hallucinations and no
+                cross-tenant leakage.
+              </p>
+            </div>
+            <div className="landing-manifesto">
+              <div className="landing-manifesto__row">
+                <span className="landing-manifesto__key">
+                  <span>01</span>
+                  Chat
+                  <Bot className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3>Ask anything, get citations.</h3>
+                  <p>
+                    A personal agent tutors, quizzes, and plans for you — citing
+                    the exact page, passage, and document every claim comes
+                    from.
+                  </p>
+                </div>
+              </div>
+              <div className="landing-manifesto__row">
+                <span className="landing-manifesto__key">
+                  <span>02</span>
+                  Plan
+                  <ListChecks className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3>Turn goals into progress.</h3>
+                  <p>
+                    Study plans, workflows, and personal goals — milestones and
+                    tasks, from a template or straight out of a chat.
+                  </p>
+                </div>
+              </div>
+              <div className="landing-manifesto__row">
+                <span className="landing-manifesto__key">
+                  <span>03</span>
+                  Calendar
+                  <Calendar className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3>One calendar for study and schedule.</h3>
+                  <p>
+                    Lectures, exams, office hours, institution events, and your
+                    own study plans in a single layered view.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ----------------------------------------- Product / model */}
         <section id="product" className="landing-section">
           <div className="landing-shell">
             <div className="landing-section__heading">
               <div>
-                <p className="landing-eyebrow">The model</p>
                 <h2>Your complete academic assistant.</h2>
               </div>
               <p>
@@ -423,10 +626,6 @@ export default function LandingPage() {
               loading="lazy"
             />
             <div>
-              <p className="landing-eyebrow">
-                <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
-                One workspace per university
-              </p>
               <h2>Grounded answers, one cohort at a time.</h2>
               <p>
                 Answers are scoped to materials the student is actually enrolled
@@ -442,7 +641,6 @@ export default function LandingPage() {
         <section id="how" className="landing-how">
           <div className="landing-shell landing-how__grid">
             <div>
-              <p className="landing-eyebrow">How it works</p>
               <h2>A multi-tenant architecture for every university.</h2>
               <p className="landing-how__intro">
                 Each institution gets an isolated workspace where faculties,
@@ -475,10 +673,6 @@ export default function LandingPage() {
               />
             </div>
             <div className="landing-knowledge__copy">
-              <p className="landing-eyebrow">
-                <Bot className="h-3.5 w-3.5" aria-hidden="true" />
-                Under the hood
-              </p>
               <h2>A knowledge graph behind every answer.</h2>
               <p>
                 Uploaded documents are chunked, embedded and linked into a
@@ -498,12 +692,121 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* -------------------------------------- Personal agent */}
+        <section id="agent" className="landing-agents">
+          <div className="landing-shell landing-section">
+            <div className="landing-section__heading">
+              <div>
+                <h2>One agent, built for your role.</h2>
+              </div>
+              <p>
+                Everyone at the institution gets an AI assistant shaped around
+                the way they actually work — trained on retrieved, cited
+                material, never on guesses.
+              </p>
+            </div>
+            <div className="landing-agents__grid">
+              {AGENTS.map(({ avatar, role, name, text, icon: Icon }) => (
+                <article key={role} className="landing-agent">
+                  <div className="landing-agent__top">
+                    <img src={avatar} alt="" aria-hidden="true" />
+                    <span>{role}</span>
+                  </div>
+                  <h3>{name}</h3>
+                  <p>{text}</p>
+                  <span className="landing-agent__more">
+                    <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                    Built-in tools &amp; actions
+                  </span>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------- Planner */}
+        <section id="planner" className="landing-planner">
+          <div className="landing-shell landing-section">
+            <div className="landing-section__heading">
+              <div>
+                <h2>Turn “I should study” into a plan.</h2>
+              </div>
+              <p>
+                Plans turn goals into dated milestones and concrete tasks — so
+                &ldquo;prepare for the exam&rdquo; becomes a sequence you can
+                actually follow.
+              </p>
+            </div>
+            <div className="landing-extras-row">
+              {PLANNER.map(({ icon: Icon, title, text }) => (
+                <div key={title} className="landing-extra">
+                  <Icon className="landing-extra__icon" aria-hidden="true" />
+                  <div>
+                    <p className="landing-extra__title">{title}</p>
+                    <p className="landing-extra__text">{text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------- Calendar */}
+        <section id="calendar" className="landing-calendar">
+          <div className="landing-shell landing-section">
+            <div className="landing-section__heading">
+              <div>
+                <h2>Study plans, lectures, exams — in one place.</h2>
+              </div>
+              <p>
+                Switch between month, week, day, and agenda views; layer study
+                plans over the real academic timetable. Export to ICS, or import
+                your timetable as CSV or XLSX with a preview before it lands.
+              </p>
+            </div>
+            <div className="landing-calendar__layers">
+              {CALENDAR_LAYERS.map(({ icon: Icon, title, text }) => (
+                <div key={title} className="landing-calendar__layer">
+                  <Icon className="landing-extra__icon" aria-hidden="true" />
+                  <div>
+                    <strong>{title}</strong>
+                    <p>{text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------ Platform depth */}
+        <section className="landing-depth">
+          <div className="landing-shell landing-depth__grid">
+            <div className="landing-depth__intro">
+              <h2>Beyond the headline.</h2>
+              <p>
+                In-chat files, resume-reading, cohort analytics, and
+                institution requests that actually get provisioned.
+              </p>
+            </div>
+            <ul className="landing-depth__list">
+              {PLATFORM_DEPTH.map(({ icon: Icon, title, text }) => (
+                <li key={title}>
+                  <Icon className="h-4 w-4" aria-hidden="true" />
+                  <div>
+                    <strong>{title}</strong>
+                    <p>{text}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
         {/* ------------------------------------------------- Audiences */}
         <section id="audiences" className="landing-audiences">
           <div className="landing-shell landing-section">
             <div className="landing-section__heading">
               <div>
-                <p className="landing-eyebrow">Who it serves</p>
                 <h2>Pick a seat and walk through it.</h2>
               </div>
               <p>
@@ -530,7 +833,6 @@ export default function LandingPage() {
         <section id="institutions" className="landing-directory-section">
           <div className="landing-shell landing-directory-section__grid">
             <div>
-              <p className="landing-eyebrow">Universities</p>
               <h2>Find your university.</h2>
               <p className="landing-data-note">
                 Each university gets its own private workspace. Browse the
@@ -540,9 +842,45 @@ export default function LandingPage() {
                 Browse all institutions
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
               </a>
+              <Link
+                to="/request-institution"
+                className="landing-text-link"
+              >
+                Don&rsquo;t see yours? Request it
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
             </div>
             <div>
               <LiveDirectory />
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------ FAQs */}
+        <section id="faq" className="landing-faq">
+          <div className="landing-shell">
+            <div className="landing-section__heading">
+              <div>
+                <h2>Questions, answered straight.</h2>
+              </div>
+              <p>
+                The short version of how grounding, privacy, and getting
+                started actually work.
+              </p>
+            </div>
+            <div className="landing-faq__list">
+              {FAQS.map((item) => (
+                <details key={item.q} className="landing-faq__item">
+                  <summary>
+                    {item.q}
+                    <ChevronDown
+                      className="landing-faq__chevron"
+                      aria-hidden="true"
+                    />
+                  </summary>
+                  <p>{item.a}</p>
+                </details>
+              ))}
             </div>
           </div>
         </section>
@@ -552,7 +890,6 @@ export default function LandingPage() {
           <div className="landing-shell">
             <div className="landing-section__heading">
               <div>
-                <p className="landing-eyebrow">On the roadmap</p>
                 <h2>Coming next.</h2>
               </div>
               <p>
@@ -575,27 +912,55 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ------------------------------------------------ Case study */}
+        {/* ------------------------------------------------ Multi-tenant */}
         <section id="case-study" className="landing-case-study">
           <div className="landing-shell landing-case-study__inner">
             <div>
-              <p className="landing-eyebrow">
-                <GraduationCap className="h-3.5 w-3.5" aria-hidden="true" />
-                Final Year Project · Computer Science
-              </p>
-              <h2>Case study: Abubakar Tafawa Balewa University, Bauchi.</h2>
+              <h2>One platform, every faculty and university.</h2>
               <p>
-                AcademiAI is being developed as a Final Year Project for the
-                Department of Computer Science, Faculty of Computing, ATBU
-                Bauchi. The faculty serves as the initial implementation
-                example, demonstrating how any university can adopt AcademiAI as
-                a multi-tenant solution — starting with Computer Science
-                courses, with architecture ready for any faculty and university.
+                AcademiAI is architected as a multi-tenant solution — each
+                institution gets an isolated workspace with its own courses,
+                materials and AI. Designed to start with a single faculty and
+                grow across departments, faculties and the whole university.
               </p>
             </div>
             <div className="landing-case-study__stamp" aria-hidden="true">
-              <span>ATBU</span>
-              <small>Faculty of Computing · 2025/2026</small>
+              <span>v1</span>
+              <small>Multi-tenant · Isolated workspaces</small>
+            </div>
+          </div>
+        </section>
+
+        {/* --------------------------------------------------- Pricing */}
+        <section id="pricing" className="landing-pricing">
+          <div className="landing-shell">
+            <div className="landing-section__heading">
+              <div>
+                <h2>Simple to start, clear as you grow.</h2>
+              </div>
+              <p>
+                No paywall on day one — students get the full workspace free
+                to begin, and institutions are provisioned on request.
+              </p>
+            </div>
+            <div className="landing-pricing__grid">
+              {PRICING_TIERS.map(
+                ({ icon: Icon, label, name, text, cta, note }) => (
+                  <article key={label} className="landing-pricing__card">
+                    <div className="landing-pricing__top">
+                      <span>{label}</span>
+                      <Icon className="landing-extra__icon" aria-hidden="true" />
+                    </div>
+                    <h3>{name}</h3>
+                    <p>{text}</p>
+                    <Link to={cta.to} className="landing-pricing__cta">
+                      {cta.label}
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                    </Link>
+                    <small>{note}</small>
+                  </article>
+                ),
+              )}
             </div>
           </div>
         </section>
@@ -603,10 +968,6 @@ export default function LandingPage() {
         {/* -------------------------------------------------------- CTA */}
         <section className="landing-cta">
           <div className="landing-shell landing-cta__inner">
-            <p className="landing-eyebrow">
-              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-              Get started
-            </p>
             <h2>
               Get grounded answers from your university&rsquo;s materials.
             </h2>
@@ -648,8 +1009,7 @@ export default function LandingPage() {
             <span>AcademiAI</span>
           </Link>
           <span>
-            © {new Date().getFullYear()} — Multi-tenant · Final Year Project ·
-            ATBU Bauchi · open for collaboration
+            © {new Date().getFullYear()} — Multi-tenant academic AI · open for collaboration
           </span>
         </div>
       </footer>

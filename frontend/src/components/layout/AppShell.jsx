@@ -23,6 +23,7 @@ import Avatar from '@/components/shared/Avatar';
 import OnlineStatus from '@/components/shared/OnlineStatus';
 import CommandPalette from '@/components/common/CommandPalette';
 import FloatingAgent from '@/components/agent/FloatingAgent';
+import NotificationToaster from '@/components/notifications/NotificationToaster';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
 import { getTenantInfo } from '@/lib/tenant';
@@ -46,6 +47,8 @@ import {
   Menu,
   MessageSquareText,
   Bookmark,
+  CalendarDays,
+  CalendarClock,
   PanelLeftClose,
   PanelLeftOpen,
   ScrollText,
@@ -115,6 +118,7 @@ const ADMIN_NAV = [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/resources', label: 'Resources', icon: FileText },
       { to: '/chat', label: 'AI Chat', icon: MessageSquareText },
+      { to: '/calendar', label: 'Calendar', icon: CalendarDays },
     ],
   },
   {
@@ -138,7 +142,7 @@ const ADMIN_NAV = [
     ],
   },
   {
-    section: 'Admin',
+    section: 'Tenant admin',
     items: [
       {
         to: '/admin/dashboard',
@@ -149,6 +153,7 @@ const ADMIN_NAV = [
       { to: '/admin/tenant', label: 'Structure', icon: Building2 },
       { to: '/admin/courses', label: 'Manage Courses', icon: BookOpen },
       { to: '/admin/templates', label: 'Plan Templates', icon: LayoutTemplate },
+      { to: '/admin/upload', label: 'Timetable Upload', icon: CalendarClock },
       { to: '/admin/audit', label: 'Audit Logs', icon: ScrollText },
       { to: '/admin/logs', label: 'Logs', icon: Shield },
     ],
@@ -162,6 +167,7 @@ const LECTURER_NAV = [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/resources', label: 'Resources', icon: FileText },
       { to: '/chat', label: 'AI Chat', icon: MessageSquareText },
+      { to: '/calendar', label: 'Calendar', icon: CalendarDays },
     ],
   },
   {
@@ -193,6 +199,7 @@ const STUDENT_NAV = [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { to: '/resources', label: 'Resources', icon: FileText },
       { to: '/chat', label: 'AI Chat', icon: MessageSquareText },
+      { to: '/calendar', label: 'Calendar', icon: CalendarDays },
     ],
   },
   {
@@ -728,6 +735,13 @@ export default function AppShell({
   return (
     <TooltipProvider delayDuration={300}>
       <div className="app-canvas min-h-screen text-[var(--fg)]">
+        {/* Skip navigation — first focusable element for keyboard users */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:text-foreground focus:shadow-lg focus:ring-2 focus:ring-[var(--accent)]"
+        >
+          Skip to main content
+        </a>
         {/* Desktop sidebar */}
         <SidebarDesktop
           sections={sections}
@@ -801,7 +815,6 @@ export default function AppShell({
                   className="h-full w-full min-w-0 bg-transparent text-[13px] text-[var(--fg)] outline-none placeholder:text-[var(--muted)]"
                 />
                 <kbd
-                  onClick={() => setPaletteOpen(true)}
                   className="pointer-events-none hidden shrink-0 select-none items-center gap-0.5 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 font-mono text-[10px] font-[550] text-[var(--muted)] sm:inline-flex"
                   title="Open command palette"
                 >
@@ -822,11 +835,12 @@ export default function AppShell({
           )}
 
           {fullBleed ? (
-            <main className="flex h-screen w-full flex-col overflow-hidden">
+            <main id="main-content" className="flex h-screen w-full flex-col overflow-hidden">
               {children}
             </main>
           ) : (
             <main
+              id="main-content"
               className={cn(
                 'mx-auto w-full flex-1',
                 'px-4 py-5 sm:px-7 sm:py-6',
@@ -863,6 +877,7 @@ export default function AppShell({
       </div>
       <CommandPalette open={paletteOpen} onOpen={setPaletteOpen} />
       <FloatingAgent />
+      <NotificationToaster />
     </TooltipProvider>
   );
 }

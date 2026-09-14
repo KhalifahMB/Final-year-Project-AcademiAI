@@ -83,6 +83,7 @@ class User(AbstractBaseUser, PermissionsMixin, UUIDModel, TimeStampedModel):
         ]
         indexes = [
             models.Index(fields=["tenant", "role"]),
+            models.Index(fields=["created_at"]),
         ]
 
     def __str__(self):
