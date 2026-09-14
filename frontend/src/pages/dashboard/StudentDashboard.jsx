@@ -733,7 +733,7 @@ function QuickCTA({ firstName }) {
 /* Compute stats for the Study Activity summary row                  */
 /* ---------------------------------------------------------------- */
 
-function deriveActivityStats(timeline) {
+function deriveActivityStats(timeline, streakData) {
   if (!timeline || timeline.length === 0) {
     return [
       { label: 'This period', value: '0', hint: 'No activity yet', icon: <Clock className="mr-1 h-3 w-3" aria-hidden /> },
@@ -747,18 +747,23 @@ function deriveActivityStats(timeline) {
   const prior = timeline.slice(0, mid).reduce((a, p) => a + (p.chats + p.quizzes + p.notes), 0);
   const diff = recent - prior;
   const diffStr = diff >= 0 ? `+${diff}` : `-${Math.abs(diff)}`;
-  // streak = trailing consecutive buckets with >=1 event
-  let streak = 0;
-  for (let i = timeline.length - 1; i >= 0; i--) {
-    const p = timeline[i];
-    if ((p.chats + p.quizzes + p.notes) > 0) streak += 1;
-    else break;
-  }
-  return [
+  const out = [
     { label: 'This period', value: `${recent}`, hint: 'Chats, quizzes & notes', icon: <Clock className="mr-1 h-3 w-3" aria-hidden /> },
     { label: 'vs last', value: diffStr, hint: prior === 0 ? 'New activity' : 'Period over period', icon: <TrendingUp className="mr-1 h-3 w-3" aria-hidden /> },
-    { label: 'Streak', value: `${streak} day${streak === 1 ? '' : 's'}`, hint: 'Active days in a row', icon: <Flame className="mr-1 h-3 w-3" aria-hidden /> },
+    { label: 'Streak', value: '0 days', hint: 'Active days in a row', icon: <Flame className="mr-1 h-3 w-3" aria-hidden /> },
   ];
+  // Prefer the authoritative calendar-day streak from the backend so the
+  // stats row and the Study streak card always agree.
+  if (streakData && typeof streakData.current_streak === 'number') {
+    const days = streakData.current_streak;
+    out[2] = {
+      label: 'Streak',
+      value: `${days} day${days === 1 ? '' : 's'}`,
+      hint: streakData.today_active ? 'Active days in a row' : 'Study today to keep it going',
+      icon: <Flame className="mr-1 h-3 w-3" aria-hidden />,
+    };
+  }
+  return out;
 }
 
 function buildTotalSeries(timeline) {
@@ -861,7 +866,7 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
             range={studentRange}
             onChangeRange={setStudentRange}
             loading={studentActivity.isLoading}
-            statsRow={deriveActivityStats(timeline)}
+            statsRow={deriveActivityStats(timeline, streakData)}
           />
           <ActivePlans items={plans} />
         </div>

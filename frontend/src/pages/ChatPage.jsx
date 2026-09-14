@@ -679,15 +679,24 @@ export default function ChatPage() {
  if (currentSources.length > 0 && !isMobile) setSourcesRailOpen(true);
  }, [currentSources.length, isMobile]);
 
-  // Deep-link session via ?session=
+  // Deep-link session via ?session=. Opens the matching conversation once the
+  // sidebar list is available so we get the real title; if the list settled
+  // without the session (paged out, deleted, or list error) we still open the
+  // id directly — getMessages needs only the id, and failures surface in the
+  // chat pane — so a deep link never silently no-ops.
   useEffect(() => {
+  if (sessionId) return;
   const sid = searchParams.get('session');
-  if (sid && !sessionId && sessions.length) {
+  if (!sid) return;
   const existing = sessions.find((s) => s.id === sid);
-  if (existing) openSession(existing);
+  if (existing) {
+  openSession(existing);
+  return;
   }
+  if (sessionsQ.isLoading) return;
+  openSession({ id: sid });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessions.length, searchParams]);
+  }, [sessionId, searchParams, sessions, sessionsQ.isLoading]);
 
   // Restore the in-progress conversation from sessionStorage when the page is
   // (re)mounted — e.g. after switching sidebar tabs in the same browser tab.
@@ -726,24 +735,24 @@ export default function ChatPage() {
  ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
  }, [input]);
 
- const openSession = useCallback(async (s) => {
- if (activeStream.current) { activeStream.current.abort(); activeStream.current = null; }
- setPickerOpen(false);
- setError('');
- setAttachedResources([]);
- setActiveSourceRank(null);
- setSessionId(s.id);
- setSessionTitle(s.title || 'Conversation');
- setTitleDraft(s.title || '');
- try {
- const msgs = await chatApi.getMessages(s.id);
- setMessages(msgs);
- } catch {
- setError('Could not load that conversation.');
- }
- setSearchParams({ session: s.id }, { replace: true });
- if (isMobile) setHistoryOpen(false);
- }, [isMobile, setSearchParams]);
+const openSession = useCallback(async (s) => {
+  if (activeStream.current) { activeStream.current.abort(); activeStream.current = null; }
+  setPickerOpen(false);
+  setError('');
+  setAttachedResources([]);
+  setActiveSourceRank(null);
+  setSessionId(s.id);
+  setSessionTitle(s.title || 'Conversation');
+  setTitleDraft(s.title || '');
+  try {
+  const msgs = await chatApi.getMessages(s.id);
+  setMessages(msgs);
+  } catch {
+  setError('Could not load that conversation.');
+  }
+  setSearchParams({ session: s.id }, { replace: true });
+  if (isMobile) setHistoryOpen(false);
+  }, [isMobile, setSearchParams]);
 
  const startNewChat = useCallback(() => {
  if (activeStream.current) { activeStream.current.abort(); activeStream.current = null; }

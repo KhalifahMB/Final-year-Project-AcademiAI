@@ -280,3 +280,37 @@ screen" → concrete feature list. "scale seamlessly" → "grow across".
 **Verification:** Full regex grep across all markdown, JSX, and CSS files
 returned zero matches for the banned vocabulary list. Impeccable detector
 confirms clean (`[]`) on `LandingPage.jsx`.
+
+## D23 — Study streaks are computed, not stored
+
+**Decision:** No `StudyActivity` table, no write-path hooks, no migration. The
+student dashboard derives the streak and due-soon reminders on the fly from
+live rows:
+
+- Streak (`GET /dashboard/student/streak/`): distinct calendar days across
+  `ChatMessage` (USER), `QuizAttempt`, `Note`, and `ResourceReadingPosition`;
+  current/longest streak, active days, today-active flag, and the last 14 days
+  for the dots row. Cached 60 s per user.
+- Reminders (`GET /dashboard/student/reminders/`): `CalendarEvent` (layer
+  `EXAMS`), `PlanMilestone` (excluding completed/skipped), and `Plan` due
+  within the next 7 days, capped at 6, `kind` = exam/milestone/plan, routed to
+  `/calendar` and `/planner`. Cached 60 s per user.
+
+**Impact:** The two numbers shown for "Streak" always agree — the activity
+stats row prefers the authoritative backend streak over the old client-side
+bucket count. Tests in `apps/common/tests/test_dashboards.py`.
+
+## D24 — Chat `?session=` deep link and streak unification fixes
+
+**Decision:** While verifying the streak work, two frontend correctness fixes
+landed in `ChatPage.jsx` and `StudentDashboard.jsx`:
+
+1. `/chat?session=<id>` deep links: the previous effect only fired when the
+   sidebar list changed and silently no-oped when the session was outside the
+   loaded page (100 per page) or the list query errored. It now opens the
+   session once the list settles, and falls back to opening the id directly
+   (messages + error handling) if the list settled without it.
+2. The dashboard "Streak" stat uses the authoritative backend streak
+   (`dashboardApi.studentStreak()`) instead of deriving a trailing-bucket
+   count that disagreed with the Study streak card (which also counted
+   resource reading).
