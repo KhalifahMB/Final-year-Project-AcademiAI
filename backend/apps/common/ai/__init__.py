@@ -8,6 +8,7 @@ from .gemini import (
     generate_quiz_json,
     generate_summary,
     generate_topics,
+    extract_concepts,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "generate_quiz_json",
     "generate_summary",
     "generate_topics",
+    "extract_concepts",
 ]

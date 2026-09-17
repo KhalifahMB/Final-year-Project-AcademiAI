@@ -4,6 +4,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
@@ -13,15 +14,23 @@ from rest_framework.response import Response
 from apps.academics.models import CourseEnrollment, LecturerCourseAssignment
 from apps.audit.services import log_action
 from apps.common.jobs import claim_job
+from apps.common.permissions import IsLecturerOrAdmin, IsTenantMember
 from apps.common.throttling import AiRateThrottle, UploadRateThrottle
 from apps.common.viewsets import TenantModelViewSet
 from apps.knowledge.retrieval import _authorized_resource_ids, _viewer_academic_context
 from apps.resources.permissions import IsOwnerOrAdminForWrite
-from .models import Resource, ResourceVersion, ResourceSummary, ResourceAccess
+from .models import (
+    Resource,
+    ResourceVersion,
+    ResourceSummary,
+    ResourceAccess,
+    ResourceReport,
+)
 from .serializers import (
     ResourceSerializer,
     ResourceVersionSerializer,
     ResourceSummarySerializer,
+    ResourceReportSerializer,
 )
 from apps.common.storage import (
     get_s3_client,
@@ -142,9 +151,20 @@ def _authorized_resources_q(user) -> Q:
     including tenant admins and platform superusers. Admins retain broad
     visibility over all non-private scopes in the tenant, but never over
     another user's private resources.
+
+    Moderation: ``removed`` resources are invisible to every role. ``flagged``
+    materials are hidden from regular members but remain visible to
+    lecturers/admins so they can action the pending report.
     """
     role = getattr(user, "role", None)
     is_admin = getattr(user, "is_tenant_admin", False) or bool(getattr(user, "is_superuser", False))
+    is_staff = role in ("lecturer", "tenant_admin") or bool(getattr(user, "is_superuser", False))
+
+    # Removed materials are gone for everyone. Flagged materials are hidden
+    # from students but surfaced to staff for review.
+    moderation_q = ~Q(moderation_status=Resource.ModerationStatus.REMOVED)
+    if not is_staff:
+        moderation_q &= Q(moderation_status=Resource.ModerationStatus.ACTIVE)
 
     # The scope the user may read from, ignoring private visibility for a
     # moment. Admins can read everything non-private in the tenant; students /
@@ -201,11 +221,10 @@ def _authorized_resources_q(user) -> Q:
             )
 
     # Universal rule: a private resource is visible only to its uploader,
-    # regardless of role. `scope` never matches a private resource, so OR-ing
-    # the owner's own private materials is both necessary and sufficient.
-    return scope | Q(
-        visibility_scope=Resource.Visibility.PRIVATE, uploaded_by=user
-    )
+    # regardless of role. `scope` never matches a private resource; the owner's
+    # own materials are OR-ed into the visible set, then the moderation mask is
+    # applied to BOTH branches (so flagged/removed never leak back in).
+    return (scope | Q(visibility_scope=Resource.Visibility.PRIVATE, uploaded_by=user)) & moderation_q
 
 
 @extend_schema(tags=["Resources"])
@@ -407,6 +426,134 @@ class ResourceViewSet(TenantModelViewSet):
                 "kind": "download",
                 "download_url": generate_presigned_download_url(resource.storage_key),
                 "detail": "Preview is not supported for this file type; download it instead.",
+            }
+        )
+
+    @extend_schema(
+        tags=["Moderation"],
+        request={"application/json": {"type": "object", "properties": {
+            "reason": {"type": "string", "enum": ["inaccurate", "copyright", "offensive", "other"]},
+            "details": {"type": "string"},
+        }}},
+    )
+    @action(detail=True, methods=["post"], permission_classes=[IsTenantMember])
+    def report(self, request, pk=None):
+        """Report a resource you can view for moderator review.
+
+        Creates a ``ResourceReport`` and flips the resource's moderation
+        status to ``flagged`` — hidden from retrieval and from students'
+        listings until a Lecturer/Admin reviews it.
+        """
+        resource = self.get_object()
+        if resource.id not in _authorized_resource_ids(request.user, None):
+            return Response(
+                {"detail": "You do not have access to this material."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if resource.moderation_status == Resource.ModerationStatus.REMOVED:
+            return Response(
+                {"detail": "This material is no longer available."},
+                status=status.HTTP_410_GONE,
+            )
+        if ResourceReport.objects.filter(
+            tenant=request.user.tenant,
+            resource=resource,
+            status=ResourceReport.Status.PENDING,
+            reported_by=request.user,
+        ).exists():
+            return Response(
+                {"detail": "You already reported this material; it is pending review."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        reason = request.data.get("reason", "other")
+        if reason not in ResourceReport.Reason.values:
+            reason = ResourceReport.Reason.OTHER
+        report = ResourceReport.objects.create(
+            tenant=request.user.tenant,
+            resource=resource,
+            reported_by=request.user,
+            reason=reason,
+            details=str(request.data.get("details", ""))[:2000],
+        )
+        if resource.moderation_status == Resource.ModerationStatus.ACTIVE:
+            resource.moderation_status = Resource.ModerationStatus.FLAGGED
+            resource.save(update_fields=["moderation_status", "updated_at"])
+        try:
+            log_action(
+                tenant=request.user.tenant,
+                actor=request.user,
+                action="resource.report",
+                entity_type="resource",
+                entity_id=str(resource.id),
+                metadata={"reason": reason, "report_id": str(report.id)},
+            )
+        except Exception:
+            logger.exception("Failed to audit resource.report")
+        return Response(
+            ResourceReportSerializer(report, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @extend_schema(
+        tags=["Moderation"],
+        request={"application/json": {"type": "object", "properties": {
+            "decision": {"type": "string", "enum": ["dismiss", "remove"]},
+        }}},
+    )
+    @action(detail=True, methods=["post"], permission_classes=[IsLecturerOrAdmin])
+    def moderate(self, request, pk=None):
+        """Act on a pending report — dismiss (restore) or remove the material.
+
+        Dismiss: resource returns to ``active`` and is visible again.
+        Remove: resource is hidden from every role permanently.
+        Both paths are audited. Only Lecturers and Admins may moderate.
+        """
+        resource = self.get_object()
+        decision = request.data.get("decision")
+        if decision not in ("dismiss", "remove"):
+            return Response(
+                {"detail": "decision must be 'dismiss' or 'remove'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        pending = ResourceReport.objects.filter(
+            tenant=request.user.tenant,
+            resource=resource,
+            status=ResourceReport.Status.PENDING,
+        )
+        if not pending.exists():
+            return Response(
+                {"detail": "No pending report for this material."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if decision == "remove":
+            resource.moderation_status = Resource.ModerationStatus.REMOVED
+            new_status = ResourceReport.Status.RESOLVED
+        else:
+            resource.moderation_status = Resource.ModerationStatus.ACTIVE
+            new_status = ResourceReport.Status.DISMISSED
+        resource.save(update_fields=["moderation_status", "updated_at"])
+        pending.update(status=new_status, resolved_by=request.user, resolved_at=timezone.now())
+
+        action = "resource.moderation.remove" if decision == "remove" else "resource.moderation.dismiss"
+        try:
+            log_action(
+                tenant=request.user.tenant,
+                actor=request.user,
+                action=action,
+                entity_type="resource",
+                entity_id=str(resource.id),
+                metadata={"decision": decision},
+            )
+        except Exception:
+            logger.exception("Failed to audit %s", action)
+        return Response(
+            {
+                "id": str(resource.id),
+                "moderation_status": resource.moderation_status,
+                "resolved_reports": pending.count(),
             }
         )
 

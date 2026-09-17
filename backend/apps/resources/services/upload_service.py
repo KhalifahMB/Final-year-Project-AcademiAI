@@ -10,6 +10,7 @@ import logging
 import uuid
 
 from django.conf import settings
+from django.db import models
 from django.db import transaction
 
 from apps.common.constants import RESOURCE_TEXT_PEEK_BYTES
@@ -19,6 +20,7 @@ from apps.common.storage import (
     delete_object,
     generate_presigned_upload_post,
     get_s3_client,
+    head_object,
 )
 from apps.learning.models import Bookmark
 from apps.resources.models import Resource, ResourceVersion
@@ -44,6 +46,30 @@ def content_type_allowed(content_type: str) -> bool:
     return any(ct.startswith(prefix) for prefix in ALLOWED_MIME_PREFIXES)
 
 
+def tenant_storage_used_bytes(tenant_id) -> int:
+    """Sum of stored object sizes across every version in the tenant."""
+    used = ResourceVersion.objects.filter(tenant_id=tenant_id).aggregate(
+        total=models.Sum("file_size_bytes")
+    )["total"]
+    return int(used or 0)
+
+
+def enforce_tenant_quota(tenant_id, additional_bytes: int = 0) -> None:
+    """Reject an upload when the tenant's storage quota is exceeded.
+
+    ``additional_bytes`` lets callers fail fast at presign time using the
+    worst-case upload cap (MAX_UPLOAD_BYTES) before the client spends the
+    bandwidth, and again at registration time using the REAL object size.
+    """
+    from apps.tenants.models import Tenant
+
+    tenant = Tenant.objects.filter(pk=tenant_id).only("storage_quota_bytes").first()
+    if tenant is None:
+        raise UploadServiceError("Unknown tenant.", status=403)
+    if tenant_storage_used_bytes(tenant_id) + additional_bytes > tenant.storage_quota_bytes:
+        raise UploadServiceError("Institution storage quota exceeded.", status=413)
+
+
 def issue_upload_envelope(resource, content_type="application/octet-stream"):
     """
     Presigned upload target (url + form fields) bound to this resource's
@@ -54,6 +80,11 @@ def issue_upload_envelope(resource, content_type="application/octet-stream"):
     """
     if not content_type_allowed(content_type):
         raise UploadServiceError(f"Unsupported content type: {content_type}")
+    # Fail fast before the client uploads anything: even the best case (an
+    # empty file) must not push the tenant over its storage quota.
+    from apps.common.security.file_validation import MAX_UPLOAD_BYTES
+
+    enforce_tenant_quota(resource.tenant_id, additional_bytes=MAX_UPLOAD_BYTES)
     key = f"tenants/{resource.tenant_id}/resources/{resource.id}/{uuid.uuid4()}"
     if content_type and content_type != "application/octet-stream":
         resource.mime_type = content_type
@@ -88,8 +119,24 @@ def register_completed_upload(resource, storage_key, declared_ct, user):
     ):
         raise UploadServiceError(f"Unsupported content type: {declared_ct}")
 
+    # Read the actual stored size so both the version record and the tenant
+    # quota are authoritative (the presign check used the worst-case cap).
+    # head_object is I/O, done before taking any DB lock.
+    size = None
+    try:
+        size = head_object(storage_key)["content_length"]
+    except Exception:
+        logger.exception("Head object failed key=%s", storage_key)
+
     with transaction.atomic():
         locked = type(resource).objects.select_for_update().get(pk=resource.pk)
+        # Serialize concurrent uploads against the tenant row so the quota
+        # aggregation + insert are one unit (otherwise two parallel
+        # complete_upload calls could both pass the check).
+        from apps.tenants.models import Tenant
+
+        Tenant.objects.select_for_update().get(pk=locked.tenant_id)
+        enforce_tenant_quota(locked.tenant_id, additional_bytes=int(size or 0))
         last = locked.versions.order_by("-version_number").first()
         next_ver = (last.version_number + 1) if last else 1
         if declared_ct and declared_ct != "application/octet-stream":
@@ -99,6 +146,7 @@ def register_completed_upload(resource, storage_key, declared_ct, user):
             resource=locked,
             version_number=next_ver,
             storage_key=storage_key,
+            file_size_bytes=size,
             created_by=user,
         )
         locked.storage_key = storage_key

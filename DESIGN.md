@@ -4,17 +4,17 @@
 
 ## Design Direction
 
-**Style:** Glass-first premium — layered, translucent, modern. The modern-minimal grid (Linear / Vercel / Notion 2024) remains the structural foundation, elevated with a disciplined glass material system and soft neomorphic accents on high-level objects only.
+**Style:** Grounded institutional — precise, credible, technical. Near-black and warm-paper canvases, hairline borders defining every panel, a single brand-violet accent (`#6C5CE7`) for action and focus, mono metadata everywhere the machine talks.
 
-**Posture:** Glass-primary, neomorph-accent. Single accent economy, hairline borders defining every material edge, translucent surfaces with `backdrop-filter`, soft inner-light depth. Both light and dark modes are equal first-class citizens — every material is derived from the theme tokens, never a hardcoded hue.
+**Posture:** Hard-surface, hairline-primary. Surfaces are opaque flat panels with `1px` hairlines; the shell (topbar) may blur over content because density scrolls beneath it. A single accent economy — violet is reserved for primary actions, links, active nav, and focus rings. Status colors are data, never decoration. Both light and dark themes are equal first-class citizens, derived entirely from tokens.
 
-**Product category:** Academic AI platform (SaaS tool). The interface must communicate academic credibility, intelligence, trust, and institutional reliability — premium without tipping into decoration. Glass communicates the AI-product story (layered, intelligent, modern); restraint keeps density legible.
+**Product category:** Multi-tenant academic AI platform. The interface must communicate trust, isolation, and institutional seriousness (RLS-guarded RAG). The design borrows from developer tooling (Linear / Vercel) for credibility: dense but legible, technical but calm, premium without decoration.
 
 **Material philosophy:**
-- **Glass is a material, not a decoration.** Every frosted surface exists to create depth: the shell floats above the canvas, cards layer over the shell, modals float highest. Glass is never placed behind long body text or dense tables.
-- **Dense data stays clean.** Tables, list rows, and form fields keep high-contrast opaque backgrounds. Glass and neomorph are reserved for shell, cards, dialogs, modals, stat cards, and hero objects.
-- **Neomorph is an accent, not a theme.** Soft inset/emboss depth appears on high-level objects (stat cards, trend panels, hero mock) as a whisper — never the cliché extruded-button look, never on rows or inputs.
-- **Status colors are data, not decoration.** Success/warn/danger/info carry meaning only; the single accent carries emphasis.
+- **Hairline surfaces, not glass everything.** Panels are opaque (`--surface`/`--surface-2`) with `1px` hairlines. Translucency + `backdrop-filter` is reserved for the floating shell (topbar) and overlays (modals, command palette) only. Never glass behind long-form text or dense tables.
+- **Dense data stays clean.** Tables, list rows, form fields, and code keep high-contrast opaque backgrounds.
+- **Dual text system.** The landing voice is editorial serif (Fraunces + Inter); the authenticated app is functional (Geist + Geist Mono). The serif is a landing/signpost voice, never an in-app default.
+- **Status colors are data, not decoration.** Success/warn/danger/info carry meaning only; the single violet accent carries emphasis.
 
 **Anti-patterns to enforce:**
 - No purple/blue gradient everything
@@ -25,94 +25,99 @@
 - No icon above every heading
 - No cards inside cards inside cards
 - No emoji as UI icons
-- No excessive animations (glass is static material, not motion)
+- No excessive animations
 - No huge empty hero sections
 - No meaningless dashboard statistics
 - No tiny low-contrast text
+- No un-cited AI answers in demos (every AI answer shows its grounding)
 - Every visual element must serve a purpose
 
 ## Color System
 
-All colors use `oklch()` for perceptual uniformity. Light and dark modes defined via CSS custom properties.
+All colors use `oklch()` for perceptual uniformity. Light and dark modes defined via CSS custom properties. Brand violet `#6C5CE7` ≈ `oklch(0.577 0.195 282)`.
 
 ### Light Mode
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--bg` | `oklch(99% 0.002 240)` | Page canvas |
-| `--surface` | `oklch(100% 0 0)` | Cards, surfaces |
-| `--surface-2` | `oklch(97.7% 0.003 245)` | Secondary surfaces, inputs |
-| `--hover` | `oklch(96% 0.004 245)` | Hover states |
-| `--fg` | `oklch(18% 0.012 250)` | Primary text |
-| `--fg-soft` | `oklch(34% 0.014 250)` | Secondary text |
-| `--muted` | `oklch(54% 0.012 250)` | Muted text, placeholders |
-| `--faint` | `oklch(72% 0.01 250)` | Faintest text |
-| `--border` | `oklch(92% 0.005 250)` | Hairline borders |
-| `--border-strong` | `oklch(85% 0.007 250)` | Stronger borders |
-| `--accent` | `oklch(58% 0.18 255)` | Primary accent (indigo) |
-| `--accent-strong` | `oklch(51% 0.185 255)` | Accent hover |
-| `--accent-soft` | `oklch(95.8% 0.02 255)` | Accent background tint |
-| `--on-accent` | `oklch(99.2% 0.002 240)` | Text on accent |
-| `--success` | `oklch(48% 0.13 152)` | Success state |
-| `--warn` | `oklch(49% 0.115 75)` | Warning state |
-| `--danger` | `oklch(51% 0.19 27)` | Error/destructive |
-| `--info` | `oklch(52% 0.12 240)` | Informational |
+| `--bg` | `oklch(0.985 0.003 85)` | Page canvas (warm paper `#FAF9F6`) |
+| `--surface` | `oklch(0.995 0.002 85)` | Cards, surfaces |
+| `--surface-2` | `oklch(0.965 0.004 85)` | Secondary surfaces, inputs |
+| `--hover` | `oklch(0.945 0.005 85)` | Hover states |
+| `--fg` | `oklch(0.2 0.018 285)` | Primary text |
+| `--fg-soft` | `oklch(0.37 0.02 285)` | Secondary text |
+| `--muted` | `oklch(0.53 0.015 285)` | Muted text, placeholders |
+| `--faint` | `oklch(0.7 0.01 285)` | Faintest text |
+| `--border` | `oklch(0.905 0.006 85)` | Hairline borders |
+| `--border-strong` | `oklch(0.83 0.008 85)` | Stronger borders |
+| `--accent` | `oklch(0.577 0.195 282)` | Brand violet — primary accent |
+| `--accent-strong` | `oklch(0.5 0.19 282)` | Accent hover |
+| `--accent-soft` | `oklch(0.945 0.028 282)` | Accent background tint |
+| `--on-accent` | `oklch(0.99 0.002 85)` | Text on accent |
+| `--success` | `oklch(0.5 0.125 150)` | Success state |
+| `--warn` | `oklch(0.5 0.115 80)` | Warning state |
+| `--danger` | `oklch(0.52 0.19 25)` | Error/destructive |
+| `--info` | `oklch(0.52 0.11 245)` | Informational |
 
 ### Dark Mode
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--bg` | `oklch(17% 0.012 255)` | Page canvas |
-| `--surface` | `oklch(20.5% 0.013 256)` | Cards, surfaces |
-| `--surface-2` | `oklch(24% 0.015 257)` | Secondary surfaces |
-| `--hover` | `oklch(27% 0.016 257)` | Hover states |
-| `--fg` | `oklch(95.5% 0.005 250)` | Primary text |
-| `--accent` | `oklch(62% 0.17 255)` | Primary accent |
-| `--accent-strong` | `oklch(69% 0.155 255)` | Accent hover |
-| `--accent-soft` | `oklch(30% 0.06 256)` | Accent background tint |
+| `--bg` | `oklch(0.145 0.015 282)` | Page canvas (near-black `#0B0B0E`) |
+| `--surface` | `oklch(0.19 0.018 282)` | Cards, surfaces |
+| `--surface-2` | `oklch(0.235 0.02 282)` | Secondary surfaces |
+| `--hover` | `oklch(0.27 0.022 282)` | Hover states |
+| `--fg` | `oklch(0.97 0.008 282)` | Primary text |
+| `--accent` | `oklch(0.72 0.17 282)` | Brand violet (lifted for dark bg) |
+| `--accent-strong` | `oklch(0.78 0.15 282)` | Accent hover |
+| `--accent-soft` | `oklch(0.32 0.07 282)` | Accent background tint |
 
 ### Rules
-- **Single accent economy.** One accent color (indigo) used for primary actions, links, and focus rings. Status colors (success/warn/danger/info) are data, not decoration.
-- **All material derived from tokens.** Glass tint, blur, hairline, and neomorph depth are defined once from `--bg`/`--surface`/`--fg`/`--accent`/`--border` so light and dark both look native.
+- **Single accent economy.** One violet accent used for primary actions, links, active nav, and focus rings. Never a second hue for emphasis.
+- **All material derived from tokens.** Shell tint, blur, hairline, and depth defined once from `--bg`/`--surface`/`--fg`/`--accent`/`--border` so light and dark both look native.
 - **Status colors are semantic.** They carry meaning (success=green, danger=red) and must not be repurposed for decoration.
 
-### Material System (glass-first)
+### Material System (grounded hairline)
 
 Material is layered to create depth without breaking legibility:
 
 | Layer | Surface | Treatment |
 |-------|---------|-----------|
-| Canvas | `--bg` | Solid page ground. Optional shallow gradient wash. |
-| Shell glass | Sidebar, topbar, mobile drawer | Translucent tint + `backdrop-filter: blur + saturate`, hairline edge, no shadow on the edges (they meet the canvas). |
-| Card glass | Cards, dashboard panels, stat cards, dialogs | Tinted fill, hairline `--border-strong`, soft `--shadow-pop`. Neomorph inset light on stat/trend panels. |
+| Canvas | `--bg` | Solid page ground. Optional 48px `texture-grid` + `texture-grain` overlay (landing). |
+| Shell | Topbar | Translucent tint + `backdrop-filter: blur + saturate`, hairline bottom edge, no drop shadow. |
+| Panels | Cards, dashboard cards, stat cards, dialogs | Opaque `--surface`, 1px `--border-strong` hairline, radius `--radius-lg`. Soft shadow `--shadow-pop` reserved for floats. |
 | Dense data | Tables, list rows, form fields, code | **Opaque** `--surface`/`--surface-2`. Never blurred. Never behind glass. |
 | Overlay | Modals, popovers, dropdowns, command palette | Highest layer: `--shadow-pop`, stronger tint, full blur. |
 
-**Glass recipe (theme-driven, no hardcoded hue):**
-- Fill: `color-mix(in oklab, var(--surface) <n>%, transparent)` (light uses a higher tint for legibility; dark may use less).
-- Blur: `backdrop-filter: blur(16px) saturate(150%)` (shell) / `blur(20px)` (overlays).
+**Shell recipe (theme-driven, no hardcoded hue):**
+- Fill: `color-mix(in oklab, var(--surface) 80%, transparent)`.
+- Blur: `backdrop-filter: blur(16px) saturate(150%)` (shell) / `blur(22px)` (overlays).
 - Edge: `1px solid` a hairline from `--border`/`--border-strong`.
-- Depth: `--shadow-pop` on anything floating above the shell.
 
 **Neomorph accent recipe (subtle, high-level only):**
 - Inner top light: `inset 0 1px 0 color-mix(in oklab, var(--fg) 6%, transparent)`.
-- Inner bottom shadow: `inset 0 -1px 0 color-mix(in oklab, var(--fg) 8%, transparent)`.
-- Optional outer drop: `0 1px 2px color-mix(in oklab, var(--fg) 6%, transparent)`.
-- Never scaled to the extruded-pill "user profile card" cliché.
+- Inner bottom shadow: `inset 0 -1px 0 color-mix(in oklab, var(--fg) 9%, transparent)`.
+- Used only on stat/trend panels and hero objects; never on list rows, inputs, or buttons.
 
 ## Typography
 
 ### Font Stack
 
+In-app (Geist + Geist Mono); landing (Fraunces + Inter):
+
 ```css
---font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
-  'Inter', 'Geist Variable', ui-sans-serif, system-ui, 'Segoe UI',
-  Roboto, 'Helvetica Neue', Arial, sans-serif;
---font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas,
-  'Liberation Mono', monospace;
+--font-sans: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont,
+  'SF Pro Display', 'SF Pro Text', 'Inter', ui-sans-serif, system-ui,
+  'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+--font-serif: 'Fraunces Variable', 'Fraunces', Georgia, 'Times New Roman', serif;
+--font-mono: 'Geist Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo,
+  Consolas, 'Liberation Mono', monospace;
+--font-display: var(--font-sans);   /* app headings stay sans */
 ```
 
-### Scale
+Fonts loaded via Google Fonts (`index.html`): Fraunces (9..144 opsz), Geist (400–700), Geist Mono (400–600), Inter (400–700).
+
+### Scale (app)
 
 | Element | Size | Weight | Letter-spacing | Line-height |
 |---------|------|--------|----------------|-------------|
@@ -123,11 +128,22 @@ Material is layered to create depth without breaking legibility:
 | Eyebrow | 11px | 600 | 0.08em | — |
 | Badge | 11.5px | 590 | 0.01em | — |
 | Button | 13.5px | 580 | 0.01em | — |
+| Mono meta | 11–12px | 500 | 0.02em | — |
+
+### Scale (landing — editorial serif)
+
+| Element | Size | Weight | Notes |
+|---------|------|--------|-------|
+| Hero h1 | `clamp(40px, 6vw, 84px)` | 500–600 | Fraunces, `letter-spacing: -0.03em`, `text-wrap: balance`, `line-height: 0.98` |
+| Section h2 | `clamp(30px, 4vw, 52px)` | 500–600 | Fraunces, `max-width: 12ch` |
+| Serif card title | 21–24px | 500 | Fraunces |
+| Body/lede | 15–16px | 400 | Inter, `line-height: 1.65` |
 
 ### Rules
+- **One serif voice only:** Fraunces appears on the public landing/auth shell; it never becomes an in-app default heading face.
+- **Mono for machine voice:** IDs, tenant metadata, `v2.1 • RLS`-style badges, RAG confidence, timestamps use Geist Mono.
 - **Body measure:** 65–75ch for long-form text. Never full-width paragraphs on large screens.
 - **Headings:** Balanced wrapping (`text-wrap: balance`). No orphan headings.
-- **Tabular numerals:** Use `.num` class for financial/data tables.
 - **Font features:** `'cv02', 'cv03', 'cv04', 'cv11', 'ss01', 'tnum'` enabled on `<html>`.
 
 ## Spacing & Layout
@@ -147,8 +163,8 @@ Based on 4px increments: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96px.
 ### Rules
 - **8px rhythm:** All spacing uses multiples of 4px, preferred multiples of 8px.
 - **Section spacing:** More space above a heading than below it (e.g., `mt-8 mb-4`).
-- **Tight groups, generous separation:** Elements in a group are close (8–12px); groups are separated by more (24–48px).
-- **Max content width:** 1280px for main content areas.
+- **Tight groups, generous separation:** Elements in a group are close (8–12px); groups separated by more (24–48px).
+- **Max content width:** 1280px for main content areas; landing sections cap at 1200px.
 
 ## Borders & Radius
 
@@ -165,58 +181,58 @@ Based on 4px increments: 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96px.
 - **Hairline borders everywhere.** `1px solid var(--border)` is the default surface treatment.
 - **No rounded-full on cards.** 999px radius is for badges and avatars only.
 - **No thick colored borders.** Border-left/right above 1px is banned on cards, list items, callouts.
+- **Active nav/pill:** accent-soft fill + accent text; never a thick colored left border.
 
 ## Shadows
 
 Depth follows the material layer:
 - **Canvas:** None.
-- **Shell (sidebar/topbar):** No drop shadow — they meet the canvas edge. Hairline border only.
-- **Card glass:** Soft `--shadow-pop` only where it must float above the shell (dialogs, modals, popovers, dropdowns, palette, floating stat chips). Regular cards keep hairline + inset light, not heavy drop shadows.
-- **Neomorph accent (stat/trend panels, hero mock):** Subtle inner light + inner base shadow (see Material System recipe), plus an optional faint outer drop.
+- **Shell (topbar):** No drop shadow — it meets the canvas. Hairline bottom edge only.
+- **Panels:** Hairline + a whisper of inner top light (`inset 0 1px 0`). Regular cards do not float.
+- **Floating:** `--shadow-pop` only on dialogs, modals, popovers, dropdowns, palette.
 - **No decorative shadows.** No hard-offset (`4px 4px 0`), no colored halos.
 
 ## Surfaces
 
-### Card Surface (dense-data & glass hybrid)
+### Panel Surface (opaque default)
 
 ```css
-.card-surface {
+.panel-surface {
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  background: var(--surface);   /* opaque default — used behind dense content */
-}
-.card-glass {
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-strong);
-  background: color-mix(in oklab, var(--surface) 86%, transparent);
-  backdrop-filter: blur(16px) saturate(150%);
-  box-shadow: 0 1px 0 color-mix(in oklab, var(--fg) 4%, transparent) inset,
-              0 16px 40px -24px color-mix(in oklab, var(--fg) 18%, transparent);
+  background: var(--surface);
 }
 ```
 
-- Use `.card-surface` (opaque) behind tables, lists, forms, prose.
-- Use `.card-glass` for stat cards, dashboard panels, dialogs, and hero objects.
-- Hover on interactive cards: hairline border lift + a very slight `--surface` brighten (property-only, no translate on data rows).
+- Panels are opaque. Use them for stat cards, dashboard cards, tables, lists, forms.
+- Hover on interactive cards: hairline border lift + a very slight `--surface-2` brighten (property-only, no translate on data rows).
 
-### Glass Effect (shell + overlays)
+### Shell Glass (topbar + overlays only)
 
 ```css
-.glass {                       /* shell: sidebar, topbar, drawer */
-  background: color-mix(in oklab, var(--surface) 78%, transparent);
+.glass {                       /* shell: topbar, drawer */
+  background: color-mix(in oklab, var(--surface) 80%, transparent);
   backdrop-filter: blur(16px) saturate(150%);
   -webkit-backdrop-filter: blur(16px) saturate(150%);
 }
 .glass-overlay {               /* modals, palette, popovers */
-  background: color-mix(in oklab, var(--surface) 88%, transparent);
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  background: color-mix(in oklab, var(--surface) 90%, transparent);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
 }
 ```
 
-- Shell glass is the app frame; overlay glass is the highest layer.
 - **Never** apply glass behind long body text or inside dense tables.
-- Reduced-motion and low-blur fallbacks: glass is static material, so it needs no motion; keep `backdrop-filter` calls budget-conscious (avoid stacking on many elements at once).
+
+### Textures
+
+```css
+.texture-grain  /* static SVG feTurbulence overlay, ~5% opacity (8% dark) */
+.texture-grid   /* 48px grid from --fg, 6% tint */
+.texture-grid--faint  /* 4% tint variant */
+```
+
+- Grain + grid are landing/hero textures and optional hero backdrops; keep them out of dense data areas.
 
 ## Buttons
 
@@ -231,6 +247,7 @@ Depth follows the material layer:
 - Font: 13.5px / 580 weight.
 - Radius: `--radius-md` (8px).
 - Active press: `translateY(1px)` (respects reduced-motion).
+- On the landing, primary CTAs may use the violet accent directly.
 
 ## Forms
 
@@ -242,9 +259,10 @@ Depth follows the material layer:
 
 ## Cards
 
-- **Resource cards:** `card-glass` surface, file icon, title, description (2-line clamp), status badge, scope chip, timestamp.
-- **Stat cards:** `card-glass` + neomorph accents. Icon + label + value + optional trend. No sparklines.
-- **Dashboard cards:** `card-glass`. Section header (h2) + content. No nested cards (opaque panels inside glass is fine for tables/charts).
+- **Resource cards:** `panel-surface`, file icon, title, description (2-line clamp), status badge, scope chip, timestamp.
+- **Stat cards:** `panel-surface` + subtle neomorph accent (see Material). Icon + label + value + optional trend. No sparklines.
+- **Dashboard cards:** `panel-surface`. Section header (h2) + content. No nested cards (opaque sub-panels for tables/charts is fine).
+- **Version/meta badges:** Geist Mono, `surface-2` fill, hairline, uppercase micro-label + value (e.g. `v2.1 • RLS`).
 
 ## Tables
 
@@ -257,22 +275,23 @@ Depth follows the material layer:
 ## Dialogs & Modals
 
 - **Overlay:** `bg: rgba(0,0,0,0.5)` + backdrop blur (theme-driven).
-- **Container:** `card-glass` / `.glass-overlay` fill, `--radius-2xl` (16px), `--shadow-pop`.
+- **Container:** `panel-surface` / `.glass-overlay` fill, `--radius-2xl` (16px), `--shadow-pop`.
 - **Focus trap:** Tab key trapped inside dialog. Escape closes.
 - **Close:** X button + Escape key.
 
 ## Navigation
 
 ### Sidebar (Desktop)
-- Fixed left, 248px (collapsible to 60px). `glass` shell surface.
+- Fixed left, 248px (collapsible to 60px). Opaque surface with hairline right edge.
 - Role-keyed sections (Student, Lecturer, Admin, Superuser).
-- Active item: `var(--accent-soft)` bg, `var(--accent-strong)` text (accent fills the glass on the active row).
+- Active item: `var(--accent-soft)` bg, `var(--accent-strong)` text.
 - Hover: `var(--hover)` bg.
 - Collapse: icons only, 60px width.
 
 ### Topbar
-- Sticky, topbar `glass`. Hairline bottom edge only (no drop shadow — it meets the shell).
+- Sticky 56px, `glass` shell. Hairline bottom edge only (no drop shadow — it meets the shell).
 - Hamburger (mobile), search, online status, theme toggle, user menu.
+- Optional mono metadata badge (version · isolation) on the right gutter.
 
 ### Mobile Drawer
 - Full-height `glass` drawer with backdrop blur.
@@ -311,6 +330,16 @@ Depth follows the material layer:
 - **Form error:** Inline field errors + `aria-describedby`.
 - **Page error:** Error card with friendly message, no stack traces.
 
+## Landing System (public + auth)
+
+- **Voice:** Editorial serif (Fraunces for display, Inter for body). Scoped via `.landing-page`/`.landing-auth`.
+- **Nav:** Centered AcademiAI brand with the official logo, links (Product / Security / Roles / How it works), `Sign in` + `Request workspace` CTAs.
+- **Hero:** Eyebrow (`MULTI-TENANT • GROUNDED • INSTITUTION-FIRST`), serif H1, two CTAs, and a code-drawn grounded chat mock with visible citations.
+- **Dept trust strip:** Institution wordmarks. One row, hairline separation.
+- **Sections:** Problem → platform isolation → 3 grounding steps → hard-isolation diagram → grounding demo → role agents → confusion signals → testimonials → institution request form.
+- **Request form:** Work email + institution name → leads to institution onboarding.
+- Both themes are token-driven and first-class; grain + grid textures optional at section scale.
+
 ## Responsive Behavior
 
 | Breakpoint | Layout |
@@ -342,18 +371,17 @@ Depth follows the material layer:
 - **Content slide-up:** `slide-up 0.22s cubic-bezier(0.2,0,0,1)`.
 - **Scale-in (dialogs):** `scale-in 0.15s ease-out`.
 - **Button press:** `translateY(1px)` on active.
+- **Landing only:** staggered hero entrance, slow mock drift, scroll-reveal — all `prefers-reduced-motion` safe.
 - **Reduced motion:** All animation durations set to 0.01ms.
 
 ### Rules
 - **One authored moment per page,** not scattered effects.
-- **Exponential ease-out** from an already-visible default.
-- **Exit faster than enter.**
 - **No infinite animations** except loading spinners/shimmer.
 
 ## Component Inventory
 
-### Existing (preserve and improve)
-- `BrandMark` — AcademiAI logo (light/dark variants)
+### Existing (preserve)
+- `BrandMark` — **official AcademiAI logo** (light: icon on paper; dark: icon in white pill). Always the official mark — never the wireframe's generic "A".
 - `Avatar` — 3-tier fallback (upload → preset → initials)
 - `ConfirmDialog` — Controlled alert dialog
 - `EmptyState` — Centered placeholder with CTA
@@ -365,17 +393,17 @@ Depth follows the material layer:
 - `CommandPalette` — Cmd+K global search
 - `ErrorBoundary` — Route-level error handling
 - `ResourceCard` — Resource grid card
-- `ResourceDetailDialog` — Full-screen resource viewer (needs decomposition)
 
-### Missing (to create)
+### Missing (to create where needed)
 - `PageHeader` — Reusable page header (title + description + actions)
 - `Breadcrumbs` — Navigation hierarchy
 - `Pagination` — Shared pagination component
 - `DataTable` — Sortable/filterable table wrapper
 - `SearchBar` — Reusable search input with debounce
 - `FormField` — Consistent form field wrapper (label + input + error + helper)
-- `AsyncState` — Wrapper for loading/error/empty/success states
 
-### Landing (Persuade)
-- Hero visual is a **theme-aware, code-drawn app mock** (no baked-in PNG): a `card-glass` chat window with a live `ai-cursor`, cited-answer chips, and a soft accent halo + fg-derived dot grid. Both themes equal.
-- Motion: staggered hero entrance, slow mock drift, badge bob, scroll-reveal, animated gradient hairline on the CTA — all `prefers-reduced-motion` safe.
+### Dashboards (role-specific)
+- **Student:** greeting strip, grounded AI chat preview (query → retrieve → rerank → generate + cited snippet), study plans, layered calendar, recent resources, quiz attempts.
+- **Lecturer:** course co-pilot summary, resource quality, duplicate detection, ranked cohort signals, quiz drafts queue, student mastery grid, office hours, announcement composer, course analytics.
+- **Admin:** tenant workspace (domain, RLS, pgvector, region), institutional hierarchy, user management, access-rules matrix, announcement dispatch, health indicators, audit log.
+- **Platform (superuser):** cross-tenant health table, institution requests queue (approve/reject), global analytics, RAG evaluation, system logs.

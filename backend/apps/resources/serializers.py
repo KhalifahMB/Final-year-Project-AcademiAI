@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Resource, ResourceVersion, ResourceSummary
+from .models import Resource, ResourceVersion, ResourceSummary, ResourceReport
 
 
 class ResourceSerializer(serializers.ModelSerializer):
@@ -83,14 +83,14 @@ class ResourceSerializer(serializers.ModelSerializer):
         model = Resource
         fields = (
             "id", "title", "description", "visibility_scope", "mime_type",
-            "processing_status", "processing_error",
+            "processing_status", "processing_error", "moderation_status",
             "has_extractable_text",
             "course_offering", "programme", "department", "faculty",
             "uploaded_by", "uploaded_by_username", "tenant",
             "created_at", "updated_at", "latest_summary",
         )
         read_only_fields = (
-            "id", "processing_status", "processing_error",
+            "id", "processing_status", "processing_error", "moderation_status",
             "has_extractable_text",
             "uploaded_by", "tenant", "created_at", "updated_at",
             "latest_summary",
@@ -143,3 +143,27 @@ class ResourceSummarySerializer(serializers.ModelSerializer):
         if not obj.created_by:
             return None
         return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip() or obj.created_by.email
+
+
+class ResourceReportSerializer(serializers.ModelSerializer):
+    reported_by_name = serializers.SerializerMethodField()
+    resource_title = serializers.CharField(source="resource.title", read_only=True)
+    tenant = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = ResourceReport
+        fields = (
+            "id", "resource", "resource_title", "reported_by", "reported_by_name",
+            "reason", "details", "status", "resolved_by", "resolved_at",
+            "tenant", "created_at",
+        )
+        read_only_fields = (
+            "id", "resource", "reported_by", "reported_by_name", "status",
+            "resolved_by", "resolved_at", "tenant", "created_at",
+        )
+
+    def get_reported_by_name(self, obj):
+        if not obj.reported_by:
+            return None
+        full = f"{obj.reported_by.first_name} {obj.reported_by.last_name}".strip()
+        return full or obj.reported_by.email

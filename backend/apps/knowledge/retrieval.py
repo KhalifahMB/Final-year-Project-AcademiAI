@@ -83,6 +83,9 @@ def _compute_authorized_resource_ids(user, course_offering_id=None):
     qs = Resource.objects.filter(
         tenant_id=tenant_id,
         processing_status=Resource.ProcessingStatus.READY,
+        # Flagged/removed materials are excluded from retrieval until a
+        # moderator resolves the report (report-and-takedown moderation).
+        moderation_status=Resource.ModerationStatus.ACTIVE,
     )
 
     is_admin = getattr(user, "is_tenant_admin", False) or bool(getattr(user, "is_superuser", False))
@@ -157,8 +160,9 @@ def _rrf_fuse(rank_lists, k=60):
 
 
 def _concept_related_chunk_ids(tenant_id, query: str, resource_ids, limit=20):
-    """Lightweight concept-aware signal: match concept names in query, map to resources/chunks."""
-    from apps.knowledge.models import Concept, ResourceConcept
+    """Concept-aware signal: match concept names in query, expand through
+    the concept graph (one hop), map to resources/chunks."""
+    from apps.knowledge.models import Concept, ConceptEdge, ResourceConcept
     from apps.resources.models import ResourceChunk
     terms = [w for w in (query or "").lower().split() if len(w) > 3]
     if not terms:
@@ -166,11 +170,27 @@ def _concept_related_chunk_ids(tenant_id, query: str, resource_ids, limit=20):
     q = Q()
     for term in terms[:8]:
         q |= Q(canonical_name__icontains=term)
-    concepts = Concept.objects.filter(tenant_id=tenant_id).filter(q)[:15]
+    concepts = list(Concept.objects.filter(tenant_id=tenant_id).filter(q)[:15])
     if not concepts:
         return []
     concept_ids = [c.id for c in concepts]
-    res_ids = ResourceConcept.objects.filter(concept_id__in=concept_ids).values_list(
+
+    # Graph expansion: include concepts reachable in one hop over the edges
+    # so related-but-not-literally-mentioned concepts still surface material.
+    try:
+        neighbor = ConceptEdge.objects.filter(
+            tenant_id=tenant_id,
+            source_concept_id__in=concept_ids,
+        ).values_list("target_concept_id", flat=True)
+        incoming = ConceptEdge.objects.filter(
+            tenant_id=tenant_id,
+            target_concept_id__in=concept_ids,
+        ).values_list("source_concept_id", flat=True)
+        expanded = set(concept_ids) | set(neighbor) | set(incoming)
+    except Exception:
+        expanded = set(concept_ids)
+
+    res_ids = ResourceConcept.objects.filter(concept_id__in=expanded).values_list(
         "resource_id", flat=True
     )
     res_ids = set(res_ids) & set(resource_ids)

@@ -26,6 +26,75 @@ def _simple_chunk(text: str, max_chars: int = 1200, overlap: int = 150) -> list[
     return chunks
 
 
+def _persist_concepts_and_edges(resource, version, payload, tenant_id):
+    """Write the concept graph rows for an ingested document.
+
+    Concept extraction earlier produced ``{"concepts": [...], "relations":
+    [...]}``. This helper upserts Concept (by canonical name per tenant),
+    links them to the resource via ResourceConcept (with the first chunk
+    that mentions the concept as the pivot), and creates ConceptEdge rows
+    for the extracted relations.
+
+    Runs inside the caller's tenant_scope + atomic block.
+    """
+    from apps.knowledge.models import Concept, ConceptEdge, ResourceConcept
+    from apps.resources.models import ResourceChunk
+
+    concepts = payload.get("concepts") or []
+    relations = payload.get("relations") or []
+    if not concepts:
+        return
+
+    chunks = list(
+        ResourceChunk.objects.filter(
+            resource_version=version, tenant_id=tenant_id
+        ).order_by("chunk_index")
+    )
+
+    def _first_chunk_mention(name: str, chunk_rows):
+        target = name.lower()
+        for row in chunk_rows:
+            if target and target in row[1]:
+                return row[0]
+        return None
+
+    chunk_rows = [(c.id, (c.content or "").lower()) for c in chunks]
+
+    created = []
+    for c in concepts:
+        name = str(c.get("name", "")).strip()[:255]
+        if not name:
+            continue
+        desc = str(c.get("description", "")).strip()
+        concept, _ = Concept.objects.get_or_create(
+            tenant_id=tenant_id,
+            canonical_name=name,
+            defaults={"description": desc},
+        )
+        pivot = _first_chunk_mention(name, chunk_rows)
+        ResourceConcept.objects.get_or_create(
+            resource=resource,
+            concept=concept,
+            defaults={"confidence": 1.0, "source_chunk_id": pivot},
+        )
+        created.append(concept)
+
+    name_map = {c.canonical_name.lower(): c for c in created}
+    for r in relations:
+        src = name_map.get(str(r.get("source", "")).lower().strip())
+        tgt = name_map.get(str(r.get("target", "")).lower().strip())
+        if src is None or tgt is None or src.id == tgt.id:
+            continue
+        relation = r.get("relation", "related_to")
+        ConceptEdge.objects.get_or_create(
+            tenant_id=tenant_id,
+            source_concept=src,
+            target_concept=tgt,
+            relation_type=relation,
+            defaults={"weight": 1.0},
+        )
+
+
 def _extract_text(raw: bytes, content_type: str, filename: str = "") -> str:
     """Extract plain text from supported document types.
 
@@ -151,6 +220,20 @@ def process_resource_ingestion(self, resource_id: str, version_id: str, tenant_i
         # Embeddings are an external call — do them before opening the write scope.
         embeddings = generate_embeddings(parts) if parts else []
 
+        # Concept extraction is best-effort: a Gemini failure (or keyless
+        # dev mode) falls back to a deterministic heuristic and never fails
+        # the ingestion. It runs outside the write scope — the LLM call is
+        # the same class of external dependency as embedding.
+        concept_payload = {}
+        if has_text:
+            try:
+                from apps.common.ai import extract_concepts
+
+                concept_payload = extract_concepts(text)
+            except Exception:
+                logger.exception("Concept extraction failed resource=%s", resource_id)
+                concept_payload = {"concepts": [], "relations": []}
+
         with tenant_scope(tenant_id), transaction.atomic():
             ResourceChunk.objects.filter(resource_version=version).delete()
             for idx, (content, emb) in enumerate(zip(parts, embeddings)):
@@ -163,6 +246,7 @@ def process_resource_ingestion(self, resource_id: str, version_id: str, tenant_i
                     token_count=len(content.split()),
                     metadata={},
                 )
+            _persist_concepts_and_edges(resource, version, concept_payload, tenant_id)
             resource.storage_key = version.storage_key
             resource.processing_status = Resource.ProcessingStatus.READY
             resource.has_extractable_text = has_text

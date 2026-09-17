@@ -66,6 +66,16 @@ def generate_presigned_download_url(key: str, expires_in: int = 3600) -> str:
     )
 
 
+def head_object(key: str) -> dict:
+    """Fetch object metadata (size, content type) without downloading bytes."""
+    client = get_s3_client()
+    head = client.head_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=key)
+    return {
+        "content_length": head.get("ContentLength"),
+        "content_type": head.get("ContentType") or "",
+    }
+
+
 def delete_object(key: str) -> None:
     client = get_s3_client()
     client.delete_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=key)
