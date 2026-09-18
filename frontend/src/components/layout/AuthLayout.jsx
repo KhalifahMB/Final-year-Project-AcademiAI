@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight,
   Check,
   GraduationCap,
   ShieldCheck,
@@ -10,12 +9,12 @@ import BrandMark from '@/components/shared/BrandMark';
 import { Button } from '@/components/ui/button';
 
 /**
- * AuthLayout — landing-editorial edition.
+ * AuthLayout — wireframe edition.
  *
  * Unifies every auth page (/login, /signup, /verify-email, /password-reset,
- * /request-institution) with the public landing system: paper canvas, serif
- * display type, teal eyebrow/links, hairline panel card, and the same
- * sticky nav + footer. No glass, no indigo glow — one voice everywhere.
+ * /request-institution) with the grounded institutional landing system:
+ * paper canvas, Fraunces display type, violet accent, hairline cards,
+ * and the same sticky nav + footer. No glass, no indigo glow — one voice.
  */
 export default function AuthLayout({
   title,
@@ -34,8 +33,10 @@ export default function AuthLayout({
             <span>AcademiAI</span>
           </Link>
           <nav className="landing-nav__links" aria-label="Landing page sections">
-            <Link to="/#model">The model</Link>
-            <Link to="/#institutions">Institutions</Link>
+            <Link to="/#solution">Product</Link>
+            <Link to="/#security">Security</Link>
+            <Link to="/#roles">Roles</Link>
+            <Link to="/#how">How it works</Link>
           </nav>
           <div className="landing-nav__actions">
             <ThemeToggle className="landing-theme-btn" iconOnly />
@@ -48,10 +49,7 @@ export default function AuthLayout({
               <Link to="/login">Sign in</Link>
             </Button>
             <Button className="landing-auth-primary" size="sm" asChild>
-              <Link to="/signup">
-                Get started{' '}
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </Link>
+              <Link to="/request-institution">Request workspace</Link>
             </Button>
           </div>
         </div>
