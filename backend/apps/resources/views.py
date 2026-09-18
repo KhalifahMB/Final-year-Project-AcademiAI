@@ -49,6 +49,14 @@ from .summary_tasks import summarize_resource_task
 
 logger = logging.getLogger(__name__)
 
+# Resource detail GET responses are cached in Redis to keep repeated reads
+# (e.g. navigating materials list -> detail, report generation loops) cheap.
+# The cache key is tenant-scoped AND user-scoped (visibility differs per
+# user), and embeds the resource's updated_at so ANY authorised write to the
+# resource (metadata edit, reprocess, re-share) automatically changes the key
+# and yields a fresh read. A bounded TTL keeps orphans tidy.
+RESOURCE_GET_CACHE_TTL = 300
+
 
 def _record_resource_access(resource, user, access_type: str) -> None:
     """Best-effort structured view/download event for lecturer analytics.
@@ -224,7 +232,12 @@ def _authorized_resources_q(user) -> Q:
     # regardless of role. `scope` never matches a private resource; the owner's
     # own materials are OR-ed into the visible set, then the moderation mask is
     # applied to BOTH branches (so flagged/removed never leak back in).
-    return (scope | Q(visibility_scope=Resource.Visibility.PRIVATE, uploaded_by=user)) & moderation_q
+    #
+    # Explicit per-user grants (ResourcePermission with user=viewer, i.e.
+    # uploader "shared with" that person) extend visibility to any scope,
+    # including private — the sharee still respects the moderation mask.
+    shared_q = Q(permissions__user=user)
+    return (scope | Q(visibility_scope=Resource.Visibility.PRIVATE, uploaded_by=user) | shared_q) & moderation_q
 
 
 @extend_schema(tags=["Resources"])
@@ -267,6 +280,26 @@ class ResourceViewSet(TenantModelViewSet):
         # within it. Applied to list AND detail (get_object) alike. Private
         # resources are owner-only for every role (admins included).
         return qs.filter(_authorized_resources_q(user))
+
+    def retrieve(self, request, *args, **kwargs):
+        """Serve authorized detail reads from Redis, tenant-scoped.
+
+        Authorization ALWAYS runs first (get_object -> _authorized_resources_q
+        + TenantObjectPermission), so a cache hit is only ever served to a
+        user who can legitimately read the material. The key embeds the
+        resource's updated_at, so writes invalidate the entry implicitly.
+        """
+        from django.core.cache import cache
+
+        instance = self.get_object()
+        user = request.user
+        ts = instance.updated_at.isoformat()
+        key = f"res:{instance.tenant_id}:{user.id}:{instance.pk}:{ts}"
+        data = cache.get(key)
+        if data is None:
+            data = self.get_serializer(instance).data
+            cache.set(key, data, RESOURCE_GET_CACHE_TTL)
+        return Response(data)
 
     def get_permissions(self):
         perms = super().get_permissions()

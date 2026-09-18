@@ -179,3 +179,126 @@ def test_ai_rate_limit_returns_429():
     )
     assert resp.status_code == 429, resp.data
     assert "available" in resp.data.get("detail", "").lower() or "throttl" in str(resp.data).lower()
+
+
+# ---------------------------------------------------------------------------
+# TC-05 / SEC-02: expired and tampered JWTs are rejected with 401
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+def test_expired_access_token_rejected():
+    """An access token whose exp claim is in the past must be rejected."""
+    from datetime import timedelta
+
+    from rest_framework_simplejwt.tokens import AccessToken
+
+    tenant = _tenant("exp-jwt")
+    user = _user(tenant, "s@m.edu", role="student")
+    token = AccessToken.for_user(user)
+    token["exp"] = 1  # epoch start: clearly expired
+    expired = str(token)
+
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {expired}")
+    resp = client.get("/api/v1/auth/me/")
+    assert resp.status_code == 401, resp.data
+
+
+@pytest.mark.django_db
+def test_tampered_access_token_rejected():
+    """A signature-corrupted bearer token must be rejected with 401."""
+    from rest_framework_simplejwt.tokens import RefreshToken
+
+    tenant = _tenant("tamper-jwt")
+    user = _user(tenant, "s@m.edu", role="student")
+    valid = str(RefreshToken.for_user(user).access_token)
+    tampered = valid[:-4] + ("AAAA" if not valid.endswith("AAAA") else "BBBB")
+
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION=f"Bearer {tampered}")
+    resp = client.get("/api/v1/auth/me/")
+    assert resp.status_code == 401, resp.data
+
+
+# ---------------------------------------------------------------------------
+# TC-20: malformed JSON body is rejected with 400, no crash
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+def test_malformed_json_rejected_with_400():
+    tenant = _tenant("bad-json")
+    user = _user(tenant, "s@m.edu", role="student")
+    client = APIClient()
+    client.force_authenticate(user)
+    resp = client.post(
+        "/api/v1/chat/sessions/",
+        data=b"{this is not json",
+        content_type="application/json",
+    )
+    assert resp.status_code == 400, resp.data
+    assert "detail" in resp.data or "error" in resp.data
+
+
+# ---------------------------------------------------------------------------
+# TC-16: quiz attempt submission is scored server-side; answers not leaked
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+def test_quiz_submission_scores_server_side_and_does_not_leak_answers():
+    from apps.assessments.models import Quiz, QuizAttempt, QuizQuestion
+
+    tenant = _tenant("quiz-submit")
+    student = _user(tenant, "s@m.edu", role="student")
+    quiz = Quiz.objects.create(
+        tenant=tenant, title="Algorithms quiz",
+        status=Quiz.Status.PUBLISHED,
+    )
+    q1 = QuizQuestion.objects.create(
+        tenant=tenant, quiz=quiz, question_text="Q1",
+        question_type="multiple_choice", options=["A", "B"],
+        correct_answer={"index": 0}, explanation="expl1", order_index=0,
+    )
+    q2 = QuizQuestion.objects.create(
+        tenant=tenant, quiz=quiz, question_text="Q2",
+        question_type="multiple_choice", options=["A", "B", "C"],
+        correct_answer={"index": 2}, explanation="expl2", order_index=1,
+    )
+
+    client = APIClient()
+    client.force_authenticate(student)
+
+    # Before submission, a student listing the quiz must NOT see the answers.
+    quiz_resp = client.get(f"/api/v1/quizzes/{quiz.id}/")
+    if quiz_resp.status_code == 200:
+        q_payload = quiz_resp.data.get("questions") or []
+        for q in q_payload:
+            assert "correct_answer" not in q, q
+            assert "explanation" not in q, q
+
+    attempt_resp = client.post(
+        "/api/v1/quiz-attempts/", {"quiz": str(quiz.id)}, format="json",
+    )
+    assert attempt_resp.status_code == 201, attempt_resp.data
+    attempt_id = attempt_resp.data["id"]
+
+    # Submit: q1 correct, q2 wrong -> score = 50%.
+    submit_resp = client.post(
+        f"/api/v1/quiz-attempts/{attempt_id}/submit/",
+        {"answers": {str(q1.id): {"index": 0}, str(q2.id): {"index": 0}}},
+        format="json",
+    )
+    assert submit_resp.status_code == 200, submit_resp.data
+    assert submit_resp.data["score"] == 50.0, submit_resp.data["score"]
+    assert submit_resp.data["submitted_at"] is not None
+
+    attempt = QuizAttempt.objects.get(id=attempt_id)
+    assert attempt.score == 50.0
+    assert len(attempt.answers) == 2
+
+    # A second submission is rejected — scores are final.
+    dup = client.post(
+        f"/api/v1/quiz-attempts/{attempt_id}/submit/",
+        {"answers": {str(q1.id): {"index": 1}, str(q2.id): {"index": 2}}},
+        format="json",
+    )
+    assert dup.status_code == 409, dup.data

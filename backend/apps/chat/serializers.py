@@ -45,14 +45,25 @@ class ChatMessageSourceSerializer(serializers.ModelSerializer):
 
 class ChatMessageSerializer(serializers.ModelSerializer):
     sources = ChatMessageSourceSerializer(many=True, read_only=True)
+    retrieved_chunk_ids = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatMessage
         fields = (
             "id", "session", "role", "content", "content_type",
-            "confidence", "rating", "sources", "created_at",
+            "confidence", "rating", "sources", "retrieved_chunk_ids", "created_at",
         )
         read_only_fields = ("id", "role", "content_type", "confidence", "rating", "created_at")
+
+    def get_retrieved_chunk_ids(self, obj):
+        """Chunk IDs that grounded this message, derived from sources.
+
+        Sources are normalized into ChatMessageSource rows during the turn
+        (append_assistant_message persists them), so the IDs here are the
+        server-authoritative answer to "which chunks grounded this reply"
+        rather than a denormalized field that could drift from the citations.
+        """
+        return [str(s.chunk_id) for s in obj.sources.all() if s.chunk_id]
 
 
 class ChatSessionSerializer(serializers.ModelSerializer):

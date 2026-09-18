@@ -17,7 +17,9 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "@fontsource-variable/fraunces": "^5.3.0",
     "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-alert-dialog": "^1.1.23",
     "@radix-ui/react-tooltip": "^1.1.0",

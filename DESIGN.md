@@ -115,7 +115,7 @@ In-app (Geist + Geist Mono); landing (Fraunces + Inter):
 --font-display: var(--font-sans);   /* app headings stay sans */
 ```
 
-Fonts loaded via Google Fonts (`index.html`): Fraunces (9..144 opsz), Geist (400–700), Geist Mono (400–600), Inter (400–700).
+Fonts are self-hosted via `@fontsource-variable` (Geist, Geist Mono, Fraunces), imported in `main.jsx`, so they bundle with the build and work offline.
 
 ### Scale (app)
 

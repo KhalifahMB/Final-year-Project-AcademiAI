@@ -5,6 +5,16 @@ from .models import Resource, ResourceVersion, ResourceSummary, ResourceReport
 class ResourceSerializer(serializers.ModelSerializer):
     uploaded_by_username = serializers.CharField(source="uploaded_by.username", read_only=True, default=None)
     latest_summary = serializers.SerializerMethodField()
+    # Explicit per-user read grants. Accepts a list of user emails; the server
+    # resolves them within the caller's tenant and stores ResourcePermission
+    # rows (permission="read"). Granting is limited to the uploader/admins.
+    shared_with = serializers.ListField(
+        child=serializers.EmailField(),
+        write_only=True,
+        required=False,
+        allow_empty=True,
+    )
+    shared_with_users = serializers.SerializerMethodField()
 
     def validate(self, attrs):
         """
@@ -24,6 +34,24 @@ class ResourceSerializer(serializers.ModelSerializer):
         user = getattr(request, "user", None)
         if user is None or not getattr(user, "tenant_id", None):
             return attrs
+
+        # Per-user sharing is owner/admin-only (defense in depth on top of
+        # IsOwnerOrAdminForWrite on the update/destroy actions).
+        shared_with = attrs.get("shared_with")
+        if shared_with is not None:
+            is_owner_or_admin = bool(getattr(user, "is_tenant_admin", False)) or bool(
+                getattr(user, "is_superuser", False)
+            ) or (
+                self.instance is not None
+                and getattr(self.instance, "uploaded_by_id", None) == user.id
+            )
+            if not is_owner_or_admin:
+                raise serializers.ValidationError(
+                    {"shared_with": "Only the uploader or a tenant admin can share this material."}
+                )
+            attrs["_shared_with_emails"] = [
+                e.strip().lower() for e in shared_with if e and e.strip()
+            ]
 
         offering = attrs.get("course_offering")
         if offering is None:
@@ -87,14 +115,74 @@ class ResourceSerializer(serializers.ModelSerializer):
             "has_extractable_text",
             "course_offering", "programme", "department", "faculty",
             "uploaded_by", "uploaded_by_username", "tenant",
+            "shared_with", "shared_with_users",
             "created_at", "updated_at", "latest_summary",
         )
         read_only_fields = (
             "id", "processing_status", "processing_error", "moderation_status",
             "has_extractable_text",
             "uploaded_by", "tenant", "created_at", "updated_at",
-            "latest_summary",
+            "latest_summary", "shared_with_users",
         )
+
+    def create(self, validated_data):
+        emails = validated_data.pop("_shared_with_emails", None)
+        instance = super().create(validated_data)
+        if emails is not None:
+            self._sync_shared_with(instance, emails)
+        return instance
+
+    def update(self, instance, validated_data):
+        emails = validated_data.pop("_shared_with_emails", None)
+        instance = super().update(instance, validated_data)
+        if emails is not None:
+            self._sync_shared_with(instance, emails)
+        return instance
+
+    def _sync_shared_with(self, instance, emails):
+        """Replace the user-level grants with the provided email list.
+
+        Only users inside the resource's tenant are eligible; unknown or
+        cross-tenant emails are dropped (the listing filters ensure owners
+        cannot grant to strangers). Staff rows (role/course_offering based,
+        user=None) are left untouched.
+        """
+        from apps.accounts.models import User
+        from .models import ResourcePermission
+
+        ResourcePermission.objects.filter(
+            resource=instance, user__isnull=False, permission="read",
+        ).delete()
+        if not emails:
+            return
+        users = User.objects.filter(
+            email__in=emails, tenant_id=instance.tenant_id, is_active=True,
+        )
+        for u in users:
+            ResourcePermission.objects.get_or_create(
+                resource=instance, user=u, permission="read",
+                defaults={"tenant": instance.tenant},
+            )
+
+    def get_shared_with_users(self, obj):
+        from .models import ResourcePermission
+
+        rows = (
+            obj.permissions.filter(user__isnull=False)
+            .select_related("user")
+            .order_by("user__email")
+        )
+        return [
+            {
+                "id": str(r.user_id),
+                "email": r.user.email,
+                "name": (
+                    f"{r.user.first_name} {r.user.last_name}".strip()
+                    or r.user.email
+                ),
+            }
+            for r in rows
+        ]
 
     def get_latest_summary(self, obj):
         s = getattr(obj, "prefetched_latest_summary", None)

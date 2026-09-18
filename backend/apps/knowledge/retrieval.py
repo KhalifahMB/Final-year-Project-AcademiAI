@@ -95,15 +95,17 @@ def _compute_authorized_resource_ids(user, course_offering_id=None):
                 Q(course_offering_id=course_offering_id)
                 | Q(visibility_scope=Resource.Visibility.INSTITUTION)
             )
-        # Private materials are owner-only, even for admins/superusers.
+        # Private materials are owner-only, even for admins/superusers —
+        # unless the uploader explicitly shared the material with the admin.
         qs = qs.filter(
             ~Q(visibility_scope=Resource.Visibility.PRIVATE)
             | Q(
                 visibility_scope=Resource.Visibility.PRIVATE,
                 uploaded_by=user,
             )
+            | Q(permissions__user=user)
         )
-        return list(qs.values_list("id", flat=True))
+        return list(qs.distinct().values_list("id", flat=True))
 
     # Students: enrolled offerings + institution-visible
     enrolled = CourseEnrollment.objects.filter(
@@ -135,6 +137,7 @@ def _compute_authorized_resource_ids(user, course_offering_id=None):
             uploaded_by=user,
         )
         | Q(visibility_scope=Resource.Visibility.PRIVATE, uploaded_by=user)
+        | Q(permissions__user=user)
     )
 
     programme_id, department_id, faculty_id = _viewer_academic_context(user)
@@ -145,7 +148,7 @@ def _compute_authorized_resource_ids(user, course_offering_id=None):
     if faculty_id:
         q |= Q(visibility_scope=Resource.Visibility.FACULTY, faculty_id=faculty_id)
 
-    return list(qs.filter(q).values_list("id", flat=True))
+    return list(qs.filter(q).distinct().values_list("id", flat=True))
 
 
 def _rrf_fuse(rank_lists, k=60):
