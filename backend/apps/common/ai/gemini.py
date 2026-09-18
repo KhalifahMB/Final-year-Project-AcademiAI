@@ -34,6 +34,28 @@ _CONTROL_CHARS_RE = re.compile(
 )
 _SPACE_RUN_RE = re.compile(r"\s+")
 
+_WORD_RE = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9'.'-]*")
+# Sentence splitter: a terminator followed by whitespace + an uppercase letter
+# (or a digit / quote / end of input), avoiding split inside "e.g."-style
+# abbreviations because the preceding char is lowercase and not a terminal.
+_SENTENCE_RE = re.compile(r"(?<=[.!?])(?=\s+(?:[A-Z0-9\"']|\s*$))")
+
+# Function words with little standalone signal; dropped before term scoring.
+_STOPLIST = frozenset({
+    "a", "an", "the", "and", "but", "or", "nor", "for", "on", "at", "to",
+    "from", "by", "with", "of", "in", "as", "is", "are", "was", "were", "be",
+    "been", "being", "it", "its", "this", "that", "these", "those", "we",
+    "you", "they", "he", "she", "i", "me", "my", "our", "your", "their",
+    "them", "him", "her", "his", "not", "no", "if", "then", "than", "so",
+    "too", "very", "can", "will", "would", "could", "should", "may", "might",
+    "must", "about", "into", "over", "after", "before", "have", "has", "had",
+    "do", "does", "did", "also", "there", "their", "which", "who", "whom",
+    "what", "when", "where", "why", "how", "all", "any", "both", "each",
+    "more", "most", "other", "some", "such", "only", "own", "same", "until",
+    "while", "because", "upon", "within", "without", "between", "among",
+    "during", "above", "below", "etc", "eg", "ie", "vs",
+})
+
 # Look-alike letters (Cyrillic, Greek, fullwidth Latin) routinely swapped in
 # to dodge ASCII keyword filters ("іgnore prevіous instructions").
 _CONFUSABLES = str.maketrans(
@@ -477,6 +499,105 @@ def extract_concepts(text: str, max_concepts: int = 12) -> dict[str, Any]:
         return _fallback()
 
 
+def _extractive_summary(text: str, max_words: int = 300, max_key_points: int = 6) -> dict[str, Any]:
+    """Deterministic sentence-extractive summary used when Gemini is
+    unavailable or fails.
+
+    Scores sentences by the summed frequency of their content words (with a
+    mild length normalization), then greedily selects the most informative
+    sentences until the word budget is exhausted. This keeps "Generate
+    summary" functional offline and never returns a placeholder.
+    """
+    if not text or not text.strip():
+        return {"summary": "This material has no extractable text.", "key_points": []}
+
+    normalized = _SPACE_RUN_RE.sub(" ", text).strip()
+    raw_sentences = [s.strip() for s in _SENTENCE_RE.split(normalized) if s.strip()]
+    if not raw_sentences:
+        raw_sentences = [normalized]
+
+    # Keep everything, but prefer meaningfully-sized sentences for ranking.
+    sentences = [
+        s for s in raw_sentences if len(_WORD_RE.findall(s)) >= 5
+    ] or raw_sentences
+
+    freq: dict[str, int] = {}
+    for s in sentences:
+        for w in _WORD_RE.findall(s.lower()):
+            if w not in _STOPLIST:
+                freq[w] = freq.get(w, 0) + 1
+
+    def score(s: str) -> float:
+        words = _WORD_RE.findall(s.lower())
+        content = [w for w in words if w not in _STOPLIST]
+        if not content:
+            return 0.0
+        term = sum(freq.get(w, 0) for w in content) / len(content)
+        length = min(len(words), 45) / 45.0
+        return term * (0.6 + 0.4 * length)
+
+    ranked = sorted(((score(s), i, s) for i, s in enumerate(sentences)), reverse=True)
+
+    selected: list[tuple[int, str]] = []
+    budget = max_words
+    for _sc, idx, s in ranked:
+        n = len(_WORD_RE.findall(s))
+        if n == 0 or n > budget:
+            continue
+        selected.append((idx, s))
+        budget -= n
+        if budget <= 0 or len(selected) >= 60:
+            break
+
+    if not selected:
+        # Every sentence overran the budget or the text is one giant run-on:
+        # fall back to the leading sentences (truncated if needed).
+        budget = max_words
+        for idx, s in enumerate(raw_sentences):
+            n = len(_WORD_RE.findall(s))
+            if n == 0 or n > budget:
+                continue
+            selected.append((idx, s))
+            budget -= n
+            if budget <= 0:
+                break
+        if not selected:
+            words = normalized.split()
+            return {
+                "summary": " ".join(words[:max_words]) + ".",
+                "key_points": [],
+            }
+
+    selected.sort(key=lambda pair: pair[0])
+    words_used = 0
+    kept = []
+    for idx, s in selected:
+        n = len(_WORD_RE.findall(s))
+        if words_used + n > max_words:
+            extra = max_words - words_used
+            if extra > 4:
+                kept.append(" ".join(s.split()[:extra]).rstrip(" ,;") + ".")
+                words_used += extra
+            continue
+        kept.append(s)
+        words_used += n
+    summary = " ".join(kept).strip() or selected[0][1]
+
+    key_points: list[str] = []
+    for _sc, idx, s in ranked:
+        n = len(_WORD_RE.findall(s))
+        if 6 <= n <= 26:
+            if not s.rstrip().endswith((".", "!", "?")):
+                s = s.rstrip(" ,;") + "."
+            key_points.append(s.strip())
+            if len(key_points) >= max_key_points:
+                break
+    if not key_points:
+        key_points = [kept[0]] if kept else [summary]
+
+    return {"summary": summary, "key_points": key_points}
+
+
 def generate_summary(text: str, max_words: int = 300) -> dict[str, Any]:
     """Generate a structured summary for the given academic text.
 
@@ -486,13 +607,9 @@ def generate_summary(text: str, max_words: int = 300) -> dict[str, Any]:
             "key_points": ["bullet 1", "bullet 2", ...],
         }
 
-    Falls back to a minimal dict when Gemini is unavailable or on error so
-    callers can always rely on the shape.
+    When Gemini is unavailable or errors, falls back to a deterministic
+    extractive summary so callers always get real content — never a stub.
     """
-    fallback = {
-        "summary": f"(Dev stub) Content length is {len(text)} characters.",
-        "key_points": [],
-    }
     client = _get_client()
     prompt = (
         f"Summarize the following academic content. The overview must be at most {max_words} words. "
@@ -501,14 +618,15 @@ def generate_summary(text: str, max_words: int = 300) -> dict[str, Any]:
         f"{CANARY_OPEN}\n{_sanitize_context(text, 12000)}\n{CANARY_CLOSE}"
     )
     if client is None:
-        return fallback
+        logger.info("No Gemini API key; using extractive summary fallback")
+        return _extractive_summary(text, max_words=max_words)
     try:
         resp = client.models.generate_content(
             model=settings.GEMINI_MODEL,
             contents=prompt,
             config=_generation_config(SUMMARY_SYSTEM),
         )
-        
+
         raw = (resp.text or "").strip()
         raw = re.sub(r"^```json\s*|\s*```$", "", raw, flags=re.I)
         parsed = json.loads(raw) if raw else None
@@ -516,11 +634,12 @@ def generate_summary(text: str, max_words: int = 300) -> dict[str, Any]:
         kp_raw = parsed.get("key_points", []) if isinstance(parsed, dict) else []
         key_points = [str(k).strip() for k in kp_raw if isinstance(k, str) and str(k).strip()]
         if not summary_text:
-            return fallback
+            logger.warning("Gemini returned an empty summary; using extractive fallback")
+            return _extractive_summary(text, max_words=max_words)
         return {"summary": summary_text, "key_points": key_points}
     except Exception:
-        logger.exception("Summary failed")
-        return fallback
+        logger.exception("Summary failed; using extractive fallback")
+        return _extractive_summary(text, max_words=max_words)
 
 
 def generate_quiz_json(context: str, num_questions: int = 5) -> dict[str, Any]:

@@ -228,6 +228,73 @@ def test_chat_history_scoped_to_owner_and_session():
 
 
 @pytest.mark.django_db
+def test_preview_office_format_serves_extracted_text():
+    from apps.resources.models import ResourceChunk, ResourceVersion
+
+    t = make_tenant("officepreview")
+    owner = make_user("o@officepreview.edu", t)
+    key = f"tenants/{t.id}/resources/deck/slides.pptx"
+    res = Resource.objects.create(
+        tenant=t, title="Slides.pptx", uploaded_by=owner,
+        storage_key=key,
+        mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        processing_status=Resource.ProcessingStatus.READY,
+        has_extractable_text=True,
+    )
+    ver = ResourceVersion.objects.create(
+        tenant=t, resource=res, version_number=1, storage_key=key, created_by=owner
+    )
+    ResourceChunk.objects.create(
+        tenant=t, resource_version=ver, chunk_index=0,
+        content="Big-O notation describes algorithm growth.",
+    )
+    ResourceChunk.objects.create(
+        tenant=t, resource_version=ver, chunk_index=1,
+        content="Merge sort runs in O(n log n).",
+    )
+    client = auth_client(owner)
+
+    # Classification falls back to "other" when the magic sniff can't reach
+    # storage; the office-format branch must still serve the chunk text.
+    with patch("apps.resources.views.get_s3_client") as s3:
+        s3.side_effect = Exception("no storage in test")
+        resp = client.get(f"/api/v1/resources/{res.id}/preview/")
+
+    assert resp.status_code == 200
+    assert resp.data["kind"] == "text"
+    assert "Big-O notation" in resp.data["content"]
+    assert "O(n log n)" in resp.data["content"]
+    assert resp.data["truncated"] is False
+
+
+@patch("apps.common.ai.gemini._get_client")
+def test_summary_fallback_is_extractive_not_stub(get_client):
+    from apps.common.ai import generate_summary
+
+    get_client.return_value = None
+    text = (
+        "Photosynthesis converts light energy into chemical energy. "
+        "Chlorophyll absorbs sunlight and drives the process. " * 20
+    )
+    result = generate_summary(text, max_words=60)
+    assert "(Dev stub" not in result["summary"]
+    assert result["summary"].strip()
+    assert isinstance(result["key_points"], list)
+    assert any(kp for kp in result["key_points"])
+    assert len(result["summary"].split()) <= 60
+
+
+@patch("apps.common.ai.gemini._get_client")
+def test_summary_fallback_handles_empty_text(get_client):
+    from apps.common.ai import generate_summary
+
+    get_client.return_value = None
+    result = generate_summary("   ", max_words=60)
+    assert result["summary"].strip()
+    assert result["key_points"] == []
+
+
+@pytest.mark.django_db
 def test_job_error_never_leaks_task_paths():
     from apps.common.jobs import get_job_status
 

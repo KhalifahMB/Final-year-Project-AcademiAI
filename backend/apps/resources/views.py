@@ -13,6 +13,7 @@ from rest_framework.response import Response
 
 from apps.academics.models import CourseEnrollment, LecturerCourseAssignment
 from apps.audit.services import log_action
+from apps.common.constants import RESOURCE_TEXT_PEEK_BYTES
 from apps.common.jobs import claim_job
 from apps.common.permissions import IsLecturerOrAdmin, IsTenantMember
 from apps.common.throttling import AiRateThrottle, UploadRateThrottle
@@ -23,6 +24,7 @@ from .models import (
     Resource,
     ResourceVersion,
     ResourceSummary,
+    ResourceChunk,
     ResourceAccess,
     ResourceReport,
 )
@@ -80,18 +82,48 @@ def _record_resource_access(resource, user, access_type: str) -> None:
 
 
 _IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".gif", ".webp")
-_TEXT_EXTS = (".txt", ".md", ".markdown", ".json", ".csv", ".log")
+_TEXT_EXTS = (".txt", ".md", ".markdown", ".json", ".log", ".rtf")
+_OFFICE_EXTS = (".doc", ".docx", ".ppt", ".pptx")
+_SHEET_EXTS = (".xls", ".xlsx", ".csv")
 
 _IMAGE_MIMES = ("image/",)
+_TEXT_MIMES = ("text/", "application/json", "application/rtf")
+_OFFICE_MIMES = (
+    "application/msword",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml",
+    "application/vnd.openxmlformats-officedocument.presentationml",
+)
+_SHEET_MIMES = (
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml",
+    "text/csv",
+    "text/comma-separated-values",
+)
+
+_OFFICE_RENDERABLE_MIMES = (
+    # Legacy binary .doc/.ppt cannot be rendered client-side (OLE), but the
+    # office mark still routes them to the content endpoint so the frontend
+    # can decide (it falls back to text-from-chunks when rendering fails).
+    "application/msword",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml",
+    "application/vnd.openxmlformats-officedocument.presentationml",
+)
 
 
 def _preview_kind(resource) -> str:
     """
-    Classify a stored file for preview: 'pdf' | 'image' | 'text' | 'other'.
+    Classify a stored file for preview:
+    'pdf' | 'office' | 'sheet' | 'image' | 'text' | 'other'.
 
     Signals, in order: stored mime_type, title/filename extension, then a
     magic-byte sniff of the object's first bytes (covers resources uploaded
     before mime_type was persisted, where keys are extension-less UUIDs).
+
+    - 'office'  → Word/PowerPoint (rendered client-side by the frontend)
+    - 'sheet'   → Excel/CSV (rendered client-side by the frontend)
+    - 'text'    → plain-text files served inline
     """
     mime = (resource.mime_type or "").lower()
     title = (resource.title or "").lower()
@@ -100,15 +132,23 @@ def _preview_kind(resource) -> str:
     def by_mime(m):
         if "pdf" in m:
             return "pdf"
+        if m.startswith(_OFFICE_MIMES):
+            return "office"
+        if m.startswith(_SHEET_MIMES):
+            return "sheet"
         if m.startswith(_IMAGE_MIMES):
             return "image"
-        if m.startswith("text/") or m in ("application/json",):
+        if m.startswith(_TEXT_MIMES):
             return "text"
         return None
 
     def by_ext(name):
         if name.endswith(".pdf"):
             return "pdf"
+        if name.endswith(_OFFICE_EXTS):
+            return "office"
+        if name.endswith(_SHEET_EXTS):
+            return "sheet"
         if name.endswith(_IMAGE_EXTS):
             return "image"
         if name.endswith(_TEXT_EXTS):
@@ -146,6 +186,42 @@ def _preview_kind(resource) -> str:
         return "text"
     except UnicodeDecodeError:
         return "other"
+
+
+def _chunk_text_preview(resource, max_chars: int = RESOURCE_TEXT_PEEK_BYTES):
+    """Assemble extracted text for an inline text preview.
+
+    Binary office formats (ppt/pptx/doc/docx/xls/xlsx...) can't be served
+    raw into the browser, but any text they contained was extracted into
+    chunks during ingestion. Re-concatenate those chunks (up to the same
+    512 KB cap as raw text previews) so the document is still readable
+    without downloading it. Returns ``(content, truncated)`` or
+    ``(None, False)`` when no extractable text exists.
+    """
+    latest = resource.versions.first()
+    if latest is None:
+        return None, False
+    chunks = (
+        ResourceChunk.objects.filter(resource_version=latest)
+        .order_by("chunk_index")
+        .values_list("content", flat=True)
+    )
+    parts = []
+    size = 0
+    truncated = False
+    for content in chunks:
+        text = (content or "").strip()
+        if not text:
+            continue
+        sep = "\n\n" if parts else ""
+        if size + len(sep) + len(text) > max_chars:
+            truncated = True
+            break
+        parts.append(text)
+        size += len(sep) + len(text)
+    if not parts:
+        return None, False
+    return "\n\n".join(parts), truncated
 
 
 def _authorized_resources_q(user) -> Q:
@@ -414,11 +490,20 @@ class ResourceViewSet(TenantModelViewSet):
     def preview(self, request, pk=None):
         """
         Inline preview support:
-        - PDFs and images: a short-lived signed URL suitable for
-          <iframe>/<img> embedding;
-        - text-like files (txt/md/json/csv): content returned directly
-          (capped at 512 KB) so the browser needs no cross-origin fetch;
-        - anything else: a signed download URL.
+        - PDFs: a local `content_url` streaming the stored bytes so the
+          frontend renders them client-side (pdf.js canvas) — no browser
+          PDF-plugin iframe, no cross-origin MinIO fetch;
+        - office documents (Word/PowerPoint) and spreadsheets (Excel/CSV):
+          the same `content_url`, rendered by the frontend's client-side
+          document viewer;
+        - images: a short-lived signed URL suitable for <img> embedding
+          (forced inline + content type so the browser renders rather than
+          downloads);
+        - text-like files (txt/md/json/log): content returned directly
+          (capped at 512 KB) so the browser needs no extra fetch;
+        - anything with extractable text that we can't render client-side:
+          the extracted text is re-assembled from chunks,
+        - otherwise: a signed download URL.
 
         Type detection is defensive: stored mime_type first, then the
         original filename/title extension, then magic bytes — storage keys
@@ -434,8 +519,27 @@ class ResourceViewSet(TenantModelViewSet):
 
         kind = _preview_kind(resource)
 
-        if kind in ("pdf", "image"):
-            url = generate_presigned_download_url(resource.storage_key, expires_in=600)
+        if kind in ("pdf", "office", "sheet"):
+            return Response(
+                {
+                    "kind": kind,
+                    # Content is streamed through the API (same origin as the
+                    # app) so the frontend can fetch the bytes with its auth
+                    # cookies and render them client-side. Path is relative;
+                    # the frontend resolves it against its configured API base.
+                    "content_path": f"/resources/{resource.pk}/content/",
+                    "mime_type": resource.mime_type or "",
+                    "title": resource.title,
+                }
+            )
+
+        if kind == "image":
+            url = generate_presigned_download_url(
+                resource.storage_key,
+                expires_in=600,
+                content_type=resource.mime_type or None,
+                inline=True,
+            )
             return Response(
                 {
                     "kind": kind,
@@ -454,6 +558,19 @@ class ResourceViewSet(TenantModelViewSet):
                 }
             )
 
+        # Binary formats that aren't renderable client-side but still have
+        # extractable text: serve the text-extracted chunks inline so the
+        # user can read the document without downloading it.
+        content, truncated = _chunk_text_preview(resource)
+        if content:
+            return Response(
+                {
+                    "kind": "text",
+                    "content": content,
+                    "truncated": truncated,
+                }
+            )
+
         return Response(
             {
                 "kind": "download",
@@ -461,6 +578,42 @@ class ResourceViewSet(TenantModelViewSet):
                 "detail": "Preview is not supported for this file type; download it instead.",
             }
         )
+
+    @action(detail=True, methods=["get"])
+    def content(self, request, pk=None):
+        """Stream the stored file bytes for client-side preview rendering.
+
+        Same authorization path as every other resource action (visibility
+        queryset + RLS + object permissions), so bytes are only ever served
+        to users who can view the resource. Response is inline so the
+        frontend can read it as a Blob; Content-Type mirrors the stored
+        mime_type so the viewer can detect the format.
+        """
+        resource = self.get_object()
+        if not resource.storage_key:
+            return Response(
+                {"detail": "No file uploaded."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        from django.http import FileResponse
+
+        try:
+            client = get_s3_client()
+            obj = client.get_object(
+                Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                Key=resource.storage_key,
+            )
+        except Exception:
+            logger.exception("Failed to stream content resource=%s", resource.id)
+            return Response(
+                {"detail": "The stored file could not be read."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        response = FileResponse(obj["Body"], content_type=resource.mime_type or "application/octet-stream")
+        response["Content-Disposition"] = "inline"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
 
     @extend_schema(
         tags=["Moderation"],

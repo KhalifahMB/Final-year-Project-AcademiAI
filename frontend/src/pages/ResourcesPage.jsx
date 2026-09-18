@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import EmptyState from '@/components/shared/EmptyState';
@@ -10,7 +10,6 @@ import Pagination from '@/components/shared/Pagination';
 import StatusBadge from '@/components/shared/StatusBadge';
 import StatTile from '@/components/shared/StatTile';
 import ResourceCard from '@/components/resources/ResourceCard';
-import ResourceDetailDialog from '@/components/resources/ResourceDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -79,13 +78,13 @@ const VIEWS = [
 ];
 
 export default function ResourcesPage() {
- const { user } = useAuth();
- const qc = useQueryClient();
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
 
- // Dialog / selection
- const [createOpen, setCreateOpen] = useState(false);
- const [createError, setCreateError] = useState('');
- const [selected, setSelected] = useState(null);
+  // Create dialog
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createError, setCreateError] = useState('');
 
  // Filters
  const [searchParams] = useSearchParams();
@@ -218,15 +217,15 @@ export default function ResourcesPage() {
   const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   // Sub-component for a list-item row (alternative to the grid cards)
-  const ResourceRow = ({ r }) => (
+const ResourceRow = ({ r }) => (
   <div
   role="button"
   tabIndex={0}
   aria-label={`Open ${r.title || 'resource'}`}
-  onClick={() => setSelected(r)}
- onKeyDown={(e) => {
- if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(r); }
- }}
+  onClick={() => navigate(`/resources/${r.id}`)}
+  onKeyDown={(e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/resources/${r.id}`); }
+  }}
  className={cn(
  'group flex cursor-pointer items-center gap-3 rounded-lg border bg-card px-3.5 py-2.5',
  'transition-all hover:border-primary/40 hover:bg-accent/30',
@@ -556,11 +555,11 @@ export default function ResourcesPage() {
   <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" data-testid="resources-grid">
  {paged.map((r) => (
  <li key={r.id}>
- <ResourceCard
- resource={r}
- onOpen={setSelected}
- onDeleted={() => qc.invalidateQueries({ queryKey: ['resources'] })}
- />
+<ResourceCard
+  resource={r}
+  onOpen={(res) => navigate(`/resources/${res.id}`)}
+  onDeleted={() => qc.invalidateQueries({ queryKey: ['resources'] })}
+  />
  </li>
  ))}
  </ul>
@@ -572,17 +571,11 @@ export default function ResourcesPage() {
  </ul>
  )}
 
- {filtered.length > PAGE_SIZE && (
- <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} className="mt-4" />
- )}
-
- <ResourceDetailDialog
- resource={selected}
- open={!!selected}
- onClose={() => setSelected(null)}
- />
- </AppShell>
- );
+{filtered.length > PAGE_SIZE && (
+  <Pagination page={safePage} totalPages={totalPages} onPageChange={setPage} className="mt-4" />
+  )}
+  </AppShell>
+  );
 }
 
 /* ------- Small internal pieces ------- */

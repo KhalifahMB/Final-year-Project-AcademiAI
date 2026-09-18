@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   addDays,
@@ -50,6 +50,7 @@ import {
   Clock,
   Download,
   Loader2,
+  ListFilter,
   MapPin,
   Plus,
   Tag,
@@ -80,6 +81,59 @@ const EVENT_TYPE_LABELS = {
 const LAYER_LABELS = Object.fromEntries(LAYERS.map((l) => [l.key, l.label]));
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+const MS_PER_DAY = 86_400_000;
+const RIBBON_ROW = 18;
+const GRID_HEADER_H = 28;
+const MAX_CHIPS = 4;
+
+function eventFallsOn(e, day) {
+  const startDay = startOfDay(parseISO(e.start));
+  if (startDay > day) return false;
+  if (!e.end) return isSameDay(parseISO(e.start), day);
+  return startOfDay(parseISO(e.end)) >= day;
+}
+
+function isMultiDayEvent(e) {
+  if (!e.end) return false;
+  return startOfDay(parseISO(e.end)) > startOfDay(parseISO(e.start));
+}
+
+function layerTint(layer) {
+  const tints = {
+    personal: ['var(--accent-soft)', 'var(--accent-strong)'],
+    academic: ['var(--info-soft)', 'var(--info)'],
+    exams: ['var(--danger-soft)', 'var(--danger)'],
+    office_hours: ['var(--warn-soft)', 'var(--warn)'],
+    institution: ['var(--success-soft)', 'var(--success)'],
+  };
+  return tints[layer] || tints.personal;
+}
+
+function weekSpan(e, weekDays) {
+  const ws = weekDays[0];
+  const we = endOfDay(weekDays[6]);
+  const startDay = startOfDay(parseISO(e.start));
+  const endDay = e.end ? startOfDay(parseISO(e.end)) : startDay;
+  if (startDay > we || endDay < ws) return null;
+  const colStart = startDay < ws ? 0 : Math.round((startDay - ws) / MS_PER_DAY);
+  const colEnd =
+    endDay > we ? 6 : Math.min(6, Math.round((endDay - ws) / MS_PER_DAY));
+  return { colStart, colEnd };
+}
+
+function assignWeekLanes(spans) {
+  const lanes = [];
+  for (const sp of spans) {
+    const li = lanes.findIndex(
+      (lane) =>
+        lane.every((o) => o.colEnd < sp.colStart || o.colStart > sp.colEnd),
+    );
+    if (li === -1) lanes.push([sp]);
+    else lanes[li].push(sp);
+  }
+  return lanes;
+}
 
 function layerColor(layer) {
   return LAYERS.find((l) => l.key === layer)?.color || 'var(--accent)';
@@ -130,6 +184,23 @@ export default function CalendarPage() {
     reminders_minutes: [],
     notify_enabled: true,
   }));
+  const [eventsOnly, setEventsOnly] = useState(false);
+  const [hoverEvent, setHoverEvent] = useState(null);
+  const hoverClearTimer = useRef(null);
+  const bindHover = (e) => ({
+    onMouseEnter: (ev) => {
+      clearTimeout(hoverClearTimer.current);
+      const r = ev.currentTarget.getBoundingClientRect();
+      setHoverEvent({
+        event: e,
+        rect: { left: r.left, top: r.top, bottom: r.bottom, width: r.width },
+      });
+    },
+    onMouseLeave: () => {
+      clearTimeout(hoverClearTimer.current);
+      hoverClearTimer.current = setTimeout(() => setHoverEvent(null), 90);
+    },
+  });
 
   const range = useMemo(() => parseDateValue(view, current), [view, current]);
 
@@ -180,6 +251,7 @@ export default function CalendarPage() {
         : calendarApi.createEvent(payload),
     onSuccess: () => {
       invalidatePlannerCaches(qc);
+      qc.invalidateQueries({ queryKey: ['calendar', 'upcoming'] });
       setShowCreate(false);
       setEditing(null);
       toast.success(editing ? 'Event updated' : 'Event scheduled');
@@ -197,6 +269,7 @@ export default function CalendarPage() {
     mutationFn: calendarApi.deleteEvent,
     onSuccess: () => {
       invalidatePlannerCaches(qc);
+      qc.invalidateQueries({ queryKey: ['calendar', 'upcoming'] });
       setToDelete(null);
       toast.success('Event deleted');
     },
@@ -396,6 +469,18 @@ export default function CalendarPage() {
               ))}
             </div>
 
+            {view === 'month' && (
+              <Button
+                size="sm"
+                variant={eventsOnly ? 'outline' : 'ghost'}
+                onClick={() => setEventsOnly((v) => !v)}
+                className="gap-1.5"
+                aria-pressed={eventsOnly}
+              >
+                <ListFilter className="h-3.5 w-3.5" /> Events only
+              </Button>
+            )}
+
             <Button
               size="sm"
               variant="outline"
@@ -459,50 +544,90 @@ export default function CalendarPage() {
         </div>
 
         {/* Views */}
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12 text-[var(--muted)]">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading
-              calendar…
+        <div
+          className={cn(
+            'min-w-0',
+            view === 'month' && 'xl:grid xl:grid-cols-[minmax(0,1fr)_300px]',
+          )}
+        >
+          <div className="overflow-x-auto">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12 text-[var(--muted)]">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading
+                calendar…
+              </div>
+            ) : view === 'month' && eventsOnly ? (
+              <MonthStrip
+                current={current}
+                selectedDate={selectedDate}
+                events={visibleEvents}
+                onSelectDay={(d) => {
+                  setSelectedDate(d);
+                  setCurrent(d);
+                }}
+                onNewDay={startCreate}
+                onEventClick={startEdit}
+                canEdit={canEdit}
+                bindHover={bindHover}
+              />
+            ) : view === 'month' ? (
+              <MonthView
+                current={current}
+                selectedDate={selectedDate}
+                events={visibleEvents}
+                onSelectDay={(d) => {
+                  setSelectedDate(d);
+                  setCurrent(d);
+                }}
+                onNewDay={startCreate}
+                onEventClick={startEdit}
+                canEdit={canEdit}
+                bindHover={bindHover}
+              />
+            ) : view === 'week' ? (
+              <WeekView
+                current={current}
+                events={visibleEvents}
+                onNewDay={startCreate}
+                onEventClick={startEdit}
+                canEdit={canEdit}
+              />
+            ) : view === 'day' ? (
+              <DayView
+                current={current}
+                events={visibleEvents}
+                onNewDay={startCreate}
+                onEventClick={startEdit}
+                canEdit={canEdit}
+              />
+            ) : (
+              <AgendaView
+                events={visibleEvents}
+                onEventClick={startEdit}
+                onDayClick={navigateDate}
+                canEdit={canEdit}
+              />
+            )}
+          </div>
+          {view === 'month' && !isLoading && (
+            <div className="hidden border-l border-[var(--border)] xl:block">
+              <UpcomingPanel
+                layers={selectedLayers}
+                onEventClick={startEdit}
+                canEdit={canEdit}
+                onNewDay={startCreate}
+                bindHover={bindHover}
+              />
             </div>
-          ) : view === 'month' ? (
-            <MonthView
-              current={current}
-              selectedDate={selectedDate}
-              events={visibleEvents}
-              onSelectDay={(d) => {
-                setSelectedDate(d);
-                setCurrent(d);
-              }}
-              onNewDay={startCreate}
-              onEventClick={startEdit}
-              canEdit={canEdit}
-            />
-          ) : view === 'week' ? (
-            <WeekView
-              current={current}
-              events={visibleEvents}
-              onNewDay={startCreate}
-              onEventClick={startEdit}
-              canEdit={canEdit}
-            />
-          ) : view === 'day' ? (
-            <DayView
-              current={current}
-              events={visibleEvents}
-              onNewDay={startCreate}
-              onEventClick={startEdit}
-              canEdit={canEdit}
-            />
-          ) : (
-            <AgendaView
-              events={visibleEvents}
-              onEventClick={startEdit}
-              onDayClick={navigateDate}
-              canEdit={canEdit}
-            />
           )}
         </div>
+
+        {hoverEvent && (
+          <EventHoverCard
+            event={hoverEvent.event}
+            rect={hoverEvent.rect}
+          />
+        )}
       </div>
 
       <EventDialog
@@ -527,9 +652,10 @@ export default function CalendarPage() {
       <ImportDialog
         open={showImport}
         onOpenChange={setShowImport}
-        onRefetch={() =>
-          qc.invalidateQueries({ queryKey: ['calendar', 'events'] })
-        }
+        onRefetch={() => {
+          qc.invalidateQueries({ queryKey: ['calendar', 'events'] });
+          qc.invalidateQueries({ queryKey: ['calendar', 'upcoming'] });
+        }}
         onTemplate={downloadTemplate}
       />
     </AppShell>
@@ -545,6 +671,7 @@ function MonthView({
   onNewDay,
   onEventClick,
   canEdit,
+  bindHover,
 }) {
   const monthStart = startOfMonth(current);
   const monthEnd = endOfMonth(current);
@@ -563,6 +690,11 @@ function MonthView({
     weeks.push(days.slice(i, i + 7));
   }
 
+  const [moreDay, setMoreDay] = useState(null);
+
+  const multiDay = events.filter(isMultiDayEvent);
+  const singleDay = events.filter((e) => !isMultiDayEvent(e));
+
   return (
     <div>
       <div className="grid grid-cols-7 border-b border-[var(--border)] bg-[var(--surface-2)]/50">
@@ -575,85 +707,646 @@ function MonthView({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7">
-        {days.map((day) => {
-          const dayEvents = events.filter((e) =>
-            isSameDay(parseISO(e.start), day),
-          );
-          const inMonth = isSameMonth(day, current);
-          const today = isToday(day);
-          const selected = isSameDay(day, selectedDate);
-          return (
-            <div
-              key={day.toISOString()}
-              onClick={() => onSelectDay(day)}
-              className={cn(
-                'group relative min-h-[100px] cursor-pointer border-b border-r border-[var(--border)] p-1 transition-colors hover:bg-[var(--hover)] last:border-r-0',
-                !inMonth && 'text-[var(--faint)] bg-[var(--surface)]/40',
-                selected && 'bg-[var(--accent-soft)]/60 hover:bg-[var(--accent-soft)]',
-              )}
-            >
-              <div className="flex items-center justify-between">
-                <span
-                  className={cn(
-                    'inline-flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-[560] transition-colors',
-                    today
-                      ? 'bg-[var(--accent)] text-[var(--on-accent)]'
-                      : selected
-                        ? 'text-[var(--accent-strong)]'
-                        : 'text-[var(--fg)]',
-                  )}
-                >
-                  {format(day, 'd')}
-                </span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onNewDay(day);
-                  }}
-                  className="rounded-full p-1 text-[var(--faint)] opacity-0 transition-[opacity,color] group-hover:opacity-100 hover:bg-[var(--surface-2)] hover:text-[var(--fg)] focus-visible:opacity-100"
-                  aria-label="Add event"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
-              </div>
-              <div className="mt-1 space-y-0.5">
-                {dayEvents.slice(0, 3).map((e) => (
-                  <button
-                    key={e.id}
-                    type="button"
-                    onClick={(ev) => {
-                      ev.stopPropagation();
-                      if (canEdit(e)) onEventClick(e);
-                    }}
-                    title={e.title}
+
+      {weeks.map((week, wi) => {
+        const ws = week[0];
+        const we = endOfDay(week[6]);
+        const spans = [];
+        for (const e of multiDay) {
+          const sp = weekSpan(e, week);
+          if (!sp) continue;
+          spans.push({
+            e,
+            colStart: sp.colStart,
+            colEnd: sp.colEnd,
+            continuesBefore: startOfDay(parseISO(e.start)) < ws,
+            continuesAfter: e.end && startOfDay(parseISO(e.end)) > we,
+          });
+        }
+        spans.sort((a, b) => a.colStart - b.colStart || b.colEnd - a.colEnd);
+        const lanes = assignWeekLanes(spans);
+        const ribbonRows = Math.min(lanes.length, 3);
+
+        return (
+          <div
+            key={wi}
+            className="relative border-b border-[var(--border)] last:border-b-0"
+          >
+            <div className="grid grid-cols-7">
+              {week.map((day) => {
+                const inMonth = isSameMonth(day, current);
+                const today = isToday(day);
+                const selected = isSameDay(day, selectedDate);
+                const chipDocs = singleDay.filter((e) => eventFallsOn(e, day));
+                const visible = chipDocs.slice(
+                  0,
+                  Math.max(1, MAX_CHIPS - ribbonRows),
+                );
+                const more = chipDocs.length - visible.length;
+                return (
+                  <div
+                    key={day.toISOString()}
+                    onClick={() => onSelectDay(day)}
                     className={cn(
-                      'flex w-full items-center gap-1 rounded-[var(--radius-sm)] border border-transparent bg-[var(--surface-2)] px-1 py-0.5 text-left text-[10.5px] font-[520] leading-tight text-[var(--fg-soft)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)] hover:text-[var(--fg)]',
-                      e.status === 'cancelled' && 'opacity-45',
+                      'group relative min-h-[84px] cursor-pointer border-r border-[var(--border)] p-1 transition-colors last:border-r-0 hover:bg-[var(--hover)]',
+                      !inMonth &&
+                        'bg-[var(--surface)]/40',
+                      selected &&
+                        'bg-[var(--accent-soft)]/60 hover:bg-[var(--accent-soft)]',
                     )}
                   >
-                    <span
-                      className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: layerColor(e.layer) }}
-                    />
-                    <span className="truncate">{e.title}</span>
-                  </button>
-                ))}
-                {dayEvents.length > 3 && (
-                  <button
-                    type="button"
-                    onClick={() => onSelectDay(day)}
-                    className="px-1 text-[10.5px] font-[560] text-[var(--muted)] hover:text-[var(--accent-strong)]"
-                  >
-                    +{dayEvents.length - 3} more
-                  </button>
-                )}
-              </div>
+                    <div className="flex h-6 items-center justify-between">
+                      <span
+                        className={cn(
+                          'inline-flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-[560] transition-colors',
+                          today
+                            ? 'bg-[var(--accent)] text-[var(--on-accent)]'
+                            : selected
+                              ? 'text-[var(--accent-strong)]'
+                              : cn(
+                                  'text-[var(--fg)]',
+                                  !inMonth && 'text-[var(--faint)]',
+                                ),
+                        )}
+                      >
+                        {format(day, 'd')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNewDay(day);
+                        }}
+                        className="rounded-full p-1 text-[var(--faint)] opacity-0 transition-[opacity,color] group-hover:opacity-100 hover:bg-[var(--surface-2)] hover:text-[var(--fg)] focus-visible:opacity-100"
+                        aria-label="Add event"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div
+                      className="space-y-0.5"
+                      style={{ paddingTop: ribbonRows * RIBBON_ROW }}
+                    >
+                      {visible.map((e) => (
+                        <button
+                          key={e.id}
+                          type="button"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            if (canEdit(e)) onEventClick(e);
+                          }}
+                          title={e.title}
+                          {...bindHover(e)}
+                          className={cn(
+                            'flex w-full items-center gap-1 rounded-[var(--radius-sm)] border border-transparent bg-[var(--surface-2)] px-1 py-0.5 text-left text-[10.5px] font-[520] leading-tight text-[var(--fg-soft)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)] hover:text-[var(--fg)]',
+                            e.status === 'cancelled' && 'opacity-45',
+                          )}
+                        >
+                          <span
+                            className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: layerColor(e.layer) }}
+                          />
+                          {!e.all_day && (
+                            <span className="num shrink-0 text-[9.5px] text-[var(--muted)]">
+                              {format(parseISO(e.start), 'h:mm a')}
+                            </span>
+                          )}
+                          <span className="truncate">{e.title}</span>
+                        </button>
+                      ))}
+                      {more > 0 && (
+                        <button
+                          type="button"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setMoreDay({ day, events: chipDocs });
+                          }}
+                          className="px-1 text-[10.5px] font-[560] text-[var(--muted)] hover:text-[var(--accent-strong)]"
+                        >
+                          <span className="num">{more}</span> more
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+
+            {ribbonRows > 0 && (
+              <div
+                className="pointer-events-none absolute inset-x-0 z-10"
+                style={{ top: GRID_HEADER_H }}
+              >
+                {lanes
+                  .slice(0, ribbonRows)
+                  .map((lane, li) =>
+                    lane.map(
+                      ({
+                        e,
+                        colStart,
+                        colEnd,
+                        continuesBefore,
+                        continuesAfter,
+                      }) => {
+                        const [tintBg] = layerTint(e.layer);
+                        return (
+                          <button
+                            key={e.id}
+                            type="button"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              if (canEdit(e)) onEventClick(e);
+                            }}
+                            title={e.title}
+                            {...bindHover(e)}
+                            className="pointer-events-auto absolute flex h-[16px] w-full items-center gap-1 rounded-[var(--radius-sm)] border border-transparent px-1 text-left text-[10px] font-[540] leading-none text-[var(--fg-soft)] transition-colors hover:border-[var(--border-strong)] hover:text-[var(--fg)]"
+                            style={{
+                              left: `calc(${(colStart / 7) * 100}% + 1.5px)`,
+                              width: `calc(${((colEnd - colStart + 1) / 7) * 100}% - 3px)`,
+                              top: li * RIBBON_ROW,
+                              backgroundColor: tintBg,
+                            }}
+                          >
+                            {continuesBefore && (
+                              <span className="shrink-0 text-[9px]">‹</span>
+                            )}
+                            <span
+                              className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                              style={{ backgroundColor: layerColor(e.layer) }}
+                            />
+                            <span className="truncate">{e.title}</span>
+                            {continuesAfter && (
+                              <span className="ml-auto shrink-0 text-[9px]">
+                                ›
+                              </span>
+                            )}
+                          </button>
+                        );
+                      },
+                    ),
+                  )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <DayEventsDialog
+        day={moreDay?.day || null}
+        events={moreDay?.events || []}
+        canEdit={canEdit}
+        onEventClick={onEventClick}
+        onNewDay={onNewDay}
+        onOpenChange={() => setMoreDay(null)}
+      />
+    </div>
+  );
+}
+
+/* ============================ Day Events Dialog ============================ */
+function DayEventsDialog({
+  day,
+  events,
+  canEdit,
+  onEventClick,
+  onNewDay,
+  onOpenChange,
+}) {
+  const sorted = [...events].sort(
+    (a, b) => new Date(a.start) - new Date(b.start),
+  );
+  return (
+    <Dialog open={!!day} onOpenChange={(open) => !open && onOpenChange()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {day ? format(day, 'EEEE, MMMM d') : 'Day'}
+          </DialogTitle>
+          <DialogDescription>
+            {sorted.length} event{sorted.length === 1 ? '' : 's'} on this day
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[55vh] space-y-1.5 overflow-y-auto pr-1">
+          {sorted.map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              onClick={() => canEdit(e) && onEventClick(e)}
+              className="flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-2.5 text-left transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)]"
+            >
+              <span
+                className="inline-block h-8 w-1 shrink-0 rounded-full"
+                style={{ backgroundColor: layerColor(e.layer) }}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-[600] text-[var(--fg)]">
+                  {e.title}
+                </p>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11.5px] text-[var(--muted)]">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {format(parseISO(e.start), 'h:mm a')}
+                    {e.end ? ` – ${format(parseISO(e.end), 'h:mm a')}` : ''}
+                  </span>
+                  {e.venue && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" /> {e.venue}
+                    </span>
+                  )}
+                  {e.course_code && (
+                    <span className="flex items-center gap-1">
+                      <Tag className="h-3 w-3" /> {e.course_code}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <span className="shrink-0 rounded-full bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-[550] uppercase tracking-wide text-[var(--muted)]">
+                {LAYER_LABELS[e.layer] || e.layer}
+              </span>
+            </button>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onOpenChange}>
+            Close
+          </Button>
+          {day && (
+            <Button size="sm" onClick={() => onNewDay(day)} className="gap-1.5">
+              <Plus className="h-3.5 w-3.5" /> New event
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ============================ Upcoming Panel ============================ */
+const UPCOMING_LIMIT = 50;
+const UPCOMING_PAGE_SIZE = 5;
+
+function UpcomingPanel({
+  layers,
+  onEventClick,
+  canEdit,
+  onNewDay,
+  bindHover,
+}) {
+  const [page, setPage] = useState(0);
+  const { data, isLoading } = useQuery({
+    queryKey: ['calendar', 'upcoming', UPCOMING_LIMIT],
+    queryFn: () => calendarApi.upcoming(UPCOMING_LIMIT),
+    staleTime: 60 * 1000,
+  });
+
+  const all = (data || []).filter((e) => layers[e.layer]);
+  const pageCount = Math.max(1, Math.ceil(all.length / UPCOMING_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageEvents = all.slice(
+    safePage * UPCOMING_PAGE_SIZE,
+    safePage * UPCOMING_PAGE_SIZE + UPCOMING_PAGE_SIZE,
+  );
+
+  const now = new Date();
+  const todayStart = startOfDay(now);
+
+  const groups = [];
+  for (const e of pageEvents) {
+    const diff = Math.round(
+      (startOfDay(parseISO(e.start)) - todayStart) / MS_PER_DAY,
+    );
+    const label =
+      diff === 0
+        ? 'Today'
+        : diff === 1
+          ? 'Tomorrow'
+          : diff < 7
+            ? 'This week'
+            : format(parseISO(e.start), 'EEEE, MMM d');
+    const last = groups[groups.length - 1];
+    if (last && last[0] === label) last[1].push(e);
+    else groups.push([label, [e]]);
+  }
+
+  const from = all.length === 0 ? 0 : safePage * UPCOMING_PAGE_SIZE + 1;
+  const to = Math.min(all.length, (safePage + 1) * UPCOMING_PAGE_SIZE);
+
+  return (
+    <aside className="hidden min-w-0 xl:block">
+      <div className="flex h-full max-h-[70vh] flex-col">
+        <div className="flex items-baseline justify-between border-b border-[var(--border)] px-4 py-3">
+          <h3 className="text-[13px] font-[640] text-[var(--fg)]">
+            Upcoming
+          </h3>
+          <span className="num text-[11px] text-[var(--muted)]">
+            {all.length} event{all.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8 text-[var(--muted)]">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+            </div>
+          ) : groups.length === 0 ? (
+            <EmptyState
+              icon={<CalendarRange className="h-8 w-8" />}
+              title="Open ahead"
+              description="Nothing scheduled from today. Use the grid to plan your week."
+            />
+          ) : (
+            <div className="space-y-4">
+              {groups.map(([label, evs]) => (
+                <div key={label}>
+                  <p className="mb-1.5 text-[10px] font-[600] uppercase tracking-[0.08em] text-[var(--muted)]">
+                    {label}
+                  </p>
+                  <div className="space-y-0.5">
+                    {evs.map((e) => {
+                      const [tintBg] = layerTint(e.layer);
+                      return (
+                        <button
+                          key={e.id}
+                          type="button"
+                          onClick={() => canEdit(e) && onEventClick(e)}
+                          {...bindHover(e)}
+                          className="flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] border border-transparent px-2 py-1.5 text-left transition-colors hover:border-[var(--border)] hover:bg-[var(--hover)]"
+                        >
+                          <span
+                            className="grid h-6 w-6 shrink-0 place-items-center rounded-full"
+                            style={{ backgroundColor: tintBg }}
+                          >
+                            <span
+                              className="h-2 w-2 rounded-full"
+                              style={{ backgroundColor: layerColor(e.layer) }}
+                            />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[12.5px] font-[560] text-[var(--fg)]">
+                              {e.title}
+                            </span>
+                            <span className="block truncate text-[10.5px] text-[var(--muted)]">
+                              <span className="num">
+                                {format(parseISO(e.start), 'h:mm a')}
+                                {e.end
+                                  ? ` – ${format(parseISO(e.end), 'h:mm a')}`
+                                  : ''}
+                              </span>
+                              {e.venue ? ` · ${e.venue}` : ''}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {all.length > 0 && (
+            <div className="mt-4 flex items-center justify-between border-t border-[var(--border)] pt-2.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-[12px]"
+                disabled={safePage === 0}
+                onClick={() => setPage(safePage - 1)}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" /> Prev
+              </Button>
+              <span className="num text-[11px] text-[var(--muted)]">
+                {from}–{to} of {all.length}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-[12px]"
+                disabled={safePage >= pageCount - 1}
+                onClick={() => setPage(safePage + 1)}
+              >
+                Next <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+        </div>
+        <div className="border-t border-[var(--border)] p-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full justify-center gap-1.5"
+            onClick={() => onNewDay(todayStart)}
+          >
+            <Plus className="h-3.5 w-3.5" /> Schedule
+          </Button>
+        </div>
       </div>
+    </aside>
+  );
+}
+
+/* ============================ Month Strip (events only) ============================ */
+function MonthStrip({
+  current,
+  selectedDate,
+  events,
+  onSelectDay,
+  onNewDay,
+  onEventClick,
+  canEdit,
+  bindHover,
+}) {
+  const monthStart = startOfMonth(current);
+  const monthEnd = endOfMonth(current);
+
+  const busyDays = useMemo(() => {
+    const map = new Map();
+    for (const e of events) {
+      let d = startOfDay(parseISO(e.start));
+      const endD = e.end ? startOfDay(parseISO(e.end)) : d;
+      let guard = 0;
+      while (d <= endD && guard < 40) {
+        if (d >= monthStart && d <= monthEnd) {
+          const key = d.toISOString().slice(0, 10);
+          map.set(key, [...(map.get(key) || []), e]);
+        }
+        if (d.getTime() === endD.getTime()) break;
+        d = addDays(d, 1);
+        guard += 1;
+      }
+    }
+    return [...map.entries()]
+      .map(([key, evs]) => ({ day: parseISO(key), events: evs }))
+      .sort((a, b) => a.day - b.day);
+  }, [events, monthStart, monthEnd]);
+
+  if (busyDays.length === 0) {
+    return (
+      <div className="py-16">
+        <EmptyState
+          icon={<CalendarRange className="h-8 w-8" />}
+          title="No busy days this month"
+          description="Toggle off “Events only” to browse the full calendar."
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {busyDays.map(({ day, events: evs }) => {
+        const today = isToday(day);
+        const selected = isSameDay(day, selectedDate);
+        return (
+          <div
+            key={day.toISOString()}
+            onClick={() => onSelectDay(day)}
+            className={cn(
+              'group flex cursor-pointer items-start gap-3 border-b border-[var(--border)] px-3 py-2 transition-colors hover:bg-[var(--hover)] last:border-b-0',
+              selected && 'bg-[var(--accent-soft)]/60 hover:bg-[var(--accent-soft)]',
+            )}
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNewDay(day);
+              }}
+              className="opacity-0 transition-opacity group-hover:opacity-100 hover:text-[var(--accent-strong)]"
+              aria-label="Add event"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+            <div className="flex w-12 shrink-0 flex-col items-center gap-0.5 py-0.5">
+              <span className="text-[9px] font-[560] uppercase tracking-[0.08em] text-[var(--muted)]">
+                {format(day, 'EEE')}
+              </span>
+              <span
+                className={cn(
+                  'inline-flex h-6 w-6 items-center justify-center rounded-full text-[12.5px] font-[600]',
+                  today
+                    ? 'bg-[var(--accent)] text-[var(--on-accent)]'
+                    : 'text-[var(--fg)]',
+                )}
+              >
+                {format(day, 'd')}
+              </span>
+              <span className="num text-[9.5px] text-[var(--faint)]">
+                {format(day, 'MMM')}
+              </span>
+            </div>
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 py-0.5">
+              {evs.map((e) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    if (canEdit(e)) onEventClick(e);
+                  }}
+                  title={e.title}
+                  {...bindHover(e)}
+                  className={cn(
+                    'inline-flex max-w-full items-center gap-1.5 rounded-[var(--radius-sm)] border border-transparent bg-[var(--surface-2)] px-2 py-1 text-[11px] font-[520] leading-tight text-[var(--fg-soft)] transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)] hover:text-[var(--fg)]',
+                    e.status === 'cancelled' && 'opacity-45',
+                  )}
+                >
+                  <span
+                    className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: layerColor(e.layer) }}
+                  />
+                  {!e.all_day && (
+                    <span className="num shrink-0 text-[10px] text-[var(--muted)]">
+                      {format(parseISO(e.start), 'h:mm a')}
+                    </span>
+                  )}
+                  <span className="truncate">{e.title}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ============================ Event Hover Card ============================ */
+function EventHoverCard({ event, rect }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState({ x: rect.left, y: rect.bottom + 8 });
+
+  useLayoutEffect(() => {
+    if (!ref.current) return;
+    const cardW = ref.current.offsetWidth;
+    const cardH = ref.current.offsetHeight;
+    let x = rect.left;
+    let y = rect.bottom + 8;
+    if (x + cardW > window.innerWidth - 8) {
+      x = Math.max(8, window.innerWidth - cardW - 8);
+    }
+    if (y + cardH > window.innerHeight - 8) {
+      y = Math.max(8, rect.top - cardH - 8);
+    }
+    setPos({ x, y });
+  }, [rect.left, rect.top, rect.bottom]);
+
+  const s = parseISO(event.start);
+  const en = event.end ? parseISO(event.end) : null;
+  const [tintBg, tintFg] = layerTint(event.layer);
+
+  return (
+    <div
+      ref={ref}
+      className="pointer-events-none fixed z-[70] w-[280px] rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface)]/95 p-3 shadow-xl backdrop-blur-md"
+      style={{ left: pos.x, top: pos.y }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full border border-transparent px-2 py-0.5 text-[9.5px] font-[600] uppercase tracking-wide"
+          style={{ backgroundColor: tintBg, color: tintFg }}
+        >
+          <span
+            className="inline-block h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: layerColor(event.layer) }}
+          />
+          {LAYER_LABELS[event.layer] || event.layer}
+        </span>
+        {event.status === 'cancelled' && (
+          <span className="text-[9.5px] font-[600] uppercase tracking-wide text-[var(--danger)]">
+            Cancelled
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-[13px] font-[640] leading-snug text-[var(--fg)]">
+        {event.title}
+      </p>
+      <div className="mt-1.5 space-y-1 text-[11.5px] text-[var(--muted)]">
+        <p className="flex items-center gap-1.5">
+          <Clock className="h-3 w-3 shrink-0" />
+          {event.all_day ? (
+            'All day'
+          ) : (
+            <span className="num">
+              {format(s, 'EEEE, MMM d · h:mm a')}
+              {en ? ` – ${format(en, 'h:mm a')}` : ''}
+            </span>
+          )}
+        </p>
+        {event.venue && (
+          <p className="flex items-center gap-1.5">
+            <MapPin className="h-3 w-3 shrink-0" /> {event.venue}
+          </p>
+        )}
+        {event.course_code && (
+          <p className="flex items-center gap-1.5">
+            <Tag className="h-3 w-3 shrink-0" /> {event.course_code}
+          </p>
+        )}
+      </div>
+      {event.description && (
+        <p className="mt-2 line-clamp-3 text-[11px] leading-relaxed text-[var(--fg-soft)]">
+          {event.description}
+        </p>
+      )}
     </div>
   );
 }

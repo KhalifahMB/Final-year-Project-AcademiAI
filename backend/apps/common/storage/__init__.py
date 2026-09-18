@@ -57,11 +57,31 @@ def generate_presigned_upload_post(key: str, content_type: str, expires_in: int 
     )
 
 
-def generate_presigned_download_url(key: str, expires_in: int = 3600) -> str:
+def generate_presigned_download_url(
+    key: str,
+    expires_in: int = 3600,
+    *,
+    content_type: str | None = None,
+    inline: bool = False,
+) -> str:
+    """
+    Presigned GET for the stored object.
+
+    ``content_type`` forces the response Content-Type for inline previews so
+    the browser renders the bytes (e.g. application/pdf) instead of treating
+    an unknown stored type as a download. ``inline`` adds an inline
+    Content-Disposition, overriding any download disposition the object may
+    have been stored with.
+    """
+    params: dict = {"Bucket": settings.AWS_STORAGE_BUCKET_NAME, "Key": key}
+    if content_type:
+        params["ResponseContentType"] = content_type
+    if inline:
+        params["ResponseContentDisposition"] = "inline"
     client = get_s3_client()
     return client.generate_presigned_url(
         "get_object",
-        Params={"Bucket": settings.AWS_STORAGE_BUCKET_NAME, "Key": key},
+        Params=params,
         ExpiresIn=expires_in,
     )
 

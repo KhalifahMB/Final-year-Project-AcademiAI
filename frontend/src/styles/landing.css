@@ -70,7 +70,8 @@
     --landing-photo-bg: var(--surface-2);
     --landing-photo-fg: var(--fg);
     --landing-photo-muted: var(--muted);
-    --landing-section-pad: 112px;
+    /* --landing-section-pad: 112px; */
+    --landing-section-pad: 28px;
     background: var(--landing-paper);
     color: var(--landing-ink);
     font-family: var(--font-sans);
@@ -141,7 +142,7 @@
   }
   .landing-nav__links {
     gap: 28px;
-    margin-left: auto;
+    /* margin-left: auto; */
   }
   .landing-nav__links a,
   .landing-text-link {
@@ -288,7 +289,8 @@
     border: 1px solid var(--landing-line-strong);
     border-radius: var(--radius-xl);
     background: var(--landing-panel);
-    box-shadow: 0 24px 64px -40px color-mix(in oklab, var(--fg) 30%, transparent);
+    box-shadow: 0 24px 64px -40px
+      color-mix(in oklab, var(--fg) 30%, transparent);
     overflow: hidden;
   }
   .chat-window__bar {
@@ -433,7 +435,8 @@
     height: 7px;
     border-radius: 999px;
     background: var(--landing-success);
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--landing-success) 22%, transparent);
+    box-shadow: 0 0 0 3px
+      color-mix(in oklab, var(--landing-success) 22%, transparent);
   }
 
   @media (max-width: 900px) {
@@ -488,7 +491,9 @@
     color: var(--landing-muted);
     white-space: nowrap;
     opacity: 0.85;
-    transition: opacity 0.2s ease, color 0.2s ease;
+    transition:
+      opacity 0.2s ease,
+      color 0.2s ease;
   }
   .landing-trust__mark:hover {
     opacity: 1;
@@ -528,7 +533,8 @@
     padding-block: var(--landing-section-pad);
   }
   .landing-section__heading {
-    max-width: 720px;
+    /* max-width: 720px; */
+    max-width: 90%;
     margin-bottom: clamp(36px, 4vw, 56px);
   }
   .landing-section__heading h2,
@@ -545,13 +551,13 @@
     color: var(--landing-muted);
     font-size: 16px;
     line-height: 1.65;
-    max-width: 620px;
+    /* max-width: 620px; */
   }
   .landing-section__heading--split {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 40px;
-    align-items: end;
+    align-items: center;
   }
   .landing-section__heading--split > :last-child {
     justify-self: end;
@@ -620,7 +626,9 @@
     border-radius: var(--radius-lg);
     background: var(--landing-panel);
     padding: 26px 24px;
-    transition: border-color 0.2s ease, transform 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      transform 0.2s ease;
   }
   @media (prefers-reduced-motion: no-preference) {
     .landing-feature:hover {
@@ -1132,7 +1140,11 @@
         transparent 1px
       );
     background-size: 48px 48px;
-    mask-image: radial-gradient(720px 460px at 50% 0%, black 0%, transparent 78%);
+    mask-image: radial-gradient(
+      720px 460px at 50% 0%,
+      black 0%,
+      transparent 78%
+    );
   }
   .landing-request__grid {
     position: relative;

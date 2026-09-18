@@ -136,16 +136,21 @@ class CalendarEventViewSet(TenantModelViewSet):
             qs = self.filter_queryset(self.get_queryset())
             start = request.query_params.get("start")
             end = request.query_params.get("end")
-            if start:
-                from django.utils.dateparse import parse_datetime
-                dt = parse_datetime(start)
-                if dt:
-                    qs = qs.filter(start__gte=dt)
-            if end:
-                from django.utils.dateparse import parse_datetime
-                dt = parse_datetime(end)
-                if dt:
-                    qs = qs.filter(start__lte=dt)
+            from django.utils.dateparse import parse_datetime
+            start_dt = parse_datetime(start) if start else None
+            end_dt = parse_datetime(end) if end else None
+            if start_dt and end_dt:
+                # Overlap filter: return any event whose range intersects the
+                # requested window, so multi-day events spanning a month
+                # boundary keep showing in both months.
+                qs = qs.filter(
+                    Q(start__lte=end_dt)
+                    & (Q(end__isnull=True) | Q(end__gte=start_dt)),
+                )
+            elif start_dt:
+                qs = qs.filter(start__gte=start_dt)
+            elif end_dt:
+                qs = qs.filter(start__lte=end_dt)
             page = self.paginate_queryset(qs)
             serializer = CalendarEventListSerializer(page if page is not None else qs, many=True)
             if page is not None:
@@ -194,14 +199,17 @@ class CalendarEventViewSet(TenantModelViewSet):
         start = request.query_params.get("start")
         end = request.query_params.get("end")
         import django.utils.dateparse as dp
-        if start:
-            dt = dp.parse_datetime(start)
-            if dt:
-                qs = qs.filter(start__gte=dt)
-        if end:
-            dt = dp.parse_datetime(end)
-            if dt:
-                qs = qs.filter(start__lte=dt)
+        start_dt = dp.parse_datetime(start) if start else None
+        end_dt = dp.parse_datetime(end) if end else None
+        if start_dt and end_dt:
+            qs = qs.filter(
+                Q(start__lte=end_dt)
+                & (Q(end__isnull=True) | Q(end__gte=start_dt)),
+            )
+        elif start_dt:
+            qs = qs.filter(start__gte=start_dt)
+        elif end_dt:
+            qs = qs.filter(start__lte=end_dt)
         qs = qs.order_by("start")
 
         calendar_name = f"{self.request.user.full_name} - AcademiAI Calendar"

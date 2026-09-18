@@ -14,6 +14,7 @@ export const RequestInstitutionPage = lazy(
 export const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 export const ChatPage = lazy(() => import('@/pages/ChatPage'));
 export const ResourcesPage = lazy(() => import('@/pages/ResourcesPage'));
+export const ResourceDetailPage = lazy(() => import('@/pages/ResourceDetailPage'));
 export const UploadResourcePage = lazy(() => import('@/pages/UploadResourcePage'));
 export const QuizzesPage = lazy(() => import('@/pages/QuizzesPage'));
 export const QuizTakePage = lazy(() => import('@/pages/QuizTakePage'));

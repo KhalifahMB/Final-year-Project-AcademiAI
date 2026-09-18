@@ -399,3 +399,168 @@ def test_schedule_template_download():
     body = resp.content.decode("utf-8")
     assert body.startswith("title,start,end")
     assert "Intro to CS" in body
+
+
+# ── Offering linkage + student visibility ────────────────────────────
+
+def _academics_structure(tenant):
+    from apps.academics.models import (
+        AcademicSession, Course, CourseOffering, Department, Faculty, Semester,
+    )
+    fac = Faculty.objects.create(tenant=tenant, name="Computing", code="FOC")
+    dept = Department.objects.create(tenant=tenant, faculty=fac, name="CS", code="CS")
+    session = AcademicSession.objects.create(
+        tenant=tenant, name="2025/2026", is_current=True,
+        start_date="2025-09-01", end_date="2026-08-31",
+    )
+    semester = Semester.objects.create(
+        tenant=tenant, academic_session=session, name="Second Semester", is_current=True,
+        start_date="2026-02-01", end_date="2026-07-01",
+    )
+    return fac, dept, session, semester
+
+
+def _make_offering(tenant, dept, session, semester, code="CS524"):
+    from apps.academics.models import Course, CourseOffering
+    course = Course.objects.create(tenant=tenant, department=dept, code=code, title=code)
+    offering = CourseOffering.objects.create(
+        tenant=tenant, course=course, academic_session=session, semester=semester,
+    )
+    return course, offering
+
+
+@pytest.mark.django_db
+def test_imported_exam_links_to_offering():
+    tenant = _tenant("cal-link-offering")
+    admin = _user("adm@cal-link-offering.edu", tenant, role="tenant_admin")
+    fac, dept, session, semester = _academics_structure(tenant)
+    _make_offering(tenant, dept, session, semester, "CS524")
+
+    csv_bytes = (
+        "title,start,end,layer,course_code\n"
+        "CS524 Exam,2026-10-01 09:30,2026-10-01 12:30,exams,CS524\n"
+    ).encode()
+    import io
+
+    resp = _auth(admin).post(
+        "/api/v1/calendar/schedules/preview-commit/",
+        {
+            "source_format": "csv",
+            "import_type": "exam",
+            "title": "Exam timetable",
+            "file": io.BytesIO(csv_bytes),
+        },
+        format="multipart",
+    )
+    assert resp.status_code == 200
+    event = CalendarEvent.objects.get(tenant=tenant, course_code="CS524")
+    assert event.course_offering is not None
+    assert event.course_offering.course.code == "CS524"
+
+
+@pytest.mark.django_db
+def test_student_sees_imported_exam_for_enrolled_offering():
+    from apps.academics.models import CourseEnrollment
+
+    tenant = _tenant("cal-stu-exam-vis")
+    admin = _user("adm@cal-stu-exam-vis.edu", tenant, role="tenant_admin")
+    student = _user("stu@cal-stu-exam-vis.edu", tenant, role="student")
+    fac, dept, session, semester = _academics_structure(tenant)
+    _, offering = _make_offering(tenant, dept, session, semester, "CS524")
+    CourseEnrollment.objects.create(
+        tenant=tenant, course_offering=offering, student=student,
+        status=CourseEnrollment.Status.ENROLLED,
+    )
+
+    csv_bytes = (
+        "title,start,end,layer,course_code\n"
+        "CS524 Exam,2026-10-01 09:30,2026-10-01 12:30,exams,CS524\n"
+    ).encode()
+    import io
+
+    resp = _auth(admin).post(
+        "/api/v1/calendar/schedules/preview-commit/",
+        {
+            "source_format": "csv",
+            "import_type": "exam",
+            "title": "Exam timetable",
+            "file": io.BytesIO(csv_bytes),
+        },
+        format="multipart",
+    )
+    assert resp.status_code == 200
+
+    student_resp = _auth(student).get("/api/v1/calendar/events/")
+    assert student_resp.status_code == 200
+    titles = [e["title"] for e in student_resp.data.get("results", student_resp.data)]
+    assert "CS524 Exam" in titles
+
+
+@pytest.mark.django_db
+def test_student_invisible_to_unlinked_exam():
+    tenant = _tenant("cal-stu-invis")
+    admin = _user("adm@cal-stu-invis.edu", tenant, role="tenant_admin")
+    student = _user("stu@cal-stu-invis.edu", tenant, role="student")
+
+    csv_bytes = (
+        "title,start,end,layer,course_code\n"
+        "Mystery Exam,2026-10-01 09:30,2026-10-01 12:30,exams,UNKNOWN99\n"
+    ).encode()
+    import io
+
+    resp = _auth(admin).post(
+        "/api/v1/calendar/schedules/preview-commit/",
+        {
+            "source_format": "csv",
+            "import_type": "exam",
+            "title": "Exam timetable",
+            "file": io.BytesIO(csv_bytes),
+        },
+        format="multipart",
+    )
+    assert resp.status_code == 200
+
+    student_resp = _auth(student).get("/api/v1/calendar/events/")
+    assert student_resp.status_code == 200
+    results = student_resp.data.get("results", student_resp.data)
+    assert len([e for e in results if e.get("layer") == "exams"]) == 0
+
+
+@pytest.mark.django_db
+def test_multi_day_event_spanning_month_boundary_shows_in_both_months():
+    """An event that starts in one month but ends in the next must be
+    returned by the lightweight grid query for BOTH month ranges.
+    """
+    tenant = _tenant("cal-span-boundary")
+    admin = _user("adm@cal-span-boundary.edu", tenant, role="tenant_admin")
+
+    event = _event(
+        tenant,
+        title="Field Trip",
+        layer=CalendarLayer.INSTITUTION,
+        visibility="tenant",
+        start=datetime.datetime(2026, 9, 28, 8, 0, tzinfo=datetime.timezone.utc),
+        end=datetime.datetime(2026, 10, 2, 17, 0, tzinfo=datetime.timezone.utc),
+    )
+
+    def light_titles(month_start, month_end):
+        resp = _auth(admin).get(
+            "/api/v1/calendar/events/",
+            {
+                "light": "1",
+                "start": month_start,
+                "end": month_end,
+            },
+        )
+        assert resp.status_code == 200
+        return [str(e["id"]) for e in resp.data.get("results", resp.data)]
+
+    september = light_titles("2026-09-01T00:00:00Z", "2026-09-30T23:59:59Z")
+    october = light_titles("2026-10-01T00:00:00Z", "2026-10-31T23:59:59Z")
+
+    assert str(event.id) in september
+    assert str(event.id) in october
+
+    # A November range that the event does not touch must NOT return it.
+    november = light_titles("2026-11-01T00:00:00Z", "2026-11-30T23:59:59Z")
+    assert str(event.id) not in november

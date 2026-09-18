@@ -464,15 +464,15 @@ export default function UploadResourcePage() {
     </p>
    </div>
 
-   {objectEnabled && (
-    <div className="space-y-1.5 rounded-lg border bg-muted/20 p-3">
-     <Label className="text-xs">
-      {objectType === 'course' ? 'Course offering' : `Select ${objectType}`}
-     </Label>
-     <Select value={objectId || undefined} onValueChange={setObjectId}>
-      <SelectTrigger className="h-9 w-full text-sm">
-       <SelectValue
-        placeholder={
+{objectEnabled && (
+   <div className="space-y-1.5 rounded-lg border bg-muted/20 p-3">
+    <Label className="text-xs">
+     {objectType === 'course' ? 'Course offering' : `Select ${objectType}`}
+    </Label>
+    <Select value={objectId} onValueChange={setObjectId}>
+     <SelectTrigger className="h-9 w-full text-sm">
+      <SelectValue
+       placeholder={
          objects.isLoading
           ? 'Loading…'
           : (objects.data || []).length === 0
@@ -510,7 +510,7 @@ export default function UploadResourcePage() {
      {files.length > 1 && (
       <span className="font-medium text-muted-foreground">File {fileIndex + 1} of {files.length} · </span>
      )}
-     {STEPS[Math.min(step, STEPS.length - 1)].label}…
+     {STEPS[Math.max(0, Math.min(step, STEPS.length - 1))].label}…
     </div>
    ) : (
     <Button type="submit" disabled={files.length === 0} size="sm" className="h-9 gap-2 px-5 text-xs font-medium">

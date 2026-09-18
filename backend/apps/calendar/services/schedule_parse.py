@@ -176,11 +176,50 @@ def parse_schedule(source_format: str, raw: bytes, filename: str = ""):
     return rows, warnings
 
 
+def _resolve_course_offering(tenant, code):
+    """Return the best-match CourseOffering for a free-text course code.
+
+    Course codes arrive as plain text (e.g. ``CS 524``) while offerings are
+    keyed by ``Course.code`` plus an academic session/semester. We normalise
+    by stripping whitespace and upper-casing, prefer the tenant's current
+    session/semester offering, and fall back to the most recent offering.
+    Returns ``None`` when no offering matches — the event is still created,
+    it just isn't linked to a course offering.
+    """
+    normalized = "".join((code or "").upper().split())
+    if not normalized:
+        return None
+
+    from django.db.models import Q
+
+    from apps.academics.models import CourseOffering
+
+    base = Q(tenant=tenant, course__code__iexact=normalized)
+    offering = (
+        CourseOffering.objects.filter(base, academic_session__is_current=True,
+                                     semester__is_current=True)
+        .select_related("course", "academic_session", "semester")
+        .order_by("-academic_session__start_date", "-semester__start_date")
+        .first()
+    )
+    if offering is None:
+        offering = (
+            CourseOffering.objects.filter(base)
+            .select_related("course", "academic_session", "semester")
+            .order_by("-academic_session__start_date", "-semester__start_date")
+            .first()
+        )
+    return offering
+
+
 def rows_to_events(rows, tenant, user, import_type, layer_default):
     """Materialise validated rows into CalendarEvent objects (unsaved).
 
     ``layer_default`` is the layer used when a row carries no valid layer,
-    e.g. ``academic`` for a lecture timetable.
+    e.g. ``academic`` for a lecture timetable. Each row's free-text
+    ``course_code`` is resolved to its tenant ``CourseOffering`` so imported
+    events honour the role-based visibility rules (students only see exams
+    for offerings they are enrolled in).
     """
     from django.utils import timezone
 
@@ -213,6 +252,7 @@ def rows_to_events(rows, tenant, user, import_type, layer_default):
                 location=item.get("location") or "",
                 venue=item.get("venue") or "",
                 course_code=item.get("course_code") or "",
+                course_offering=_resolve_course_offering(tenant, item.get("course_code")),
                 status=item.get("status") or "confirmed",
                 created_by=user,
                 user=None if layer == CalendarLayer.INSTITUTION else user,
