@@ -26,6 +26,7 @@ export default function ResourceDetailPage() {
 
   const {
     data: resource,
+    isLoading,
     isError,
     refetch,
   } = useQuery({
@@ -57,10 +58,17 @@ export default function ResourceDetailPage() {
           <Alert variant="destructive" className="max-w-md">
             <AlertDescription>
               <p className="font-medium">This resource could not be loaded.</p>
-              <p className="mt-1 text-sm">It may have been removed or your access changed.</p>
+              <p className="mt-1 text-sm">
+                It may have been removed or your access changed.
+              </p>
             </AlertDescription>
             <div className="mt-3 flex gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+              >
                 <RotateCw className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Retry
               </Button>
               <Button type="button" variant="ghost" size="sm" onClick={close}>
@@ -80,7 +88,9 @@ export default function ResourceDetailPage() {
         resource={resource || { id }}
         open
         onClose={close}
-        onUpdate={() => qc.invalidateQueries({ queryKey: ['resources', user?.role] })}
+        onUpdate={() =>
+          qc.invalidateQueries({ queryKey: ['resources', user?.role] })
+        }
       />
     </AppShell>
   );
