@@ -14,10 +14,10 @@ export function AuthProvider({ children }) {
   const { data: user, isLoading, error } = useQuery(AUTH_QUERY_OPTIONS);
 
   const login = async (email, password) => {
-    const { data } = await authApi.login({ email, password });
+    const result = await authApi.login({ email, password });
     setSessionFlag();
-    qc.setQueryData(USER_QUERY_KEY, data.user);
-    return data;
+    qc.setQueryData(USER_QUERY_KEY, result.user);
+    return result;
   };
 
   const logout = async () => {

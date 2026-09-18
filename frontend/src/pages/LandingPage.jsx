@@ -170,23 +170,7 @@ const SIGNALS = [
   },
 ];
 
-const TESTIMONIALS = [
-  {
-    quote: 'Our students get answers with a page number, not a guess.',
-    name: 'Dr. K. Alassane',
-    role: 'Head of Computer Science, Université de Parakou',
-  },
-  {
-    quote: 'Every university is a private tenant — that was the entire reason we said yes.',
-    name: 'Prof. M. Adjovi',
-    role: 'FASEG, Université d\u2019Abomey-Calavi',
-  },
-  {
-    quote: 'The tutor points me to the exact slide. I stopped re-searching everything.',
-    name: 'A. Dossou',
-    role: 'M1 computer science, ENEAM',
-  },
-];
+const TESTIMONIALS = [];
 
 const FAQS = [
   {
@@ -501,11 +485,6 @@ export default function LandingPage() {
           <div className="landing-shell landing-trust__inner">
             <span className="landing-trust__label">Trusted across departments</span>
             <div className="landing-trust__track">
-              <span className="landing-trust__mark">Université de Parakou</span>
-              <span className="landing-trust__mark">FASEG · UAC</span>
-              <span className="landing-trust__mark">ENEAM</span>
-              <span className="landing-trust__mark">FAST</span>
-              <span className="landing-trust__mark">ENAM</span>
               {institutionCount > 0 && (
                 <span className="landing-trust__live">
                   <i aria-hidden="true" />
@@ -849,7 +828,9 @@ export default function LandingPage() {
             <a href="#security">Security</a>
             <a href="#institutions">Institutions</a>
             <a href="#faq">FAQ</a>
-            <Link to="/login">Sign in</Link>
+            {!isAuthenticated && (
+              <Link to="/login">Sign in</Link>
+            )}
           </nav>
           <span>
             © {new Date().getFullYear()} AcademiAI · Multi-tenant · Grounded
