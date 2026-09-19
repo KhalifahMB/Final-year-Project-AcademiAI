@@ -62,7 +62,11 @@ class BookmarkViewSet(TenantModelViewSet):
     queryset = Bookmark.objects.select_related("resource")
     serializer_class = BookmarkSerializer
     def get_queryset(self):
-        return super().get_queryset().filter(user=self.request.user)
+        qs = super().get_queryset().filter(user=self.request.user)
+        folder = self.request.query_params.get("folder")
+        if folder:
+            qs = qs.filter(folder=folder)
+        return qs
 
     def perform_create(self, serializer):
         serializer.save(tenant=self.request.user.tenant, user=self.request.user)

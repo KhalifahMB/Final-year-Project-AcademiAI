@@ -29,6 +29,7 @@ class Bookmark(TenantScopedModel):
     resource = models.ForeignKey(
         "resources.Resource", on_delete=models.CASCADE, related_name="bookmarks"
     )
+    folder = models.CharField(max_length=100, blank=True, default="")
 
     class Meta:
         db_table = "bookmarks"

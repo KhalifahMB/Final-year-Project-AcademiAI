@@ -25,6 +25,11 @@ class Resource(TenantScopedModel):
         READY = "ready", "Ready"
         FAILED = "failed", "Failed"
 
+    class ModerationStatus(models.TextChoices):
+        ACTIVE = "active", "Active"
+        FLAGGED = "flagged", "Flagged pending review"
+        REMOVED = "removed", "Removed by moderator"
+
     course_offering = models.ForeignKey(
         "academics.CourseOffering",
         on_delete=models.SET_NULL,
@@ -70,6 +75,12 @@ class Resource(TenantScopedModel):
         db_index=True,
     )
     processing_error = models.TextField(blank=True)
+    moderation_status = models.CharField(
+        max_length=20,
+        choices=ModerationStatus.choices,
+        default=ModerationStatus.ACTIVE,
+        db_index=True,
+    )
     has_extractable_text = models.BooleanField(default=True)
 
     class Meta:
@@ -77,6 +88,7 @@ class Resource(TenantScopedModel):
         indexes = [
             models.Index(fields=["tenant", "processing_status"]),
             models.Index(fields=["tenant", "visibility_scope"]),
+            models.Index(fields=["tenant", "moderation_status"]),
             models.Index(fields=["course_offering"]),
             models.Index(fields=["created_at"]),
         ]
@@ -217,3 +229,57 @@ class ResourceSummary(TenantScopedModel):
 
     def __str__(self):
         return f"Summary of {self.resource_id} @ {self.created_at}"
+
+
+class ResourceReport(TenantScopedModel):
+    """User-generated report flagging a resource for moderator review.
+
+    Report-and-takedown moderation flow:
+      - any tenant member can report an in-scope resource they can view
+      - a report flips the resource's ``moderation_status`` to FLAGGED,
+        removing it from retrieval and listings until a Lecturer/Admin acts
+      - the moderator dismisses the report (→ ACTIVE) or removes the
+        resource (→ REMOVED, hidden from everyone); both paths are audited
+    """
+
+    class Reason(models.TextChoices):
+        INACCURATE = "inaccurate", "Inaccurate or misleading content"
+        COPYRIGHT = "copyright", "Copyright infringement"
+        OFFENSIVE = "offensive", "Offensive or inappropriate content"
+        OTHER = "other", "Other"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending review"
+        RESOLVED = "resolved", "Resolved"
+        DISMISSED = "dismissed", "Dismissed"
+
+    resource = models.ForeignKey(
+        Resource, on_delete=models.CASCADE, related_name="reports"
+    )
+    reported_by = models.ForeignKey(
+        "accounts.User", on_delete=models.SET_NULL, null=True, related_name="resource_reports"
+    )
+    reason = models.CharField(max_length=20, choices=Reason.choices, default=Reason.OTHER)
+    details = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True
+    )
+    resolved_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_resource_reports",
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "resource_reports"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["tenant", "status", "created_at"]),
+            models.Index(fields=["tenant", "resource", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"Report {self.reason} on {self.resource_id}"

@@ -434,11 +434,11 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="grid gap-5 lg:grid-cols-3">
-                <div className="h-56 lg:col-span-2">
-                  <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="flex h-56 flex-col lg:col-span-2">
+                  <p className="mb-1 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Events over time
                   </p>
-                  <div className="h-[calc(100%-22px)]">
+                  <div className="min-h-0 flex-1">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
                         data={auditTimeline}

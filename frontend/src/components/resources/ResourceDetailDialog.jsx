@@ -6,6 +6,7 @@ import StatusBadge from '@/components/shared/StatusBadge';
 import ConfirmDialog from '@/components/shared/ConfirmDialog';
 import SummaryPanel from '@/components/resources/SummaryPanel';
 import ResourceSidePanel from '@/components/resources/ResourceSidePanel';
+import ResourcePreview from '@/components/resources/ResourcePreview';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
@@ -29,6 +30,25 @@ import { useReadingPosition } from '@/hooks/useReadingPosition';
 const SUMMARIES_QUERY_KEY = (resourceId) => ['resource-summaries', resourceId];
 const EPHEMERAL_PREFIX = 'ephemeral-';
 
+const AI_UNAVAILABLE_MSG = 'The AI service is currently unavailable. Please try again later.';
+
+// Markers that signal an AI error/placeholder leaked from the backend or an
+// SDK instead of real content. Such output must never be shown or saved.
+const AI_ERROR_MARKERS = [
+  '(Dev stub)',
+  '(Dev stub —',
+  'GEMINI_API_KEY',
+  'Content length is',
+  'UnsupportedRequestError',
+  'google.genai',
+];
+
+const looksLikeAIError = (value) =>
+  typeof value === 'string' && AI_ERROR_MARKERS.some((m) => value.includes(m));
+
+const cleanAIError = (message) =>
+  looksLikeAIError(message) ? AI_UNAVAILABLE_MSG : message;
+
 function normalizeJobResult(r) {
   if (!r || typeof r !== 'object') return null;
   if (r.status === 'failed' || r.error) return null;
@@ -36,7 +56,7 @@ function normalizeJobResult(r) {
     (typeof r.summary === 'string' && r.summary) ||
     (typeof r === 'string' ? r : '') ||
     '';
-  if (!summary) return null;
+  if (!summary || looksLikeAIError(summary)) return null;
   const kp = Array.isArray(r.key_points) ? r.key_points : [];
   return {
     id: r.summary_id ? `${r.summary_id}` : `${EPHEMERAL_PREFIX}${Date.now()}`,
@@ -96,11 +116,13 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
   const [deletingId, setDeletingId] = useState(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [workerOutdatedWarned, setWorkerOutdatedWarned] = useState(false);
+  const [previewRenderError, setPreviewRenderError] = useState(null);
   const warnOnceRef = useRef(false);
 
-  // Reading position tracking (text resources only)
+  // Reading position tracking
   const previewScrollRef = useRef(null);
   const previewKindRef = useRef(null);
+  const previewEngineRef = useRef(null);
   const { savedPosition, isResuming, save: saveReadPosition, restore: restoreReadPosition, dismissResume } = useReadingPosition(open ? resource?.id : null);
 
   // Collapse sidebar when entering focus mode
@@ -252,13 +274,15 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
           if (data.successful) {
             const r = data.result || {};
             if (r.status === 'failed' || r.error) {
-              setSummaryError(r.error || 'Summary failed.');
-              toast.error(r.error || 'Summary failed');
+              const msg = cleanAIError(r.error || 'Summary failed.');
+              setSummaryError(msg);
+              toast.error(msg);
             } else {
               const normalized = normalizeJobResult(r);
               if (!normalized) {
-                setSummaryError('The AI returned an empty summary.');
-                toast.error('The AI returned an empty summary.');
+                const msg = (r && r.summary && looksLikeAIError(r.summary) && AI_UNAVAILABLE_MSG) || 'The AI returned an empty summary.';
+                setSummaryError(msg);
+                toast.error(msg);
                 return;
               }
               const refreshed = await refetchSummaries();
@@ -301,7 +325,9 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
         if (cancelled) return;
         setSummaryLoading(false);
         setSummaryJobId(null);
-        const msg = err.response?.data?.error?.detail || err.message || 'Could not poll summary job';
+        const msg = cleanAIError(
+          err.response?.data?.error?.detail || err.message || 'Could not poll summary job',
+        );
         setSummaryError(msg);
         toast.error(msg);
       }
@@ -321,7 +347,9 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
       setSummaryJobId(data.job_id);
     } catch (err) {
       setSummaryLoading(false);
-      const msg = err.response?.data?.error?.detail || err.message || 'Could not start summary';
+      const msg = cleanAIError(
+        err.response?.data?.error?.detail || err.message || 'Could not start summary',
+      );
       setSummaryError(msg);
       toast.error(msg);
     }
@@ -376,6 +404,7 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
       return data;
     },
     enabled: open && !!resource,
+    onSuccess: () => setPreviewRenderError(null),
   });
 
   // Track preview kind in ref for use in close handler (can't use preview in deps above)
@@ -691,14 +720,59 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
                     {preview.truncated && '\n\n… (truncated at 512 KB — download for full file)'}
                   </pre>
                 </>
-              ) : preview?.kind === 'pdf' ? (
-                <iframe
-                  src={preview.preview_url}
-                  title={`Preview of ${resource.title}`}
-                  sandbox="allow-same-origin"
-                  referrerPolicy="no-referrer"
-                  className="h-full w-full bg-background"
-                />
+              ) : preview?.kind === 'pdf' || preview?.kind === 'office' || preview?.kind === 'sheet' ? (
+                previewRenderError ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm">
+                    <p className="text-destructive">{previewRenderError}</p>
+                    <Button type="button" variant="outline" size="sm" onClick={download}>
+                      <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Download file
+                    </Button>
+                  </div>
+                ) : (
+                <>
+                  {isResuming && (
+                    <div className="flex items-center gap-2 border-b border-[var(--warn)]/30 bg-[var(--warn-soft)] px-4 py-2 text-[12px] text-[var(--warn)]">
+                      <BookmarkCheck className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <span>
+                        You were {Math.round(savedPosition?.scroll_percentage || 0)}% through this document.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => previewEngineRef.current?.restore?.(savedPosition?.scroll_percentage)}
+                        className="ml-1 font-semibold underline underline-offset-2 hover:opacity-80"
+                      >
+                        Resume
+                      </button>
+                      <button
+                        type="button"
+                        onClick={dismissResume}
+                        className="ml-auto rounded p-0.5 hover:bg-[var(--warn)]/20"
+                        aria-label="Dismiss"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                  <ResourcePreview
+                    ref={previewEngineRef}
+                    preview={preview}
+                    resource={resource}
+                    scrollRef={(el) => {
+                      previewScrollRef.current = el;
+                    }}
+                    onScrollPct={saveReadPosition}
+                    onReady={() => {
+                      // Reading-position resume for engine-backed kinds can't run
+                      // on mount — the DOM is empty (scrollHeight 0) until the
+                      // engine has laid out pages. Defer until `onReady`.
+                      if (isResuming && savedPosition?.scroll_percentage) {
+                        previewEngineRef.current?.restore?.(savedPosition.scroll_percentage);
+                      }
+                    }}
+                    onError={(err) => setPreviewRenderError(err?.message || 'Could not load the preview.')}
+                  />
+                </>
+                )
               ) : preview?.kind === 'image' ? (
                 <div className="flex h-full items-center justify-center overflow-auto p-4">
                   <img src={preview.preview_url} alt={`Preview of ${resource.title}`} className="max-h-full max-w-full rounded-md object-contain shadow-sm" />

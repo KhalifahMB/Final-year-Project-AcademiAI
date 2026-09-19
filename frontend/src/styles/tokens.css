@@ -1,8 +1,9 @@
 /* =========================================================
    AcademiAI design tokens (Tailwind v4 @theme)
-   Modern-minimal direction (Linear/Vercel/Notion 2024 posture)
-   — Single accent economy · Hairline borders · Pop-only shadows
-   — 12/8/6 radii · 15px body · 30px/650 h1 · 11px eyebrows
+   Direction: grounded institutional UI (wireframe spec)
+   — Violet accent #6C5CE7 · paper light / near-black dark
+   — Geist + Geist Mono in-app · Fraunces serif on landing
+   — Hairline borders · grain + 48px grid textures
    ========================================================= */
 @theme {
   /* Radii — modern, not bubbly (Open Design spec: lg 12, md 8, sm 6) */
@@ -57,19 +58,20 @@
 
   /* Popover/dropdown/modal shadow — ONLY place shadows appear */
   --shadow-pop:
-    0 12px 32px rgba(18, 24, 38, 0.12), 0 2px 8px rgba(18, 24, 38, 0.06);
+    0 12px 32px rgba(18, 10, 40, 0.12), 0 2px 8px rgba(18, 10, 40, 0.06);
 
-  /* Typography — SF Pro fallback stack per brand-spec */
+  /* Typography — Geist (app), Fraunces (landing display), Geist Mono (meta) */
   --font-sans:
-    'Geist Variable', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+    'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
     'SF Pro Text', 'Inter', ui-sans-serif, system-ui, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
   --font-serif:
-    'Instrument Serif', 'Georgia', serif;
+    'Fraunces Variable', 'Fraunces', Georgia, 'Times New Roman', serif;
   --font-mono:
-    ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono',
-    monospace;
-  --font-display: var(--font-serif);
+    'Geist Mono', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas,
+    'Liberation Mono', monospace;
+  /* App headings render in Geist (sans); landing opt-in to Fraunces */
+  --font-display: var(--font-sans);
 
   /* Custom animations */
   --animate-shimmer: shimmer 2s linear infinite;
@@ -81,45 +83,45 @@
 }
 
 /* =========================================================
-   Light mode — paper white, cool neutrals (brand-spec)
+   Light mode — warm paper canvas, violet accent
    ========================================================= */
 :root {
   color-scheme: light;
 
-  /* Canvas + surfaces */
-  --bg: oklch(99% 0.002 240);
-  --surface: oklch(100% 0 0);
-  --surface-2: oklch(97.7% 0.003 245);
-  --hover: oklch(96% 0.004 245);
+  /* Canvas + surfaces — paper (#FAF9F6 ≈ oklch(0.985 0.003 85)) */
+  --bg: oklch(0.985 0.003 85);
+  --surface: oklch(0.995 0.002 85);
+  --surface-2: oklch(0.965 0.004 85);
+  --hover: oklch(0.945 0.005 85);
 
   /* Text */
-  --fg: oklch(18% 0.012 250);
-  --fg-soft: oklch(34% 0.014 250);
-  --muted: oklch(54% 0.012 250);
-  --faint: oklch(72% 0.01 250);
+  --fg: oklch(0.2 0.018 285);
+  --fg-soft: oklch(0.37 0.02 285);
+  --muted: oklch(0.53 0.015 285);
+  --faint: oklch(0.7 0.01 285);
 
-  /* Lines */
-  --border: oklch(92% 0.005 250);
-  --border-strong: oklch(85% 0.007 250);
+  /* Lines — hairline on paper */
+  --border: oklch(0.905 0.006 85);
+  --border-strong: oklch(0.83 0.008 85);
   --input: var(--surface-2);
-  --ring: oklch(58% 0.18 255);
+  --ring: oklch(0.577 0.195 282);
 
-  /* Single accent (indigo, not violet) */
-  --accent: oklch(58% 0.18 255);
-  --accent-strong: oklch(51% 0.185 255);
-  --accent-soft: oklch(95.8% 0.02 255);
-  --accent-line: oklch(87% 0.055 255);
-  --on-accent: oklch(99.2% 0.002 240);
+  /* Single accent — brand violet #6C5CE7 ≈ oklch(0.577 0.195 282) */
+  --accent: oklch(0.577 0.195 282);
+  --accent-strong: oklch(0.5 0.19 282);
+  --accent-soft: oklch(0.945 0.028 282);
+  --accent-line: oklch(0.86 0.07 282);
+  --on-accent: oklch(0.99 0.002 85);
 
   /* Status (data, not decoration) */
-  --success: oklch(48% 0.13 152);
-  --success-soft: oklch(96% 0.03 152);
-  --warn: oklch(49% 0.115 75);
-  --warn-soft: oklch(96.5% 0.04 85);
-  --danger: oklch(51% 0.19 27);
-  --danger-soft: oklch(96.5% 0.02 27);
-  --info: oklch(52% 0.12 240);
-  --info-soft: oklch(96% 0.02 240);
+  --success: oklch(0.5 0.125 150);
+  --success-soft: oklch(0.955 0.025 150);
+  --warn: oklch(0.5 0.115 80);
+  --warn-soft: oklch(0.955 0.03 85);
+  --danger: oklch(0.52 0.19 25);
+  --danger-soft: oklch(0.955 0.02 25);
+  --info: oklch(0.52 0.11 245);
+  --info-soft: oklch(0.955 0.02 245);
 
   /* Aliases used by shadcn/card components */
   --background: var(--bg);
@@ -137,7 +139,7 @@
   --destructive-foreground: var(--bg);
   --accent-foreground: var(--accent-strong);
 
-  /* Sidebar (light) — tinted paper surface */
+  /* Sidebar (light) — paper surface */
   --sidebar: var(--surface);
   --sidebar-foreground: var(--fg);
   --sidebar-muted: var(--muted);
@@ -148,7 +150,7 @@
 
   /* Shadows reserved for popovers/dropdowns/modals ONLY */
   --shadow-pop:
-    0 12px 32px rgba(18, 24, 38, 0.12), 0 2px 8px rgba(18, 24, 38, 0.06);
+    0 12px 32px rgba(18, 10, 40, 0.12), 0 2px 8px rgba(18, 10, 40, 0.06);
 
   /* Layout */
   --topbar-h: 56px;
@@ -157,40 +159,43 @@
 }
 
 /* =========================================================
-   Dark mode — near-black surfaces, brand-spec palette
+   Dark mode — near-black canvases, violet accent
    ========================================================= */
 .dark {
   color-scheme: dark;
 
-  --bg: oklch(17% 0.012 255);
-  --surface: oklch(20.5% 0.013 256);
-  --surface-2: oklch(24% 0.015 257);
-  --hover: oklch(27% 0.016 257);
+  /* Canvas + surfaces — near-black blue-violet (#0B0B0E ≈ oklch(.145 .015 282)) */
+  --bg: oklch(0.145 0.015 282);
+  --surface: oklch(0.19 0.018 282);
+  --surface-2: oklch(0.235 0.02 282);
+  --hover: oklch(0.27 0.022 282);
 
-  --fg: oklch(95.5% 0.005 250);
-  --fg-soft: oklch(83% 0.008 250);
-  --muted: oklch(67% 0.01 250);
-  --faint: oklch(50% 0.012 250);
+  /* Text */
+  --fg: oklch(0.97 0.008 282);
+  --fg-soft: oklch(0.85 0.01 282);
+  --muted: oklch(0.68 0.012 282);
+  --faint: oklch(0.52 0.015 282);
 
-  --border: oklch(29% 0.015 257);
-  --border-strong: oklch(37% 0.018 257);
-  --input: oklch(24% 0.015 257);
-  --ring: oklch(69% 0.155 255);
+  /* Lines — hairline on near-black */
+  --border: oklch(0.275 0.02 282);
+  --border-strong: oklch(0.35 0.025 282);
+  --input: oklch(0.235 0.02 282);
+  --ring: oklch(0.72 0.17 282);
 
-  --accent: oklch(62% 0.17 255);
-  --accent-strong: oklch(69% 0.155 255);
-  --accent-soft: oklch(30% 0.06 256);
-  --accent-line: oklch(40% 0.08 256);
-  --on-accent: oklch(98% 0.002 240);
+  --accent: oklch(0.72 0.17 282);
+  --accent-strong: oklch(0.78 0.15 282);
+  --accent-soft: oklch(0.32 0.07 282);
+  --accent-line: oklch(0.42 0.09 282);
+  --on-accent: oklch(0.98 0.005 282);
 
-  --success: oklch(74% 0.13 155);
-  --success-soft: oklch(31% 0.05 155);
-  --warn: oklch(78% 0.125 85);
-  --warn-soft: oklch(33% 0.05 85);
-  --danger: oklch(70% 0.17 27);
-  --danger-soft: oklch(32% 0.06 27);
-  --info: oklch(72% 0.12 240);
-  --info-soft: oklch(30% 0.05 240);
+  --success: oklch(0.75 0.13 152);
+  --success-soft: oklch(0.3 0.05 152);
+  --warn: oklch(0.79 0.12 85);
+  --warn-soft: oklch(0.32 0.05 85);
+  --danger: oklch(0.71 0.17 25);
+  --danger-soft: oklch(0.31 0.06 25);
+  --info: oklch(0.73 0.11 245);
+  --info-soft: oklch(0.3 0.05 245);
 
   --background: var(--bg);
   --foreground: var(--fg);
@@ -218,11 +223,12 @@
 }
 
 /* =========================================================
-   Material system tokens — glass-first premium (world: DESIGN.md)
-   Theme-derived, no hardcoded hues. Both light and dark native.
+   Material system tokens — grounded hairline-panel surfaces
+   The shell may blur; panels below it stay opaque for
+   legibility. Theme-derived, no hardcoded hues.
    ========================================================= */
 :root {
-  /* Glass material */
+  /* Glass/shell material (topbar, overlays — sparingly) */
   --glass-shell-tint: color-mix(in oklab, var(--surface) 80%, transparent);
   --glass-card-tint: color-mix(in oklab, var(--surface) 86%, transparent);
   --glass-overlay-tint: color-mix(in oklab, var(--surface) 90%, transparent);
@@ -233,8 +239,59 @@
   --neo-light: inset 0 1px 0 color-mix(in oklab, var(--fg) 6%, transparent);
   --neo-dark: inset 0 -1px 0 color-mix(in oklab, var(--fg) 9%, transparent);
   --neo-drop: 0 1px 2px color-mix(in oklab, var(--fg) 6%, transparent);
-  /* Floating glass shadow (cards above the shell) */
+  /* Floating surface shadow (cards above the shell) */
   --shadow-glass:
     0 1px 0 color-mix(in oklab, var(--fg) 4%, transparent) inset,
     0 16px 40px -24px color-mix(in oklab, var(--fg) 20%, transparent);
+}
+
+/* =========================================================
+   Textures — grain + 48px grid backdrop (wireframe spec)
+   ========================================================= */
+/* Film-grain overlay. Apply to a positioned wrapper; the ::after
+   layer renders static SVG turbulence at a low tinted opacity. */
+.texture-grain {
+  position: relative;
+}
+.texture-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+.dark .texture-grain::after {
+  opacity: 0.08;
+}
+
+/* 48px blueprint grid backdrop — fg-derived so it themes itself */
+.texture-grid {
+  background-image:
+    linear-gradient(
+      color-mix(in oklab, var(--fg) 6%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--fg) 6%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 48px 48px;
+}
+.texture-grid--faint {
+  background-image:
+    linear-gradient(
+      color-mix(in oklab, var(--fg) 4%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--fg) 4%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 48px 48px;
 }

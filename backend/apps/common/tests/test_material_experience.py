@@ -135,7 +135,8 @@ def test_preview_text_and_pdf():
 
 
 @pytest.mark.django_db
-def test_summarize_denied_for_private_material_of_other_user():
+@patch("apps.resources.views.ai_service_available", return_value=True)
+def test_summarize_denied_for_private_material_of_other_user(ai_ok):
     t = make_tenant("sumvis")
     owner = make_user("o@sumvis.edu", t, role="lecturer")
     student = make_user("s@sumvis.edu", t)
@@ -159,7 +160,8 @@ def test_summarize_denied_for_private_material_of_other_user():
 
 
 @pytest.mark.django_db
-def test_student_can_summarize_institution_resource():
+@patch("apps.resources.views.ai_service_available", return_value=True)
+def test_student_can_summarize_institution_resource(ai_ok):
     t = make_tenant("sumvis-inst")
     uploader = make_user("u@sumvis-inst.edu", t, role="lecturer")
     student = make_user("s@sumvis-inst.edu", t)
@@ -174,6 +176,26 @@ def test_student_can_summarize_institution_resource():
         d.return_value.id = "task-sum-inst"
         resp = client.post(f"/api/v1/resources/{res.id}/summarize/")
     assert resp.status_code == 202
+
+
+@pytest.mark.django_db
+@patch("apps.resources.views.ai_service_available", return_value=False)
+def test_summarize_unavailable_service_rejected_before_queueing(ai_off):
+    t = make_tenant("sumvis-off")
+    lecturer = make_user("l@sumvis-off.edu", t, role="lecturer")
+    res = Resource.objects.create(
+        tenant=t, title="Institution notes", uploaded_by=lecturer,
+        visibility_scope=Resource.Visibility.INSTITUTION,
+        processing_status=Resource.ProcessingStatus.READY,
+        has_extractable_text=True,
+    )
+    client = auth_client(lecturer)
+    with patch("apps.resources.summary_tasks.summarize_resource_task.delay") as d:
+        resp = client.post(f"/api/v1/resources/{res.id}/summarize/")
+    d.assert_not_called()
+    assert resp.status_code == 503
+    detail = resp.data["error"]["detail"]
+    assert "AI service is currently unavailable" in detail
 
 
 @pytest.mark.django_db
@@ -225,6 +247,84 @@ def test_chat_history_scoped_to_owner_and_session():
     # u1 cannot read u2's session messages even by guessing the id
     resp = client.get(f"/api/v1/chat/messages/?session={s2.id}")
     assert all("secret" not in m["content"] for m in resp.data["results"])
+
+
+@pytest.mark.django_db
+def test_preview_office_format_serves_extracted_text():
+    from apps.resources.models import ResourceChunk, ResourceVersion
+
+    t = make_tenant("officepreview")
+    owner = make_user("o@officepreview.edu", t)
+    key = f"tenants/{t.id}/resources/deck/slides.pptx"
+    res = Resource.objects.create(
+        tenant=t, title="Slides.pptx", uploaded_by=owner,
+        storage_key=key,
+        mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        processing_status=Resource.ProcessingStatus.READY,
+        has_extractable_text=True,
+    )
+    ver = ResourceVersion.objects.create(
+        tenant=t, resource=res, version_number=1, storage_key=key, created_by=owner
+    )
+    ResourceChunk.objects.create(
+        tenant=t, resource_version=ver, chunk_index=0,
+        content="Big-O notation describes algorithm growth.",
+    )
+    ResourceChunk.objects.create(
+        tenant=t, resource_version=ver, chunk_index=1,
+        content="Merge sort runs in O(n log n).",
+    )
+    client = auth_client(owner)
+
+    # Classification falls back to "other" when the magic sniff can't reach
+    # storage; the office-format branch must still serve the chunk text.
+    with patch("apps.resources.views.get_s3_client") as s3:
+        s3.side_effect = Exception("no storage in test")
+        resp = client.get(f"/api/v1/resources/{res.id}/preview/")
+
+    assert resp.status_code == 200
+    assert resp.data["kind"] == "text"
+    assert "Big-O notation" in resp.data["content"]
+    assert "O(n log n)" in resp.data["content"]
+    assert resp.data["truncated"] is False
+
+
+@patch("apps.common.ai.gemini._get_client")
+def test_summary_unavailable_raises_not_stub(get_client):
+    from apps.common.ai import AIServiceUnavailableError, generate_summary
+
+    get_client.return_value = None
+    text = (
+        "Photosynthesis converts light energy into chemical energy. "
+        "Chlorophyll absorbs sunlight and drives the process. " * 20
+    )
+    with pytest.raises(AIServiceUnavailableError):
+        generate_summary(text, max_words=60)
+
+
+@patch("apps.common.ai.gemini._get_client")
+def test_summary_unavailable_raises_for_empty_text(get_client):
+    from apps.common.ai import AIServiceUnavailableError, generate_summary
+
+    get_client.return_value = None
+    with pytest.raises(AIServiceUnavailableError):
+        generate_summary("   ", max_words=60)
+
+
+def test_summary_call_failure_raises_not_fallback():
+    from apps.common.ai import AIServiceUnavailableError, generate_summary
+
+    class FlakyClient:
+        class models:
+            @staticmethod
+            def generate_content(model=None, contents=None, config=None):
+                raise ValueError("Content length is 17453 characters.")
+
+    with patch("apps.common.ai.gemini._get_client", return_value=FlakyClient()):
+        with pytest.raises(AIServiceUnavailableError) as exc_info:
+            generate_summary("some academic text " * 30, max_words=60)
+    assert "(Dev stub" not in str(exc_info.value)
+    assert "unavailable" in str(exc_info.value).lower()
 
 
 @pytest.mark.django_db

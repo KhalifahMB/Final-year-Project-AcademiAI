@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 
-from .models import ChatMessage
-from .services import compute_confidence as _compute_confidence
+from apps.chat.models import ChatMessage
+from apps.chat.services.retrieval import compute_confidence as _compute_confidence
 
 
 class ConfidenceHeuristicTests(SimpleTestCase):
@@ -17,4 +17,3 @@ class ConfidenceHeuristicTests(SimpleTestCase):
 
     def test_zero_chunks_is_low(self):
         self.assertEqual(_compute_confidence([]), ChatMessage.Confidence.LOW)
-

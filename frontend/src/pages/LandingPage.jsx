@@ -3,28 +3,24 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
-  Bookmark,
+  BadgeCheck,
   BookOpen,
   BookOpenCheck,
   Bot,
   Calendar,
-  CalendarClock,
   Check,
   ChevronDown,
-  Clock,
+  FileText,
   GraduationCap,
-  Landmark,
   ListChecks,
+  Lock,
   Megaphone,
-  Palette,
-  Paperclip,
+  Quote,
+  Rss,
   Search,
   ShieldCheck,
-  Smartphone,
-  Sparkles,
   TrendingUp,
   UserRound,
-  UsersRound,
 } from 'lucide-react';
 import api, { publicApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,98 +28,149 @@ import BrandMark from '@/components/shared/BrandMark';
 import ThemeToggle from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 
-const CORE_FEATURES = [
+const PROBLEMS = [
+  {
+    icon: FileText,
+    title: 'Materials live in a dozen drives',
+    text: 'Slide decks, notes, past papers and PDFs sit split across departments and folders — there is no single place to ask.',
+  },
   {
     icon: Bot,
-    label: '01 / Retrieve',
-    title: 'Tutoring with receipts.',
-    text: 'Ask in plain language; answers retrieve from course materials you are authorised to see and every claim carries its chunk, page and similarity score.',
+    title: 'Generic answers, zero receipts',
+    text: 'General-purpose chatbots answer plausibly but never point back to your university\u2019s actual materials.',
   },
   {
     icon: TrendingUp,
-    label: '02 / Practice',
-    title: 'Quizzes from your slides.',
-    text: 'Lecturers queue the AI against chosen materials, review generated drafts, then publish. Attempts flow straight into mastery records.',
-  },
-  {
-    icon: ShieldCheck,
-    label: '03 / Govern',
-    title: 'Cohort signals, early.',
-    text: 'Concept confusion surfaces while the term can still be steered — ranked by quiz results and what students actually ask the tutor.',
+    title: 'Confusion hides until the exam',
+    text: 'You only discover what a cohort actually missed long after the deadline has passed.',
   },
 ];
 
-const SECONDARY_FEATURES = [
+const FEATURES = [
   {
-    icon: Bookmark,
-    t: 'Bookmarks & notes',
-    d: 'A personal learning space that follows you across every course.',
+    icon: Bot,
+    title: 'Grounded chat',
+    text: 'Every answer retrieves from authorised materials and cites the exact page and passage it came from.',
   },
   {
-    icon: BookOpen,
-    t: 'Smart summaries',
-    d: 'Concise digests of lecture material — one tap away.',
+    icon: UserRound,
+    title: 'Role agents',
+    text: 'A dedicated agent per working role — student study partner, lecturer co-pilot, admin operator.',
   },
   {
-    icon: ShieldCheck,
-    t: 'Tenant isolation',
-    d: 'Database-level RLS keeps each university private.',
+    icon: ListChecks,
+    title: 'Study planner',
+    text: 'A vague goal becomes milestones and dated tasks you can actually follow.',
+  },
+  {
+    icon: Calendar,
+    title: 'Layered calendar',
+    text: 'Lectures, exams, office hours and your study plan in one layered view.',
+  },
+  {
+    icon: BookOpenCheck,
+    title: 'Quizzes from your slides',
+    text: 'Drafted by the AI, reviewed by lecturers, then published — attempts feed mastery records.',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Cohort signals',
+    text: 'Concept confusion ranked by quiz results and real student questions — while the term can still be steered.',
   },
 ];
 
-const HOW_STEPS = [
-  [
-    '01',
-    'Create your institution space',
-    'Your university gets its own tenant, academic hierarchy, roles, and access rules.',
-  ],
-  [
-    '02',
-    'Bring the material in',
-    'Lecturers upload notes, slides, and PDFs. The pipeline chunks and indexes them asynchronously.',
-  ],
-  [
-    '03',
-    'Learn from the source',
-    'Students chat, practise, and review with answers tied back to real pages and passages.',
-  ],
+const STEPS = [
+  {
+    num: '01',
+    title: 'Upload & parse',
+    text: 'Lecturers bring in notes, slides and PDFs. The pipeline chunks and embeds them asynchronously.',
+  },
+  {
+    num: '02',
+    title: 'Index & isolate',
+    text: 'Vectors land in a per-tenant index. Row-level security keeps every institution private.',
+  },
+  {
+    num: '03',
+    title: 'Cite & answer',
+    text: 'Questions retrieve, rerank and answer — with the page, passage and score openable behind every claim.',
+  },
 ];
 
-const AUDIENCES = [
+const ISOLATION_POINTS = [
+  'Row-level security enforced at the database layer',
+  'Per-tenant pgvector HNSW index',
+  'Region-pinned storage and tenant-scoped app queries',
+  'Every read leaves an audit trail',
+];
+
+const TENANTS = [
   {
-    label: 'Students',
-    title: 'Learn with receipts.',
-    text: 'Grounded answers with page-level citations, practice sets from your lecture material, and mastery tracking with a review queue.',
+    name: 'TENANT_A',
+    domain: 'uniben.edu.ng',
+    tag: 'RLS enforced',
+    active: true,
+    meta: ['pgvector · hnsw', 'region eu-west-1', 'tenant_id t_9f1c'],
+  },
+  {
+    name: 'TENANT_B',
+    domain: 'parakou.bj',
+    tag: 'RLS enforced',
+    active: false,
+    meta: ['pgvector · hnsw', 'region eu-west-1'],
+  },
+  {
+    name: 'TENANT_C',
+    domain: 'eneam.bj',
+    tag: 'RLS enforced',
+    active: false,
+    meta: ['pgvector · hnsw', 'region eu-west-1'],
+  },
+];
+
+const ROLES = [
+  {
     icon: GraduationCap,
+    label: 'Student · Study partner',
+    title: 'Understand more, nail every deadline.',
+    text: 'Explains concepts at your level, diagnoses the weak points behind wrong answers, and turns a vague goal into a plan — always citing the material you are authorised to see.',
   },
   {
-    label: 'Lecturers',
-    title: 'See the signal early.',
-    text: 'Turn authorised resources into reviewed quizzes and spot confusion before assessment day.',
     icon: BookOpen,
+    label: 'Lecturer · Course co-pilot',
+    title: 'Prep, teach, know your class.',
+    text: 'Structures lectures and office hours, orders deadlines, flags conflicts, and answers \u201cwho needs attention\u201d — grounded in quiz results and what students actually ask.',
   },
   {
-    label: 'Administrators',
-    title: 'Keep the map yours.',
-    text: 'Manage hierarchy, access, resources, and audit trails inside your institution boundary.',
     icon: ShieldCheck,
+    label: 'Admin · Institution operator',
+    title: 'Run the institution smoothly.',
+    text: 'Instrument-wide views of analytics, calendars, schedules, users and logs — with a single actionable take on the day.',
   },
 ];
 
-const EXTRAS = [
+const SIGNALS = [
   {
-    icon: Smartphone,
-    tag: 'Coming soon',
-    title: 'AcademiAI mobile',
-    text: 'Study on the go, offline access, push notifications for quizzes and updates.',
+    icon: Rss,
+    title: 'Concept confusion',
+    text: 'Ranked by quiz results and the questions students actually put to the tutor.',
+    bars: [2, 3, 4, 6, 8, 7, 9, 10],
   },
   {
-    icon: UsersRound,
-    tag: 'Coming soon',
-    title: 'Collaborative study boards',
-    text: 'Collaborate with classmates across your university — shared boards with grounded context.',
+    icon: FileText,
+    title: 'Coverage gaps',
+    text: 'Resources that are rarely accessed — or missing the context a question keeps needing.',
+    bars: [8, 6, 5, 4, 4, 2, 1, 1],
+  },
+  {
+    icon: Megaphone,
+    title: 'Early warning',
+    text: 'Signals reach the lecturer while the term can still be steered, not after marks.',
+    bars: [1, 1, 2, 4, 5, 7, 9, 10],
   },
 ];
+
+const TESTIMONIALS = [];
 
 const FAQS = [
   {
@@ -150,134 +197,6 @@ const FAQS = [
     q: 'What does it cost to start?',
     a: 'Free to start for students — create an account and join your university\u2019s workspace. Institutions are provisioned on request, and plan tiers are being finalised, so ask and we\u2019ll confirm the details.',
   },
-];
-
-const PRICING_TIERS = [
-  {
-    icon: UserRound,
-    label: 'Students',
-    name: 'Free to start',
-    text: 'Join your university\u2019s workspace in under a minute and get the grounded tutor, auto-quizzes, study plans, and calendar — no payment details required.',
-    cta: { label: 'Get started free', to: '/signup' },
-    note: 'Create an account and start learning today.',
-  },
-  {
-    icon: Landmark,
-    label: 'Institutions',
-    name: 'On request',
-    text: 'A private, isolated tenant with your academic hierarchy, roles, and audit trail — plus cohort analytics and timetable import for your whole university.',
-    cta: { label: 'Request your institution', to: '/request-institution' },
-    note: 'Plan tiers are being finalised — request it and we\u2019ll confirm the details.',
-  },
-];
-
-const AGENTS = [
-  {
-    avatar: '/avatars/tutor.svg',
-    role: 'Student · Study partner',
-    name: 'Understand more, nail every deadline.',
-    text: 'Explains concepts at your level, diagnoses weak points behind wrong answers, and turns a vague goal into a plan with milestones and tasks — always citing the material you are authorised to see.',
-    icon: UserRound,
-  },
-  {
-    avatar: '/avatars/librarian.svg',
-    role: 'Lecturer · Course co-pilot',
-    name: 'Prep, teach, know your class.',
-    text: 'Structures lectures and office hours, orders deadlines, flags conflicts, and answers “who needs attention” — grounded in quiz results, progress, and what students actually ask.',
-    icon: BookOpen,
-  },
-  {
-    avatar: '/avatars/exec.svg',
-    role: 'Administrator · Institution operator',
-    name: 'Run the institution smoothly.',
-    text: 'Instrument-wide views of analytics, calendars, schedules, users, and logs — with a single actionable take on the day and an eye on what needs human attention.',
-    icon: ShieldCheck,
-  },
-];
-
-const PLANNER = [
-  {
-    icon: ListChecks,
-    title: 'Plans with milestones & tasks',
-    text: 'Each plan holds dated milestones and tasks with estimated minutes — study plans, workflows, or personal goals, tracked to a target date.',
-  },
-  {
-    icon: Sparkles,
-    title: 'Start from a template… or from a chat',
-    text: 'Pick an institution or personal template and instantiate it, or simply ask your agent to turn a goal into a plan with milestones and tasks.',
-  },
-  {
-    icon: CalendarClock,
-    title: 'Everything lands on the calendar',
-    text: 'Dated plans and milestones sync to your personal study layer automatically — and events you add there flow straight back into your plans.',
-  },
-];
-
-const CALENDAR_LAYERS = [
-  {
-    icon: UserRound,
-    title: 'Personal',
-    text: 'Study plans and milestones render as all-day events on your own layer.',
-  },
-  {
-    icon: BookOpen,
-    title: 'Academic',
-    text: 'Lectures for the course offerings you are enrolled in or assigned to teach.',
-  },
-  {
-    icon: CalendarClock,
-    title: 'Exams',
-    text: 'The exam timetable, slotted into the same view as your study plan.',
-  },
-  {
-    icon: Clock,
-    title: 'Office hours',
-    text: 'When lecturers are available — visible to students and staff alike.',
-  },
-  {
-    icon: Landmark,
-    title: 'Institution',
-    text: 'University-wide events published by administrators, broadcast to everyone.',
-  },
-];
-
-const PLATFORM_DEPTH = [
-  {
-    icon: TrendingUp,
-    title: 'Cohort analytics',
-    text: 'Per-offering analytics give lecturers resource-quality scores, duplicate detection, topic suggestions, and confusion ranked by real usage.',
-  },
-  {
-    icon: Paperclip,
-    title: 'Attach files to a chat',
-    text: 'Drop a document into a conversation and the agent answers with that file in context.',
-  },
-  {
-    icon: Palette,
-    title: 'Make the agent yours',
-    text: 'Custom avatars and tone adjustments, plus accessibility-first reading filters.',
-  },
-  {
-    icon: BookOpenCheck,
-    title: 'Resume where you left off',
-    text: 'Reading positions remember your scroll position and section in every resource.',
-  },
-  {
-    icon: Landmark,
-    title: 'Request your institution',
-    text: 'Not listed in the directory? Submit a request and get an auto-provisioned workspace once approved.',
-  },
-  {
-    icon: Megaphone,
-    title: 'Institution announcements',
-    text: 'University-wide announcements with email dispatch and per-user opt-out.',
-  },
-];
-
-const FEATURES_CHECKLIST = [
-  'Citations point to real passages you can open',
-  'Concept-level progress tracking as you study',
-  'Visibility scopes keep materials within your institution',
 ];
 
 function LiveDirectory() {
@@ -310,7 +229,7 @@ function LiveDirectory() {
           aria-label="Search active institutions"
         />
       </label>
-      <div className="mt-4 grid gap-2" aria-live="polite">
+      <div className="mt-4 grid gap-1" aria-live="polite">
         {directoryQuery.isLoading ? (
           <p className="landing-data-note">
             Loading the live institution directory...
@@ -348,40 +267,101 @@ function LiveDirectory() {
   );
 }
 
-function TutorPanel() {
+function GroundedChatMock() {
   return (
-    <div className="landing-tutor-wrap">
-      <div className="landing-tutor">
-        <div className="landing-tutor__topline">
-          <span className="landing-tutor__dots" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
-          <span>ACADEMIAI / TUTOR SESSION</span>
-          <span className="landing-tutor__online">● ONLINE</span>
-        </div>
-        <div className="landing-tutor__body">
-          <p className="landing-tutor__question">
-            &gt; Explain why this algorithm is O(n log n).
-          </p>
-          <div className="landing-tutor__answer">
-            The divide-and-conquer steps split the input into logarithmic
-            levels, while each level processes all n items once. Together, that
-            produces n log n work.
-          </div>
-          <span className="landing-tutor__citation">
-            SOURCE / Algorithms-lecture-03.pdf / p.18 / 0.94
-          </span>
-        </div>
+    <div className="landing-hero__mock">
+      <div className="hero-live-badge" aria-hidden="true">
+        <i />
+        RLS-scoped
       </div>
-      <div className="landing-tutor__caption">
-        <Check className="h-4 w-4" aria-hidden="true" />
-        <span>
-          Every useful answer can take you back to the page it came from.
-        </span>
+      <div className="chat-window">
+        <div className="chat-window__bar">
+          <span className="chat-window__dots" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+          <span>GROUNDED CHAT</span>
+          <span className="chat-window__status">● ONLINE</span>
+        </div>
+        <div className="chat-window__body">
+          <p className="chat-msg chat-msg--user">
+            &gt; Why does this algorithm run in O(n log n)?
+          </p>
+          <div className="chat-msg chat-msg--ai">
+            <p>
+              The divide-and-conquer steps split the input into logarithmic
+              levels, and each level processes all n items once — together
+              that is n log n work.
+            </p>
+            <span className="chat-cite">
+              <BadgeCheck aria-hidden="true" />
+              <strong>[1]</strong> Algorithms-lecture-03.pdf · p.18 · sim 0.94
+            </span>
+            <div className="chat-cite__meta">
+              <span className="chat-meta-pill">
+                <Check aria-hidden="true" /> retrieved 4 chunks
+              </span>
+              <span className="chat-meta-pill">reranked</span>
+              <span className="chat-meta-pill">verified</span>
+            </div>
+          </div>
+        </div>
+        <div className="chat-window__footer">
+          <Search aria-hidden="true" />
+          <span>Ask about the Thermodynamics Syllabus 2024…</span>
+        </div>
       </div>
     </div>
+  );
+}
+
+function RequestForm() {
+  const [email, setEmail] = useState('');
+  const [institution, setInstitution] = useState('');
+
+  return (
+    <form
+      className="landing-request__form"
+      onSubmit={(event) => event.preventDefault()}
+      aria-label="Request a workspace"
+    >
+      <div className="grid gap-1.5">
+        <label htmlFor="landing-request-email">Work email</label>
+        <input
+          id="landing-request-email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@university.edu.ng"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+      </div>
+      <div className="grid gap-1.5">
+        <label htmlFor="landing-request-institution">Institution name</label>
+        <input
+          id="landing-request-institution"
+          type="text"
+          autoComplete="organization"
+          placeholder="e.g. University of Lagos"
+          value={institution}
+          onChange={(event) => setInstitution(event.target.value)}
+        />
+      </div>
+      <Button size="lg" className="mt-1 w-full" asChild>
+        <Link to="/request-institution">
+          Request workspace
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </Button>
+      <div className="landing-request__bank">
+        <Lock aria-hidden="true" />
+        <span>
+          Setup is free for early adopters · no card required · your data stays
+          in-region.
+        </span>
+      </div>
+    </form>
   );
 }
 
@@ -397,6 +377,13 @@ export default function LandingPage() {
 
   const institutionCount = statsQuery.data?.institutions_total ?? 0;
 
+  const navLinks = [
+    { label: 'Product', href: '#solution' },
+    { label: 'Security', href: '#security' },
+    { label: 'Roles', href: '#roles' },
+    { label: 'How it works', href: '#how' },
+  ];
+
   return (
     <div className="landing-page">
       <header className="landing-nav">
@@ -409,13 +396,11 @@ export default function LandingPage() {
             className="landing-nav__links"
             aria-label="Landing page sections"
           >
-            <a href="#model">The model</a>
-            <a href="#agent">Personal agent</a>
-            <a href="#planner">Study planner</a>
-            <a href="#calendar">Calendar</a>
-            <a href="#how">How it works</a>
-            <a href="#audiences">Who it serves</a>
-            <a href="#institutions">Institutions</a>
+            {navLinks.map((link) => (
+              <a key={link.href} href={link.href}>
+                {link.label}
+              </a>
+            ))}
           </nav>
           <div className="landing-nav__actions">
             <ThemeToggle className="landing-theme-btn" iconOnly />
@@ -437,10 +422,7 @@ export default function LandingPage() {
                   <Link to="/login">Sign in</Link>
                 </Button>
                 <Button className="landing-auth-primary" size="sm" asChild>
-                  <Link to="/signup">
-                    Get started{' '}
-                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  </Link>
+                  <Link to="/request-institution">Request workspace</Link>
                 </Button>
               </>
             )}
@@ -453,13 +435,18 @@ export default function LandingPage() {
         <section className="landing-hero">
           <div className="landing-shell landing-hero__grid">
             <div>
+              <p className="landing-eyebrow">
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                Multi-tenant · Grounded · Institution-first
+              </p>
               <h1 className="landing-hero__heading">
-                Every answer comes from your institution&rsquo;s own materials.
+                Knowledge, <em>cited.</em> Not imagined.
               </h1>
               <p className="landing-lede">
-                AcademiAI gives every university its own AI tutor — grounded
-                chat, personalised quizzes and cohort insight from authorised
-                materials.
+                AcademiAI gives every university its own isolated AI workspace —
+                grounded chat, quizzes and cohort insight drawn from the
+                institution&rsquo;s own authorised materials, with every claim
+                traced back to a page.
               </p>
               <div className="landing-actions">
                 {isAuthenticated ? (
@@ -472,13 +459,16 @@ export default function LandingPage() {
                 ) : (
                   <>
                     <Button size="lg" asChild>
-                      <Link to="/signup">
-                        Create account
+                      <Link to="/request-institution">
+                        Request your workspace
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
                       </Link>
                     </Button>
-                    <a className="landing-text-link" href="#institutions">
-                      Find your university
+                    <a
+                      className="landing-text-link"
+                      href="#grounding"
+                    >
+                      See grounding in action
                       <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                     </a>
                   </>
@@ -486,340 +476,227 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div>
-              <TutorPanel />
+            <GroundedChatMock />
+          </div>
+        </section>
+
+        {/* --------------------------------------------- Trust strip */}
+        <section className="landing-trust" aria-label="Trusted departments">
+          <div className="landing-shell landing-trust__inner">
+            <span className="landing-trust__label">Trusted across departments</span>
+            <div className="landing-trust__track">
+              {institutionCount > 0 && (
+                <span className="landing-trust__live">
+                  <i aria-hidden="true" />
+                  {institutionCount} live
+                </span>
+              )}
             </div>
           </div>
         </section>
 
-        {/* ------------------------------------------- Signal bar */}
-        <section id="model" className="landing-signal-bar">
-          <div className="landing-shell landing-signal-bar__inner">
-            <div>
-              <strong>Grounded</strong>
-              <span>
-                Answers cite the source material you are authorised to see.
-              </span>
-            </div>
-            <div>
-              <strong>Reviewed</strong>
-              <span>Quizzes are drafted by AI, reviewed, then published.</span>
-            </div>
-            <div>
-              <strong className="landing-live">
-                <i aria-hidden="true" />
-                {institutionCount > 0 ? `${institutionCount} live` : 'Live'}
-              </strong>
-              <span>University tenants running AcademiAI today.</span>
-            </div>
-          </div>
-        </section>
-
-        {/* -------------------------------------- What is AcademiAI */}
-        <section className="landing-section">
+        {/* ------------------------------------------- Problem section */}
+        <section className="landing-problem landing-section">
           <div className="landing-shell">
             <div className="landing-section__heading">
-              <div>
-                <h2>A grounded AI tutor for your whole institution.</h2>
-              </div>
+              <p className="landing-eyebrow">The problem</p>
+              <h2>Materials are fragmented. Answers shouldn&rsquo;t be.</h2>
               <p>
-                AcademiAI is a multi-tenant academic assistant. It brings
-                classes, materials, planning, and an AI tutor into one
-                workspace — every answer grounded in your institution&rsquo;s
-                own authorised resources, with no hallucinations and no
-                cross-tenant leakage.
+                Lecturers prepare relentlessly. Students still end up asking a
+                generic chatbot that guesses instead of citing. The result is
+                time lost and answers without receipts.
               </p>
             </div>
-            <div className="landing-manifesto">
-              <div className="landing-manifesto__row">
-                <span className="landing-manifesto__key">
-                  <span>01</span>
-                  Chat
-                  <Bot className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <div>
-                  <h3>Ask anything, get citations.</h3>
-                  <p>
-                    A personal agent tutors, quizzes, and plans for you — citing
-                    the exact page, passage, and document every claim comes
-                    from.
-                  </p>
-                </div>
-              </div>
-              <div className="landing-manifesto__row">
-                <span className="landing-manifesto__key">
-                  <span>02</span>
-                  Plan
-                  <ListChecks className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <div>
-                  <h3>Turn goals into progress.</h3>
-                  <p>
-                    Study plans, workflows, and personal goals — milestones and
-                    tasks, from a template or straight out of a chat.
-                  </p>
-                </div>
-              </div>
-              <div className="landing-manifesto__row">
-                <span className="landing-manifesto__key">
-                  <span>03</span>
-                  Calendar
-                  <Calendar className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <div>
-                  <h3>One calendar for study and schedule.</h3>
-                  <p>
-                    Lectures, exams, office hours, institution events, and your
-                    own study plans in a single layered view.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ----------------------------------------- Product / model */}
-        <section id="product" className="landing-section">
-          <div className="landing-shell">
-            <div className="landing-section__heading">
-              <div>
-                <h2>Your complete academic assistant.</h2>
-              </div>
-              <p>
-                Designed for universities to provide grounded AI assistance to
-                their students — every answer traced to authorised course
-                materials in your university&rsquo;s tenant.
-              </p>
-            </div>
-            <div className="landing-principles">
-              {CORE_FEATURES.map(({ icon: Icon, label, title, text }) => (
-                <article key={title} className="landing-principle">
-                  <div className="landing-principle__top">
-                    <span>{label}</span>
-                    <Icon className="h-4 w-4" aria-hidden="true" />
-                  </div>
+            <div className="landing-problem__grid">
+              {PROBLEMS.map(({ icon: Icon, title, text }) => (
+                <article key={title} className="landing-problem__card">
+                  <span className="chat-cite">
+                    <Icon aria-hidden="true" />
+                    <strong>{title.split(' ')[0]}</strong>
+                  </span>
                   <h3>{title}</h3>
                   <p>{text}</p>
                 </article>
               ))}
             </div>
-            <div className="landing-extras-row">
-              {SECONDARY_FEATURES.map(({ icon: Icon, t, d }) => (
-                <div key={t} className="landing-extra">
-                  <Icon className="landing-extra__icon" aria-hidden="true" />
-                  <div>
-                    <p className="landing-extra__title">{t}</p>
-                    <p className="landing-extra__text">{d}</p>
-                  </div>
-                </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------ Platform section */}
+        <section id="solution" className="landing-section landing-product">
+          <div className="landing-shell">
+            <div className="landing-section__heading landing-section__heading--split">
+              <div>
+                <p className="landing-eyebrow">The platform</p>
+                <h2>One isolated workspace per institution.</h2>
+              </div>
+              <p>
+                Every university runs in its own tenant — with courses, roles,
+                materials and an AI assistant shaped around how each working
+                role actually learns and teaches.
+              </p>
+            </div>
+            <div className="landing-feature-grid">
+              {FEATURES.map(({ icon: Icon, title, text }) => (
+                <article key={title} className="landing-feature">
+                  <span className="landing-feature__icon">
+                    <Icon aria-hidden="true" />
+                  </span>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </article>
               ))}
             </div>
           </div>
         </section>
 
-        {/* --------------------------------------------- Collaboration */}
-        <section className="landing-photo-band">
-          <div className="landing-shell landing-photo-band__inner">
-            <img
-              src="/images/holographic_ai_library_collaboration.webp"
-              alt="Students collaborating with an AI assistant inside a digital library"
-              loading="lazy"
-            />
-            <div>
-              <h2>Grounded answers, one cohort at a time.</h2>
+        {/* ------------------------------------------- How it works */}
+        <section id="how" className="landing-steps landing-section">
+          <div className="landing-shell">
+            <div className="landing-section__heading">
+              <p className="landing-eyebrow">How it works</p>
+              <h2>From upload to cited answer in three steps.</h2>
               <p>
-                Answers are scoped to materials the student is actually enrolled
-                to see — your university&rsquo;s content never leaks between
-                tenants. Students, lecturers, and admins all work from a single
-                isolated workspace.
+                No data-science team required — the pipeline parses, isolates
+                and serves as soon as material is in.
               </p>
             </div>
-          </div>
-        </section>
-
-        {/* ------------------------------------------------- How it works */}
-        <section id="how" className="landing-how">
-          <div className="landing-shell landing-how__grid">
-            <div>
-              <h2>A multi-tenant architecture for every university.</h2>
-              <p className="landing-how__intro">
-                Each institution gets an isolated workspace where faculties,
-                departments, courses, roles, and permissions stay private —
-                scalable to any faculty or department.
-              </p>
-            </div>
-            <ol className="landing-how__steps">
-              {HOW_STEPS.map(([n, title, text]) => (
-                <li key={n}>
-                  <span>{n}</span>
-                  <div>
-                    <h3>{title}</h3>
-                    <p>{text}</p>
+            <div className="landing-steps__grid">
+              {STEPS.map(({ num, title, text }, i) => (
+                <article key={num} className="landing-step">
+                  <span className="landing-step__num">{num}</span>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                  <div
+                    className={`landing-step__rail${
+                      i === STEPS.length - 1 ? ' landing-step__rail--full' : ''
+                    }`}
+                    aria-hidden="true"
+                  >
+                    <i />
                   </div>
-                </li>
+                </article>
               ))}
-            </ol>
+            </div>
           </div>
         </section>
 
-        {/* ------------------------------------------- Knowledge showcase */}
-        <section className="landing-knowledge">
-          <div className="landing-shell landing-knowledge__grid">
-            <div className="landing-knowledge__image">
-              <img
-                src="/images/ai_knowledge_graph_visualization.webp"
-                alt="Knowledge graph connecting course concepts"
-                loading="lazy"
-              />
-            </div>
-            <div className="landing-knowledge__copy">
-              <h2>A knowledge graph behind every answer.</h2>
-              <p>
-                Uploaded documents are chunked, embedded and linked into a
-                concept map of your curriculum. When you ask a question,
-                AcademiAI retrieves the exact passages and cites them — never a
-                hallucinated reference.
+        {/* ---------------------------------------------- Isolation */}
+        <section id="security" className="landing-isolation landing-section">
+          <div className="landing-shell landing-isolation__grid">
+            <div className="landing-isolation__copy">
+              <p className="landing-eyebrow">
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                Security
               </p>
-              <ul>
-                {FEATURES_CHECKLIST.map((t) => (
-                  <li key={t}>
-                    <Check className="h-4 w-4" aria-hidden="true" />
-                    {t}
+              <h2>Hard isolation. Not soft promises.</h2>
+              <p>
+                Isolation is enforced at the database layer before your
+                application code ever runs. One institution&rsquo;s materials
+                can never surface in another&rsquo;s answers.
+              </p>
+              <ul className="landing-isolation__list">
+                {ISOLATION_POINTS.map((point) => (
+                  <li key={point}>
+                    <Check aria-hidden="true" />
+                    {point}
                   </li>
                 ))}
               </ul>
             </div>
-          </div>
-        </section>
-
-        {/* -------------------------------------- Personal agent */}
-        <section id="agent" className="landing-agents">
-          <div className="landing-shell landing-section">
-            <div className="landing-section__heading">
-              <div>
-                <h2>One agent, built for your role.</h2>
-              </div>
-              <p>
-                Everyone at the institution gets an AI assistant shaped around
-                the way they actually work — trained on retrieved, cited
-                material, never on guesses.
-              </p>
-            </div>
-            <div className="landing-agents__grid">
-              {AGENTS.map(({ avatar, role, name, text, icon: Icon }) => (
-                <article key={role} className="landing-agent">
-                  <div className="landing-agent__top">
-                    <img src={avatar} alt="" aria-hidden="true" />
-                    <span>{role}</span>
+            <div className="tenant-map" aria-label="Tenant isolation diagram">
+              {TENANTS.map((tenant) => (
+                <article
+                  key={tenant.name}
+                  className={`tenant-card${
+                    tenant.active ? '' : ' tenant-card--disabled'
+                  }`}
+                  aria-hidden="true"
+                >
+                  <div className="tenant-card__top">
+                    <span className="tenant-card__name">{tenant.name}</span>
+                    <span className="tenant-card__tag">
+                      <Lock aria-hidden="true" />
+                      {tenant.tag}
+                    </span>
                   </div>
-                  <h3>{name}</h3>
-                  <p>{text}</p>
-                  <span className="landing-agent__more">
-                    <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                    Built-in tools &amp; actions
-                  </span>
+                  <div className="tenant-card__meta">
+                    <span>{tenant.domain}</span>
+                    {tenant.meta.map((meta) => (
+                      <span key={meta}>{meta}</span>
+                    ))}
+                  </div>
                 </article>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ------------------------------------------- Planner */}
-        <section id="planner" className="landing-planner">
-          <div className="landing-shell landing-section">
-            <div className="landing-section__heading">
+        {/* ---------------------------------- Grounding in action */}
+        <section id="grounding" className="landing-grounding landing-section">
+          <div className="landing-shell">
+            <div className="landing-section__heading landing-section__heading--split">
               <div>
-                <h2>Turn “I should study” into a plan.</h2>
+                <p className="landing-eyebrow">Grounding</p>
+                <h2>See the grounding in action.</h2>
               </div>
               <p>
-                Plans turn goals into dated milestones and concrete tasks — so
-                &ldquo;prepare for the exam&rdquo; becomes a sequence you can
-                actually follow.
+                Ask in plain language. The answer retrieves only what your
+                institution authorised, reranks it, and pins every claim to a
+                source you can open.
               </p>
             </div>
-            <div className="landing-extras-row">
-              {PLANNER.map(({ icon: Icon, title, text }) => (
-                <div key={title} className="landing-extra">
-                  <Icon className="landing-extra__icon" aria-hidden="true" />
-                  <div>
-                    <p className="landing-extra__title">{title}</p>
-                    <p className="landing-extra__text">{text}</p>
-                  </div>
+            <div className="landing-grounding__grid">
+              <GroundedChatMock />
+              <aside className="sources-rail">
+                <div className="sources-rail__head">
+                  <span>RETRIEVED SOURCES</span>
+                  <span className="sources-rail__count">12 sources</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ------------------------------------------- Calendar */}
-        <section id="calendar" className="landing-calendar">
-          <div className="landing-shell landing-section">
-            <div className="landing-section__heading">
-              <div>
-                <h2>Study plans, lectures, exams — in one place.</h2>
-              </div>
-              <p>
-                Switch between month, week, day, and agenda views; layer study
-                plans over the real academic timetable. Export to ICS, or import
-                your timetable as CSV or XLSX with a preview before it lands.
-              </p>
-            </div>
-            <div className="landing-calendar__layers">
-              {CALENDAR_LAYERS.map(({ icon: Icon, title, text }) => (
-                <div key={title} className="landing-calendar__layer">
-                  <Icon className="landing-extra__icon" aria-hidden="true" />
-                  <div>
-                    <strong>{title}</strong>
-                    <p>{text}</p>
-                  </div>
+                <div className="sources-rail__list">
+                  {[
+                    ['Algorithms-lecture-03.pdf', '0.94'],
+                    ['Thermodynamics Syllabus 2024.pdf', '0.91'],
+                    ['DS-drive-notes-v2.pdf', '0.89'],
+                    ['Complexity-theory-notes.docx', '0.86'],
+                  ].map(([doc, score]) => (
+                    <div key={doc} className="source-chip">
+                      <div className="source-chip__top">
+                        <span className="source-chip__doc">{doc}</span>
+                        <span className="source-chip__score">{score}</span>
+                      </div>
+                      <span className="chat-cite">
+                        <BadgeCheck aria-hidden="true" />
+                        Page 42 · §3.2 · Verified
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </aside>
             </div>
           </div>
         </section>
 
-        {/* ------------------------------------------ Platform depth */}
-        <section className="landing-depth">
-          <div className="landing-shell landing-depth__grid">
-            <div className="landing-depth__intro">
-              <h2>Beyond the headline.</h2>
-              <p>
-                In-chat files, resume-reading, cohort analytics, and
-                institution requests that actually get provisioned.
-              </p>
-            </div>
-            <ul className="landing-depth__list">
-              {PLATFORM_DEPTH.map(({ icon: Icon, title, text }) => (
-                <li key={title}>
-                  <Icon className="h-4 w-4" aria-hidden="true" />
-                  <div>
-                    <strong>{title}</strong>
-                    <p>{text}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        {/* ------------------------------------------------- Audiences */}
-        <section id="audiences" className="landing-audiences">
-          <div className="landing-shell landing-section">
+        {/* ------------------------------------------------ Roles */}
+        <section id="roles" className="landing-roles landing-section">
+          <div className="landing-shell">
             <div className="landing-section__heading">
-              <div>
-                <h2>Pick a seat and walk through it.</h2>
-              </div>
+              <p className="landing-eyebrow">Roles</p>
+              <h2>One agent per working role.</h2>
               <p>
-                AcademiAI is built for three working roles on day one — students
-                learning, lecturers teaching, and administrators governing.
+                Not one chatbot for everyone — a dedicated assistant shaped
+                around how students, lecturers and administrators actually
+                work, all inside a single isolated workspace.
               </p>
             </div>
-            <div className="landing-audiences__grid">
-              {AUDIENCES.map(({ icon: Icon, label, title, text }) => (
-                <article key={label} className="landing-audience">
-                  <div className="landing-audience__top">
-                    <span>{label}</span>
-                    <Icon className="h-4 w-4" aria-hidden="true" />
+            <div className="landing-roles__grid">
+              {ROLES.map(({ icon: Icon, label, title, text }) => (
+                <article key={label} className="landing-role">
+                  <div className="landing-role__top">
+                    <span className="landing-role__avatar">
+                      <Icon aria-hidden="true" />
+                    </span>
+                    <span className="landing-role__label">{label}</span>
                   </div>
                   <h3>{title}</h3>
                   <p>{text}</p>
@@ -829,44 +706,99 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ------------------------------------------------- Institutions */}
-        <section id="institutions" className="landing-directory-section">
-          <div className="landing-shell landing-directory-section__grid">
-            <div>
-              <h2>Find your university.</h2>
-              <p className="landing-data-note">
-                Each university gets its own private workspace. Browse the
-                directory and join yours in under a minute.
+        {/* ----------------------------------------------- Signals */}
+        <section className="landing-signals landing-section">
+          <div className="landing-shell">
+            <div className="landing-section__heading">
+              <p className="landing-eyebrow">Cohort signals</p>
+              <h2>Confusion surfaces early.</h2>
+              <p>
+                Ranked, per-concept signals reach the lecturer while the term
+                can still be steered — not after marks come out.
               </p>
-              <a className="landing-text-link" href="#institutions">
-                Browse all institutions
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </a>
-              <Link
-                to="/request-institution"
-                className="landing-text-link"
-              >
-                Don&rsquo;t see yours? Request it
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </Link>
             </div>
-            <div>
-              <LiveDirectory />
+            <div className="landing-signals__grid">
+              {SIGNALS.map(({ icon: Icon, title, text, bars }) => (
+                <article key={title} className="landing-signal">
+                  <div className="landing-signal__top">
+                    <span>{title}</span>
+                    <Icon aria-hidden="true" />
+                  </div>
+                  <strong>{title}</strong>
+                  <p>{text}</p>
+                  <div className="landing-signal__meter" aria-hidden="true">
+                    {bars.map((height, i) => (
+                      <i
+                        key={i}
+                        className={height >= 7 ? 'hot' : ''}
+                        style={{ height: `${(height / 10) * 100}%` }}
+                      />
+                    ))}
+                  </div>
+                </article>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ------------------------------------------------------ FAQs */}
-        <section id="faq" className="landing-faq">
+        {/* ------------------------------------------- Testimonials */}
+        <section className="landing-testimonials landing-section">
           <div className="landing-shell">
             <div className="landing-section__heading">
-              <div>
-                <h2>Questions, answered straight.</h2>
-              </div>
+              <p className="landing-eyebrow">In the field</p>
+              <h2>Built with universities, not for them.</h2>
+            </div>
+            <div className="landing-testimonials__grid">
+              {TESTIMONIALS.map(({ quote, name, role }) => (
+                <figure key={name} className="landing-testimonial">
+                  <Quote className="h-4 w-4 text-[var(--landing-accent)]" aria-hidden="true" />
+                  <blockquote className="landing-testimonial__quote">
+                    {quote}
+                  </blockquote>
+                  <figcaption className="landing-testimonial__foot">
+                    <span className="landing-testimonial__name">{name}</span>
+                    <span className="landing-testimonial__role">{role}</span>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ---------------------------------- Request + live directory */}
+        <section id="institutions" className="landing-request landing-section">
+          <div className="landing-shell landing-request__grid">
+            <div className="landing-request__copy">
+              <p className="landing-eyebrow">Get started</p>
+              <h2>Turn your university into a workspace.</h2>
               <p>
-                The short version of how grounding, privacy, and getting
-                started actually work.
+                Requests are reviewed daily and provisioned in under 48 hours —
+                with a private tenant, academic hierarchy, roles and an AI
+                grounded in materials your lecturers upload.
               </p>
+              <RequestForm />
+            </div>
+            <aside className="landing-directory">
+              <h3>Find your university</h3>
+              <p>
+                Already running on AcademiAI? Search the live directory and
+                join your institution in under a minute.
+              </p>
+              <LiveDirectory />
+              <Link className="landing-text-link" to="/request-institution">
+                Don&rsquo;t see yours? Request it
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+            </aside>
+          </div>
+        </section>
+
+        {/* --------------------------------------------------- FAQ */}
+        <section id="faq" className="landing-faq landing-section">
+          <div className="landing-shell">
+            <div className="landing-section__heading">
+              <p className="landing-eyebrow">FAQ</p>
+              <h2>Questions, answered straight.</h2>
             </div>
             <div className="landing-faq__list">
               {FAQS.map((item) => (
@@ -884,122 +816,6 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-
-        {/* --------------------------------------------- On the roadmap */}
-        <section className="landing-section">
-          <div className="landing-shell">
-            <div className="landing-section__heading">
-              <div>
-                <h2>Coming next.</h2>
-              </div>
-              <p>
-                The platform is built to grow with each university — starting
-                with the features below.
-              </p>
-            </div>
-            <div className="landing-extras-row">
-              {EXTRAS.map(({ icon: Icon, tag, title, text }) => (
-                <article key={title} className="landing-extra">
-                  <div className="landing-extra__top">
-                    <span className="landing-extra__tag">{tag}</span>
-                    <Icon className="landing-extra__icon" aria-hidden="true" />
-                  </div>
-                  <h3 className="landing-extra__title">{title}</h3>
-                  <p className="landing-extra__text">{text}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ------------------------------------------------ Multi-tenant */}
-        <section id="case-study" className="landing-case-study">
-          <div className="landing-shell landing-case-study__inner">
-            <div>
-              <h2>One platform, every faculty and university.</h2>
-              <p>
-                AcademiAI is architected as a multi-tenant solution — each
-                institution gets an isolated workspace with its own courses,
-                materials and AI. Designed to start with a single faculty and
-                grow across departments, faculties and the whole university.
-              </p>
-            </div>
-            <div className="landing-case-study__stamp" aria-hidden="true">
-              <span>v1</span>
-              <small>Multi-tenant · Isolated workspaces</small>
-            </div>
-          </div>
-        </section>
-
-        {/* --------------------------------------------------- Pricing */}
-        <section id="pricing" className="landing-pricing">
-          <div className="landing-shell">
-            <div className="landing-section__heading">
-              <div>
-                <h2>Simple to start, clear as you grow.</h2>
-              </div>
-              <p>
-                No paywall on day one — students get the full workspace free
-                to begin, and institutions are provisioned on request.
-              </p>
-            </div>
-            <div className="landing-pricing__grid">
-              {PRICING_TIERS.map(
-                ({ icon: Icon, label, name, text, cta, note }) => (
-                  <article key={label} className="landing-pricing__card">
-                    <div className="landing-pricing__top">
-                      <span>{label}</span>
-                      <Icon className="landing-extra__icon" aria-hidden="true" />
-                    </div>
-                    <h3>{name}</h3>
-                    <p>{text}</p>
-                    <Link to={cta.to} className="landing-pricing__cta">
-                      {cta.label}
-                      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                    </Link>
-                    <small>{note}</small>
-                  </article>
-                ),
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* -------------------------------------------------------- CTA */}
-        <section className="landing-cta">
-          <div className="landing-shell landing-cta__inner">
-            <h2>
-              Get grounded answers from your university&rsquo;s materials.
-            </h2>
-            <p>
-              Every answer cites the slide, page or passage it came from — and
-              content never leaks between institutions.
-            </p>
-            <div className="landing-actions">
-              {isAuthenticated ? (
-                <Button size="lg" asChild>
-                  <Link to="/dashboard">
-                    Open your workspace
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
-                </Button>
-              ) : (
-                <>
-                  <Button size="lg" asChild>
-                    <Link to="/signup">
-                      Get started free
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    </Link>
-                  </Button>
-                  <a className="landing-text-link" href="#institutions">
-                    Browse universities
-                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-                  </a>
-                </>
-              )}
-            </div>
-          </div>
-        </section>
       </main>
 
       <footer className="landing-footer">
@@ -1008,8 +824,16 @@ export default function LandingPage() {
             <BrandMark size="h-7 w-7" />
             <span>AcademiAI</span>
           </Link>
+          <nav className="landing-footer__links" aria-label="Footer">
+            <a href="#security">Security</a>
+            <a href="#institutions">Institutions</a>
+            <a href="#faq">FAQ</a>
+            {!isAuthenticated && (
+              <Link to="/login">Sign in</Link>
+            )}
+          </nav>
           <span>
-            © {new Date().getFullYear()} — Multi-tenant academic AI · open for collaboration
+            © {new Date().getFullYear()} AcademiAI · Multi-tenant · Grounded
           </span>
         </div>
       </footer>

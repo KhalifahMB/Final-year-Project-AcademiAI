@@ -63,8 +63,9 @@ class BookmarkSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bookmark
-        fields = ("id", "resource", "resource_detail", "user", "tenant", "created_at")
+        fields = ("id", "resource", "resource_detail", "user", "tenant", "folder", "created_at")
         read_only_fields = ("id", "user", "tenant", "created_at")
+        extra_kwargs = {"folder": {"max_length": 100, "required": False, "allow_blank": True}}
 
     def validate_resource(self, value):
         # The bookmarked material must belong to the bookmarking user's
