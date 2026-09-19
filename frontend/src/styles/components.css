@@ -605,4 +605,290 @@
     font-weight: 600;
     background: var(--surface-2);
   }
+
+  /* =========================================================
+     Document preview — omni-doc-viewer works standalone here:
+     we render its built-in `Toolbar`/`SearchBar` (what `DocViewer`
+     composes), but NOT DocViewer itself. Its `TOOLBAR_CSS` is
+     injected only by DocViewer, so we port the base layout here
+     (scoped to our glass pill) and theme it with app tokens.
+     ========================================================= */
+  .odv-toolbar-glass {
+    --odv-toolbar-bg: transparent;
+    --odv-toolbar-fg: var(--fg-soft);
+    --odv-toolbar-hover: var(--hover);
+    --odv-toolbar-active: var(--hover);
+    --odv-fg: var(--fg);
+    --odv-fg-muted: var(--muted);
+    --odv-border: var(--border);
+    --odv-input-border: var(--border-strong);
+    --odv-input-bg: var(--surface-2);
+    --odv-surface-alt: var(--surface-2);
+    --odv-accent: var(--accent);
+    --odv-accent-ring: color-mix(in oklch, var(--accent) 18%, transparent);
+    --odv-error: var(--danger);
+    --odv-font: var(--font-sans);
+  }
+
+  /* Bar — the row itself (flex layout is what turned "scattered"). */
+  .odv-toolbar-glass .odv-pg-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 44px;
+    flex: 0 0 auto;
+    padding: 0 4px;
+    box-sizing: border-box;
+    font: 500 13px/1 var(--font-sans);
+    color: var(--fg-soft);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+  .odv-toolbar-glass .odv-pg-grp {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .odv-toolbar-glass .odv-pg-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--fg-soft);
+    cursor: pointer;
+    transition:
+      background 0.12s ease,
+      color 0.12s ease;
+  }
+  .odv-toolbar-glass .odv-pg-btn:hover:not(:disabled) {
+    background: var(--hover);
+    color: var(--fg);
+  }
+  .odv-toolbar-glass .odv-pg-btn:active:not(:disabled) {
+    background: var(--hover);
+  }
+  .odv-toolbar-glass .odv-pg-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+  .odv-toolbar-glass .odv-pg-btn svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+  }
+  .odv-toolbar-glass .odv-pg-pages {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 4px;
+  }
+  .odv-toolbar-glass .odv-pg-input {
+    width: 42px;
+    height: 30px;
+    text-align: center;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    font: 600 13px/1 var(--font-sans);
+    color: var(--fg);
+    background: var(--surface-2);
+    outline: none;
+    box-sizing: border-box;
+    font-variant-numeric: tabular-nums;
+    transition:
+      border-color 0.12s,
+      box-shadow 0.12s;
+    -moz-appearance: textfield;
+  }
+  .odv-toolbar-glass .odv-pg-input::-webkit-outer-spin-button,
+  .odv-toolbar-glass .odv-pg-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .odv-toolbar-glass .odv-pg-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 18%, transparent);
+  }
+  .odv-toolbar-glass .odv-pg-input:disabled {
+    opacity: 0.5;
+    background: var(--surface-2);
+  }
+  .odv-toolbar-glass .odv-pg-total {
+    color: var(--muted);
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  .odv-toolbar-glass .odv-pg-pct {
+    min-width: 54px;
+    height: 30px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font: 600 13px/1 var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    transition: background 0.12s;
+  }
+  .odv-toolbar-glass .odv-pg-pct-input {
+    width: 46px;
+    height: 30px;
+    padding: 0 4px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--muted);
+    text-align: center;
+    font: 600 13px/1 var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    outline: none;
+    transition:
+      background 0.12s,
+      border-color 0.12s;
+  }
+  .odv-toolbar-glass .odv-pg-pct-input:hover {
+    background: var(--hover);
+    color: var(--fg);
+  }
+  .odv-toolbar-glass .odv-pg-pct-input:focus {
+    background: var(--surface-2);
+    border-color: var(--accent);
+    color: var(--fg);
+  }
+  .odv-toolbar-glass .odv-pg-pct-unit {
+    margin-right: 4px;
+    color: var(--muted);
+    font: 600 13px/1 var(--font-sans);
+    font-variant-numeric: tabular-nums;
+  }
+  .odv-toolbar-glass .odv-pg-pct:hover:not(:disabled) {
+    background: var(--hover);
+    color: var(--fg);
+  }
+  .odv-toolbar-glass .odv-pg-pct:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .odv-toolbar-glass .odv-pg-sep {
+    width: 1px;
+    height: 22px;
+    background: var(--border-strong);
+    margin: 0 6px;
+    flex: 0 0 auto;
+  }
+  .odv-toolbar-glass .odv-pg-spacer {
+    flex: 1 1 auto;
+  }
+  .odv-toolbar-glass .odv-pg-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--fg-soft);
+    cursor: pointer;
+    font: 600 13px/1 var(--font-sans);
+    white-space: nowrap;
+    transition:
+      background 0.12s,
+      border-color 0.12s,
+      box-shadow 0.12s;
+  }
+  .odv-toolbar-glass .odv-pg-mode:hover:not(:disabled) {
+    background: var(--hover);
+    border-color: var(--border-strong);
+  }
+  .odv-toolbar-glass .odv-pg-mode:active:not(:disabled) {
+    background: var(--hover);
+  }
+  .odv-toolbar-glass .odv-pg-mode:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .odv-toolbar-glass .odv-pg-mode svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+    color: var(--muted);
+  }
+  .odv-toolbar-glass .odv-pg-btn.is-active {
+    background: color-mix(in oklch, var(--accent) 16%, transparent);
+    color: var(--accent);
+  }
+
+  /* Search row (SearchBar) */
+  .odv-toolbar-glass .odv-sb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 44px;
+    flex: 0 0 auto;
+    padding: 0 4px;
+    box-sizing: border-box;
+    font: 500 13px/1 var(--font-sans);
+    color: var(--fg-soft);
+  }
+  .odv-toolbar-glass .odv-sb-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    font: 500 13px/1 var(--font-sans);
+    color: var(--fg);
+    background: var(--surface-2);
+    outline: none;
+    box-sizing: border-box;
+    transition:
+      border-color 0.12s,
+      box-shadow 0.12s;
+  }
+  .odv-toolbar-glass .odv-sb-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 18%, transparent);
+  }
+  .odv-toolbar-glass .odv-sb-count {
+    min-width: 56px;
+    text-align: center;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .odv-toolbar-glass .odv-sb-count.is-empty {
+    color: var(--danger);
+  }
+  /* Fallback for browsers without container queries: keep the mode label
+     readable on narrow dialogs (mirrors the library's own adaptation). */
+  .odv-pg-dragpill {
+    touch-action: none;
+    cursor: grab;
+  }
+  .odv-pg-dragpill.is-dragging {
+    cursor: grabbing;
+  }
+  .odv-pg-dragpill > * {
+    cursor: grab;
+  }
+  .odv-pg-dragpill.is-dragging > * {
+    cursor: grabbing;
+  }
+  .odv-pg-dragpill input,
+  .odv-pg-dragpill textarea,
+  .odv-pg-dragpill select {
+    cursor: text;
+  }
+  @media (max-width: 560px) {
+    .odv-toolbar-glass .odv-pg-modelabel {
+      display: none;
+    }
+  }
 }

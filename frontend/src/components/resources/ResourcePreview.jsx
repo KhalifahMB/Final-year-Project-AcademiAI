@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { createViewer } from 'omni-doc-viewer';
 import api from '@/services/api';
 import PreviewToolbar from '@/components/resources/PreviewToolbar';
@@ -92,7 +93,6 @@ const ResourcePreview = forwardRef(function ResourcePreview(
     const contentPath = preview?.content_path;
     if (!needsEngine(kind) || !contentPath) return undefined;
     let cancelled = false;
-    let view = null;
     let unsub = null;
     const blobCache = blobCacheRef.current;
     notesExtractedRef.current = false;
@@ -117,7 +117,7 @@ const ResourcePreview = forwardRef(function ResourcePreview(
       //    initial view mode is continuous — a plain stacked document inside
       //    our own scroll wrapper, so the dialog's scroll-percentage reading
       //    position is preserved exactly.
-      view = createViewer({
+      const view = createViewer({
         host: stage,
         scrollElement: scrollerRef.current,
         pagination: true,
@@ -132,6 +132,9 @@ const ResourcePreview = forwardRef(function ResourcePreview(
           if (!cancelled) onErrorRef.current?.(err);
         },
       });
+      // Register the controller on the ref immediately so the effect cleanup
+      // (which may run while this async body is still awaiting the fetch or
+      // the load) always finds the live instance — never a stale closure.
       viewRef.current = view;
       unsub = view.subscribe((s) => {
         if (!cancelled) setViewerState(s);
@@ -146,8 +149,21 @@ const ResourcePreview = forwardRef(function ResourcePreview(
     return () => {
       cancelled = true;
       unsub?.();
-      view?.destroy?.();
+      // Destroy via the ref, not a captured `view`: cleanup can fire while
+      // `mount()` is mid-air (fetch still in flight), so the closure may not
+      // hold the controller yet — but `viewRef.current` is set the instant
+      // it exists. `destroy()` aborts its own AbortSignal and tears down the
+      // renderer; a concurrently starting mount (same dialog re-keyed) owns
+      // the stage afterwards, so do NOT blanket `replaceChildren()` here.
+      const view = viewRef.current;
       viewRef.current = null;
+      if (view) {
+        view.destroy?.();
+        return;
+      }
+      // No controller ever initialized under this effect — the stage can only
+      // hold leftovers from a previous session, and nothing is concurrently
+      // rendering into it, so blanking it is safe (and necessary).
       if (stage) stage.replaceChildren();
     };
     // Intentionally keyed only on the document identity — callback props are
@@ -189,21 +205,51 @@ const ResourcePreview = forwardRef(function ResourcePreview(
         view.goToPage?.(Math.max(1, Math.min(total, Math.round((percent / 100) * total))));
         return;
       }
-      // Defer until the engine has laid out (scrollHeight > 0), then attempt
-      // repeatedly until the document is tall enough — async PDF/office cells
-      // settle as pages stream in.
+      // Continuous scroll-percentage restoration. PDF/office cells stream in
+      // asynchronously, so scrollHeight grows in steps; PPTX (individual
+      // stacked slides) is the worst case — hidden slides can still be
+      // lazy-rendered after the first poll. Apply the percentage, then keep
+      // re-applying while the document is still producing height, and only
+      // stop once it settles for a couple of polls, the user scrolls away,
+      // or the safety cap hits.
+      let appliedAt = 0;
+      let lastTotal = -1;
+      let stablePolls = 0;
+      let userScrolled = false;
+      let lastProgrammaticTop = -1;
+      let timer = null;
+      const onUserScroll = () => {
+        if (scroller.scrollTop !== lastProgrammaticTop) userScrolled = true;
+      };
+      scroller.addEventListener('scroll', onUserScroll, { passive: true });
+      const teardown = () => {
+        scroller.removeEventListener('scroll', onUserScroll);
+        if (timer) window.clearInterval(timer);
+      };
+      // Returns whether the document has height AND the position settled.
       const apply = () => {
         const total = scroller.scrollHeight - scroller.clientHeight;
         if (total <= 0) return false;
-        scroller.scrollTop = (percent / 100) * total;
-        return true;
+        if (total === lastTotal) stablePolls += 1;
+        else stablePolls = 0;
+        lastTotal = total;
+        lastProgrammaticTop = (percent / 100) * total;
+        scroller.scrollTop = lastProgrammaticTop;
+        appliedAt = total;
+        return stablePolls >= 2;
       };
-      if (apply()) return;
-      const timer = window.setInterval(() => {
-        if (apply() || !scrollerRef.current) window.clearInterval(timer);
+      // Opportunistically apply now (common case: document already laid out),
+      // then fall into the poll loop that absorbs late layout changes.
+      const settled = apply();
+      if (settled && appliedAt > 0) {
+        teardown();
+        return;
+      }
+      timer = window.setInterval(() => {
+        if (userScrolled || !scrollerRef.current || apply()) teardown();
       }, 200);
       // Safety stop — don't poll forever if the renderer errors.
-      window.setTimeout(() => window.clearInterval(timer), 8000);
+      window.setTimeout(teardown, 8000);
     },
     /** Scroll back to the top (for non-resuming first open). */
     reset() {
@@ -245,7 +291,14 @@ const ResourcePreview = forwardRef(function ResourcePreview(
         <div ref={stageRef} className="min-h-full w-full" />
       </div>
 
+      {!viewerState || viewerState.status === 'loading' || viewerState.status === 'idle' ? (
+        <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden /> Loading preview…
+        </div>
+      ) : null}
+
       <PreviewToolbar
+        key={viewRef.current}
         controller={viewRef.current}
         state={viewerState}
         isPptx={isPptx}

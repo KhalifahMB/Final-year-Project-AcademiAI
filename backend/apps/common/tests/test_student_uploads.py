@@ -100,7 +100,8 @@ def test_student_cannot_delete_other_users_resource():
 
 
 @pytest.mark.django_db
-def test_student_can_request_summary_of_tenant_resource():
+@patch("apps.resources.views.ai_service_available", return_value=True)
+def test_student_can_request_summary_of_tenant_resource(ai_ok):
     t = Tenant.objects.create(name="T4", slug="sum-stu")
     uploader = User.objects.create_user(
         email="u@t4.edu", password=PASSWORD, tenant=t, role="lecturer", is_email_verified=True

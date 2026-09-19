@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from apps.academics.models import CourseEnrollment, LecturerCourseAssignment
 from apps.audit.services import log_action
 from apps.common.constants import RESOURCE_TEXT_PEEK_BYTES
+from apps.common.ai import ai_service_available
 from apps.common.jobs import claim_job
 from apps.common.permissions import IsLecturerOrAdmin, IsTenantMember
 from apps.common.throttling import AiRateThrottle, UploadRateThrottle
@@ -770,6 +771,22 @@ class ResourceViewSet(TenantModelViewSet):
             return Response(
                 {"success": False, "error": {"detail": "You do not have access to this material."}},
                 status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Reject before queueing: a summary must never be fabricated by a
+        # fallback when the AI backend is down or unconfigured.
+        if not ai_service_available():
+            return Response(
+                {
+                    "success": False,
+                    "error": {
+                        "detail": (
+                            "The AI service is currently unavailable. "
+                            "Please try again later."
+                        )
+                    },
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
         task = summarize_resource_task.delay(

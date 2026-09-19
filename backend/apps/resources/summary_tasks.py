@@ -45,12 +45,33 @@ def summarize_resource_task(self, resource_id: str, tenant_id: str, user_id: str
         if not text.strip():
             return {"status": "failed", "error": "no content"}
 
-        result = generate_summary(text)
-    
+        try:
+            result = generate_summary(text)
+        except Exception as exc:
+            # Strict: never persist a fabricated/fallback summary when the
+            # AI service is unavailable or the call fails. The user gets a
+            # clean, actionable error instead of silently saved content.
+            logger.warning(
+                "Summary failed resource=%s error=%r", resource_id, exc
+            )
+            return {
+                "status": "failed",
+                "error": (
+                    "The AI service is currently unavailable. "
+                    "Please try again later."
+                ),
+            }
+
         summary_text = (result or {}).get("summary", "").strip()
         key_points = (result or {}).get("key_points", []) or []
         if not summary_text:
-            return {"status": "failed", "error": "empty summary from AI"}
+            return {
+                "status": "failed",
+                "error": (
+                    "The AI service is currently unavailable. "
+                    "Please try again later."
+                ),
+            }
 
         # Persist the summary so it's available across sessions.
         try:

@@ -1,34 +1,132 @@
-import { useEffect, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Download,
-  LayoutGrid,
-  Printer,
-  RotateCw,
-  Rows3,
-  Scan,
-  Search,
-  StickyNote,
-  X,
-  ZoomIn,
-  ZoomOut,
-} from 'lucide-react';
+import { useRef, useState } from 'react';
+import { SearchBar, Toolbar } from 'omni-doc-viewer/react';
+import { Maximize, RotateCw, StickyNote, ZoomIn, ZoomOut } from 'lucide-react';
 
 /**
- * PreviewToolbar — thin chrome around the engine-backed preview that exposes
- * the omni-doc-viewer ViewerController: page nav, zoom / fit-width, rotate,
- * view mode, search, print, download. Plus the PPTX speaker-notes toggle
- * (the engine does not render notes; the panel content is supplied by the
- * caller from `extractPptxNotes`).
+ * PreviewToolbar — the omni-doc-viewer built-in `Toolbar` (+ `SearchBar`), the
+ * same chrome `DocViewer` renders internally, mounted as a floating glass pill
+ * over our own scroll container so reading-position percentages stay valid.
  *
- * Rendered as a floating glass pill over the top of the preview so it never
- * shifts the scroll container (reading-position percentages stay valid).
+ * The library's zoom cluster shows a read-only percentage button, so we hide it
+ * (`items.zoom: false` also takes fitWidth/rotate down with it) and render an
+ * editable zoom cluster instead: out / editable % / in / fit-width / rotate.
+ *
+ * The whole pill is draggable (pointer events + transform) and clamped inside
+ * its containing preview area, so it never floats off-screen. Dragging is only
+ * started from non-interactive surfaces — buttons, the zoom input and the page
+ * field keep normal click/focus behavior.
+ *
+ * Only the PPTX speaker-notes toggle is app-specific (`extra` slot) — the
+ * engine never renders notes; `ResourcePreview` supplies the panel content.
  */
+const ZOOM_PCT = {
+  MIN: 25,
+  MAX: 400,
+};
+
+function EditableZoomPct({ zoom, controller }) {
+  const percent = Math.round(zoom * 100);
+  const [draft, setDraft] = useState(null);
+  const inputRef = useRef(null);
+
+  const commit = () => {
+    if (draft === null) return;
+    let v = Number.parseInt(draft, 10);
+    if (Number.isNaN(v)) {
+      setDraft(null);
+      return;
+    }
+    v = Math.max(ZOOM_PCT.MIN, Math.min(ZOOM_PCT.MAX, v));
+    controller.setZoom(v / 100);
+    setDraft(null);
+  };
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="numeric"
+        className="odv-pg-pct-input"
+        aria-label="Zoom percentage"
+        value={draft ?? String(percent)}
+        onChange={(e) => setDraft(e.target.value)}
+        onFocus={(e) => e.target.select()}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            commit();
+            e.currentTarget.blur();
+          } else if (e.key === 'Escape') {
+            setDraft(null);
+            e.currentTarget.blur();
+          }
+        }}
+      />
+      <span className="odv-pg-pct-unit" aria-hidden>
+        %
+      </span>
+    </>
+  );
+}
+
+function ZoomCluster({ state, controller }) {
+  const caps = state.capabilities;
+  const canZoom = !!caps?.zoom;
+  if (!canZoom) return null;
+  return (
+    <>
+      <div className="odv-pg-sep" />
+      <div className="odv-pg-grp odv-pg-zoomgrp">
+        <button
+          type="button"
+          className="odv-pg-btn"
+          onClick={() => controller.zoomOut()}
+          disabled={state.zoom <= 0.25}
+          aria-label="Zoom out"
+          title="Zoom out"
+        >
+          <ZoomOut size={18} strokeWidth={2} />
+        </button>
+        <EditableZoomPct zoom={state.zoom} controller={controller} />
+        <button
+          type="button"
+          className="odv-pg-btn"
+          onClick={() => controller.zoomIn()}
+          disabled={state.zoom >= 4}
+          aria-label="Zoom in"
+          title="Zoom in"
+        >
+          <ZoomIn size={18} strokeWidth={2} />
+        </button>
+        <button
+          type="button"
+          className="odv-pg-btn"
+          onClick={() => controller.fitWidth()}
+          aria-label="Fit to width"
+          title="Fit to width"
+        >
+          <Maximize size={18} strokeWidth={2} />
+        </button>
+        {caps?.rotate ? (
+          <button
+            type="button"
+            className="odv-pg-btn"
+            onClick={() => controller.rotate(90)}
+            aria-label="Rotate"
+            title="Rotate"
+          >
+            <RotateCw size={18} strokeWidth={2} />
+          </button>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+const DRAG_THRESHOLD = 4;
+const DRAG_MARGIN = 6;
+
 export default function PreviewToolbar({
   controller,
   state,
@@ -38,223 +136,154 @@ export default function PreviewToolbar({
   onToggleNotes,
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
-  const searchInputRef = useRef(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const dragRef = useRef(null); // outermost wrapper (bounds of the preview area)
+  const pillRef = useRef(null); // the draggable pill itself
+  const dragInfoRef = useRef(null); // active pointer session
 
-  useEffect(() => {
-    if (searchOpen) searchInputRef.current?.focus();
-  }, [searchOpen]);
+  // `ResourcePreview` keys this toolbar by the controller, so a new document
+  // remounts it and `offset` starts centered — no manual reset needed here.
 
   if (!controller || !state || state.status !== 'loaded') return null;
 
-  const { page, pageCount, zoom, viewMode, capabilities, search } = state;
-  const paged = !!capabilities?.paged && pageCount > 1;
-  const zoomable = !!capabilities?.zoom;
-  const rotatable = !!capabilities?.rotate;
-  const printable = !!capabilities?.print;
+  const caps = state.capabilities;
+  const canSearch = !!caps?.search;
+  const closeSearch = () => {
+    setSearchOpen(false);
+    controller.clearSearch();
+  };
 
-  const iconBtn = 'hover:bg-[var(--hover)] hover:text-[var(--fg)]';
+  const startDrag = (e) => {
+    // Only button-0, keyboard accessible via tab stops anyway; never steal a
+    // drag from interactive chrome (search input, zoom input, buttons, inputs).
+    if (e.button !== 0) return;
+    if (e.target.closest('button, input, a[href], select, textarea')) return;
+    const el = pillRef.current;
+    if (!el) return;
+    dragInfoRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      origin: { ...offset },
+      moved: false,
+    };
+    el.setPointerCapture(e.pointerId);
+    el.classList.add('is-dragging');
+    e.preventDefault();
+  };
+
+  const moveDrag = (e) => {
+    const info = dragInfoRef.current;
+    const el = pillRef.current;
+    const wrap = dragRef.current;
+    if (!info || !el || !wrap) return;
+    if (e.pointerId !== info.pointerId) return;
+    const dx = e.clientX - info.startX;
+    const dy = e.clientY - info.startY;
+    if (Math.hypot(dx, dy) > DRAG_THRESHOLD) info.moved = true;
+    if (!info.moved) return;
+    // Position the pill from its current rect, moved by the pointer delta,
+    // then clamp it fully inside the preview container with a small margin.
+    const wrapRect = wrap.getBoundingClientRect();
+    const pillRect = el.getBoundingClientRect();
+    const pad = DRAG_MARGIN;
+    // Pill base placement: centered horizontally (`left-1/2` + -50%) at
+    // `top-2` (8px), plus the stored drag offset from session start.
+    const baseLeft = wrapRect.width / 2 - pillRect.width / 2;
+    const baseTop = 8;
+    const nextLeft = Math.max(
+      pad,
+      Math.min(baseLeft + info.origin.x + dx, wrapRect.width - pillRect.width - pad),
+    );
+    const nextTop = Math.max(
+      pad,
+      Math.min(baseTop + info.origin.y + dy, wrapRect.height - pillRect.height - pad),
+    );
+    setOffset({
+      x: nextLeft - baseLeft,
+      y: nextTop - baseTop,
+    });
+  };
+
+  const endDrag = (_e) => {
+    const info = dragInfoRef.current;
+    const el = pillRef.current;
+    if (!info || !el) return;
+    dragInfoRef.current = null;
+    if (el.hasPointerCapture(info.pointerId)) el.releasePointerCapture(info.pointerId);
+    el.classList.remove('is-dragging');
+  };
+
+  const notesButton = isPptx ? (
+    <button
+      type="button"
+      className={`odv-pg-btn${notesOpen ? ' is-active' : ''}`}
+      onClick={onToggleNotes}
+      disabled={notesLoading}
+      aria-label="Toggle speaker notes"
+      aria-pressed={notesOpen}
+      title="Speaker notes"
+    >
+      {notesLoading ? (
+        <span className="size-3 animate-spin rounded-full border-2 border-[var(--accent-strong)] border-t-transparent" />
+      ) : (
+        <StickyNote size={18} strokeWidth={2} />
+      )}
+    </button>
+  ) : null;
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-2 z-10 flex justify-center">
-      <div className="glass pointer-events-auto flex items-center gap-0.5 rounded-[var(--radius-lg)] border border-[var(--border-strong)] px-1 py-0.5 shadow-[var(--shadow-pop)]">
-        {paged ? (
-          <>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className={iconBtn}
-              aria-label="Previous page"
-              onClick={() => controller.prevPage()}
-              disabled={page <= 1}
-            >
-              <ChevronLeft />
-            </Button>
-            <span className="min-w-10 text-center font-mono text-[10.5px] tabular-nums text-[var(--fg-soft)] select-none">
-              {page} / {pageCount}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className={iconBtn}
-              aria-label="Next page"
-              onClick={() => controller.nextPage()}
-              disabled={page >= pageCount}
-            >
-              <ChevronRight />
-            </Button>
-            <span className="mx-0.5 h-4 w-px bg-[var(--border-strong)]" aria-hidden />
-          </>
+    <div ref={dragRef} className="pointer-events-none absolute inset-0 z-10">
+      <div
+        ref={pillRef}
+        className="odv-pg-dragpill pointer-events-auto absolute left-1/2 top-2 flex select-none flex-col items-center gap-2"
+        style={{ transform: `translate(calc(-50% + ${offset.x}px), ${offset.y}px)` }}
+        onPointerDown={startDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
+        <div className="odv-toolbar-glass glass flex items-center rounded-[var(--radius-lg)] border border-[var(--border-strong)] px-1 py-0.5 shadow-[var(--shadow-pop)]">
+          <ZoomCluster state={state} controller={controller} />
+          <Toolbar
+            current={state.page}
+            total={state.pageCount}
+            zoom={state.zoom}
+            viewMode={state.viewMode}
+            disabled={false}
+            onPrev={() => controller.prevPage()}
+            onNext={() => controller.nextPage()}
+            onJump={(n) => controller.goToPage(n)}
+            onToggleMode={() => controller.toggleViewMode()}
+            onDownload={() => controller.download()}
+            onPrint={() => controller.print()}
+            onSearch={canSearch ? () => (searchOpen ? closeSearch() : setSearchOpen(true)) : undefined}
+            searchOpen={searchOpen}
+            items={{
+              pages: !!caps?.paged,
+              viewMode: !!caps?.paged,
+              zoom: false, // replaced by our editable zoom cluster
+              fitWidth: false,
+              rotate: false,
+              search: canSearch,
+              thumbnails: false,
+              print: !!caps?.print,
+              download: true,
+            }}
+            extra={notesButton}
+          />
+        </div>
+        {searchOpen && canSearch ? (
+          <div className="odv-toolbar-glass glass rounded-[var(--radius-lg)] border border-[var(--border-strong)] px-1 shadow-[var(--shadow-pop)]">
+            <SearchBar
+              state={state.search}
+              onQuery={(q) => void controller.search(q)}
+              onNext={() => void controller.findNext()}
+              onPrev={() => void controller.findPrev()}
+              onClose={closeSearch}
+            />
+          </div>
         ) : null}
-
-        {zoomable ? (
-          <>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className={iconBtn}
-              aria-label="Zoom out"
-              onClick={() => controller.zoomOut()}
-            >
-              <ZoomOut />
-            </Button>
-            <button
-              type="button"
-              onClick={() => controller.resetZoom()}
-              title="Reset zoom"
-              className="min-w-9 px-0.5 text-center font-mono text-[10.5px] tabular-nums text-[var(--fg-soft)] select-none hover:text-[var(--fg)]"
-            >
-              {Math.round(zoom * 100)}%
-            </button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className={iconBtn}
-              aria-label="Zoom in"
-              onClick={() => controller.zoomIn()}
-            >
-              <ZoomIn />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className={iconBtn}
-              aria-label="Fit width"
-              onClick={() => controller.fitWidth()}
-            >
-              <Scan />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className={iconBtn}
-              aria-label="Rotate 90°"
-              onClick={() => controller.rotate(90)}
-              disabled={!rotatable}
-            >
-              <RotateCw />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className={iconBtn}
-              aria-label={viewMode === 'paged' ? 'Continuous view' : 'Paged view'}
-              onClick={() => controller.toggleViewMode()}
-              disabled={!paged}
-            >
-              {viewMode === 'paged' ? <Rows3 /> : <LayoutGrid />}
-            </Button>
-            <span className="mx-0.5 h-4 w-px bg-[var(--border-strong)]" aria-hidden />
-          </>
-        ) : null}
-
-        {capabilities?.search ? (
-          <>
-            {searchOpen ? (
-              <div className="flex items-center gap-0.5">
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={search.query}
-                  onChange={(e) => void controller.search(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') void (e.shiftKey ? controller.findPrev() : controller.findNext());
-                    if (e.key === 'Escape') setSearchOpen(false);
-                  }}
-                  placeholder="Find…"
-                  className="h-6 w-24 rounded-[6px] bg-[var(--surface-2)] px-1.5 text-[11px] text-[var(--fg)] placeholder:text-[var(--muted)] focus:outline-none"
-                />
-                {search.total > 0 ? (
-                  <span className="min-w-8 text-center font-mono text-[10px] tabular-nums text-[var(--fg-soft)] select-none">
-                    {search.current}/{search.total}
-                  </span>
-                ) : null}
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  className={iconBtn}
-                  aria-label="Previous match"
-                  onClick={() => void controller.findPrev()}
-                  disabled={search.total === 0}
-                >
-                  <ChevronUp />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  className={iconBtn}
-                  aria-label="Next match"
-                  onClick={() => void controller.findNext()}
-                  disabled={search.total === 0}
-                >
-                  <ChevronDown />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  className={iconBtn}
-                  aria-label="Close search"
-                  onClick={() => {
-                    controller.clearSearch();
-                    setSearchOpen(false);
-                  }}
-                >
-                  <X />
-                </Button>
-              </div>
-            ) : (
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                className={iconBtn}
-                aria-label="Search"
-                onClick={() => setSearchOpen(true)}
-              >
-                <Search />
-              </Button>
-            )}
-            <span className="mx-0.5 h-4 w-px bg-[var(--border-strong)]" aria-hidden />
-          </>
-        ) : null}
-
-        {isPptx ? (
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            className={cn(iconBtn, notesOpen && 'bg-[var(--accent-soft)] text-[var(--accent-strong)]')}
-            aria-label="Toggle speaker notes"
-            aria-pressed={notesOpen}
-            onClick={onToggleNotes}
-            disabled={notesLoading}
-          >
-            {notesLoading ? (
-              <span className="size-3 animate-spin rounded-full border-2 border-[var(--accent-strong)] border-t-transparent" />
-            ) : (
-              <StickyNote />
-            )}
-          </Button>
-        ) : null}
-
-        {printable ? (
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            className={iconBtn}
-            aria-label="Print"
-            onClick={() => controller.print()}
-          >
-            <Printer />
-          </Button>
-        ) : null}
-
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          className={iconBtn}
-          aria-label="Download original file"
-          onClick={() => controller.download()}
-        >
-          <Download />
-        </Button>
       </div>
     </div>
   );

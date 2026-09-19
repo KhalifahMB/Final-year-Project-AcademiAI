@@ -3,6 +3,8 @@ AI provider abstraction (Gemini).
 Centralizes prompts, retries, structured output validation, prompt-injection defenses.
 """
 from .gemini import (
+    AIServiceUnavailableError,
+    ai_service_available,
     generate_grounded_answer,
     generate_embeddings,
     generate_quiz_json,
@@ -12,6 +14,8 @@ from .gemini import (
 )
 
 __all__ = [
+    "AIServiceUnavailableError",
+    "ai_service_available",
     "generate_grounded_answer",
     "generate_embeddings",
     "generate_quiz_json",

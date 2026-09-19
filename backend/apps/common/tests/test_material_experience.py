@@ -135,7 +135,8 @@ def test_preview_text_and_pdf():
 
 
 @pytest.mark.django_db
-def test_summarize_denied_for_private_material_of_other_user():
+@patch("apps.resources.views.ai_service_available", return_value=True)
+def test_summarize_denied_for_private_material_of_other_user(ai_ok):
     t = make_tenant("sumvis")
     owner = make_user("o@sumvis.edu", t, role="lecturer")
     student = make_user("s@sumvis.edu", t)
@@ -159,7 +160,8 @@ def test_summarize_denied_for_private_material_of_other_user():
 
 
 @pytest.mark.django_db
-def test_student_can_summarize_institution_resource():
+@patch("apps.resources.views.ai_service_available", return_value=True)
+def test_student_can_summarize_institution_resource(ai_ok):
     t = make_tenant("sumvis-inst")
     uploader = make_user("u@sumvis-inst.edu", t, role="lecturer")
     student = make_user("s@sumvis-inst.edu", t)
@@ -174,6 +176,26 @@ def test_student_can_summarize_institution_resource():
         d.return_value.id = "task-sum-inst"
         resp = client.post(f"/api/v1/resources/{res.id}/summarize/")
     assert resp.status_code == 202
+
+
+@pytest.mark.django_db
+@patch("apps.resources.views.ai_service_available", return_value=False)
+def test_summarize_unavailable_service_rejected_before_queueing(ai_off):
+    t = make_tenant("sumvis-off")
+    lecturer = make_user("l@sumvis-off.edu", t, role="lecturer")
+    res = Resource.objects.create(
+        tenant=t, title="Institution notes", uploaded_by=lecturer,
+        visibility_scope=Resource.Visibility.INSTITUTION,
+        processing_status=Resource.ProcessingStatus.READY,
+        has_extractable_text=True,
+    )
+    client = auth_client(lecturer)
+    with patch("apps.resources.summary_tasks.summarize_resource_task.delay") as d:
+        resp = client.post(f"/api/v1/resources/{res.id}/summarize/")
+    d.assert_not_called()
+    assert resp.status_code == 503
+    detail = resp.data["error"]["detail"]
+    assert "AI service is currently unavailable" in detail
 
 
 @pytest.mark.django_db
@@ -268,30 +290,41 @@ def test_preview_office_format_serves_extracted_text():
 
 
 @patch("apps.common.ai.gemini._get_client")
-def test_summary_fallback_is_extractive_not_stub(get_client):
-    from apps.common.ai import generate_summary
+def test_summary_unavailable_raises_not_stub(get_client):
+    from apps.common.ai import AIServiceUnavailableError, generate_summary
 
     get_client.return_value = None
     text = (
         "Photosynthesis converts light energy into chemical energy. "
         "Chlorophyll absorbs sunlight and drives the process. " * 20
     )
-    result = generate_summary(text, max_words=60)
-    assert "(Dev stub" not in result["summary"]
-    assert result["summary"].strip()
-    assert isinstance(result["key_points"], list)
-    assert any(kp for kp in result["key_points"])
-    assert len(result["summary"].split()) <= 60
+    with pytest.raises(AIServiceUnavailableError):
+        generate_summary(text, max_words=60)
 
 
 @patch("apps.common.ai.gemini._get_client")
-def test_summary_fallback_handles_empty_text(get_client):
-    from apps.common.ai import generate_summary
+def test_summary_unavailable_raises_for_empty_text(get_client):
+    from apps.common.ai import AIServiceUnavailableError, generate_summary
 
     get_client.return_value = None
-    result = generate_summary("   ", max_words=60)
-    assert result["summary"].strip()
-    assert result["key_points"] == []
+    with pytest.raises(AIServiceUnavailableError):
+        generate_summary("   ", max_words=60)
+
+
+def test_summary_call_failure_raises_not_fallback():
+    from apps.common.ai import AIServiceUnavailableError, generate_summary
+
+    class FlakyClient:
+        class models:
+            @staticmethod
+            def generate_content(model=None, contents=None, config=None):
+                raise ValueError("Content length is 17453 characters.")
+
+    with patch("apps.common.ai.gemini._get_client", return_value=FlakyClient()):
+        with pytest.raises(AIServiceUnavailableError) as exc_info:
+            generate_summary("some academic text " * 30, max_words=60)
+    assert "(Dev stub" not in str(exc_info.value)
+    assert "unavailable" in str(exc_info.value).lower()
 
 
 @pytest.mark.django_db

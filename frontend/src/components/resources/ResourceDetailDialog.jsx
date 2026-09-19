@@ -30,6 +30,25 @@ import { useReadingPosition } from '@/hooks/useReadingPosition';
 const SUMMARIES_QUERY_KEY = (resourceId) => ['resource-summaries', resourceId];
 const EPHEMERAL_PREFIX = 'ephemeral-';
 
+const AI_UNAVAILABLE_MSG = 'The AI service is currently unavailable. Please try again later.';
+
+// Markers that signal an AI error/placeholder leaked from the backend or an
+// SDK instead of real content. Such output must never be shown or saved.
+const AI_ERROR_MARKERS = [
+  '(Dev stub)',
+  '(Dev stub —',
+  'GEMINI_API_KEY',
+  'Content length is',
+  'UnsupportedRequestError',
+  'google.genai',
+];
+
+const looksLikeAIError = (value) =>
+  typeof value === 'string' && AI_ERROR_MARKERS.some((m) => value.includes(m));
+
+const cleanAIError = (message) =>
+  looksLikeAIError(message) ? AI_UNAVAILABLE_MSG : message;
+
 function normalizeJobResult(r) {
   if (!r || typeof r !== 'object') return null;
   if (r.status === 'failed' || r.error) return null;
@@ -37,7 +56,7 @@ function normalizeJobResult(r) {
     (typeof r.summary === 'string' && r.summary) ||
     (typeof r === 'string' ? r : '') ||
     '';
-  if (!summary) return null;
+  if (!summary || looksLikeAIError(summary)) return null;
   const kp = Array.isArray(r.key_points) ? r.key_points : [];
   return {
     id: r.summary_id ? `${r.summary_id}` : `${EPHEMERAL_PREFIX}${Date.now()}`,
@@ -255,13 +274,15 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
           if (data.successful) {
             const r = data.result || {};
             if (r.status === 'failed' || r.error) {
-              setSummaryError(r.error || 'Summary failed.');
-              toast.error(r.error || 'Summary failed');
+              const msg = cleanAIError(r.error || 'Summary failed.');
+              setSummaryError(msg);
+              toast.error(msg);
             } else {
               const normalized = normalizeJobResult(r);
               if (!normalized) {
-                setSummaryError('The AI returned an empty summary.');
-                toast.error('The AI returned an empty summary.');
+                const msg = (r && r.summary && looksLikeAIError(r.summary) && AI_UNAVAILABLE_MSG) || 'The AI returned an empty summary.';
+                setSummaryError(msg);
+                toast.error(msg);
                 return;
               }
               const refreshed = await refetchSummaries();
@@ -304,7 +325,9 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
         if (cancelled) return;
         setSummaryLoading(false);
         setSummaryJobId(null);
-        const msg = err.response?.data?.error?.detail || err.message || 'Could not poll summary job';
+        const msg = cleanAIError(
+          err.response?.data?.error?.detail || err.message || 'Could not poll summary job',
+        );
         setSummaryError(msg);
         toast.error(msg);
       }
@@ -324,7 +347,9 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
       setSummaryJobId(data.job_id);
     } catch (err) {
       setSummaryLoading(false);
-      const msg = err.response?.data?.error?.detail || err.message || 'Could not start summary';
+      const msg = cleanAIError(
+        err.response?.data?.error?.detail || err.message || 'Could not start summary',
+      );
       setSummaryError(msg);
       toast.error(msg);
     }
