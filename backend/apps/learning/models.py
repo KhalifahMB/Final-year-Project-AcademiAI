@@ -52,6 +52,7 @@ class ProgressRecord(TenantScopedModel):
 
     class Meta:
         db_table = "progress_records"
+        ordering = ["-last_seen_at"]
         constraints = [
             models.UniqueConstraint(fields=["user", "concept"], name="uniq_user_concept_progress")
         ]

@@ -104,7 +104,7 @@ You hired me as a senior full-stack engineer to:
 1. **C1 - RLS Bypass Risk** ⚠️ **HIGH PRIORITY**
    - PostgreSQL runtime user is a superuser with BYPASSRLS
    - Multi-tenant isolation is decorative (no DB-level enforcement)
-   - **Action Required:** Ops/infra change to use `academiai_app` role
+   - **Action Required:** Ops/infra change to use `academiai` role
    - **Impact:** Any app-layer bug leaks cross-tenant data
 
 2. **C2 - JWT in localStorage** ⚠️ **ARCHITECTURAL**

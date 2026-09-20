@@ -70,7 +70,7 @@ export default function ProgressPage() {
  <li key={p.id}>
  <div className="rounded-xl border bg-card p-3.5">
  <div className="flex items-center justify-between gap-2">
- <p className="truncate text-[13px] font-medium">{p.concept}</p>
+ <p className="truncate text-[13px] font-medium">{p.concept_name || p.concept}</p>
  <span className={cn(
  'shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums',
  tone === 'emerald' && 'bg-[var(--success-soft)] text-[var(--success)] ',
@@ -93,7 +93,7 @@ export default function ProgressPage() {
  aria-valuenow={Math.round(Math.min(100, value))}
  aria-valuemin={0}
  aria-valuemax={100}
- aria-label={`${p.concept} mastery ${Math.round(Math.min(100, value))} percent`}
+ aria-label={`${p.concept_name || p.concept} mastery ${Math.round(Math.min(100, value))} percent`}
  />
  </div>
  </div>

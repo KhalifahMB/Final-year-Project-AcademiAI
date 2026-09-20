@@ -140,7 +140,7 @@
 
 **Action Required:**
 
-1. Connect as `academiai_app` role in production
+1. Connect as `academiai` role in production
 2. Grant NOBYPASSRLS
 3. Re-own tables
 4. Verify with SQL query

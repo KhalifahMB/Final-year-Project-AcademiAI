@@ -125,13 +125,13 @@ You hired me as a senior full-stack engineer to thoroughly review and rebuild yo
 
 **Status:** ⬜ OPEN (Ops/Infrastructure Change Required)
 
-**Issue:** PostgreSQL runtime user is a superuser with `BYPASSRLS` attribute. The `academiai_app` role exists but is never used for runtime connections.
+**Issue:** PostgreSQL runtime user is a superuser with `BYPASSRLS` attribute. The `academiai` role exists but is never used for runtime connections.
 
 **Impact:** Any app-layer tenant-filtering bug leaks cross-tenant data with no database-level enforcement. Multi-tenant isolation is decorative.
 
 **Action Required:**
 
-1. Connect as `academiai_app` role in production
+1. Connect as `academiai` role in production
 2. Grant NOBYPASSRLS to runtime user
 3. Re-own tables as non-superuser role
 4. Verify: `SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user`
