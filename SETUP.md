@@ -27,12 +27,12 @@ docker compose up -d
 
 Services (defaults from `.env.example`):
 
-| Service            | URL / port                  |
-|--------------------|-----------------------------|
-| PostgreSQL+pgvector| `localhost:5432`            |
-| Redis              | `localhost:6379`            |
-| RabbitMQ           | `localhost:5672` (UI `:15672`) |
-| MinIO              | `localhost:9000` (console `:9001`) |
+| Service             | URL / port                         |
+| ------------------- | ---------------------------------- |
+| PostgreSQL+pgvector | `localhost:5432`                   |
+| Redis               | `localhost:6379`                   |
+| RabbitMQ            | `localhost:5672` (UI `:15672`)     |
+| MinIO               | `localhost:9000` (console `:9001`) |
 
 ## 2. Backend
 
@@ -46,7 +46,7 @@ cd backend
 ```
 
 > **RLS:** the app DB role must be non-superuser **without `BYPASSRLS`**
-> (default `academiai_app`). Otherwise multi-tenant isolation is not enforced.
+> (default `academiai`). Otherwise multi-tenant isolation is not enforced.
 > Run `apply_rls` after every `migrate`.
 
 Celery worker (separate terminal):

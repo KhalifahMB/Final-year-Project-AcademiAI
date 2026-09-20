@@ -144,8 +144,8 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.getenv("POSTGRES_DB", "academiai"),
-        "USER": os.getenv("POSTGRES_USER", "academiai_app"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "academiai_app"),
+        "USER": os.getenv("POSTGRES_USER", "academiai"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "academiai"),
         "HOST": os.getenv("POSTGRES_HOST", "localhost"),
         "PORT": os.getenv("POSTGRES_PORT", "5432"),
         "OPTIONS": {"options": "-c search_path=public"},
@@ -434,12 +434,12 @@ if not DEBUG:
 # any of these env vars would run against publicly-known default passwords.
 if not DEBUG:
     _KNOWN_DEFAULT_PASSWORDS = {
-        "academiai_app",  # postgres
+        "academiai",  # postgres
         "academiai",      # rabbitmq / postgres
         "minioadmin",     # minio / s3
     }
     _insecure = []
-    if os.getenv("POSTGRES_PASSWORD", "academiai_app") in _KNOWN_DEFAULT_PASSWORDS:
+    if os.getenv("POSTGRES_PASSWORD", "academiai") in _KNOWN_DEFAULT_PASSWORDS:
         _insecure.append("POSTGRES_PASSWORD")
     if os.getenv("AWS_SECRET_ACCESS_KEY", "minioadmin") in _KNOWN_DEFAULT_PASSWORDS:
         _insecure.append("AWS_SECRET_ACCESS_KEY")

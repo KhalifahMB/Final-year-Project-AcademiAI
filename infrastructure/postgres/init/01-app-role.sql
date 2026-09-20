@@ -6,17 +6,17 @@
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'academiai_app') THEN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'academiai') THEN
     -- CREATEDB is required by pytest-django to create test databases in dev.
     -- Production deployments may revoke CREATEDB.
-    CREATE ROLE academiai_app LOGIN PASSWORD 'academiai_app'
+    CREATE ROLE academiai LOGIN PASSWORD 'academiai'
       NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS CREATEDB;
   END IF;
 END
 $$;
 
-GRANT ALL PRIVILEGES ON DATABASE academiai TO academiai_app;
+GRANT ALL PRIVILEGES ON DATABASE academiai TO academiai;
 
 -- PG15+ revoked world-writability of the public schema; the app role owns it.
-GRANT USAGE, CREATE ON SCHEMA public TO academiai_app;
-ALTER SCHEMA public OWNER TO academiai_app;
+GRANT USAGE, CREATE ON SCHEMA public TO academiai;
+ALTER SCHEMA public OWNER TO academiai;
