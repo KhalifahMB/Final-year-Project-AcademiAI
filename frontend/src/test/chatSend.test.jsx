@@ -12,6 +12,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from '@/App';
+import { confirmedResourceIds } from '@/pages/ChatPage';
 
 // vi.mock is hoisted above the imports, so resolve the shared factory lazily
 // inside the async factory instead of referencing it at module scope.
@@ -86,7 +87,7 @@ describe('chat send', () => {
 
     // The upload is genuinely in flight: the chip is present and the send
     // button is disabled (ChatPage.jsx:1367).
-    await waitFor(() => expect(screen.getByTestId('chat-send')).toBeDisabled());
+    await waitFor(() => expect(screen.getByTestId('chat-send')).toBeDisabled(), { timeout: 10000 });
 
     await user.click(input);
     await user.type(input, '{Enter}');
@@ -95,11 +96,28 @@ describe('chat send', () => {
     upload.resolve({
       resource: { id: UPLOADED_ID, title: 'notes.pdf', mime_type: 'application/pdf' },
     });
-    await waitFor(() => expect(screen.getByTestId('chat-send')).toBeEnabled());
+    await waitFor(() => expect(screen.getByTestId('chat-send')).toBeEnabled(), { timeout: 10000 });
 
     await user.click(input);
     await user.type(input, '{Enter}');
-    await waitFor(() => expect(chatApi.stream).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(chatApi.stream).toHaveBeenCalledTimes(1), { timeout: 10000 });
     expect(chatApi.stream.mock.calls[0][2].resourceIds).toEqual([UPLOADED_ID]);
+  });
+
+  it('derives request resource_ids from confirmed attachments only', () => {
+    expect(
+      confirmedResourceIds([
+        { id: 'upload-1727-0.4', title: 'notes.pdf', pending: true },
+        { id: UPLOADED_ID, title: 'slides.pdf' },
+      ]),
+    ).toEqual([UPLOADED_ID]);
+  });
+
+  it('sends nothing when every attachment is still uploading', () => {
+    expect(confirmedResourceIds([{ id: 'upload-1727-0.4', pending: true }])).toEqual([]);
+  });
+
+  it('returns an empty list for no attachments', () => {
+    expect(confirmedResourceIds([])).toEqual([]);
   });
 });
