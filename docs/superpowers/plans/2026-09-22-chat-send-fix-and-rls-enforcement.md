@@ -362,8 +362,13 @@ Three attributes are load-bearing and each has a reason: `BYPASSRLS` carries the
 
 ```
 docker compose exec -T db psql -U postgres -d academiai -c "SELECT rolname, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname IN ('postgres','academiai','academiai_test') ORDER BY 1"
-docker compose exec -T db psql -U postgres -d academiai -c "SELECT r.rolname AS member_of, m.rolname AS granted_to FROM pg_auth_members a JOIN pg_roles r ON r.oid = a.memberid JOIN pg_roles m ON m.oid = a.roleid WHERE r.rolname = 'academiai_test'"
+docker compose exec -T db psql -U postgres -d academiai -c "SELECT r.rolname AS member_of, m.rolname AS granted_to FROM pg_auth_members a JOIN pg_roles r ON r.oid = a.member JOIN pg_roles m ON m.oid = a.roleid WHERE r.rolname = 'academiai_test'"
 ```
+
+`pg_auth_members` on this cluster (PostgreSQL 16.15, image `pgvectorscale:16.15`)
+names its columns `member` / `roleid` / `grantor`; `memberid` and `grantorid` do
+not exist there, so a query written against current upstream docs fails with
+`column a.memberid does not exist`. Verified live 2026-09-22.
 
 Expected: `academiai_test` → `rolsuper=f rolbypassrls=t rolcreaterole=f rolcreatedb=t`, and one membership row `academiai_test | academiai`.
 
