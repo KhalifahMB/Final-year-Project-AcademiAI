@@ -18,3 +18,36 @@ def _clear_cache_before_test():
     cache.clear()
     yield
     cache.clear()
+
+
+def pytest_configure(config):
+    """Run the test databases as the BYPASSRLS role, not the runtime role.
+
+    The runtime role `academiai` is NOBYPASSRLS by design, and ~280 direct
+    Model.objects.create() calls in 31 test files still write tenant-scoped rows
+    outside tenant_scope(). They pass only because this connection skips RLS.
+    apps/common/tests/test_rls.py opts out with SET ROLE academiai, and
+    test_suite_connection_bypasses_rls is the tripwire that fails when the
+    conversion plan lands and this shim should be deleted.
+
+    POSTGRES_TEST_USER= (empty) runs the suite as the runtime role instead.
+    """
+    import os
+
+    from django.conf import settings
+    from django.db import connections
+
+    user = os.environ.get("POSTGRES_TEST_USER", "academiai_test")
+    if not user:
+        return
+    settings.DATABASES["default"].update(
+        USER=user, PASSWORD=os.environ.get("POSTGRES_TEST_PASSWORD", user)
+    )
+    # `connections` snapshots DATABASES into a copy on first access; drop the
+    # snapshot so the next read picks the update up. Verified on Django 6.1:
+    # BaseConnectionHandler.settings is a cached_property that re-derives from
+    # django_settings.DATABASES when the cache is gone.
+    try:
+        del connections.settings
+    except AttributeError:
+        pass
