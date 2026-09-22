@@ -9,6 +9,7 @@ import AvatarPicker from '@/components/shared/AvatarPicker';
 import SearchableSelect from '@/components/shared/SearchableSelect';
 import api, { authApi } from '@/services/api';
 import { signupSchema } from '@/lib/validations';
+import { passwordStrength } from '@/lib/passwordStrength';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -74,6 +75,8 @@ export default function SignupPage() {
   const chosenDepartment = useWatch({ control: form.control, name: 'department' });
   const watchedRole = useWatch({ control: form.control, name: 'role' });
   const isStudent = watchedRole !== 'lecturer';
+  const watchedPassword = useWatch({ control: form.control, name: 'password' });
+  const strength = passwordStrength(watchedPassword || '');
 
   // Faculties for the chosen institution — first scoping level.
   const faculties = useQuery({
@@ -273,6 +276,30 @@ export default function SignupPage() {
                     {...field}
                   />
                 </FormControl>
+                {strength.score > 0 ? (
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <div className="flex h-1 flex-1 gap-1" aria-hidden="true">
+                      {[1, 2, 3, 4].map((band) => (
+                        <span
+                          key={band}
+                          className="h-1 flex-1 rounded-full"
+                          style={{
+                            background:
+                              band <= strength.score
+                                ? strength.color
+                                : 'var(--border)',
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <span
+                      className="text-caption font-semibold"
+                      style={{ color: strength.color }}
+                    >
+                      {strength.label}
+                    </span>
+                  </div>
+                ) : null}
                 <FormMessage />
               </FormItem>
             )}

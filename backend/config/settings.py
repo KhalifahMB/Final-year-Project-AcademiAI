@@ -22,7 +22,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 APP_STARTED_AT = time.time()
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-dev-only-change-me")
-DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("1", "true", "yes")
+# Fail-safe: DEBUG defaults to False. A production deploy that forgets to set
+# DJANGO_DEBUG must NOT silently boot in debug mode (which disables the SSL
+# redirect/HSTS/secure-cookie hardening below and serves media + the debug
+# toolbar). Local development sets DJANGO_DEBUG=True explicitly via .env
+# (see .env.example).
+DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("1", "true", "yes")
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
 
 # Fail fast rather than boot production with a publicly-known key.
@@ -144,8 +149,8 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.getenv("POSTGRES_DB", "academiai"),
-        "USER": os.getenv("POSTGRES_USER", "academiai_app"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "academiai_app"),
+        "USER": os.getenv("POSTGRES_USER", "academiai"),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "academiai"),
         "HOST": os.getenv("POSTGRES_HOST", "localhost"),
         "PORT": os.getenv("POSTGRES_PORT", "5432"),
         "OPTIONS": {"options": "-c search_path=public"},
@@ -268,6 +273,20 @@ AUTH_COOKIE_SECURE = (
     else not DEBUG
 )
 AUTH_COOKIE_SAMESITE = os.getenv("AUTH_COOKIE_SAMESITE", "Strict")
+
+# CSRF guard for the cookie transport. DRF views are CSRF-exempt, so the ONLY
+# thing that stops cross-site forgery of the httpOnly access cookie is
+# SameSite=Strict/Lax. Setting SameSite=None (required for a cross-site
+# frontend/backend split) makes every state-changing endpoint forgeable unless
+# a CSRF-token check is added. Refuse to boot that unsafe combination in
+# production until CSRF protection exists; same-site deploys are unaffected.
+if not DEBUG and str(AUTH_COOKIE_SAMESITE).lower() == "none":
+    raise RuntimeError(
+        "AUTH_COOKIE_SAMESITE=None is unsafe with the current CSRF-exempt cookie "
+        "JWT API: cross-site requests could forge state-changing calls. Use "
+        "SameSite=Strict/Lax (same-site frontend), or implement CSRF-token "
+        "validation for the cookie transport before deploying cross-site."
+    )
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "AcademiAI API",
@@ -434,12 +453,12 @@ if not DEBUG:
 # any of these env vars would run against publicly-known default passwords.
 if not DEBUG:
     _KNOWN_DEFAULT_PASSWORDS = {
-        "academiai_app",  # postgres
+        "academiai",  # postgres
         "academiai",      # rabbitmq / postgres
         "minioadmin",     # minio / s3
     }
     _insecure = []
-    if os.getenv("POSTGRES_PASSWORD", "academiai_app") in _KNOWN_DEFAULT_PASSWORDS:
+    if os.getenv("POSTGRES_PASSWORD", "academiai") in _KNOWN_DEFAULT_PASSWORDS:
         _insecure.append("POSTGRES_PASSWORD")
     if os.getenv("AWS_SECRET_ACCESS_KEY", "minioadmin") in _KNOWN_DEFAULT_PASSWORDS:
         _insecure.append("AWS_SECRET_ACCESS_KEY")

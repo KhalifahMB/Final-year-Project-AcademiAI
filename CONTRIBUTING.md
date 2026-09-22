@@ -62,7 +62,7 @@ Prefer explicit types (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`,
   node .opencode/skills/impeccable/scripts/detect.mjs --json <file>
   ```
 
-  A clean result prints `[]`. Read `DESIGN.md` / `PRODUCT.md` before deep UI work.
+  A clean result prints `[]`. Read `DESIGN.md` / `docs/PRODUCT.md` before deep UI work.
 
 - **Run backend checks** (from `backend/`):
 
@@ -80,8 +80,7 @@ Prefer explicit types (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`,
   ```powershell
   cd backend
   .\.venv\Scripts\python.exe manage.py makemigrations
-  .\.venv\Scripts\python.exe manage.py migrate
-  .\.venv\Scripts\python.exe manage.py apply_rls   # REQUIRED after migrate
+  .\.venv\Scripts\python.exe manage.py migrate   # auto-enforces RLS via post_migrate
   ```
 
 - New management commands belong in
@@ -101,7 +100,7 @@ Prefer explicit types (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`,
 - `@` alias → `frontend/src`.
 - shadcn/ui (Radix) primitives live in `components/ui/`; shared app components
   in `components/shared/`. Icons: `lucide-react`.
-- Follow the design contract in `DESIGN.md` (visuals) and `PRODUCT.md`
+- Follow the design contract in `DESIGN.md` (visuals) and `docs/PRODUCT.md`
   (voice/copy). Both light and dark themes are first-class — tokens only, no
   hardcoded hues.
 

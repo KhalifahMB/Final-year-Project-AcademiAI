@@ -34,7 +34,7 @@ migrations run versus the runtime role.
 `infrastructure/postgres/init/01-app-role.sql`:
 
 - `academiai` — Docker bootstrap superuser; owns nothing at runtime.
-- `academiai_app` — LOGIN, `NOSUPERUSER`, **NOBYPASSRLS**, `CREATEDB`
+- `academiai` — LOGIN, `NOSUPERUSER`, **NOBYPASSRLS**, `CREATEDB`
   (needed by pytest-django; revoke in production). Used by Django for
   migrations, runtime traffic, and tests.
 
@@ -115,7 +115,7 @@ schema.md to allow future platform-level identities.
 ## D13 — `users` table exclusion from RLS policies (documented deviation)
 
 **Conflict:** Spec says every tenant-scoped table must have RLS, but login
-must look users up by email *before* authentication establishes a tenant
+must look users up by email _before_ authentication establishes a tenant
 context. With RLS on `users` and no GUC set, authentication would be
 impossible without a BYPASSRLS role (forbidden).
 
@@ -209,6 +209,7 @@ Recorded decisions from the backend security/quality review:
 ## Test inventory (as of last run)
 
 Backend (`pytest`, 29 passing):
+
 - auth flow: signup → verify (single-use) → login gate → me → password change
 - password reset: generic responses, token single-use
 - cross-tenant API isolation/IDOR: read/update/delete denied, tenant spoofing
@@ -219,6 +220,7 @@ Backend (`pytest`, 29 passing):
   PPTX, plain text, chunk overlap)
 
 Frontend (`npm test`, 6 passing):
+
 - unauthenticated redirect to login; authenticated dashboard render
 - role gate: student denied admin page; admin allowed
 - login form: invalid email blocked client-side; API error surfaced

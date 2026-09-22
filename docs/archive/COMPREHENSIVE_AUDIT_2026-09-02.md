@@ -39,13 +39,13 @@ AcademiAI is a well-architected multi-tenant academic AI platform with solid fou
 **Status:** ⬜ OPEN  
 **File:** `docker-compose.yml`, `backend/config/settings.py`
 
-**Issue:** Runtime DB user is a PostgreSQL superuser with `BYPASSRLS` attribute, making RLS decorative. The `academiai_app` role exists but is never used.
+**Issue:** Runtime DB user is a PostgreSQL superuser with `BYPASSRLS` attribute, making RLS decorative. The `academiai` role exists but is never used.
 
 **Impact:** Any app-layer tenant-filtering bug leaks cross-tenant data with no DB backstop.
 
 **Fix Required:**
 
-1. Connect as `academiai_app` role in production
+1. Connect as `academiai` role in production
 2. Grant NOBYPASSRLS to runtime user
 3. Re-own tables as non-superuser role
 4. Verify with `SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user`

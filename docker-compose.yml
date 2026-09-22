@@ -3,15 +3,21 @@ services:
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: academiai
-      POSTGRES_USER: academiai
-      POSTGRES_PASSWORD: academiai
+      # Bootstrap superuser. The Django app connects as the NON-superuser
+      # `academiai` role created by init/01-app-role.sql so that PostgreSQL
+      # RLS is genuinely enforced (a superuser has BYPASSRLS and skips every
+      # policy). Do NOT set POSTGRES_USER to `academiai` — the image entrypoint
+      # would pre-create it as a superuser and the init script's IF NOT EXISTS
+      # guard would then leave RLS bypassed.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U academiai -d academiai']
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d academiai']
       interval: 5s
       timeout: 5s
       retries: 10

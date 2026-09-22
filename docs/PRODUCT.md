@@ -54,8 +54,9 @@ AcademiAI's differentiator is the combination of three mechanisms that no neighb
 
 ## Evidence on Hand
 
-- Logo: `frontend/public/images/Logo/academiai_icon_light.webp`, `academiai_icon_dark.png`
-- Hero/landing images: `frontend/public/images/landing/hero-academiai-tutor.png`, `abuja_campus_sunset.webp`, `holographic_ai_library_collaboration.webp`, `ai_knowledge_graph_visualization.webp`
+- Logo: `frontend/public/images/Logo/academiai_icon_light.png`, `academiai_icon_dark.png`
+- Landing imagery: the page is drawn in code, not photography. Section art is inline SVG in `frontend/src/components/shared/landingPlates.jsx` (see `DESIGN.md` → Landing System). The only raster landing asset is `frontend/public/images/landing/hero-academiai-tutor.png`, used as the `og:image` in `frontend/index.html`
+- **Unusable, still on disk:** `frontend/public/images/{abuja_campus_sunset,holographic_ai_library_collaboration,ai_knowledge_graph_visualization,brandkit}.webp` are referenced by no code. Each has disqualifying content baked into the pixels — a fabricated "94.2% accuracy" metric, a real "UC Berkeley" name, unverifiable "1536-dim / UMAP / MTEB" claims, real "ABUJA UNIVERSITY" signage, or a competing brand spec. Do not wire them into any public surface without a human review
 - Favicons and PWA icons in `frontend/public/`
 - Complete working frontend with shadcn/ui component library and Tailwind v4 design tokens
 - Full backend with Django REST Framework, pgvector, Celery workers

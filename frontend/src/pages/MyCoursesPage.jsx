@@ -7,6 +7,7 @@ import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import StatTile from '@/components/shared/StatTile';
 import EmptyState from '@/components/shared/EmptyState';
+import { EmptyCoursesIllustration } from '@/components/shared/illustrations';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -139,7 +140,7 @@ export default function MyCoursesPage() {
         </div>
       ) : enrollments.length === 0 ? (
         <EmptyState
-          icon={GraduationCap}
+          illustration={EmptyCoursesIllustration}
           title="No enrollments yet"
           description={
             user?.role === 'student'

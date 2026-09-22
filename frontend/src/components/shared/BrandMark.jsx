@@ -9,7 +9,7 @@ import { useTheme } from '@/hooks/useTheme';
  * readable. A "solid" variant is provided for the auth dark panel.
  */
 export default function BrandMark({
-  size = 'h-7 w-7',
+  size = 'h-12 w-12',
   variant = 'auto',
   className = '',
   showWordmark = false,
@@ -29,14 +29,14 @@ export default function BrandMark({
   const mark = showDarkAsset ? (
     <span
       className={[
-        'inline-grid shrink-0 place-items-center rounded-[8px] bg-white/95 p-[3px] shadow-[0_1px_0_rgba(255,255,255,0.08)]',
+        'inline-grid shrink-0 place-items-center rounded-md p-0.75 shadow-[0_1px_0_rgba(255,255,255,0.08)]',
         size,
         className,
       ].join(' ')}
       aria-hidden
     >
       <img
-        src="/images/Logo/academiai_icon_dark.png"
+        src="/images/Logo/academiai_app_icon_dark.png"
         alt={alt}
         draggable={false}
         className="block h-full w-full select-none object-contain"
@@ -45,14 +45,14 @@ export default function BrandMark({
   ) : (
     <span
       className={[
-        'inline-grid shrink-0 place-items-center rounded-[8px] p-[3px] shadow-[0_1px_0_rgba(255,255,255,0.08)]',
+        'inline-grid shrink-0 place-items-center rounded-md p-0.75 shadow-[0_1px_0_rgba(255,255,255,0.08)]',
         size,
         className,
       ].join(' ')}
       aria-hidden
     >
       <img
-        src="/images/Logo/academiai_icon_light.webp"
+        src="/images/Logo/academiai_app_icon_light.png"
         alt={alt}
         draggable={false}
         className="block h-full w-full select-none object-contain"

@@ -78,7 +78,7 @@ def rls_enabled(transactional_db):
                 [RLS_ROLE],
             )
         # Grant same privileges the app role has so the tester can read/write.
-        cursor.execute(f'GRANT academiai_app TO "{RLS_ROLE}"')
+        cursor.execute(f'GRANT academiai TO "{RLS_ROLE}"')
         cursor.execute(f'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO "{RLS_ROLE}"')
         cursor.execute(f'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO "{RLS_ROLE}"')
         cursor.execute(f'GRANT ALL ON SCHEMA public TO "{RLS_ROLE}"')

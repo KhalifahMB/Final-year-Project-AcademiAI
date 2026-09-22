@@ -6,6 +6,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import EmptyState from '@/components/shared/EmptyState';
+import { EmptyResourcesIllustration } from '@/components/shared/illustrations';
 import Pagination from '@/components/shared/Pagination';
 import StatusBadge from '@/components/shared/StatusBadge';
 import StatTile from '@/components/shared/StatTile';
@@ -541,7 +542,7 @@ const ResourceRow = ({ r }) => (
  )
  ) : filtered.length === 0 ? (
  <EmptyState
- icon={Sparkles}
+ illustration={EmptyResourcesIllustration}
  title={search || hasActiveFilters ? 'No matching materials' : 'No resources yet'}
  description={
  search || hasActiveFilters

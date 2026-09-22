@@ -79,10 +79,12 @@ class BookmarkSerializer(serializers.ModelSerializer):
 
 
 class ProgressRecordSerializer(serializers.ModelSerializer):
+    concept_name = serializers.CharField(source="concept.canonical_name", read_only=True)
+
     class Meta:
         model = ProgressRecord
-        fields = ("id", "concept", "progress_value", "last_seen_at", "user", "tenant")
-        read_only_fields = ("id", "user", "tenant", "last_seen_at", "progress_value")
+        fields = ("id", "concept", "concept_name", "progress_value", "last_seen_at", "user", "tenant")
+        read_only_fields = ("id", "user", "tenant", "last_seen_at", "progress_value", "concept_name")
 
 
 class ResourceReadingPositionSerializer(serializers.ModelSerializer):

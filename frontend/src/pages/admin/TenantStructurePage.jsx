@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import {
   Building2, CalendarRange, CalendarDays, ChevronRight, Plus,
 } from "lucide-react";
+import { toList } from '@/lib/list';
 
 function formatBytes(bytes) {
   if (!bytes && bytes !== 0) return "—";
@@ -24,8 +25,6 @@ function formatBytes(bytes) {
   if (bytes >= mb) return `${(bytes / mb).toFixed(1)} MB`;
   return `${bytes} B`;
 }
-
-const toList = (d) => d?.results || d || [];
 
 export default function TenantStructurePage() {
   const qc = useQueryClient();

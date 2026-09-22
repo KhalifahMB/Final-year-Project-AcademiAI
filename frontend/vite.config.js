@@ -71,7 +71,6 @@ export default defineConfig({
       workbox: {
         globPatterns: [
           '**/*.{js,css,html,svg,png,ico,woff,woff2,webp}',
-          '!design-variants/**',
         ],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: '/index.html',
@@ -151,6 +150,13 @@ export default defineConfig({
     setupFiles: './src/test/setup.js',
     css: false,
     pool: 'forks',
+    // The first test in a file that mounts <App /> pays the whole lazy route
+    // graph: measured 10.6-16.3s on a quiet machine, vs ~0.5s for later mounts.
+    // The 5s default killed those tests, so the budget has to cover the cold
+    // mount. Note this is still load-sensitive: on a saturated box the same
+    // mount has measured 55-68s, so a routing/calendar timeout here is worth
+    // checking against machine load before assuming a code regression.
+    testTimeout: 30000,
     exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
   },
 });

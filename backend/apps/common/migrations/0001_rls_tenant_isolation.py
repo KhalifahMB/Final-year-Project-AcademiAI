@@ -14,9 +14,11 @@ DO-block form in sql/rls_policies.sql.
 
 The table list is DERIVED from the live model registry (rls.TABLES). Because
 this migration sits mid-graph, tables created by later migrations are skipped
-here via a to_regclass guard; they are fully covered when the deploy pipeline
-runs `manage.py apply_rls` after `migrate` (the README-required step, which
-re-derives the list against the complete schema). `apply_rls` is idempotent.
+here via a to_regclass guard; they are fully covered by the ``post_migrate``
+receiver in ``apps/common/apps.py``, which fires after the complete graph has
+been applied and re-derives the list against the full schema. That receiver is
+idempotent, so RLS is enforced automatically on every ``migrate`` with no
+separate manual step.
 """
 from django.db import migrations
 

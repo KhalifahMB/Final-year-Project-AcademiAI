@@ -145,6 +145,12 @@ Fonts are self-hosted via `@fontsource-variable` (Geist, Geist Mono, Fraunces), 
 - **Body measure:** 65–75ch for long-form text. Never full-width paragraphs on large screens.
 - **Headings:** Balanced wrapping (`text-wrap: balance`). No orphan headings.
 - **Font features:** `'cv02', 'cv03', 'cv04', 'cv11', 'ss01', 'tnum'` enabled on `<html>`.
+- **Secondary text roles:** reach for `.eyebrow`, `.text-caption`, `.text-mono-meta` (`styles/components.css`) before writing a `text-[Npx]` literal. New code must not add arbitrary sizes; existing ones are known debt.
+
+> **Known debt (measured 2026-09-22):** 522 `text-[Npx]` literals across 78 files predate these
+> utilities. They were deliberately not swept in one pass — a mechanical conversion changes
+> size and line-height on dense pages at once and needs page-by-page visual QA. Convert a
+> file when you are already editing it.
 
 ## Spacing & Layout
 
@@ -248,6 +254,9 @@ Depth follows the material layer:
 - Radius: `--radius-md` (8px).
 - Active press: `translateY(1px)` (respects reduced-motion).
 - On the landing, primary CTAs may use the violet accent directly.
+- **One implementation only:** `components/ui/button.jsx` (+ `button-variants.js`). The old
+  `.btn` / `.btn-*` CSS utilities were deleted once nothing imported them; don't reintroduce a
+  parallel button system as class strings. Use `<Button asChild>` to style a `<Link>`.
 
 ## Forms
 
@@ -323,6 +332,25 @@ Depth follows the material layer:
 - Icon (Lucide), title, description, optional CTA link.
 - Never blank screens. Always guide the user.
 
+### Illustrations
+
+`components/shared/illustrations.jsx` holds the empty-state line art; pass it to
+`<EmptyState illustration={…}>`, which swaps it in for the icon circle. Error
+states keep the alert icon — an illustration belongs to an *empty* state, never
+a broken one.
+
+- **Inline SVG, never an image file.** An `<img src="*.svg">` is an isolated
+  document and cannot read the app's custom properties, so a raster or external
+  asset would hardcode a hue and need a second dark-mode copy. Inline art reads
+  `currentColor` and `var(--accent)` and covers both themes from one source.
+- **Spec:** 96×96 viewBox, `fill: none`, `stroke: currentColor`, 1.5 stroke
+  width, round caps and joins, exactly one `var(--accent)` detail.
+- **Decorative.** `aria-hidden="true"` — the `title` prop is what screen readers
+  announce.
+- **No baked-in content.** Never put words, numbers, metrics or institution
+  names in the art; they cannot be translated, cannot be verified, and go stale.
+- Rendered at `h-24 w-24` by `EmptyState`; `h-20 w-20` inside a tighter hero.
+
 ## Error States
 
 - **Route error:** `ErrorBoundary` with message + reload button.
@@ -339,6 +367,34 @@ Depth follows the material layer:
 - **Sections:** Problem → platform isolation → 3 grounding steps → hard-isolation diagram → grounding demo → role agents → confusion signals → testimonials → institution request form.
 - **Request form:** Work email + institution name → leads to institution onboarding.
 - Both themes are token-driven and first-class; grain + grid textures optional at section scale.
+
+### Landing plates
+
+`components/shared/landingPlates.jsx` holds the section-scale line art, wired into
+`LandingPage` as a media column beside a section heading. The landing stays
+code-drawn: no photography, no rendered product screenshots.
+
+- **Same inline-SVG rule as empty-state illustrations.** An `<img src="*.svg">`
+  cannot read the app's custom properties, so a raster file can never be
+  theme-aware. Plates use `currentColor` plus exactly one `var(--accent)` detail
+  and invert correctly in both themes.
+- **Wordless, fact-free.** No text, numbers, metrics, citations or institution
+  names in the art. A picture that asserts a statistic is a claim no one can
+  verify, and it goes stale silently.
+- **Must carry an argument.** A plate earns its bytes by depicting the section's
+  point (`FragmentedMaterialsPlate` draws two document stacks on rails that never
+  meet). Art that only decorates a heading violates "every visual element must
+  serve a purpose" — don't add one.
+- Larger canvas than empty-state art: `0 0 320 240`, `stroke-width: 1.5`, capped
+  at `420px` by `.landing-section__heading--split > :last-child`.
+
+### Eyebrow specificity trap
+
+`.landing-eyebrow` is a `<p>`, so any `.landing-section__heading p`-style
+descendant rule outranks it and silently downgrades the eyebrow to body copy.
+Section paragraph rules must exclude it: `p:not(.landing-eyebrow)`. Ten of the
+eleven landing eyebrows were rendering at 16px muted instead of 11px violet mono
+before this was fixed.
 
 ## Responsive Behavior
 
@@ -391,6 +447,8 @@ Depth follows the material layer:
 - `SkeletonRows` — Loading placeholder
 - `ThemeToggle` — Light/dark switcher
 - `CommandPalette` — Cmd+K global search
+- `NotificationInbox` — Topbar bell + unread badge, feed dropdown
+- `NotificationToaster` — Session-deduped warn/critical toasts (read-state neutral)
 - `ErrorBoundary` — Route-level error handling
 - `ResourceCard` — Resource grid card
 

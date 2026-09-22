@@ -15,8 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { HardDrive, Search, ChevronRight } from "lucide-react";
-
-const toList = (d) => d?.results || d || [];
+import { toList } from '@/lib/list';
 
 function formatBytes(bytes) {
   if (!bytes && bytes !== 0) return "—";

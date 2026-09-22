@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import api from '@/services/api';
+import { toList } from '@/lib/list';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
 import SearchableSelect from '@/components/shared/SearchableSelect';
@@ -41,11 +42,6 @@ import {
 
 const QUESTION_TYPES = ['multiple_choice', 'true_false', 'short_answer'];
 
-const toList = (res) => {
-  const d = res.data;
-  return Array.isArray(d) ? d : d?.results || [];
-};
-
 export default function AdminQuizzesPage() {
   const qc = useQueryClient();
   const [quizDialog, setQuizDialog] = useState(false);
@@ -58,12 +54,12 @@ export default function AdminQuizzesPage() {
 
   const quizzes = useQuery({
     queryKey: ['admin-quizzes'],
-    queryFn: async () => toList(await api.get('/quizzes/')),
+    queryFn: async () => toList((await api.get('/quizzes/')).data),
   });
 
   const offerings = useQuery({
     queryKey: ['opts', '/course-offerings/'],
-    queryFn: async () => toList(await api.get('/course-offerings/')),
+    queryFn: async () => toList((await api.get('/course-offerings/')).data),
     staleTime: 60_000,
   });
 
@@ -161,9 +157,11 @@ export default function AdminQuizzesPage() {
     queryKey: ['quiz-questions', questionsFor?.id],
     queryFn: async () =>
       toList(
-        await api.get('/quiz-questions/', {
-          params: { quiz: questionsFor.id, page_size: 100 },
-        }),
+        (
+          await api.get('/quiz-questions/', {
+            params: { quiz: questionsFor.id, page_size: 100 },
+          })
+        ).data,
       ),
     enabled: !!questionsFor,
   });

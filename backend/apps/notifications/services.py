@@ -294,17 +294,22 @@ def sync_user_notifications(user, *, force=False):
         return []
     cache_key = _sync_cache_key(user)
     alerts = None if force else cache.get(cache_key)
-    if alerts is None:
+    recomputed = alerts is None
+    if recomputed:
         try:
             alerts = _compute_alerts(user)
         except Exception:
             logger.exception("Could not compute notifications for user=%s", user.id)
             alerts = []
         cache.set(cache_key, alerts, SYNC_TTL)
-    try:
-        _persist_alerts(user, alerts, _disabled_kinds(user))
-    except Exception:
-        logger.exception("Could not persist notifications for user=%s", user.id)
+    if recomputed or force:
+        # The persisted feed only drifts when the alert set is re-derived, so
+        # skip the delete/upsert pass on cache hits. Badge polling reads this
+        # far more often than SYNC_TTL expires.
+        try:
+            _persist_alerts(user, alerts, _disabled_kinds(user))
+        except Exception:
+            logger.exception("Could not persist notifications for user=%s", user.id)
     return alerts
 
 

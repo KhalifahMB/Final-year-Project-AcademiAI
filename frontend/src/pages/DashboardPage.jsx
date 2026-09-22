@@ -17,7 +17,9 @@ import {
   Users,
   ArrowRight,
   Plus,
+  AlertTriangle,
 } from 'lucide-react';
+import EmptyState from '@/components/shared/EmptyState';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import {
   ResponsiveContainer,
@@ -238,6 +240,14 @@ export default function DashboardPage() {
     <AppShell>
       {dash.isLoading ? (
         <SkeletonRows rows={6} />
+      ) : dash.isError ? (
+        <EmptyState
+          icon={AlertTriangle}
+          title="Your dashboard could not be loaded"
+          description="Something went wrong while fetching your overview."
+          action="Retry"
+          onAction={() => dash.refetch()}
+        />
       ) : isStudent ? (
         <StudentDashboard
           dash={dash.data}
@@ -446,14 +456,14 @@ export default function DashboardPage() {
                       >
                         <CartesianGrid
                           strokeDasharray="3 3"
-                          stroke="hsl(var(--border))"
+                          stroke="var(--border)"
                           vertical={false}
                         />
                         <XAxis
                           dataKey="bucket"
                           tick={{
                             fontSize: 11,
-                            fill: 'hsl(var(--muted-foreground))',
+                            fill: 'var(--muted-foreground)',
                           }}
                           axisLine={false}
                           tickLine={false}
@@ -468,7 +478,7 @@ export default function DashboardPage() {
                           allowDecimals={false}
                           tick={{
                             fontSize: 11,
-                            fill: 'hsl(var(--muted-foreground))',
+                            fill: 'var(--muted-foreground)',
                           }}
                           axisLine={false}
                           tickLine={false}
@@ -476,8 +486,8 @@ export default function DashboardPage() {
                         />
                         <Tooltip
                           contentStyle={{
-                            background: 'hsl(var(--popover))',
-                            border: '1px solid hsl(var(--border))',
+                            background: 'var(--popover)',
+                            border: '1px solid var(--border)',
                             borderRadius: 8,
                             fontSize: 12,
                           }}
@@ -485,7 +495,7 @@ export default function DashboardPage() {
                         <Bar
                           dataKey="count"
                           name="Events"
-                          fill="hsl(var(--primary))"
+                          fill="var(--primary)"
                           radius={[4, 4, 0, 0]}
                         />
                       </BarChart>

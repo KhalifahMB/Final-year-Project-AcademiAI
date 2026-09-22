@@ -68,7 +68,7 @@ export default function FloatingAgent() {
     stopStreaming,
     toggleOpen,
   } = useAgent();
-  const { unreadCount, hasUnread, markAllRead } = useNotifications();
+  const { unreadCount, hasUnread } = useNotifications();
   const location = useLocation();
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -117,13 +117,6 @@ export default function FloatingAgent() {
     }
     wasOpenRef.current = isOpen;
   }, [isOpen]);
-
-  // Opening the agent acknowledges the alerts: clear the badge.
-  useEffect(() => {
-    if (isOpen && hasUnread) {
-      markAllRead().catch(() => {});
-    }
-  }, [isOpen, hasUnread, markAllRead]);
 
   // Unified pointer drag (mouse + touch). A drag that actually moves never
   // toggles the panel: only a near-stationary press counts as a click.

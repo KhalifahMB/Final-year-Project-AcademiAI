@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import LoginPage from '@/pages/LoginPage';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -15,6 +15,29 @@ function renderPage() {
       <LoginPage />
     </MemoryRouter>
   );
+}
+
+// Guards bounce unauthenticated visitors to /login with the destination in
+// location.state.from; the form must honour it or deep links are lost.
+function renderLoginAt(from) {
+  return render(
+    <MemoryRouter
+      initialEntries={[{ pathname: '/login', state: from ? { from } : null }]}
+    >
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/resources/:id" element={<div>Resource detail</div>} />
+        <Route path="/dashboard" element={<div>Dashboard</div>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+async function signIn() {
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText(/email/i), 'stud@uni.edu');
+  await user.type(screen.getByLabelText(/^password/i), 'secret123');
+  await user.click(screen.getByRole('button', { name: /sign in/i }));
 }
 
 describe('LoginPage validation and error handling', () => {
@@ -68,5 +91,17 @@ describe('LoginPage validation and error handling', () => {
     await user.type(screen.getByLabelText(/^password/i), 'wrongpass1');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
     expect(await screen.findByText(/invalid credentials/i)).toBeInTheDocument();
+  });
+
+  it('returns the user to the page they were pushed away from', async () => {
+    renderLoginAt({ pathname: '/resources/r7' });
+    await signIn();
+    expect(await screen.findByText('Resource detail')).toBeInTheDocument();
+  });
+
+  it('falls back to the dashboard when login was opened directly', async () => {
+    renderLoginAt(null);
+    await signIn();
+    expect(await screen.findByText('Dashboard')).toBeInTheDocument();
   });
 });

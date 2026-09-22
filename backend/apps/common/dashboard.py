@@ -862,16 +862,22 @@ class StudentRemindersView(APIView):
     def get(self, request):
         user = request.user
         tid = user.tenant_id
-        key = f"dashboard:{tid}:student-reminders:{user.id}:v1"
+
+        # Optional course-context filter (see Platform.md "course filter").
+        # When provided, only course-related reminders for that single
+        # offering are returned; the caller must be enrolled in it. Omit the
+        # param for the full enrolled set (backward compatible).
+        offering_id = request.query_params.get("course_offering")
+        key = f"dashboard:{tid}:student-reminders:{user.id}:v2:{offering_id or '*'}"
         data = cache.get(key)
         if data is not None:
             return Response(data)
-        data = self._build(tid, user)
+        data = self._build(tid, user, offering_id=offering_id)
         cache.set(key, data, STALE_SECONDS)
         return Response(data)
 
     @classmethod
-    def _build(cls, tid, user):
+    def _build(cls, tid, user, offering_id=None):
         from apps.calendar.models import CalendarEvent, CalendarLayer
         from apps.learning.models import Plan, PlanMilestone
 
@@ -879,13 +885,31 @@ class StudentRemindersView(APIView):
         horizon = today + timedelta(days=7)
         reminders = []
 
-        # Exams from the institution exam timetable.
-        for ev in CalendarEvent.objects.filter(
+        # Exams from the institution exam timetable, scoped to the course
+        # offerings the student is currently enrolled in (same visibility
+        # contract as the calendar layer) — never the tenant's full
+        # exam timetable.
+        enrolled_offering_ids = set(
+            CourseEnrollment.objects.filter(
+                tenant_id=tid,
+                student=user,
+                status=CourseEnrollment.Status.ENROLLED,
+            ).values_list("course_offering_id", flat=True)
+        )
+
+        # Narrow to the requested course when provided; refuse to silently
+        # widen. Non-enrolled ids simply return no exam rows.
+        if offering_id:
+            enrolled_offering_ids &= {offering_id}
+
+        exams_qs = CalendarEvent.objects.filter(
             tenant_id=tid,
             layer=CalendarLayer.EXAMS,
+            course_offering_id__in=enrolled_offering_ids,
             start__date__gte=today,
             start__date__lte=horizon,
-        ).select_related("course_offering", "course_offering__course").order_by("start"):
+        )
+        for ev in exams_qs.select_related("course_offering", "course_offering__course").order_by("start"):
             course = getattr(ev.course_offering, "course", None)
             title = ev.title or (course.title if course else None) or "Exam"
             days_left = (ev.start.date() - today).days

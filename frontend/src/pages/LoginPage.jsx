@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LogIn, Loader2 } from 'lucide-react';
@@ -22,6 +22,7 @@ import {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [error, setError] = useState('');
   const [remember, setRemember] = useState(true);
@@ -34,7 +35,8 @@ export default function LoginPage() {
     setError('');
     try {
       await login(values.email, values.password);
-      navigate('/dashboard');
+      // The guard hands back the full location, so query strings survive too.
+      navigate(location.state?.from || '/dashboard', { replace: true });
     } catch (err) {
       const d =
         err.response?.data?.error?.detail ||

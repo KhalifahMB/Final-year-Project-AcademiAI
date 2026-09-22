@@ -76,7 +76,7 @@ Legend: **Fixed** = already applied in this round *verified*; items without a st
 | 8 | Partial | **Logging** is console-only, non-JSON. | Add JSON formatter + remote/rotation handler in prod; or rely on container log collection. |
 | 9 | Partial | **Sentry** env-gated and off by default; `send_default_pii=True` is deliberate but exports PII (email/IP) when enabled. | Confirm policy before enabling; use `send_default_pii=False` + explicit extracts if in doubt. |
 | 10 | OK | Health endpoints: `/health/` (liveness), `/health/ready/` (readiness, 503 on DB/Redis down), `/platform/health/` (superuser deep check incl. RabbitMQ/DLQ/MinIO). | Wire readiness into LB/orchestrator; deep health into alerting. |
-| 11 | OK | RLS: `apply_rls` must run **after every `migrate`** in deploy. `setup_dlq` must run once against RabbitMQ. | Add both to the deploy script before startup. |
+| 11 | OK | RLS: applied automatically on every `migrate` via a `post_migrate` receiver (`apps/common/apps.py`) — no separate step. `setup_dlq` must run once against RabbitMQ. | Add `setup_dlq` to the deploy script before startup. |
 
 ---
 
@@ -89,8 +89,7 @@ export POSTGRES_PASSWORD=<strong> AWS_SECRET_ACCESS_KEY=<strong> CELERY_BROKER_U
 # Optional: SENTRY_DSN, GEMINI_API_KEY, VITE_API_BASE_URL, VITE_SENTRY_RELEASE
 
 cd backend
-.\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py apply_rls          # REQUIRED after migrate
+.\.venv\Scripts\python.exe manage.py migrate          # auto-enforces RLS via post_migrate
 
 # One-time per broker
 .\.venv\Scripts\python.exe manage.py setup_dlq          # RabbitMQ DLX + dead-letter queue
@@ -98,7 +97,7 @@ cd backend
 # (prod) collect static into STATIC_ROOT if not using WhiteNoise
 ```
 
-Start order: `db → redis → rabbitmq → minio → migrate+apply_rls → web → worker → beat`.
+Start order: `db → redis → rabbitmq → minio → migrate → web → worker → beat`.
 
 **Verify**
 - [ ] `GET /api/v1/health/ready/` returns 200 with `db` + `cache` ok

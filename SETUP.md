@@ -27,27 +27,30 @@ docker compose up -d
 
 Services (defaults from `.env.example`):
 
-| Service            | URL / port                  |
-|--------------------|-----------------------------|
-| PostgreSQL+pgvector| `localhost:5432`            |
-| Redis              | `localhost:6379`            |
-| RabbitMQ           | `localhost:5672` (UI `:15672`) |
-| MinIO              | `localhost:9000` (console `:9001`) |
+| Service             | URL / port                         |
+| ------------------- | ---------------------------------- |
+| PostgreSQL+pgvector | `localhost:5432`                   |
+| Redis               | `localhost:6379`                   |
+| RabbitMQ            | `localhost:5672` (UI `:15672`)     |
+| MinIO               | `localhost:9000` (console `:9001`) |
 
 ## 2. Backend
 
 ```powershell
 cd backend
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt   # first time / after deps change
-.\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py apply_rls                  # REQUIRED after migrate
+.\.venv\Scripts\python.exe manage.py migrate                    # auto-enforces RLS via post_migrate
 .\.venv\Scripts\python.exe manage.py createsuperuser            # optional
 .\.venv\Scripts\python.exe manage.py runserver                  # :8000
 ```
 
 > **RLS:** the app DB role must be non-superuser **without `BYPASSRLS`**
-> (default `academiai_app`). Otherwise multi-tenant isolation is not enforced.
-> Run `apply_rls` after every `migrate`.
+> (default `academiai`). Otherwise multi-tenant isolation is not enforced —
+> the compose stack creates a separate `postgres` superuser for bootstrap and
+> the non-superuser `academiai` app role (see
+> `infrastructure/postgres/init/01-app-role.sql`). RLS policies are applied
+> automatically on every `migrate` (a `post_migrate` receiver), so there is no
+> separate `apply_rls` step.
 
 Celery worker (separate terminal):
 

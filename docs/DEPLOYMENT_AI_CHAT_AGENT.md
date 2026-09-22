@@ -96,7 +96,7 @@ export GEMINI_MODEL=gemini-1.5-flash        # default; verify context window ass
 export GEMINI_EMBEDDING_MODEL=text-embedding-004
 export EMB_CACHE_TTL=300                    # redis rAG/embedding cache TTL
 
-# After migrate/apply_rls (see DEPLOYMENT_BACKEND.md)
+# After migrate (see DEPLOYMENT_BACKEND.md)
 # First-turn smoke: POST /agent/stream/ {"message":"hello","context_type":"dashboard"} → SSE tokens
 # Resume smoke:    POST again with the returned session_id → second turn must NOT 400 (F2 guard)
 ```

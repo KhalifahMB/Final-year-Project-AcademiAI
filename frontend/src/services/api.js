@@ -4,6 +4,7 @@
 import axios from 'axios';
 
 import { PAGINATION, SSE_MAX_BUFFER_BYTES, BULK_DELETE_MAX_IDS } from '@/lib/constants';
+import { toList } from '@/lib/list';
 import { go } from '@/lib/navigation';
 import { clearSessionFlag, clearUserScopedStorage } from '@/lib/session';
 import {
@@ -227,12 +228,6 @@ export const publicApi = {
   },
 };
 
-/** Dashboard counters — DEPRECATED in favour of aggregate endpoints below. */
-const toList = (res) => {
-  const data = res.data;
-  return Array.isArray(data) ? data : data?.results || [];
-};
-
 /** Aggregate dashboard endpoints — one round-trip per role. */
 export const dashboardApi = {
   student: () => api.get('/dashboard/student/').then((r) => r.data),
@@ -259,9 +254,10 @@ export const dashboardApi = {
 
 export const notesApi = {
   list: () =>
-    api.get('/notes/').then(toList).then((list) =>
-      enforceContract(noteListContract, list, 'notes.list'),
-    ),
+    api
+      .get('/notes/')
+      .then((res) => toList(res.data))
+      .then((list) => enforceContract(noteListContract, list, 'notes.list')),
   create: (payload) => api.post('/notes/', payload),
   update: (id, payload) => api.patch(`/notes/${id}/`, payload),
   delete: (id) => api.delete(`/notes/${id}/`),

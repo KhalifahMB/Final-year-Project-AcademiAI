@@ -6,6 +6,20 @@
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Set the theme class before the stylesheet paints. useTheme() keeps
+      // ownership of every later change; this only removes the light-flash
+      // dark-mode users would otherwise get on every hard load.
+      (function () {
+        try {
+          if (localStorage.getItem('academiai-theme') === 'dark') {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {
+          /* storage blocked — stay on the light default */
+        }
+      })();
+    </script>
     <title>AcademiAI — an AI tutor for every university, grounded in your materials</title>
     <meta
       name="description"

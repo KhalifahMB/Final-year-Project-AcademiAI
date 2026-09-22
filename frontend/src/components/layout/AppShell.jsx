@@ -24,6 +24,7 @@ import OnlineStatus from '@/components/shared/OnlineStatus';
 import CommandPalette from '@/components/common/CommandPalette';
 import FloatingAgent from '@/components/agent/FloatingAgent';
 import NotificationToaster from '@/components/notifications/NotificationToaster';
+import NotificationInbox from '@/components/notifications/NotificationInbox';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
 import { getTenantInfo } from '@/lib/tenant';
@@ -824,6 +825,7 @@ export default function AppShell({
 
               {/* Title is now inside the content area (page header) */}
               <div className="ml-auto flex items-center gap-1.5">
+                <NotificationInbox />
                 <OnlineStatus className="hidden sm:inline-flex" />
                 <ThemeToggle
                   className="icon-tile h-9 w-9 rounded-[var(--radius-md)] lg:hidden"
