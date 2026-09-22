@@ -17,7 +17,7 @@ unclear… check for other bugs."
 | C. Quiz Manager | **Architectural** | Migration, a changed generation contract, and a scoring rule change consumed by review/analytics. |
 | D. Navigation | **Architectural** | Replaces the data model four components read; enforces a new invariant. |
 | E. Incidental fixes | Bounded | Independent defects found during research. |
-| F. Local RLS roles | Environment | Not code. Corrects live-volume drift left by the `academiai_app` → `academiai` role rename. |
+| F. Local RLS roles | Environment + 2 files | Corrects live-volume drift left by the `academiai_app` → `academiai` role rename; adds a test-only role in `conftest.py` and rewrites `test_rls.py`. |
 | G. Resources library | **Architectural** | Changes how the list is fetched (server pagination), adds a filter the API does not expose yet, and splits a 645-line page. |
 | H. Moderation workflow | **Architectural** | Gives a complete, currently unreachable backend lifecycle its first UI: report affordance, queue page, route, nav item. Split out of G by your decision; deferred, not dropped. |
 
@@ -530,25 +530,42 @@ or from a link on a page already in that nav.
 ## F. Local RLS remediation
 
 Django connects as `academiai` (`settings.py:152` default, `.env`
-`POSTGRES_USER=academiai`). In the live volume that role is
-`rolsuper=t, rolbypassrls=t`. Tables are owned by `academiai_app` with both
-`relrowsecurity` and `relforcerowsecurity` set across 45 policies — the intent
-is correct — but **a superuser bypasses RLS regardless of FORCE**, so no query
-in this environment is filtered.
+`POSTGRES_USER=academiai`). Measured on the live volume on 2026-09-22 through the
+compose service `db` (container `academiai-db-1`):
+
+| Fact | Measured |
+|---|---|
+| `academiai` attributes | `rolsuper=t rolbypassrls=t rolcreaterole=t rolcreatedb=t rolreplication=t`, **oid 10** |
+| `academiai_app` | exists, non-superuser, `rolcanlogin=t`, owns most of the schema |
+| role `postgres` | **does not exist** — `psql -U postgres` answers `FATAL: role "postgres" does not exist` |
+| `public` table ownership | 47 tables `academiai_app`, 19 tables `academiai` |
+| `public` schema owner | `academiai_app` |
+| policies | 45 policies over 45 tables; `relrowsecurity` and `relforcerowsecurity` both true; `polroles` empty (applies to all roles) |
+| database `academiai` owner | `academiai` |
+
+The policy state is exactly as intended. The role state defeats it: **a
+superuser bypasses RLS regardless of FORCE**, so no query in this environment is
+filtered — every isolation guarantee in the app is currently resting on
+application-layer filtering alone. The empty `polroles` is the one piece of good
+news: no policy names a role, so a rename cannot orphan one.
 
 ### Why the volume looks like this
 
-Both halves trace to one commit, `ad92276` (2026-09-20, "rename default postgres
-role from academiai_app to academiai"). It renamed the role in
-`01-app-role.sql`, `settings.py`, `.env.example`, `test_rls.py` and the docs —
-including `ALTER SCHEMA public OWNER TO academiai` — but init scripts run only
-on first container init. So on the existing `postgres_data` volume:
+`academiai` carries **oid 10** — the slot `initdb` reserves for the bootstrap
+superuser — so this volume was initialised with `POSTGRES_USER=academiai`, before
+`ad92276` (2026-09-20, "rename default postgres role from academiai_app to
+academiai") changed the declared role. The script version that ran then created
+`academiai_app` (oid 16385, non-superuser, the intended app role) and that role
+built 47 of the 66 tables. `ad92276` renamed the target in `01-app-role.sql`,
+`settings.py`, `.env.example`, `test_rls.py` and the docs, but init scripts run
+only at first container init, so none of it re-ran: the defensive `ALTER ROLE
+academiai NOSUPERUSER NOBYPASSRLS` branch never fired, and
+`ALTER SCHEMA public OWNER TO academiai` (`01-app-role.sql:32`) never applied.
 
-- `academiai` still exists with the **superuser** attribute the old bootstrap
-  gave it, and the script's defensive `ALTER ROLE academiai NOSUPERUSER
-  NOBYPASSRLS` branch never ran.
-- Objects created before the rename are still **owned by `academiai_app`**,
-  which is now a role nothing connects as.
+Current `docker-compose.yml:12` declares `POSTGRES_USER: postgres`, which this
+volume has never seen. That matters for how to read the remediation below: it is
+converging a drifted volume onto the state a fresh volume already reaches by
+itself, not inventing a new configuration.
 
 ### The trap that makes ordering matter
 
@@ -565,32 +582,131 @@ post-migrate policy DDL in `except Exception: logger.exception(...)` precisely
 naive privilege strip it would start swallowing every policy statement and RLS
 would be half-configured with a green migrate.
 
+### What it breaks: the backend suite, at scale
+
+Measured 2026-09-22, not estimated. 42 models subclass `TenantScopedModel`.
+**31 test files contain ~280 direct `Model.objects.create()` calls on tenant-scoped
+tables with no `tenant_scope()` anywhere in the file** — worst offenders
+`common/tests/test_dashboards.py` (41), `academics/tests/test_content_intelligence.py`
+(24), `notifications/tests/test_notifications_api.py` (23),
+`calendar/tests/test_plan_calendar_sync.py` (20), and the legacy app-level
+`agent/tests.py` (11) / `assessments/tests.py` (7).
+
+They pass today because the connection bypasses the policies. The policy is
+`WITH CHECK (tenant_id::text = current_setting('app.current_tenant_id', true))`;
+with no GUC that comparison is NULL, not TRUE, so the insert is rejected. The
+suite is green only because nothing is ever checked, and `conftest.py` sets no
+tenant because it never had to. The proof already in the repo is
+`test_rls_blocks_insert_without_tenant_context`, which asserts *exactly this
+rejection* under the fixture's `NOBYPASSRLS` role.
+
+`apps/common/tests/test_rls.py` is the special case of that: it is written against
+the opposite premise — its docstring says "Django's normal test DB role is a
+SUPERUSER" (`:5-7`). The fixture runs `CREATE ROLE "rls_tester"` (`:77`) and
+`GRANT academiai TO "rls_tester"` (`:81`), both of which need `CREATEROLE`, and
+its `_as_superuser()` is `SET ROLE NONE` (`:58`) — which stops elevating anything
+once the session user is ordinary.
+
+### Second constraint: `CREATE EXTENSION vector` needs a superuser — already handled here
+
+`resources/migrations/0001_initial.py:22` runs
+`CREATE EXTENSION IF NOT EXISTS vector;`, and measured on this cluster pgvector
+0.8.6 is `superuser = t, trusted = f`. So **any** non-superuser building a fresh
+database would fail there, and `BYPASSRLS` does not help: it removes RLS checking,
+it is not a superuser right. Since pytest-django builds every per-worker test DB
+and runs the whole migration graph in it, this had to be checked before the
+demotion rather than discovered after it.
+
+It is already solved. `infrastructure/postgres/init/00-extensions.sql:6-7` does
+`\c template1` + `CREATE EXTENSION IF NOT EXISTS vector`, and it ran at first init:
+`template1` now lists `vector` (owned by `academiai`), and a scratch database
+created from `template1` during this review inherited it and was dropped again.
+Inheriting the extension row makes the migration's `IF NOT EXISTS` a no-op, which
+is exactly what that file's comment says it is for.
+
+Two consequences to keep in mind, and no work in this part:
+
+- **That file is load-bearing for the demotion.** Deleting it or dropping the
+  `\c template1` half turns every test-DB build into
+  `must be superuser to create extension "vector"`. Worth a comment at the top of
+  the next plan's Global Constraints, not a code change.
+- **A hosted production database needs the same pre-install** by whoever owns the
+  managed instance, before a non-superuser `academiai` can run `migrate` there.
+  That is a deployment prerequisite to record, outside this plan's scope.
+
+### Decision: land the security fix, convert the tests separately
+
+Your call, 2026-09-22, after seeing both blockers: **land security now, tests later.**
+
+Three roles, each with one job:
+
+- `postgres` — bootstrap superuser, created by this remediation, used only for the
+  remediation DDL and the `template1` pre-install. Owns nothing at runtime.
+- `academiai` — the runtime role, demoted to `NOSUPERUSER NOBYPASSRLS NOCREATEROLE
+  NOREPLICATION` and owner of every relation in `public`. Real traffic, migrations
+  and `runserver` run as this, so the isolation guarantee is genuinely live.
+- `academiai_test` — `LOGIN BYPASSRLS CREATEDB`, member of `academiai`, used **only**
+  by pytest. It carries the bypass the 31 unconverted files still depend on, and its
+  membership is what lets `test_rls.py` do `SET ROLE academiai` without needing
+  `CREATEROLE`.
+
+`test_rls.py` is rewritten to be honest about that split rather than to hide it: it
+asserts the *runtime* role's posture (not superuser, no bypass, every
+`RLS_TABLES` entry ENABLE + FORCE + `tenant_isolation`), then exercises isolation
+as `academiai` itself, and one small test asserts that the surrounding suite still
+runs under a bypass role — so the day the conversion lands, that test fails and tells
+you to delete the shim. This is strictly stronger than the file it replaces, which
+asserted nothing about the role it was given.
+
+Deferred to its own plan: converting the 31 files' fixture writes to
+`tenant_scope(tenant.id)` and revoking `academiai_test`. Doing it here would bury a
+security fix inside a ~280-call mechanical diff across the suite, which is the worst
+possible pairing to review.
+
 ### Plan (additive, no volume deletion, no data loss)
 
-You run steps 1-3 as SQL; I run the verification queries and the suite and
-report actual output. Order is not interchangeable.
+Steps 1-5 change live role and ownership state, so they run with you watching and
+each is verified before the next; I run the verification queries, the migration
+and the suite, and report actual output. Order is not interchangeable.
 
-1. **Create the declared bootstrap superuser `postgres`** with a password you
-   choose, so a privileged role exists that is not the app role. Must happen
-   while `academiai` can still grant it.
-2. **Move object ownership to the app role:** `REASSIGN OWNED BY academiai_app
-   TO academiai`, then confirm zero relations in `public` are still owned by
-   `academiai_app`. Sequences and the schema itself are covered by
-   `REASSIGN OWNED` plus the `ALTER SCHEMA public OWNER TO academiai` the init
-   script already intends.
-3. **Then strip the privilege:** `ALTER ROLE academiai NOSUPERUSER NOBYPASSRLS
-   LOGIN` — exactly the defensive branch at `01-app-role.sql:22-26`.
-4. **Verify** `pg_roles` shows `academiai` with `rolsuper=f, rolbypassrls=f`,
-   and `pg_tables` shows every `public` table owned by `academiai`.
-5. **Restart the dev server, run `migrate` then the backend suite.** A missing
-   grant that superuser implicitly covered surfaces as an explicit `GRANT`, not
-   as a restored privilege.
-6. **Prove isolation is live:** a tenant-scoped query with no tenant GUC returns
-   nothing where it previously returned everything, and the migrate output
-   contains no "Failed to auto-apply RLS policies" line.
+1. **Stop the dev server and any Celery worker**, so nothing is mid-query when the
+   role's attributes change. Existing connections keep their attributes until they
+   reconnect, which is why this is step one and not an afterthought.
+2. **Create the declared bootstrap superuser `postgres`**, so a privileged role
+   exists that is not the app role. Must happen while `academiai` can still grant
+   it. This is the role `docker-compose.yml:12` already declares.
+3. **Confirm the `template1` extension pre-install is in place** (it already is, per
+   the measurement above) rather than re-running it: the check is that a database
+   created from `template1` sees `vector`. This is what keeps non-superuser test
+   database builds possible.
+4. **Move object ownership to the app role:** `REASSIGN OWNED BY academiai_app
+   TO academiai`, then verify zero relations, sequences **and** the `public`
+   schema are still attributed to `academiai_app`. `REASSIGN OWNED` is not assumed
+   to cover the schema — the check decides, and an explicit
+   `ALTER SCHEMA public OWNER TO academiai` follows if it is still behind.
+5. **Then strip the privilege:** `ALTER ROLE academiai NOSUPERUSER NOBYPASSRLS
+   NOCREATEROLE NOREPLICATION LOGIN` — the defensive branch at
+   `01-app-role.sql:22-26`, and deliberately **not** `NOCREATEDB`: pytest-django
+   creates a database per xdist worker and the same script grants `CREATEDB` for
+   exactly that reason (`:17`).
+6. **Create `academiai_test`** (`LOGIN BYPASSRLS CREATEDB`), grant it `academiai`
+   for the `SET ROLE` path, and point only the test configuration at it.
+7. **Rewrite `test_rls.py`** for the enforced world, in the step-6 order above:
+   run it first so the failure is observed, then change the test — not the other
+   way round.
+8. **Run the full backend suite**, which is the check that steps 3 and 6 actually
+   work: a per-worker test DB that cannot build itself shows up here as a
+   `must be superuser to create extension` error, not as a flake.
+9. **Prove isolation on the developer database:** a tenant-scoped query with no
+   tenant GUC returns nothing where it previously returned everything, and with the
+   GUC set it returns only that tenant's rows.
+10. **Optional cleanup, only on your say-so:** `DROP ROLE academiai_app`. Nothing
+   in `backend/` references it any more (verified by search — the remaining hits
+   are inside `.kilo/worktrees/`, a stale copy), so it is a live login for a role
+   that owns nothing. Left in place by default.
 
 This is deliberately not attempted silently: it changes database role state and
-can take the running server down on a permissions error. If step 2 or 3 fails
+can take the running server down on a permissions error. If step 4 or 5 fails
 halfway, the recovery is `ALTER ROLE academiai SUPERUSER` (via `postgres`) and
 re-run — nothing is destroyed, which is why this is safe to do additively rather
 than by wiping the volume.
@@ -796,6 +912,13 @@ response reports the real count; the keyless stub honours count, types and mix;
 `correct_answer` is not exposed to students pre-submission for the new shape
 (extends `test_evaluation_gaps.py`); migration 0007 applies on the existing DB
 **after** Part F, so it is exercised under enforced RLS rather than bypassed.
+Part F's rewritten `test_rls.py` has a two-sided check: the posture guard must
+fail while `academiai` is still a superuser (verified before the demotion) and pass
+after it, and the isolation assertions run under `SET ROLE academiai` so they are
+checked as the real runtime identity. One test asserts that the surrounding suite
+still connects as the `BYPASSRLS` `academiai_test` role — deliberate, so that
+converting the 31 unscoped files makes a red test that says "delete the shim"
+rather than a silent improvement.
 For G: the list endpoint returns `count` from the DB rather than the length of
 the current page, and `page_size=100` is accepted while `page_size=1000` is
 clamped; `?uploaded_by__role=lecturer` narrows rows without widening them, so an
