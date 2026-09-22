@@ -859,7 +859,7 @@ const openSession = useCallback(async (s) => {
 
  const send = async (textOverride) => {
   const content = (textOverride ?? input).trim();
-  if ((!content && attachedResources.length === 0) || loading) return;
+  if ((!content && attachedResources.length === 0) || loading || uploadingFiles) return;
   stuckToBottomRef.current = true;
   setError('');
  setLoading(true);
