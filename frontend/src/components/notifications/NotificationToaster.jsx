@@ -9,8 +9,8 @@ const SHOWN_KEY = 'academiai:alert-toasts-shown';
  * Surfaces unread warn/critical notifications as auto-dismissible toasts.
  *
  * Deduped per browser session (ids recorded in sessionStorage) so a given
- * alert toasts at most once. Does NOT mark notifications read — the orb
- * badge stays until the user opens the agent panel.
+ * alert toasts at most once. Read state is left alone — the inbox badge and
+ * its "Mark all read" action are the only things that dismiss an alert.
  */
 export default function NotificationToaster() {
   const { notifications, isLoading } = useNotifications();
@@ -42,7 +42,7 @@ export default function NotificationToaster() {
       toast(
         n.severity === 'critical' ? 'Action needed' : 'Heads-up',
         {
-          description: n.message,
+          description: n.body,
           icon: <Icon className="h-4 w-4" aria-hidden />,
           duration: 8000,
         },

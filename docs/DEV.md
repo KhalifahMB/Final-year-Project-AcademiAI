@@ -25,11 +25,10 @@
 # Backend — needs Docker DB running
 cd backend
 docker compose up -d
-.\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py apply_rls
+.\.venv\Scripts\python.exe manage.py migrate          # auto-enforces RLS via post_migrate
 .\.venv\Scripts\python.exe manage.py seed_demo
 .\.venv\Scripts\python.exe manage.py runserver
-.\.venv\Scripts\python.exe -m pytest -q -o addopts="-p no:xdist"
+.\.venv\Scripts\python.exe -m pytest -q               # runs with -n auto (xdist); per-worker DBs
 
 # Frontend
 cd frontend

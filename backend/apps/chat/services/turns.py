@@ -141,9 +141,11 @@ def iter_stream_events(user, session, content: str, chunks: list, confidence: st
     # Full citations (resource id/title/version) for the persisted message.
     sources_meta = sources_from_chunks(chunks, user)
 
-    # IMPORTANT: this generator runs AFTER the middleware's atomic block has
-    # exited. Open our own tenant-scoped transaction so RLS sees
-    # app.current_tenant_id for all DB writes performed here.
+    # IMPORTANT: this generator body runs AFTER the middleware has returned and
+    # its `finally` block has RESET app.current_tenant_id (the session GUC is
+    # cleared before Django streams the response body). Open our own
+    # tenant-scoped transaction so RLS sees app.current_tenant_id for all DB
+    # writes performed here.
     with tenant_scope(user.tenant_id):
         # Refresh session from DB inside this transaction so
         # save(update_fields=['updated_at']) works under RLS.

@@ -67,7 +67,7 @@ export function useNotifications() {
         const results = (old.results || []).map((n) =>
           n.id === id ? { ...n, is_read: true } : n,
         );
-        const unread = (old.results || []).filter(hasUnreadBadge).length;
+        const unread = results.filter(hasUnreadBadge).length;
         return { ...old, results, unread_count: unread };
       });
     },

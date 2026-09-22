@@ -5,9 +5,9 @@ tables.
 Single source of truth for the table list and policy DDL, shared by:
 
 - the migration `apps/common/migrations/0001_rls_tenant_isolation.py`
-  (automatic enforcement on every `migrate`/deploy), and
-- the management command `apps/common/management/commands/apply_rls.py`
-  (manual re-application — run it again whenever you add a tenant-scoped model).
+  (enforcement during the migration graph), and
+- the `post_migrate` receiver in `apps/common/apps.py` (automatic
+  re-application after EVERY `migrate`, against the complete schema).
 
 The table list is DERIVED from the model registry at import time rather than
 maintained by hand:
@@ -24,9 +24,9 @@ Adding a tenant-scoped model anywhere therefore requires no edits here, in
 Ordering caveat: the auto-applying migration 0001 runs mid-graph, so tables
 created by migrations later in the graph don't exist yet at that point. Every
 statement below is guarded by ``to_regclass`` and therefore simply skips
-missing tables; the tables are picked up for real by `apply_rls`, which the
-deploy pipeline runs after `migrate` and which re-derives the list from the
-fully-migrated registry.
+missing tables; those tables are picked up for real by the ``post_migrate``
+receiver, which fires once the full graph has been applied and re-derives the
+list against the complete schema. No separate manual step is required.
 
 DDL is generated here in Python as guarded DO blocks (single statements each)
 rather than raw ``%I``-formatted ``CREATE POLICY`` calls, because Django
@@ -74,8 +74,8 @@ def policy_statements(table, *, teardown=False):
     policy on a single table.
 
     Every statement is idempotent and tolerant of tables that do not exist
-    yet during the mid-graph migration run (they get covered by `apply_rls`
-    once the full schema exists).
+    yet during the mid-graph migration run (they get covered by the
+    ``post_migrate`` receiver once the full schema exists).
     """
     quoted = '"' + table + '"'
     if not teardown:

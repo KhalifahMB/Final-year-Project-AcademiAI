@@ -86,7 +86,6 @@ Pre-ship, staging, and post-deploy items specific to the SPA tier.
 | **`useAgent` boot dedupe** | Low | `fetchIdentity` fires on mount regardless of query cache. Could be deduped via `staleTime` instead of a guard. |
 | **Sonner v1 -> v2** | Low | Sonner v2 changes toast API surface. Bump when the migration effort is budgeted. |
 | **`@tanstack/eslint-plugin-query`** | Low | Wired but using `oxlint` which doesn't consume it yet. Evaluate if ESLint is adopted for stricter React Query lint rules. |
-| **`design-variants/` folder** | — | Confirm it should be deleted from `public/`. It's excluded from the SW precache. |
 
 ---
 

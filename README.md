@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/images/Logo/academiai_icon_light.webp" alt="AcademiAI logo" width="96" height="96" />
+<img src="frontend/public/images/Logo/academiai_icon_light.png" alt="AcademiAI logo" width="96" height="96" />
 
 # AcademiAI
 
@@ -29,8 +29,8 @@ from — no hallucinations, no cross-tenant leakage.
 - **Grounded AI chat** — a personal agent that retrieves from course materials
   using hybrid search (semantic + lexical + concept reranking) and cites every
   source with a similarity score.
-- **Role agents** — one agent per working role: a *Study partner* for students,
-  a *Course co-pilot* for lecturers, and an *Institution operator* for
+- **Role agents** — one agent per working role: a _Study partner_ for students,
+  a _Course co-pilot_ for lecturers, and an _Institution operator_ for
   administrators. Each has tools, a persona, and a visible chain of tool calls.
 - **Study planner (Plans)** — goals become dated milestones and tasks. Create
   plans manually, from institution or personal templates, or ask the agent to
@@ -75,17 +75,17 @@ from — no hallucinations, no cross-tenant leakage.
 
 ## Tech stack
 
-| Layer       | Technology                                   |
-|-------------|-----------------------------------------------|
-| Backend     | Python · Django 6 · Django REST Framework     |
-| Database    | PostgreSQL + pgvector (vector search)         |
-| AI          | Google Gemini (chat, embeddings, agentic loop)|
-| Task queue  | Celery + RabbitMQ (broker) + Redis (cache)    |
-| Object store| MinIO (local) / AWS S3 (production)           |
-| Frontend    | React 19 · Vite · JavaScript · Tailwind v4    |
-| Components  | shadcn/ui (Radix) · lucide-react              |
-| Auth        | JWT (SimpleJWT) with email verification       |
-| API docs    | OpenAPI 3 via drf-spectacular                 |
+| Layer        | Technology                                     |
+| ------------ | ---------------------------------------------- |
+| Backend      | Python · Django 6 · Django REST Framework      |
+| Database     | PostgreSQL + pgvector (vector search)          |
+| AI           | Google Gemini (chat, embeddings, agentic loop) |
+| Task queue   | Celery + RabbitMQ (broker) + Redis (cache)     |
+| Object store | MinIO (local) / AWS S3 (production)            |
+| Frontend     | React 19 · Vite · JavaScript · Tailwind v4     |
+| Components   | shadcn/ui (Radix) · lucide-react               |
+| Auth         | JWT (SimpleJWT) with email verification        |
+| API docs     | OpenAPI 3 via drf-spectacular                  |
 
 ---
 
@@ -170,7 +170,7 @@ is curated and evaluated.
 - [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — build plan.
 - [`docs/PRODUCT_ROADMAP.md`](docs/PRODUCT_ROADMAP.md) — product roadmap.
 - [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md) — full index.
-- Brand contract: `DESIGN.md` (visuals) + `PRODUCT.md` (product/voice).
+- Brand contract: `DESIGN.md` (visuals) + `docs/PRODUCT.md` (product/voice).
 
 ---
 

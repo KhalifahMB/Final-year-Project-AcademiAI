@@ -54,7 +54,7 @@ AcademiAI's differentiator is the combination of three mechanisms that no neighb
 
 ## Evidence on Hand
 
-- Logo: `frontend/public/images/Logo/academiai_icon_light.webp`, `academiai_icon_dark.png`
+- Logo: `frontend/public/images/Logo/academiai_icon_light.png`, `academiai_icon_dark.png`
 - Hero/landing images: `frontend/public/images/landing/hero-academiai-tutor.png`, `abuja_campus_sunset.webp`, `holographic_ai_library_collaboration.webp`, `ai_knowledge_graph_visualization.webp`
 - Favicons and PWA icons in `frontend/public/`
 - Complete working frontend with shadcn/ui component library and Tailwind v4 design tokens

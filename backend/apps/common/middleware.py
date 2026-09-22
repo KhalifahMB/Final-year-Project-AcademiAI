@@ -44,11 +44,36 @@ def _user_from_bearer_token(request):
         return None
 
 
+def _user_from_auth_cookie(request):
+    """Resolve the user from the httpOnly access-token cookie.
+
+    This is the SPA's primary transport (``withCredentials`` + no
+    Authorization header). The middleware runs BEFORE DRF's
+    ``CookieJWTAuthentication`` populates ``request.user``, and login never
+    opens a Django session, so without this the tenant GUC would stay unset
+    for every browser request and RLS would hide all rows. A missing/invalid
+    cookie yields ``None`` (no tenant context); DRF still surfaces the 401.
+    """
+    from django.conf import settings
+
+    raw = request.COOKIES.get(settings.AUTH_COOKIE_NAMES[0])
+    if not raw:
+        return None
+    try:
+        from rest_framework_simplejwt.authentication import JWTAuthentication
+
+        auth = JWTAuthentication()
+        validated = auth.get_validated_token(raw)
+        return auth.get_user(validated)
+    except Exception:
+        return None
+
+
 def _resolve_request_user(request):
     user = getattr(request, "user", None)
     if user is not None and getattr(user, "is_authenticated", False):
         return user
-    return _user_from_bearer_token(request)
+    return _user_from_bearer_token(request) or _user_from_auth_cookie(request)
 
 
 class TenantContextMiddleware:

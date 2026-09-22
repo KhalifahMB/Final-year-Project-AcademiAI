@@ -1,6 +1,10 @@
 from rest_framework import serializers
 from .models import ChatSession, ChatMessage, ChatMessageSource
 
+# Session list/retrieve views annotate the queryset; a freshly created
+# instance carries no annotation, so fall back to a per-object query there.
+_MISSING = object()
+
 
 class ChatMessageSourceSerializer(serializers.ModelSerializer):
     """Citation with enough info for the UI to render a clickable source chip."""
@@ -80,11 +84,16 @@ class ChatSessionSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "user", "tenant", "created_at", "updated_at")
 
     def get_last_message_at(self, obj):
-        last = obj.messages.order_by("-created_at").values_list("created_at", flat=True).first()
+        last = getattr(obj, "_last_message_at", _MISSING)
+        if last is _MISSING:
+            last = obj.messages.order_by("-created_at").values_list("created_at", flat=True).first()
         return last.isoformat() if last else None
 
     def get_message_count(self, obj):
-        return obj.messages.count()
+        count = getattr(obj, "_message_count", _MISSING)
+        if count is _MISSING:
+            count = obj.messages.count()
+        return count
 
 
 class ChatMessageCreateSerializer(serializers.Serializer):
