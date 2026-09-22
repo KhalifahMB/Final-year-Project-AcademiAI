@@ -86,15 +86,14 @@ describe('NotesPage save behaviour after the editor is destroyed', () => {
     editor.destroy();
     expect(editor.schema).toBeNull();
 
-    // Saving must NOT throw, and must persist the last known content. (The
-    // editor blur + form submit can each trigger a save; every save must carry
-    // the typed body — that is what crashed before this fix.)
+    // Exactly ONE save must fire even though the click triggers both the
+    // editor's save-on-blur and the form submit (dedupe), and it must carry
+    // the typed body — that is what crashed before the destroy fix.
     await user.click(screen.getByRole('button', { name: 'Create' }));
 
-    await waitFor(() => expect(notesApi.create).toHaveBeenCalled());
-    for (const [payload] of notesApi.create.mock.calls) {
-      expect(payload.title).toBe('Untitled');
-      expect(payload.content).toContain('typed body');
-    }
+    await waitFor(() => expect(notesApi.create).toHaveBeenCalledTimes(1));
+    const [payload] = notesApi.create.mock.calls[0];
+    expect(payload.title).toBe('Untitled');
+    expect(payload.content).toContain('typed body');
   });
 });

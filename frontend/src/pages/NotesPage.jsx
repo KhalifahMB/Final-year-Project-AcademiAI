@@ -44,6 +44,7 @@ import {
  FileText,
  Image as ImageIcon,
  Link as LinkIcon,
+ AlertTriangle,
 } from 'lucide-react';
 import {
  DropdownMenu,
@@ -306,9 +307,41 @@ export default function NotesPage() {
  // note's title/content onto another note.
  const activeIdRef = useRef(null);
  const titleRef = useRef('');
- const isNewRef = useRef(false);
- // Tracks unsaved edits so we can flush on blur, note switch, or page exit.
- const dirtyRef = useRef(false);
+const isNewRef = useRef(false);
+  // Tracks unsaved edits so we can flush on blur, note switch, or page exit.
+  const dirtyRef = useRef(false);
+  // Last-known-good editor content. A save never materializes HTML directly
+  // from a destroyed editor — TipTap's Editor.destroy() nulls its internal
+  // schema, so getHTML() then throws inside DOMSerializer.fromSchema(null)
+  // ("Cannot read properties of null (reading 'cached')"). We keep a snapshot
+  // fresh on every update/build so a save always has safe content to commit.
+  const htmlRef = useRef('');
+  // Prefer the live editor's HTML, but fall back to the last captured snapshot
+  // if the editor is missing or has been torn down (e.g. mid-navigation).
+  // Reads only refs, so even stale closures from TipTap callbacks stay correct.
+  const getHtml = () => {
+    const ed = editorRef.current;
+    if (ed && !ed.destroyed) {
+      try {
+        return ed.getHTML() || htmlRef.current;
+      } catch {
+        return htmlRef.current;
+      }
+    }
+    return htmlRef.current;
+  };
+  // Snapshot of the commit currently in flight, used to dedupe duplicate
+  // saves of the exact same note state. Clicking Save while focused in the
+  // editor fires TipTap's save-on-blur AND the form submit in the same click:
+  // both capture an identical snapshot and would create/update the note twice.
+  const pendingCommitRef = useRef(null);
+  const sameCommit = (a, b) =>
+    a &&
+    b &&
+    a.id === b.id &&
+    a.isNew === b.isNew &&
+    a.title === b.title &&
+    a.html === b.html;
  // True only once the TipTap editor view has actually mounted (onCreate). The
  // editor object becomes non-null before the view is attached to the DOM, and
  // calling commands (setContent) before mount throws
@@ -324,7 +357,7 @@ export default function NotesPage() {
  titleRef.current = title;
  }, [title]);
 
- const { data: notes = [], isLoading } = useQuery({
+ const { data: notes = [], isLoading, isError, refetch } = useQuery({
  queryKey: ['notes'],
  queryFn: notesApi.list,
  });
@@ -408,16 +441,35 @@ onSuccess: (res) => {
  }),
  ],
  content: '',
- onCreate: ({ editor: ed }) => {
- setEditorReady(true);
- editorRef.current = ed;
- },
+onCreate: ({ editor: ed }) => {
+  // useEditor constructs the Editor during NotesPage's render, so "create"
+  // fires mid-render and a direct setState() trips React's "state updated
+  // before the component mounted" guard. Defer the flag until after commit.
+  editorRef.current = ed;
+  htmlRef.current = '';
+  queueMicrotask(() => setEditorReady(true));
+  },
+onDestroy: () => {
+  // Fired (with no payload) while the editor is still intact — schema not
+  // yet nulled — so grab whatever was left on screen, then drop the ref so
+  // later saves never touch a destroyed editor.
+  const ed = editorRef.current;
+  if (ed) {
+  try {
+  htmlRef.current = ed.getHTML() || htmlRef.current;
+  } catch {
+  // Best-effort; the last onUpdate snapshot is kept.
+  }
+  }
+  editorRef.current = null;
+  },
 onUpdate: ({ editor: ed }) => {
-  // No autosave while typing — mark the note dirty. Persistence happens on
-  // blur, explicit save (Save / Ctrl+S), note switch, or page exit so edits
-  // are never lost while keystrokes stay uninterrupted.
-  setSaveState('dirty');
-  dirtyRef.current = true;
+    // No autosave while typing — mark the note dirty. Persistence happens on
+   // blur, explicit save (Save / Ctrl+S), note switch, or page exit so edits
+   // are never lost while keystrokes stay uninterrupted.
+   setSaveState('dirty');
+   dirtyRef.current = true;
+   htmlRef.current = ed.getHTML();
 
   // Slash menu detection
   const { from } = ed.state.selection;
@@ -504,14 +556,43 @@ const commitSave = useCallback(
       // empty body) must still persist for existing notes.
       if ((isNewTarget || !id) && !hasTitle && !hasContent) {
         setSaveState('dirty');
-        return;
+        return false;
       }
+      const pending = {
+        id,
+        isNew: isNewTarget,
+        title: finalTitle,
+        html: html || '',
+      };
+      if (sameCommit(pendingCommitRef.current, pending)) {
+        return false;
+      }
+      pendingCommitRef.current = pending;
       setSaveState('saving');
       if (isNewTarget || !id) {
-        createMut.mutate({ title: finalTitle, content: html });
+        createMut.mutate(
+          { title: finalTitle, content: html },
+          {
+            onSettled: () => {
+              if (sameCommit(pendingCommitRef.current, pending)) {
+                pendingCommitRef.current = null;
+              }
+            },
+          },
+        );
       } else {
-        updateMut.mutate({ id, data: { title: finalTitle, content: html } });
+        updateMut.mutate(
+          { id, data: { title: finalTitle, content: html } },
+          {
+            onSettled: () => {
+              if (sameCommit(pendingCommitRef.current, pending)) {
+                pendingCommitRef.current = null;
+              }
+            },
+          },
+        );
       }
+      return true;
     },
     [createMut, updateMut],
   );
@@ -527,7 +608,7 @@ const commitSave = useCallback(
         id: activeIdRef.current,
         isNew: isNewRef.current,
         title: titleRef.current,
-        html: editorRef.current?.getHTML?.() || '',
+        html: getHtml(),
       });
     };
   });
@@ -560,38 +641,40 @@ const commitSave = useCallback(
  useEffect(() => {
  if (!editor || !editorReady) return;
  // Flush any unsaved edits to the note being left before switching.
- if (dirtyRef.current && (isNewRef.current || activeIdRef.current)) {
- commitRef.current({
- id: activeIdRef.current,
- isNew: isNewRef.current,
- title: titleRef.current,
- html: editor.getHTML(),
- });
- dirtyRef.current = false;
- }
- activeIdRef.current = isNew ? null : activeNote?.id ?? null;
- isNewRef.current = isNew;
- const nextTitle = isNew ? '' : activeNote?.title || '';
- titleRef.current = nextTitle;
- if (isNew || !activeNote) {
- editor.commands.setContent('', { emitUpdate: false });
- return;
- }
- editor.commands.setContent(activeNote.content || '', { emitUpdate: false });
- }, [editor, editorReady, activeNote, isNew]);
+if (dirtyRef.current && (isNewRef.current || activeIdRef.current)) {
+  commitRef.current({
+  id: activeIdRef.current,
+  isNew: isNewRef.current,
+  title: titleRef.current,
+  html: getHtml(),
+  });
+  dirtyRef.current = false;
+  }
+  activeIdRef.current = isNew ? null : activeNote?.id ?? null;
+  isNewRef.current = isNew;
+  const nextTitle = isNew ? '' : activeNote?.title || '';
+  titleRef.current = nextTitle;
+  if (isNew || !activeNote) {
+  editor.commands.setContent('', { emitUpdate: false });
+  htmlRef.current = '';
+  return;
+  }
+  editor.commands.setContent(activeNote.content || '', { emitUpdate: false });
+  htmlRef.current = activeNote.content || '';
+  }, [editor, editorReady, activeNote, isNew]);
 
  // Flush pending edits when leaving the page so nothing typed is lost.
  useEffect(
- () => () => {
- if (dirtyRef.current && (isNewRef.current || activeIdRef.current)) {
- commitRef.current({
- id: activeIdRef.current,
- isNew: isNewRef.current,
- title: titleRef.current,
- html: editorRef.current?.getHTML?.() || '',
- });
- }
- },
+() => () => {
+  if (dirtyRef.current && (isNewRef.current || activeIdRef.current)) {
+  commitRef.current({
+  id: activeIdRef.current,
+  isNew: isNewRef.current,
+  title: titleRef.current,
+  html: getHtml(),
+  });
+  }
+  },
  [],
  );
 
@@ -733,6 +816,23 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
  style={{ animationDelay: `${i * 60}ms` }}
  />
  ))}
+ </div>
+ ) : isError ? (
+ <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+ <AlertTriangle
+ className="mb-2 h-7 w-7 text-destructive/70"
+ aria-hidden
+ />
+ <p className="text-xs font-medium text-destructive">
+ Notes could not be loaded.
+ </p>
+ <button
+ type="button"
+ onClick={() => refetch()}
+ className="mt-2 rounded-md border border-border bg-background px-2.5 py-1 text-[11px] font-medium transition-colors hover:bg-muted"
+ >
+ Retry
+ </button>
  </div>
  ) : filtered.length === 0 ? (
  <div className="flex flex-col items-center justify-center px-4 py-12 text-center">

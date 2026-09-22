@@ -151,22 +151,22 @@ export default function AdminAuditPage() {
               <div className="h-56 lg:col-span-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={timeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis
                       dataKey="bucket"
-                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                       tickFormatter={(v) =>
                         new Date(v).toLocaleDateString([], { month: "short", day: "numeric" })
                       }
                     />
                     <YAxis
                       allowDecimals={false}
-                      tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                      tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
                     />
                     <Tooltip
                       contentStyle={{
-                        background: "hsl(var(--popover))",
-                        border: "1px solid hsl(var(--border))",
+                        background: "var(--popover)",
+                        border: "1px solid var(--border)",
                         borderRadius: 8,
                         fontSize: 12,
                       }}
@@ -174,7 +174,7 @@ export default function AdminAuditPage() {
                     <Bar
                       dataKey="count"
                       name="Events"
-                      fill="hsl(var(--primary))"
+                      fill="var(--primary)"
                       radius={[4, 4, 0, 0]}
                     />
                   </BarChart>

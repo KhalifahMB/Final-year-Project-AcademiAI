@@ -104,7 +104,6 @@
 
 | Component | Description |
 |-----------|-------------|
-| `AsyncState.jsx` | `LoadingState` / `ErrorState` / `EmptyStateFull` wrappers |
 | `Avatar.jsx` | User avatar with initials fallback |
 | `AvatarPicker.jsx` | Avatar selection grid (predefined + upload) |
 | `AiInsightCard.jsx` | Formatted AI insight display card |
@@ -113,7 +112,6 @@
 | `EmptyState.jsx` | Empty state with icon, title, description, action |
 | `EntityDialog.jsx` | Generic create/edit dialog (used across admin pages) |
 | `OnlineStatus.jsx` | WebSocket-based online/offline indicator |
-| `PageHeader.jsx` | Consistent page title + description |
 | `Pagination.jsx` | Client-side pagination control |
 | `SearchableSelect.jsx` | Async search dropdown (used for course/user pickers) |
 | `SkeletonRows.jsx` | Loading skeleton placeholder |
@@ -122,6 +120,19 @@
 | `StatusBadge.jsx` | Status pill with color coding |
 | `TemplateEditorDialog.jsx` | Plan/quiz template create/edit dialog |
 | `ThemeToggle.jsx` | Light/dark mode toggle |
+
+---
+
+## Notification surfaces (`src/components/notifications/`)
+
+Both mount inside `AppShell` and share the single `['notifications']` query from `useNotifications.js`.
+
+| Component | Description |
+|-----------|-------------|
+| `NotificationInbox.jsx` | Topbar bell + unread badge; dropdown lists the feed, links each alert to its `link` route and marks it read, and owns the only "Mark all read" action |
+| `NotificationToaster.jsx` | Auto-dismissible sonner alerts for unread `warn`/`critical` rows, deduped per session. Never changes read state |
+
+> Read state belongs to the inbox alone — no component may clear the badge as a side effect of being opened (the floating agent used to).
 
 ---
 

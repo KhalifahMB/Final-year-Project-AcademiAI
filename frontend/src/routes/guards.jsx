@@ -7,8 +7,9 @@ import { roleHome } from '@/lib/access';
 
 export function ProtectedRoute({ children, roles, requireSuperuser }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <RouteLoading label="Loading your workspace…" />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
 
   // Platform console is superuser-only: anyone else lands on their own home.
   if (requireSuperuser) {

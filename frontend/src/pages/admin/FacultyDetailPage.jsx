@@ -14,8 +14,7 @@ import { toast } from "sonner";
 import {
   Building2, ChevronRight, Pencil, Plus, Trash2, ArrowLeft,
 } from "lucide-react";
-
-const toList = (d) => d?.results || d || [];
+import { toList } from '@/lib/list';
 
 export default function FacultyDetailPage() {
   const { id } = useParams();

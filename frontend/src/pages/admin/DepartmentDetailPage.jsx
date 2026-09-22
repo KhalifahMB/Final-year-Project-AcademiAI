@@ -12,8 +12,7 @@ import SkeletonRows from "@/components/shared/SkeletonRows";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BookOpen, ChevronRight, GraduationCap, Pencil, Plus, Trash2, ArrowLeft } from "lucide-react";
-
-const toList = (d) => d?.results || d || [];
+import { toList } from '@/lib/list';
 
 export default function DepartmentDetailPage() {
   const { id } = useParams();

@@ -546,8 +546,11 @@
     letter-spacing: -0.024em;
     text-wrap: balance;
   }
-  .landing-section__heading p,
-  .landing-section__heading--split p {
+  /* :not(.landing-eyebrow) — the eyebrow is a <p> too, and this descendant
+     selector outranks .landing-eyebrow, which silently downgraded all ten
+     section eyebrows from 11px violet mono to 16px muted body text. */
+  .landing-section__heading p:not(.landing-eyebrow),
+  .landing-section__heading--split p:not(.landing-eyebrow) {
     color: var(--landing-muted);
     font-size: 16px;
     line-height: 1.65;
@@ -758,7 +761,7 @@
     letter-spacing: -0.024em;
     text-wrap: balance;
   }
-  .landing-isolation__copy p {
+  .landing-isolation__copy p:not(.landing-eyebrow) {
     color: var(--landing-muted);
     font-size: 15.5px;
     line-height: 1.65;
@@ -1161,7 +1164,7 @@
     letter-spacing: -0.024em;
     text-wrap: balance;
   }
-  .landing-request__copy p {
+  .landing-request__copy p:not(.landing-eyebrow) {
     color: var(--landing-muted);
     font-size: 15.5px;
     line-height: 1.65;

@@ -26,6 +26,7 @@ import api, { publicApi } from '@/services/api';
 import { useAuth } from '@/hooks/useAuth';
 import BrandMark from '@/components/shared/BrandMark';
 import ThemeToggle from '@/components/shared/ThemeToggle';
+import { FragmentedMaterialsPlate } from '@/components/shared/landingPlates';
 import { Button } from '@/components/ui/button';
 
 const PROBLEMS = [
@@ -498,14 +499,17 @@ export default function LandingPage() {
         {/* ------------------------------------------- Problem section */}
         <section className="landing-problem landing-section">
           <div className="landing-shell">
-            <div className="landing-section__heading">
-              <p className="landing-eyebrow">The problem</p>
-              <h2>Materials are fragmented. Answers shouldn&rsquo;t be.</h2>
-              <p>
-                Lecturers prepare relentlessly. Students still end up asking a
-                generic chatbot that guesses instead of citing. The result is
-                time lost and answers without receipts.
-              </p>
+            <div className="landing-section__heading landing-section__heading--split">
+              <div>
+                <p className="landing-eyebrow">The problem</p>
+                <h2>Materials are fragmented. Answers shouldn&rsquo;t be.</h2>
+                <p>
+                  Lecturers prepare relentlessly. Students still end up asking a
+                  generic chatbot that guesses instead of citing. The result is
+                  time lost and answers without receipts.
+                </p>
+              </div>
+              <FragmentedMaterialsPlate data-testid="problem-plate" />
             </div>
             <div className="landing-problem__grid">
               {PROBLEMS.map(({ icon: Icon, title, text }) => (

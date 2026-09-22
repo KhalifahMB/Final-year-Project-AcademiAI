@@ -13,8 +13,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { LayoutTemplate, Pencil, Plus, Search, Trash2, Globe, Lock } from 'lucide-react';
-
-const toList = (d) => (Array.isArray(d) ? d : d?.results || []);
+import { toList } from '@/lib/list';
 
 function templateStats(t) {
   const milestones = Array.isArray(t?.template_data?.milestones) ? t.template_data.milestones : [];

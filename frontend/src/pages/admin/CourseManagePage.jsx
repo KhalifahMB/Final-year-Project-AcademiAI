@@ -15,8 +15,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { ArrowLeft, ClipboardList, Pencil, Plus, Trash2, UserCheck, Users } from "lucide-react";
-
-const toList = (d) => d?.results || d || [];
+import { toList } from '@/lib/list';
 
 export default function CourseManagePage() {
   const { id } = useParams();

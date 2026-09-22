@@ -55,6 +55,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAgent } from '@/hooks/useAgent';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Avatar from '@/components/shared/Avatar';
+import { EmptyChatIllustration } from '@/components/shared/illustrations';
 
 const SUGGESTIONS = [
  {
@@ -1147,8 +1148,8 @@ const openSession = useCallback(async (s) => {
  <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-6 p-6 text-center sm:p-8">
  {/* Empty hero */}
  <div className="flex flex-col items-center gap-3">
- <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-primary">
- <Sparkles className="h-7 w-7" aria-hidden />
+ <span className="text-muted-foreground">
+ <EmptyChatIllustration className="h-20 w-20" />
  </span>
  <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
  What can I help you <span className="ai-text">study</span> today?

@@ -12,8 +12,7 @@ import EmptyState from '@/components/shared/EmptyState';
 import SkeletonRows from '@/components/shared/SkeletonRows';
 import { BookOpen, ChevronRight, Plus } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
-const toList = (d) => d?.results || d || [];
+import { toList } from '@/lib/list';
 
 const errText = (err, fallback) =>
   err?.response?.data?.error?.detail ||

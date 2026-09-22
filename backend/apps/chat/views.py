@@ -15,6 +15,7 @@ import logging
 import uuid
 
 from django.conf import settings
+from django.db.models import Count, Max
 from django.http import StreamingHttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
@@ -69,7 +70,10 @@ class ChatSessionViewSet(viewsets.ModelViewSet):
             ChatSession.objects.filter(
                 tenant=self.request.user.tenant, user=self.request.user,
             )
-            .prefetch_related("messages")
+            .annotate(
+                _message_count=Count("messages", distinct=True),
+                _last_message_at=Max("messages__created_at"),
+            )
             .order_by("-updated_at")
         )
 
