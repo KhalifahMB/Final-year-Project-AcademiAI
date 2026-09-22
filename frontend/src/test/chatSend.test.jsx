@@ -64,7 +64,10 @@ describe('chat send', () => {
     vi.clearAllMocks();
   });
 
-  it('waits for an in-flight upload instead of sending a placeholder id', async () => {
+  // Per-test budget: the cold first mount of the lazy route graph can exceed
+  // the global 30s testTimeout (vite.config.js), so this file passes with no
+  // CLI --test-timeout override.
+  it('waits for an in-flight upload instead of sending a placeholder id', { timeout: 90000 }, async () => {
     const chatApi = await openChat();
     const upload = deferred();
     chatApi.uploadAttachment.mockReturnValue(upload.promise);
