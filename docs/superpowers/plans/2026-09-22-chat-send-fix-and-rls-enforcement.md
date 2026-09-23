@@ -23,7 +23,8 @@
 - **RLS is applied automatically** by the `post_migrate` receiver (`apps/common/apps.py`). There is no `apply_rls` step to run.
 - **`FORCE ROW LEVEL SECURITY` is load-bearing** here: the app role owns the tables, and a table owner is implicitly exempt unless FORCE is set (`apps/common/rls.py:81-84` applies it).
 - **`infrastructure/postgres/init/00-extensions.sql` is load-bearing from Task 5 onward.** pgvector 0.8.6 on this cluster is `superuser = t, trusted = f`, so once `academiai` is demoted nothing can run `CREATE EXTENSION vector` (`resources/migrations/0001_initial.py:22`). Per-worker test databases only build because that script installed `vector` into `template1` at first init and they inherit it. Task 3 Step 1 verifies the inheritance instead of assuming it; if `template1` lacks `vector`, stop and install it as `postgres` first.
-- **From Task 4, pytest connects as `academiai_test` (`BYPASSRLS`), not the runtime role** — via the `conftest.py` hook, overridable with `POSTGRES_TEST_USER=`. RLS behaviour is still tested for real: `test_rls.py` does `SET ROLE academiai`. Do not "simplify" this by granting `BYPASSRLS` to `academiai`, and do not report the suite as proving isolation.
+- **From Task 4, pytest connects as `academiai_test` (`BYPASSRLS`), not the runtime role** — via the `conftest.py` hook, overridable with `POSTGRES_TEST_USER=academiai` (an empty value works only from a POSIX shell; PowerShell deletes the variable on `""`, which would silently leave the bypass on). RLS behaviour is still tested for real: `test_rls.py` does `SET ROLE academiai`. Do not "simplify" this by granting `BYPASSRLS` to `academiai`, and do not report the suite as proving isolation.
+- **The backend suite is not green on this volume and this plan does not fix that.** Its baseline is `3 failed, 266 passed`: the missing `CourseEnrollment` import at `apps/common/dashboard.py:893` and two `test_material_experience.py` preview tests stale against the `content_path` contract. They touch no role, RLS, or connection path. Every backend run below is judged as "the same three and nothing new" — a report that calls this green, or that folds these three into a task's diff, is wrong.
 - **Do not wipe or recreate the `postgres_data` volume.** The whole point of Tasks 3-7 is to fix the existing volume additively.
 - **No new dependencies** in either package manager.
 
@@ -405,6 +406,8 @@ cd backend
 
 Expected: green. This is the baseline the next two steps are compared against; if it is not green to begin with, stop and report which tests already fail.
 
+> Measured on execution (2026-09-22, commit `f2d7a05`): **not** green — `3 failed, 266 passed`. All three are pre-existing and role-independent (`apps/common/dashboard.py:893` missing `CourseEnrollment` import; two `test_material_experience.py` preview tests stale against the `content_path` contract in `apps/resources/views.py:521-535`). The controller ruled they stay out of this plan; the steps below are compared against that 3-failure baseline. See the ledger's Task 4 ruling.
+
 - [ ] **Step 2: Add the hook**
 
 `config/settings.py:152` builds `DATABASES["default"]["USER"]` from `os.getenv("POSTGRES_USER", "academiai")` at settings-import time, and pytest-django imports settings inside `pytest_load_initial_conftests` — before this conftest's own module body runs. So setting an environment variable at module level here is too late, and mutating `settings.DATABASES` from a `pytest_configure` hook is not: it runs before `django_db_setup` creates any database. Append to `backend/conftest.py`:
@@ -459,7 +462,10 @@ cd backend
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Expected: everything green except `apps/common/tests/test_rls.py`. That is the whole point of doing this before Task 5 — a fresh per-worker test database is now built by a non-superuser, migrations run as it, and ~280 unscoped writes succeed only because `BYPASSRLS` is set. Anything that still needs a true superuser shows up here as `must be superuser to create extension "vector"` or a `permission denied` on a schema/table; report the exact statement instead of granting up.
+Expected: everything passing except `apps/common/tests/test_rls.py` and the three
+known pre-existing failures from Step 1's measured baseline (measured on execution:
+`263 passed, 3 failed, 3 errors` — the 3 errors being exactly `test_rls.py`'s
+behaviour tests, which is the correct delta). That is the whole point of doing this before Task 5 — a fresh per-worker test database is now built by a non-superuser, migrations run as it, and ~280 unscoped writes succeed only because `BYPASSRLS` is set. Anything that still needs a true superuser shows up here as `must be superuser to create extension "vector"` or a `permission denied` on a schema/table; report the exact statement instead of granting up.
 
 - [ ] **Step 5: Commit**
 
@@ -567,6 +573,7 @@ The replacement keeps the three behaviour assertions, gets the elevation from `S
 
 **Files:**
 - Modify: `backend/apps/common/tests/test_rls.py` (full rewrite; the first test is carried over unchanged)
+- Modify: `backend/conftest.py` (one docstring line — see Step 5)
 
 **Interfaces:**
 - Consumes: `apps.common.rls.TABLES` (the derived tenant-scoped table list), role `academiai` and its membership in `academiai_test` from Task 3, and the session role `academiai_test` from Task 4.
@@ -846,18 +853,41 @@ docker compose exec -T db psql -U postgres -d academiai -c "ALTER ROLE academiai
 
 Expected: the first run fails both tests — `test_runtime_role_is_demoted` on the posture, and the read test because a bypassing role sees both tenants' rows. The second run passes both. Then confirm the attribute is back to `f` with Task 5 Step 5's query, and paste both outputs into the task notes.
 
-- [ ] **Step 5: Full suite, then commit**
+- [ ] **Step 5: Correct the conftest docstring now that the tripwire exists**
+
+Task 4's hook docstring (`backend/conftest.py:33`) says `POSTGRES_TEST_USER= (empty) runs the suite as the runtime role instead.` That invocation is POSIX-only: in PowerShell — the human's documented shell — `$env:POSTGRES_TEST_USER=""` *removes* the variable, so `os.environ.get` falls back to the `"academiai_test"` default and the suite runs with the bypass while the operator believes it does not. The follow-up conversion plan verifies itself with this lever, so a silently inverted lever is worse than a cosmetic doc problem.
+
+Replace that one line with both working forms:
+
+```
+    Run the suite as the runtime role instead with POSTGRES_TEST_USER=academiai
+    (PowerShell: $env:POSTGRES_TEST_USER="academiai"). An empty value also works,
+    but only from a POSIX shell — PowerShell deletes the variable on "".
+```
+
+Keep the rest of the docstring as Task 4 wrote it; Step 2's new
+`test_suite_connection_bypasses_rls` is what makes the existing
+"tripwire" sentence refer to a test that is actually in the file.
+
+- [ ] **Step 6: Full suite, then commit**
 
 ```
 cd backend
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Expected: green, with `test_rls.py` contributing 6 passes. A new failure anywhere else is a signal the demotion broke something real — report it rather than wrapping it in another bypass.
+Expected: `test_rls.py` contributing 6 passes, and the rest of the suite matching the
+baseline recorded in the ledger — **three known pre-existing failures**
+(`test_dashboards.py::test_student_reminders_only_due_exams_and_milestones` from the
+missing `CourseEnrollment` import at `apps/common/dashboard.py:893`, and the two
+stale `test_material_experience.py` preview tests). The suite is not green on this
+volume and this plan does not fix them; see the ledger's Task 4 ruling. A new failure
+anywhere else is a signal the demotion broke something real — report it rather than
+wrapping it in another bypass.
 
 ```
 # from the repository root
-git add backend/apps/common/tests/test_rls.py
+git add backend/apps/common/tests/test_rls.py backend/conftest.py
 git commit -m "test(rls): prove enforcement through the runtime role instead of assuming a bypass"
 ```
 
@@ -871,7 +901,7 @@ The suite passing on per-worker databases is not the same as the developer datab
 - Modify: `docs/DECISIONS.md` — section D3 at `:28-45`
 
 **Interfaces:**
-- Consumes: Task 5's demoted role, Task 6's green suite, the running server restarted against it.
+- Consumes: Task 5's demoted role, Task 6's suite at the recorded baseline, the running server restarted against it.
 - Produces: a D3 correction (its first bullet currently claims `academiai` is the bootstrap superuser *and* the app role — a rename artifact from `ad92276`) plus the three-role posture and the deferred test conversion.
 
 - [ ] **Step 1: Confirm the server serves tenant-scoped traffic as the demoted owner**
@@ -961,7 +991,10 @@ npm run build
 npm test
 ```
 
-Expected: all four green. Every claim of completion in the handoff report must quote actual output from these commands, not intent.
+Expected: the backend run matches the ledger's recorded baseline — the three
+pre-existing failures and nothing else — and lint, build and the frontend suite are
+clean. Every claim of completion in the handoff report must quote actual output from
+these commands, not intent, and must not describe the backend run as green.
 
 ```
 # from the repository root
