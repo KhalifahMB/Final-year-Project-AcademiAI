@@ -30,7 +30,9 @@ def pytest_configure(config):
     test_suite_connection_bypasses_rls is the tripwire that fails when the
     conversion plan lands and this shim should be deleted.
 
-    POSTGRES_TEST_USER= (empty) runs the suite as the runtime role instead.
+    Run the suite as the runtime role instead with POSTGRES_TEST_USER=academiai
+    (PowerShell: $env:POSTGRES_TEST_USER="academiai"). An empty value also works,
+    but only from a POSIX shell — PowerShell deletes the variable on "".
     """
     import os
 
