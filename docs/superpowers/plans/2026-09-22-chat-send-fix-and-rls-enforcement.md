@@ -960,9 +960,14 @@ Expected: `401` (unauthenticated but served). A `500` means an unauthenticated r
 
 - [ ] **Step 2: Prove the tenantless query returns nothing on the developer database**
 
+> **Corrected at execution (Task 7 Step 2).** This step originally named
+> `academics_faculty` and `tenants_tenant`. Neither relation exists: Django's
+> default table naming in this project drops the app prefix, so the real names
+> are `faculties` and `tenants`. The queries below are the corrected ones.
+
 ```
-docker compose exec -T db psql -U academiai -d academiai -c "SELECT count(*) AS any_tenant FROM academics_faculty"
-docker compose exec -T db psql -U academiai -d academiai -c "SELECT set_config('app.current_tenant_id', (SELECT id::text FROM tenants_tenant ORDER BY 1 LIMIT 1), false) AS t; SELECT count(*) AS one_tenant FROM academics_faculty"
+docker compose exec -T db psql -U academiai -d academiai -c "SELECT count(*) AS any_tenant FROM faculties"
+docker compose exec -T db psql -U academiai -d academiai -c "SELECT set_config('app.current_tenant_id', (SELECT id::text FROM tenants ORDER BY 1 LIMIT 1), false) AS t; SELECT count(*) AS one_tenant FROM faculties"
 ```
 
 Expected: the first is `0` — before this plan it returned every row. The second is the count for one tenant, which may also be 0 if that tenant has no faculties; if so, re-run it with a tenant id that does (`SELECT tenant_id, count(*) FROM academics_faculty GROUP BY 1` is itself filtered, so read a tenant id from `tenants_tenant`, which is exempt). If the seeded demo data is missing entirely, `manage.py seed_demo` repopulates it through the request-free path — note in the report whether it needed `tenant_scope()`, because that command is a known candidate.
@@ -981,6 +986,24 @@ docker compose exec -T db psql -U postgres -d academiai -c "SELECT count(*) AS p
 ```
 
 Expected: `45 | 45`, matching the pre-fix measurement — the demotion must not have dropped policy coverage.
+
+> **Executed 2026-09-24 (Steps 1-3), controller-measured.** All three passed.
+> - Step 1: `runserver` restarted against the demoted owner; `GET /api/v1/calendar/events/upcoming/`
+>   → `401`, `GET /api/v1/auth/me/` → `401`. Both served, neither raised.
+> - Step 2: tenantless `SELECT count(*) FROM faculties` as `academiai` → **0**, where the
+>   same query as `postgres` → **9** across 2 tenants. Bound to
+>   `34d82f63-…` (Demo University) → **1**, which is exactly that tenant's share of the
+>   9 (`8` belong to `dd2fa18c-…`). So the policy filters rather than blanks.
+> - Step 3: `manage.py migrate` → `No migrations to apply`, and
+>   `INFO [apps.common.apps] RLS enforced on 45 tenant-scoped tables` with no
+>   `Failed to auto-apply` line. `pg_policies` → `45 | 45`.
+> - Posture recheck at handoff: `academiai` `super=f bypass=f createrole=f createdb=t
+>   replication=f login=t`; `academiai_test` `bypass=t`, member of `academiai` (needed
+>   for `SET ROLE`) **and of `academiai_bootstrap`** — the latter is the stray left by
+>   Task 5's rename (the membership followed the OID, not the name) and gives the dev
+>   test role a path to superuser. Revoking it is pending a human yes.
+>   `academiai_bootstrap` remains `super=t` (it is the initdb identity and cannot be
+>   demoted); marking it `NOLOGIN` is likewise pending.
 
 - [ ] **Step 4: Correct D3 in the decision log**
 
