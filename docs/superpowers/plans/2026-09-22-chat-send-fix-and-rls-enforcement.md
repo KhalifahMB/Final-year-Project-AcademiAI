@@ -878,6 +878,20 @@ docker compose exec -T db psql -U postgres -d academiai -c "ALTER ROLE academiai
 
 Expected: the first run fails both tests — `test_runtime_role_is_demoted` on the posture, and the read test because a bypassing role sees both tenants' rows. The second run passes both. Then confirm the attribute is back to `f` with Task 5 Step 5's query, and paste both outputs into the task notes.
 
+> **Executed 2026-09-24 — both sides behaved, but the read test fails one layer
+> earlier than the wording predicts.** With `academiai` re-elevated:
+> `1 failed, 4 deselected, 1 error` — `test_runtime_role_is_demoted` FAILED on
+> `AssertionError: the runtime role has BYPASSRLS` (`test_rls.py:102`), and
+> `test_rls_blocks_cross_tenant_reads` ERRORed in the `rls_enforced` fixture with
+> `RLS is not enforced for the runtime role: - academiai has BYPASSRLS and would
+> skip every policy` (`test_rls.py:191`). So the elevation is caught by the
+> posture guard *before* the row-visibility assertion is ever reached — the
+> bypass is rejected rather than demonstrated through a leaked read. Either way
+> the guard is proven not to pass vacuously. After `NOBYPASSRLS`:
+> `2 passed, 4 deselected`. Full file under enforcement: `6 passed`. Final
+> `pg_roles` check: `academiai` → `rolsuper=f rolbypassrls=f`, `academiai_test`
+> → `rolbypassrls=t`, `postgres` → `rolsuper=t`.
+
 - [ ] **Step 5: Correct the conftest docstring now that the tripwire exists**
 
 Task 4's hook docstring (`backend/conftest.py:33`) says `POSTGRES_TEST_USER= (empty) runs the suite as the runtime role instead.` That invocation is POSIX-only: in PowerShell — the human's documented shell — `$env:POSTGRES_TEST_USER=""` *removes* the variable, so `os.environ.get` falls back to the `"academiai_test"` default and the suite runs with the bypass while the operator believes it does not. The follow-up conversion plan verifies itself with this lever, so a silently inverted lever is worse than a cosmetic doc problem.
@@ -909,6 +923,11 @@ stale `test_material_experience.py` preview tests). The suite is not green on th
 volume and this plan does not fix them; see the ledger's Task 4 ruling. A new failure
 anywhere else is a signal the demotion broke something real — report it rather than
 wrapping it in another bypass.
+
+> Measured on execution (2026-09-24, commit `e988097`): **`3 failed, 268 passed`** —
+> the same three tests named above and nothing else. Task 4 Step 4's 3 errors are
+> gone, and 263 → 268 is exactly `test_rls.py` moving from 1 pass + 3 errors to
+> 6 passes.
 
 ```
 # from the repository root
