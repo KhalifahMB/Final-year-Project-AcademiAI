@@ -483,6 +483,31 @@ git commit -m "test(db): run pytest databases as the BYPASSRLS academiai_test ro
 
 **Each command in Steps 2, 4 and 6 changes live state. Get an explicit yes per step.**
 
+> **Executed 2026-09-24 — this task needed a different mechanism on a volume where the
+> app role IS the bootstrap superuser.** If `SELECT oid, rolname FROM pg_authid WHERE
+> oid = 10` returns `academiai` (true on any volume initialized under the old
+> `POSTGRES_USER: academiai`), then Step 4's `ALTER ROLE ... NOSUPERUSER` fails with
+> `permission denied to alter role / The bootstrap user must have the SUPERUSER
+> attribute`, and Step 2's `REASSIGN OWNED` for that role fails with `objects ...
+> required by the database system`. PostgreSQL will not let either happen, so
+> `01-app-role.sql:22-26`'s defensive branch is unexecutable on such a volume
+> permanently. The approved substitute (same end state, names unchanged, data
+> untouched): rename the bootstrap role out of the way, create the runtime role
+> under the documented name, and move ownership per-relation instead of by role:
+> `ALTER ROLE academiai RENAME TO academiai_bootstrap`; `CREATE ROLE academiai LOGIN
+> PASSWORD 'academiai' NOSUPERUSER NOCREATEROLE NOREPLICATION NOBYPASSRLS CREATEDB`;
+> `GRANT ALL PRIVILEGES ON DATABASE academiai TO academiai`; then a `DO` block running
+> `ALTER TABLE ... OWNER TO academiai` for every `relkind='r'` row in `public`
+> (do NOT target `relkind='S'` — a table-owned sequence cannot be re-owned
+> independently; it follows its table); `ALTER SCHEMA public OWNER TO academiai`; and
+> `GRANT academiai TO academiai_test`, which is load-bearing because an existing
+> membership grant follows the *renamed* role, so Task 6's `SET ROLE academiai` would
+> otherwise fail. Verify with `psql -U academiai -c "SELECT usesuper, usebypassrls FROM
+> pg_user WHERE usename=CURRENT_USER"` → `f|f`. The residue is an inert
+> `academiai_bootstrap` superuser that cannot be dropped; mark it `NOLOGIN` only if
+> the human asks. On a fresh volume (`POSTGRES_USER: postgres`, the current compose)
+> none of this applies — Steps 2 and 4 work as written.
+
 **Files:** none — database state only.
 
 **Interfaces:**
