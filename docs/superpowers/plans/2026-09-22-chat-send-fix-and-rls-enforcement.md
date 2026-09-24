@@ -576,7 +576,7 @@ and in a second terminal:
 curl -s -o NUL -w "%{http_code}" http://localhost:8000/api/v1/auth/me/
 ```
 
-Expected: `401` (unauthenticated but served) — the exemption of `accounts_user` and `tenants_tenant` is what keeps a tenantless auth lookup alive. A `500` means a request path depends on the bypass: read the traceback and fix the missing `tenant_scope()`, do not re-elevate. Leave the server running for Task 7 Step 1 only if it got this far; otherwise report and stop.
+Expected: `401` (unauthenticated but served) — the exemption of the `accounts.user` and `tenants.tenant` models (their tables are `users` and `tenants`; `rls.py:46-49` exempts by model label, not by table name) is what keeps a tenantless auth lookup alive. A `500` means a request path depends on the bypass: read the traceback and fix the missing `tenant_scope()`, do not re-elevate. Leave the server running for Task 7 Step 1 only if it got this far; otherwise report and stop.
 
 - [ ] **Step 7: If anything failed halfway, recover**
 
@@ -961,16 +961,20 @@ Expected: `401` (unauthenticated but served). A `500` means an unauthenticated r
 - [ ] **Step 2: Prove the tenantless query returns nothing on the developer database**
 
 > **Corrected at execution (Task 7 Step 2).** This step originally named
-> `academics_faculty` and `tenants_tenant`. Neither relation exists: Django's
-> default table naming in this project drops the app prefix, so the real names
-> are `faculties` and `tenants`. The queries below are the corrected ones.
+> `academics_faculty` and `tenants_tenant`. Neither relation exists. Django's
+> *default* naming would in fact produce `academics_faculty` — the reason the real
+> names are `faculties` and `tenants` is that every model in this project pins its
+> table explicitly with `Meta.db_table` (`apps/academics/models.py:15`,
+> `apps/tenants/models.py:33`, and so on). Do not predict a table name from
+> `app_model` here; read `db_table`, or `\dt` from psql. The queries below are the
+> corrected ones.
 
 ```
 docker compose exec -T db psql -U academiai -d academiai -c "SELECT count(*) AS any_tenant FROM faculties"
 docker compose exec -T db psql -U academiai -d academiai -c "SELECT set_config('app.current_tenant_id', (SELECT id::text FROM tenants ORDER BY 1 LIMIT 1), false) AS t; SELECT count(*) AS one_tenant FROM faculties"
 ```
 
-Expected: the first is `0` — before this plan it returned every row. The second is the count for one tenant, which may also be 0 if that tenant has no faculties; if so, re-run it with a tenant id that does (`SELECT tenant_id, count(*) FROM academics_faculty GROUP BY 1` is itself filtered, so read a tenant id from `tenants_tenant`, which is exempt). If the seeded demo data is missing entirely, `manage.py seed_demo` repopulates it through the request-free path — note in the report whether it needed `tenant_scope()`, because that command is a known candidate.
+Expected: the first is `0` — before this plan it returned every row. The second is the count for one tenant, which may also be 0 if that tenant has no faculties; if so, re-run it with a tenant id that does (`SELECT tenant_id, count(*) FROM faculties GROUP BY 1` is itself filtered, so read a tenant id from `tenants`, which is exempt). If the seeded demo data is missing entirely, `manage.py seed_demo` repopulates it through the request-free path — note in the report whether it needed `tenant_scope()`, because that command is a known candidate.
 
 - [ ] **Step 3: Confirm migrations still apply their own policies**
 
@@ -1000,10 +1004,21 @@ Expected: `45 | 45`, matching the pre-fix measurement — the demotion must not 
 > - Posture recheck at handoff: `academiai` `super=f bypass=f createrole=f createdb=t
 >   replication=f login=t`; `academiai_test` `bypass=t`, member of `academiai` (needed
 >   for `SET ROLE`) **and of `academiai_bootstrap`** — the latter is the stray left by
->   Task 5's rename (the membership followed the OID, not the name) and gives the dev
->   test role a path to superuser. Revoking it is pending a human yes.
+>   Task 5's rename (the membership followed the OID, not the name). It adds no
+>   row-level privilege, since `academiai_test` already has `BYPASSRLS` directly; what
+>   it adds is a `SET ROLE` route to the cluster-superuser attributes (`CREATEROLE`,
+>   cross-database reach). Revoking it is tidy-up, pending a human yes.
 >   `academiai_bootstrap` remains `super=t` (it is the initdb identity and cannot be
 >   demoted); marking it `NOLOGIN` is likewise pending.
+>
+>   **Reproducibility gap this task surfaced, unresolved.** No file in the repo creates
+>   `academiai_test` — `grep -rn academiai_test infrastructure/` returns nothing. Task 3
+>   created it with manual SQL against this volume, but `backend/conftest.py:42` defaults
+>   `POSTGRES_TEST_USER` to it, so a *fresh* clone that follows `README.md`
+>   (`docker compose up -d`, then `pytest`) points every test at a role that does not
+>   exist and the whole backend suite fails. Needs either an init script that creates it
+>   or a documented setup step; a human decision, because it would put a `BYPASSRLS` role
+>   into the committed dev bootstrap.
 
 - [ ] **Step 4: Correct D3 in the decision log**
 
