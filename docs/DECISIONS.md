@@ -35,13 +35,13 @@ migrations run versus the runtime role.
 and `academiai_test` from `infrastructure/postgres/init/02-test-role.sql`:
 
 - `postgres` — Docker bootstrap superuser, declared as `POSTGRES_USER` in
-  `docker-compose.yml`. Owns nothing at runtime. A volume initialised before
-  that rename has no `postgres` role at all and its `academiai` is the initdb
-  superuser; on such a volume, Task 3 of
+  `docker-compose.yml`. Owns nothing at runtime. A volume initialised while
+  `POSTGRES_USER` was still `academiai` has no `postgres` role at all, and its
+  `academiai` is the initdb superuser; on such a volume, Tasks 3 and 5 of
   `docs/superpowers/plans/2026-09-22-chat-send-fix-and-rls-enforcement.md`
-  creates `postgres` and parks the old initdb identity under a different name,
-  so a reader can tell which case they are in (Tasks 3-5 are the additive
-  remediation).
+  create `postgres` and then rename the initdb identity out of the way and
+  recreate `academiai` as the non-superuser app role. That is the case this
+  local volume is in.
 - `academiai` — LOGIN, `NOSUPERUSER`, **NOBYPASSRLS**, `NOCREATEROLE`,
   `CREATEDB` (needed by pytest-django; revoke in production). Used by Django
   for migrations, runtime traffic, and — through `SET ROLE` — the isolation
