@@ -20,6 +20,17 @@
 # `academiai_test`, and is idempotent: applying it to a volume that already has the
 # role reproduces the same posture.
 #
+# The gate is one-directional, because the entrypoint runs this directory only while
+# the data directory is empty: setting the flag back to 0 later does NOT revoke the
+# role, it only stops a *new* volume from getting one. To drop it from a volume that
+# already has one, do it by hand as the bootstrap superuser. Revoke the database grant
+# too, or DROP ROLE fails with "privileges for database academiai" (this is what
+# blocked the academiai_app drop during Task 7):
+#   docker compose exec -T db psql -U postgres -d academiai \
+#     -c "REVOKE academiai FROM academiai_test" \
+#     -c "REVOKE ALL ON DATABASE academiai FROM academiai_test" \
+#     -c "DROP ROLE academiai_test"
+#
 # There is deliberately no early `exit`: the postgres entrypoint sources a
 # non-executable .sh rather than running it, and a bind mount from Windows does not
 # reliably carry the exec bit, so `exit 0` here could abort the whole init run.

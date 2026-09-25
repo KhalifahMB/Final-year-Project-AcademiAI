@@ -1139,7 +1139,9 @@ Two things this plan deliberately does **not** do, so neither gets lost:
 
 1. **Convert the 31 test files.** Their ~280 direct `Model.objects.create()` calls on tenant-scoped models need `with tenant_scope(tenant.id):` around the fixture writes, after which `academiai_test` is dropped, `conftest.py`'s hook deleted, and `infrastructure/postgres/init/02-test-role.sh` removed with it (its tripwire test fails first, which is the prompt), along with the
 `ACADEMIAI_DEV_TEST_ROLE` flag in `docker-compose.yml`, `.env.example` and the docs
-that name it — once nothing creates the role there is nothing to gate. Its own plan, because a ~280-call mechanical diff is the worst possible thing to review on top of a security fix.
+that name it — once nothing creates the role there is nothing to gate. The script's
+own header carries the exact `REVOKE`/`DROP ROLE` statement, including the
+database-level revoke that made the `academiai_app` drop fail in Task 7. Its own plan, because a ~280-call mechanical diff is the worst possible thing to review on top of a security fix.
 2. **Production migration prerequisites.** `00-extensions.sql` proves the extension cannot be created by a non-superuser, so a hosted deploy needs `vector` pre-installed by the provider, and the `CREATEDB` grant on `academiai` must be revoked there. Record it when the deployment plan is written.
 
 ## Completion report format
