@@ -167,7 +167,12 @@ describe('routing and access control', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders the dashboard for an authenticated student', async () => {
+  // Per-test budget: this is the first test to mount a heavy lazy route, and a
+  // cold `import()` of the student dashboard graph measured 25s on this machine,
+  // so the shared 15s waitFor could never win even when the page was fine. Same
+  // treatment as chatSend.test.jsx: a long waitFor plus an explicit per-test
+  // timeout above the global 30s testTimeout (vite.config.js).
+  it('renders the dashboard for an authenticated student', { timeout: 90000 }, async () => {
     localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
       id: 'u1', email: 'stud@uni.edu', role: 'student', first_name: 'Stu', tenant: {},
@@ -178,9 +183,9 @@ describe('routing and access control', () => {
       () => {
         expect(screen.getAllByText(/continue learning|up next/i).length).toBeGreaterThan(0);
       },
-      { timeout: 15000 },
+      { timeout: 60000 },
     );
-  }, 30000);
+  });
 
   it('denies a student access to an admin-only page (walks them to /forbidden)', async () => {
     localStorage.setItem('academiai:session', '1');
