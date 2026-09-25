@@ -205,7 +205,13 @@ export function makeApiMock() {
       auditLogs: vi.fn(emptyList), tenantDetail: vi.fn(emptyObj),
     },
     chatApi: {
-      listSessions: vi.fn(emptyList), getMessages: vi.fn(emptyList),
+      // The real chatApi.listSessions/getMessages unwrap the DRF page and
+      // resolve to an array (api.js: `.then((r) => r.data.results || r.data
+      // || [])`), and ChatPage feeds them straight to useQuery and maps over
+      // the result (ChatPage.jsx:659-662, :956-960). So these must resolve to
+      // an array, not the raw paginated shape `emptyList` returns.
+      listSessions: vi.fn(() => Promise.resolve([])),
+      getMessages: vi.fn(() => Promise.resolve([])),
       createSession: vi.fn(emptyObj), renameSession: vi.fn(emptyObj),
       deleteSession: vi.fn(emptyObj), send: vi.fn(emptyObj),
       uploadAttachment: vi.fn(emptyObj), stream: vi.fn(() => ({ abort: vi.fn() })),

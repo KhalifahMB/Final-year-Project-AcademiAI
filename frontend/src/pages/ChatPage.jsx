@@ -57,6 +57,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import Avatar from '@/components/shared/Avatar';
 import { EmptyChatIllustration } from '@/components/shared/illustrations';
 
+// A pending upload's id is a local `upload-…` string, not the UUID the API
+// expects, so it must never leave the composer.
+// eslint-disable-next-line react-refresh/only-export-components
+export const confirmedResourceIds = (resources) =>
+ resources.filter((r) => !r.pending).map((r) => r.id).filter(Boolean);
+
 const SUGGESTIONS = [
  {
  icon: Sparkles,
@@ -859,14 +865,14 @@ const openSession = useCallback(async (s) => {
 
  const send = async (textOverride) => {
   const content = (textOverride ?? input).trim();
-  if ((!content && attachedResources.length === 0) || loading) return;
+  if ((!content && attachedResources.length === 0) || loading || uploadingFiles) return;
   stuckToBottomRef.current = true;
   setError('');
  setLoading(true);
  const localId = `local-${++localIdCounter.current}`;
  const assistantLocalId = `asst-${++localIdCounter.current}`;
  const attachments = attachedResources.map((r) => ({ id: r.id, title: r.title, mime_type: r.mime_type, size: r.size }));
- const resourceIds = attachedResources.map((r) => r.id).filter(Boolean);
+ const resourceIds = confirmedResourceIds(attachedResources);
  const userContent = content || `Tell me about ${attachments.map((a) => `"${a.title}"`).join(', ')}.`;
  pushMessage({ id: localId, role: 'user', content: userContent, attachments, created_at: new Date().toISOString() });
  setInput('');

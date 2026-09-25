@@ -53,8 +53,16 @@ async function signIn(as = 'student') {
 async function openCalendar(as = 'student') {
   await signIn(as);
   renderAt('/calendar');
+  // Budget for the FIRST caller, which pays a cold Vite transform of the lazy
+  // calendar route: this file completes in 20.3s of test time when run alone,
+  // but in a full run it measured 56.5s and its first test lost this wait at
+  // the 20s it used to allow. routing.test.jsx cost 31.6s for the same class of
+  // cold mount in that same run, against the 10.6-16.3s quiet / 55-68s loaded
+  // range vite.config.js:153-158 documents. Same treatment as that file
+  // (8e82c96): a wait above the worst observed, with the test's own budget
+  // raised past it.
   expect(
-    await screen.findByText('Linear Algebra', {}, { timeout: 20000 }),
+    await screen.findByText('Linear Algebra', {}, { timeout: 90000 }),
   ).toBeInTheDocument();
 }
 
@@ -78,7 +86,7 @@ describe('calendar views', () => {
         { timeout: 10000 },
       );
     }
-  }, 60000);
+  }, 150000);
 
   it('renders the events-only month strip', async () => {
     await openCalendar();

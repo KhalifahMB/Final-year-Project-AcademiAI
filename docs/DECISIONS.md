@@ -30,19 +30,46 @@ supplied refresh token. The blacklist lives in the database
 **Gap:** The spec mandates RLS and forbids `BYPASSRLS` but does not define how
 migrations run versus the runtime role.
 
-**Decision:** Two-role model implemented via
-`infrastructure/postgres/init/01-app-role.sql`:
+**Decision:** Three-role model. `postgres` comes from `POSTGRES_USER` in
+`docker-compose.yml`, `academiai` from `infrastructure/postgres/init/01-app-role.sql`,
+and `academiai_test` from `infrastructure/postgres/init/02-test-role.sh`:
 
-- `academiai` — Docker bootstrap superuser; owns nothing at runtime.
-- `academiai` — LOGIN, `NOSUPERUSER`, **NOBYPASSRLS**, `CREATEDB`
-  (needed by pytest-django; revoke in production). Used by Django for
-  migrations, runtime traffic, and tests.
+- `postgres` — Docker bootstrap superuser, declared as `POSTGRES_USER` in
+  `docker-compose.yml`. Owns nothing at runtime. A volume initialised while
+  `POSTGRES_USER` was still `academiai` has no `postgres` role at all, and its
+  `academiai` is the initdb superuser; on such a volume, Tasks 3 and 5 of
+  `docs/superpowers/plans/2026-09-22-chat-send-fix-and-rls-enforcement.md`
+  create `postgres` and then rename the initdb identity out of the way and
+  recreate `academiai` as the non-superuser app role. That is the case this
+  local volume is in.
+- `academiai` — LOGIN, `NOSUPERUSER`, **NOBYPASSRLS**, `NOCREATEROLE`,
+  `CREATEDB` (needed by pytest-django; revoke in production). Used by Django
+  for migrations, runtime traffic, and — through `SET ROLE` — the isolation
+  tests. It owns every relation in `public`, which is why migrations can run at
+  all as a non-superuser.
+- `academiai_test` — LOGIN, `BYPASSRLS`, `CREATEDB`, member of `academiai`.
+  **Dev/CI only**, selected by `backend/conftest.py` for pytest databases, and
+  created by `init/02-test-role.sh` only when `ACADEMIAI_DEV_TEST_ROLE=1` — the
+  whole `init/` directory is mounted as container init scripts, so an
+  ungated file there would run on a deployment too. It exists because 31 test
+  files still write tenant-scoped rows outside `tenant_scope()`; the follow-up
+  conversion plan removes it. Never grant it to a deployment.
 
 All tenant-scoped tables use `ENABLE ROW LEVEL SECURITY` +
 `FORCE ROW LEVEL SECURITY` + a policy keyed on
 `current_setting('app.current_tenant_id', true)`. Because the runtime role is
 the table owner, FORCE is required and applied. Database-level tests
-(`apps/common/tests/test_rls.py`) prove cross-tenant read/insert/update denial.
+(`apps/common/tests/test_rls.py`) run `SET ROLE academiai`, assert that role is
+neither superuser nor BYPASSRLS, assert every derived tenant-scoped table is
+ENABLE + FORCE + policy-bearing, and then try to defeat isolation;
+`test_suite_connection_bypasses_rls` records the suite's remaining bypass as a
+tripwire to delete once the unscoped fixture writes are converted.
+
+Two prerequisites this decision depends on, both measured rather than assumed:
+`template1` must already carry the `vector` extension (pgvector is not
+`trusted`, so a non-superuser cannot create it; `init/00-extensions.sql` puts it
+there at first init), and a hosted deployment needs the same pre-install before
+a non-superuser `academiai` can run `migrate`.
 
 ## D4 — Tenant GUC lifecycle (implementation-critical)
 
