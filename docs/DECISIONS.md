@@ -32,7 +32,7 @@ migrations run versus the runtime role.
 
 **Decision:** Three-role model. `postgres` comes from `POSTGRES_USER` in
 `docker-compose.yml`, `academiai` from `infrastructure/postgres/init/01-app-role.sql`,
-and `academiai_test` from `infrastructure/postgres/init/02-test-role.sql`:
+and `academiai_test` from `infrastructure/postgres/init/02-test-role.sh`:
 
 - `postgres` — Docker bootstrap superuser, declared as `POSTGRES_USER` in
   `docker-compose.yml`. Owns nothing at runtime. A volume initialised while
@@ -48,10 +48,12 @@ and `academiai_test` from `infrastructure/postgres/init/02-test-role.sql`:
   tests. It owns every relation in `public`, which is why migrations can run at
   all as a non-superuser.
 - `academiai_test` — LOGIN, `BYPASSRLS`, `CREATEDB`, member of `academiai`.
-  **Dev/CI only**, selected by `backend/conftest.py` for pytest databases. It
-  exists because 31 test files still write tenant-scoped rows outside
-  `tenant_scope()`; the follow-up conversion plan removes it. Never grant it to
-  a deployment.
+  **Dev/CI only**, selected by `backend/conftest.py` for pytest databases, and
+  created by `init/02-test-role.sh` only when `ACADEMIAI_DEV_TEST_ROLE=1` — the
+  whole `init/` directory is mounted as container init scripts, so an
+  ungated file there would run on a deployment too. It exists because 31 test
+  files still write tenant-scoped rows outside `tenant_scope()`; the follow-up
+  conversion plan removes it. Never grant it to a deployment.
 
 All tenant-scoped tables use `ENABLE ROW LEVEL SECURITY` +
 `FORCE ROW LEVEL SECURITY` + a policy keyed on

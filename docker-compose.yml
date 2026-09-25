@@ -11,6 +11,9 @@ services:
       # guard would then leave RLS bypassed.
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      # Opt-in only: init/02-test-role.sh creates a BYPASSRLS login when this is 1,
+      # which must never happen on a deployment. Developers set it in .env.
+      ACADEMIAI_DEV_TEST_ROLE: ${ACADEMIAI_DEV_TEST_ROLE:-0}
     ports:
       - '5432:5432'
     volumes:

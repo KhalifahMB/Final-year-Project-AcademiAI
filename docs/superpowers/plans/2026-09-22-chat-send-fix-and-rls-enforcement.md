@@ -1030,6 +1030,18 @@ Expected: `45 | 45`, matching the pre-fix measurement — the demotion must not 
 >   of that directory is careful never to do. The script is idempotent (applied twice
 >   against the live database, second run a no-op), touches no role other than
 >   `academiai_test`, and its header says the follow-up conversion plan deletes it.
+>
+>   **Then the whole-branch review reopened it.** Because every file in that directory
+>   is a container init script, a fresh *deployment* volume would have run the `.sql`
+>   too and come up with a live `BYPASSRLS` login. The human chose to gate it rather
+>   than drop reproducibility: the script is now `02-test-role.sh`, which does nothing
+>   unless `ACADEMIAI_DEV_TEST_ROLE=1` is set (compose defaults it to `0`; `SETUP.md`
+>   tells developers to set it in `.env` before the first `docker compose up -d`).
+>   Shipping a `.sh` in a repo with `core.autocrlf=true` needs the new `.gitattributes`
+>   (`*.sh text eol=lf`): a CRLF checkout makes the entrypoint's interpreter fail, and
+>   `scripts/e2e_smoke.sh` showed the conversion really happens here. Verified both
+>   ways on the live container — skip message with the flag unset, idempotent re-apply
+>   with it set, role posture unchanged.
 
 - [x] **Step 4: Correct D3 in the decision log**
 
@@ -1075,8 +1087,8 @@ a non-superuser `academiai` can run `migrate`.
 
 Shipped state (`e163c02`, corrected by `179ed0a` and `2e7d720`): the lead-in names
 each role's provenance (`postgres` from `POSTGRES_USER`, `academiai` from
-`init/01-app-role.sql`, `academiai_test` from `init/02-test-role.sql`) rather than
-crediting all three to one file, and the `postgres` bullet attributes creating
+`init/01-app-role.sql`, `academiai_test` from the gated `init/02-test-role.sh`) rather
+than crediting all three to one file, and the `postgres` bullet attributes creating
 `postgres` to Task 3 and the initdb rename to Task 5, not both to Task 3. Reviewers
 caught each error in turn; both were in prose the controller dictated.
 
@@ -1125,7 +1137,9 @@ Nothing in `backend/` references the name any more (the remaining hits are insid
 
 Two things this plan deliberately does **not** do, so neither gets lost:
 
-1. **Convert the 31 test files.** Their ~280 direct `Model.objects.create()` calls on tenant-scoped models need `with tenant_scope(tenant.id):` around the fixture writes, after which `academiai_test` is dropped, `conftest.py`'s hook deleted, and `infrastructure/postgres/init/02-test-role.sql` removed with it (its tripwire test fails first, which is the prompt). Its own plan, because a ~280-call mechanical diff is the worst possible thing to review on top of a security fix.
+1. **Convert the 31 test files.** Their ~280 direct `Model.objects.create()` calls on tenant-scoped models need `with tenant_scope(tenant.id):` around the fixture writes, after which `academiai_test` is dropped, `conftest.py`'s hook deleted, and `infrastructure/postgres/init/02-test-role.sh` removed with it (its tripwire test fails first, which is the prompt), along with the
+`ACADEMIAI_DEV_TEST_ROLE` flag in `docker-compose.yml`, `.env.example` and the docs
+that name it — once nothing creates the role there is nothing to gate. Its own plan, because a ~280-call mechanical diff is the worst possible thing to review on top of a security fix.
 2. **Production migration prerequisites.** `00-extensions.sql` proves the extension cannot be created by a non-superuser, so a hosted deploy needs `vector` pre-installed by the provider, and the `CREATEDB` grant on `academiai` must be revoked there. Record it when the deployment plan is written.
 
 ## Completion report format
