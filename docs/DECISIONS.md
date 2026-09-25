@@ -30,14 +30,18 @@ supplied refresh token. The blacklist lives in the database
 **Gap:** The spec mandates RLS and forbids `BYPASSRLS` but does not define how
 migrations run versus the runtime role.
 
-**Decision:** Three-role model implemented via
-`infrastructure/postgres/init/01-app-role.sql`:
+**Decision:** Three-role model. `postgres` comes from `POSTGRES_USER` in
+`docker-compose.yml`, `academiai` from `infrastructure/postgres/init/01-app-role.sql`,
+and `academiai_test` from `infrastructure/postgres/init/02-test-role.sql`:
 
 - `postgres` — Docker bootstrap superuser, declared as `POSTGRES_USER` in
   `docker-compose.yml`. Owns nothing at runtime. A volume initialised before
   that rename has no `postgres` role at all and its `academiai` is the initdb
-  superuser; `docs/superpowers/plans/2026-09-22-chat-send-fix-and-rls-enforcement.md`
-  (Tasks 3-5) is the additive remediation.
+  superuser; on such a volume, Task 3 of
+  `docs/superpowers/plans/2026-09-22-chat-send-fix-and-rls-enforcement.md`
+  creates `postgres` and parks the old initdb identity under a different name,
+  so a reader can tell which case they are in (Tasks 3-5 are the additive
+  remediation).
 - `academiai` — LOGIN, `NOSUPERUSER`, **NOBYPASSRLS**, `NOCREATEROLE`,
   `CREATEDB` (needed by pytest-django; revoke in production). Used by Django
   for migrations, runtime traffic, and — through `SET ROLE` — the isolation
