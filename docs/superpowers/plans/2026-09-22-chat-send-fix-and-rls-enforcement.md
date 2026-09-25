@@ -42,7 +42,7 @@ The keyboard path into `send()` is guarded only by `!loading`, so pressing Enter
 - Consumes: `makeApiMock()` from `frontend/src/test/apiMock.js` (already provides `chatApi.stream`, `chatApi.uploadAttachment`, `chatApi.createSession` as `vi.fn()`), and the `data-testid` hooks already present in the page: `chat-input` (`ChatPage.jsx:1359`) and `chat-send` (`:1369`).
 - Produces: `frontend/src/test/chatSend.test.jsx`, the file Task 2 adds its second test case to. No production API changes.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `frontend/src/test/chatSend.test.jsx`. It follows the established page-mount pattern in `frontend/src/test/notifications.test.jsx:16-31` (mock `@/services/api` with `makeApiMock()`, seed `authApi.me`, mount `App` inside a `QueryClientProvider`). The first mount in a file pays for the whole lazy route graph, so the waits use a deliberately wide budget, as that file does.
 
@@ -151,7 +151,7 @@ describe('chat send', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails the way the bug describes**
+- [x] **Step 2: Run it to verify it fails the way the bug describes**
 
 ```
 cd frontend
@@ -160,7 +160,7 @@ npx vitest run src/test/chatSend.test.jsx
 
 Expected: FAIL at `expect(chatApi.stream).not.toHaveBeenCalled()` — received 1 call. (If it fails earlier, on `chat-send` never becoming disabled, stop and fix the harness before touching production code; that is a test problem, not the bug.)
 
-- [ ] **Step 3: Add the guard**
+- [x] **Step 3: Add the guard**
 
 In `frontend/src/pages/ChatPage.jsx`, line 862 currently reads (two-space indent, exactly):
 
@@ -176,7 +176,7 @@ Replace it with:
 
 `uploadingFiles` is the state already declared at `:632` and already used to disable the button at `:1367` and the upload button at `:1324`; `send()` was the one path that ignored it.
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 ```
 cd frontend
@@ -185,7 +185,7 @@ npx vitest run src/test/chatSend.test.jsx
 
 Expected: PASS, one test, and no `act()` warnings or unhandled rejections in the output. If the output is not pristine, fix that before committing.
 
-- [ ] **Step 5: Lint and commit**
+- [x] **Step 5: Lint and commit**
 
 ```
 cd frontend
@@ -214,7 +214,7 @@ Task 1 stops the send from starting. This task removes the bad value at its orig
 - Consumes: the `pending: true` flag `handleFilesSelected` already sets on its placeholder (`ChatPage.jsx:821`) and removes by replacing the placeholder with the server resource (`:828`).
 - Produces: named export `confirmedResourceIds(resources: Array<{id: string, pending?: boolean}>): string[]` from `frontend/src/pages/ChatPage.jsx`. Task 2's test is the only consumer outside `send()`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to the `describe('chat send', …)` block in `frontend/src/test/chatSend.test.jsx`, and add the import at the top of the file:
 
@@ -243,7 +243,7 @@ import { confirmedResourceIds } from '@/pages/ChatPage';
 
 These three are pure-function cases: no mount, no waiting. `UPLOADED_ID` is already defined at module scope.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 ```
 cd frontend
@@ -252,7 +252,7 @@ npx vitest run src/test/chatSend.test.jsx
 
 Expected: the three new tests FAIL with `confirmedResourceIds is not a function` (the named export does not exist yet). Task 1's test still passes.
 
-- [ ] **Step 3: Write the helper and use it**
+- [x] **Step 3: Write the helper and use it**
 
 Insert above `const SUGGESTIONS = [` (line 60) in `frontend/src/pages/ChatPage.jsx`:
 
@@ -277,7 +277,7 @@ Replace it with:
 
 Leave the `attachments` display list on the line above untouched (`:868`): the chip row legitimately shows what is still uploading. That is why this is a named helper and not an in-line edit to both lines.
 
-- [ ] **Step 4: Run to verify everything passes**
+- [x] **Step 4: Run to verify everything passes**
 
 ```
 cd frontend
@@ -286,7 +286,7 @@ npx vitest run src/test/chatSend.test.jsx
 
 Expected: 4 tests PASS, output pristine.
 
-- [ ] **Step 5: Whole frontend suite, lint, build, commit**
+- [x] **Step 5: Whole frontend suite, lint, build, commit**
 
 ```
 cd frontend
@@ -317,7 +317,7 @@ Nothing here can be done safely until a privileged role exists that is **not** t
 - Consumes: the running `db` service, and `academiai`'s current `rolcreaterole=t`.
 - Produces: role `postgres` (superuser, login) used by Tasks 4-7 for every privileged statement; role `academiai_test` (`LOGIN BYPASSRLS CREATEDB`, member of `academiai`) used by pytest from Task 4 onward, whose membership is what lets `test_rls.py` do `SET ROLE academiai` without `CREATEROLE`.
 
-- [ ] **Step 1: Record the pre-fix state so the change is auditable**
+- [x] **Step 1: Record the pre-fix state so the change is auditable**
 
 ```
 docker compose exec -T db psql -U academiai -d academiai -c "SELECT rolname, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname IN ('academiai','academiai_app') ORDER BY 1"
@@ -332,7 +332,7 @@ That last query is not a formality. `resources/migrations/0001_initial.py:22` ru
 
 If any of the other four answers differ from the above, **stop and report the difference** — the rest of the plan is sequenced on this exact state.
 
-- [ ] **Step 2: Get approval, then create the bootstrap superuser**
+- [x] **Step 2: Get approval, then create the bootstrap superuser**
 
 Ask the human to approve this single command before running it:
 
@@ -342,7 +342,7 @@ docker compose exec -T db psql -U academiai -d academiai -c "CREATE ROLE postgre
 
 `'postgres'` is the value already committed in `docker-compose.yml:13` for this local container; it is not a production credential and must not be reused outside a dev volume.
 
-- [ ] **Step 3: Verify the new role can connect**
+- [x] **Step 3: Verify the new role can connect**
 
 ```
 docker compose exec -T db psql -U postgres -d academiai -c "SELECT current_user, (SELECT rolsuper FROM pg_roles WHERE rolname = current_user) AS is_super"
@@ -350,7 +350,7 @@ docker compose exec -T db psql -U postgres -d academiai -c "SELECT current_user,
 
 Expected: `postgres | t`. Inside the container the socket is `trust` (Task 3 Step 1 connected as `academiai` with no password), so no prompt should appear there. Django reaches the same server over a published port, where `pg_hba.conf` ends in `host all all all scram-sha-256` — that is why the roles below need real passwords. If an in-container command does ask for one, prefix `PGPASSWORD=<value>` and note which was needed.
 
-- [ ] **Step 4: Get approval, then create the test-suite role**
+- [x] **Step 4: Get approval, then create the test-suite role**
 
 ```
 docker compose exec -T db psql -U postgres -d academiai -c "CREATE ROLE academiai_test LOGIN NOSUPERUSER BYPASSRLS NOCREATEROLE NOREPLICATION CREATEDB PASSWORD 'academiai_test'"
@@ -359,7 +359,7 @@ docker compose exec -T db psql -U postgres -d academiai -c "GRANT academiai TO a
 
 Three attributes are load-bearing and each has a reason: `BYPASSRLS` carries the 31 still-unconverted test files (see Task 4), `CREATEDB` is what pytest-django needs for its per-worker databases, and the `academiai` membership is what lets `test_rls.py` `SET ROLE academiai` — `SET ROLE` requires membership, not `CREATEROLE`, which is precisely why the old `CREATE ROLE "rls_tester"` approach dies in Task 5.
 
-- [ ] **Step 5: Verify both new roles are configured as intended**
+- [x] **Step 5: Verify both new roles are configured as intended**
 
 ```
 docker compose exec -T db psql -U postgres -d academiai -c "SELECT rolname, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname IN ('postgres','academiai','academiai_test') ORDER BY 1"
@@ -373,7 +373,7 @@ not exist there, so a query written against current upstream docs fails with
 
 Expected: `academiai_test` → `rolsuper=f rolbypassrls=t rolcreaterole=f rolcreatedb=t`, and one membership row `academiai_test | academiai`.
 
-- [ ] **Step 6: Confirm the application is untouched by all of this**
+- [x] **Step 6: Confirm the application is untouched by all of this**
 
 ```
 cd backend
@@ -397,7 +397,7 @@ Measured scope of what this is papering over, so nobody mistakes the shim for a 
 - Consumes: role `academiai_test` from Task 3.
 - Produces: every pytest database connection authenticated as `academiai_test`, and the `POSTGRES_TEST_USER` escape hatch (`POSTGRES_TEST_USER=` runs the suite as the runtime role — the follow-up plan's lever). Task 6's tripwire test asserts this state rather than assuming it.
 
-- [ ] **Step 1: Confirm the suite is green while the connection is still a superuser**
+- [x] **Step 1: Confirm the suite is green while the connection is still a superuser**
 
 ```
 cd backend
@@ -408,7 +408,7 @@ Expected: green. This is the baseline the next two steps are compared against; i
 
 > Measured on execution (2026-09-22, commit `f2d7a05`): **not** green — `3 failed, 266 passed`. All three are pre-existing and role-independent (`apps/common/dashboard.py:893` missing `CourseEnrollment` import; two `test_material_experience.py` preview tests stale against the `content_path` contract in `apps/resources/views.py:521-535`). The controller ruled they stay out of this plan; the steps below are compared against that 3-failure baseline. See the ledger's Task 4 ruling.
 
-- [ ] **Step 2: Add the hook**
+- [x] **Step 2: Add the hook**
 
 `config/settings.py:152` builds `DATABASES["default"]["USER"]` from `os.getenv("POSTGRES_USER", "academiai")` at settings-import time, and pytest-django imports settings inside `pytest_load_initial_conftests` — before this conftest's own module body runs. So setting an environment variable at module level here is too late, and mutating `settings.DATABASES` from a `pytest_configure` hook is not: it runs before `django_db_setup` creates any database. Append to `backend/conftest.py`:
 
@@ -446,7 +446,7 @@ def pytest_configure(config):
         pass
 ```
 
-- [ ] **Step 3: Run `test_rls.py` and read the failure as the proof**
+- [x] **Step 3: Run `test_rls.py` and read the failure as the proof**
 
 ```
 cd backend
@@ -455,7 +455,7 @@ cd backend
 
 Expected: the three behaviour tests error with `permission denied to create role` (its fixture's `CREATE ROLE "rls_tester"`, `test_rls.py:77`). That failure is the evidence the role swap took effect: the session user is now a role without `CREATEROLE`. `test_rls_table_list_is_derived` still passes — it touches no role state. Do not fix this file here; Task 6 replaces it.
 
-- [ ] **Step 4: Prove the rest of the suite does not need superuser rights**
+- [x] **Step 4: Prove the rest of the suite does not need superuser rights**
 
 ```
 cd backend
@@ -467,7 +467,7 @@ known pre-existing failures from Step 1's measured baseline (measured on executi
 `263 passed, 3 failed, 3 errors` — the 3 errors being exactly `test_rls.py`'s
 behaviour tests, which is the correct delta). That is the whole point of doing this before Task 5 — a fresh per-worker test database is now built by a non-superuser, migrations run as it, and ~280 unscoped writes succeed only because `BYPASSRLS` is set. Anything that still needs a true superuser shows up here as `must be superuser to create extension "vector"` or a `permission denied` on a schema/table; report the exact statement instead of granting up.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 # from the repository root
@@ -514,11 +514,11 @@ git commit -m "test(db): run pytest databases as the BYPASSRLS academiai_test ro
 - Consumes: role `postgres` from Task 3.
 - Produces: `academiai` as the sole owner of every relation, sequence and the `public` schema, and as `NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOREPLICATION` — the posture Task 6's tests assert through `SET ROLE`.
 
-- [ ] **Step 1: Stop anything holding the database**
+- [x] **Step 1: Stop anything holding the database**
 
 Tell the human: stop `manage.py runserver` and any Celery worker before Step 4, because the demotion takes effect for new connections and an in-flight request can fail confusingly mid-change. Existing connections keep the old attributes until they reconnect.
 
-- [ ] **Step 2: Reassign everything the abandoned role owns**
+- [x] **Step 2: Reassign everything the abandoned role owns**
 
 ```
 docker compose exec -T db psql -U postgres -d academiai -c "REASSIGN OWNED BY academiai_app TO academiai"
@@ -526,7 +526,7 @@ docker compose exec -T db psql -U postgres -d academiai -c "REASSIGN OWNED BY ac
 
 Expected: `REASSIGN OWNED`.
 
-- [ ] **Step 3: Verify ownership, including the schema**
+- [x] **Step 3: Verify ownership, including the schema**
 
 ```
 docker compose exec -T db psql -U postgres -d academiai -c "SELECT pg_get_userbyid(relowner) AS owner, count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r','S') GROUP BY 1"
@@ -541,7 +541,7 @@ docker compose exec -T db psql -U postgres -d academiai -c "ALTER SCHEMA public 
 
 Then re-run the check and expect `public | academiai`.
 
-- [ ] **Step 4: Strip the privilege last**
+- [x] **Step 4: Strip the privilege last**
 
 ```
 docker compose exec -T db psql -U postgres -d academiai -c "ALTER ROLE academiai NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOREPLICATION LOGIN"
@@ -549,7 +549,7 @@ docker compose exec -T db psql -U postgres -d academiai -c "ALTER ROLE academiai
 
 `CREATEDB` is deliberately **not** revoked: pytest-django creates one database per xdist worker and `01-app-role.sql:17` grants `CREATEDB` for exactly that reason. The init script's defensive branch (`:22-26`) omits `NOCREATEDB` too — this command mirrors it.
 
-- [ ] **Step 5: Verify the posture**
+- [x] **Step 5: Verify the posture**
 
 ```
 docker compose exec -T db psql -U postgres -d academiai -c "SELECT rolname, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb, rolreplication FROM pg_roles WHERE rolname IN ('academiai','academiai_app') ORDER BY 1"
@@ -557,7 +557,7 @@ docker compose exec -T db psql -U postgres -d academiai -c "SELECT rolname, rols
 
 Expected: `academiai` → `rolsuper=f rolbypassrls=f rolcreaterole=f rolcreatedb=t rolreplication=f`. This is the first moment RLS is genuinely active for real traffic in this environment.
 
-- [ ] **Step 6: Confirm the application still serves and migrates as the demoted role**
+- [x] **Step 6: Confirm the application still serves and migrates as the demoted role**
 
 ```
 cd backend
@@ -578,7 +578,7 @@ curl -s -o NUL -w "%{http_code}" http://localhost:8000/api/v1/auth/me/
 
 Expected: `401` (unauthenticated but served) — the exemption of the `accounts.user` and `tenants.tenant` models (their tables are `users` and `tenants`; `rls.py:46-49` exempts by model label, not by table name) is what keeps a tenantless auth lookup alive. A `500` means a request path depends on the bypass: read the traceback and fix the missing `tenant_scope()`, do not re-elevate. Leave the server running for Task 7 Step 1 only if it got this far; otherwise report and stop.
 
-- [ ] **Step 7: If anything failed halfway, recover**
+- [x] **Step 7: If anything failed halfway, recover**
 
 The recovery is additive and destroys nothing — re-elevate through `postgres`, fix the failing statement, re-run:
 
@@ -604,11 +604,11 @@ The replacement keeps the three behaviour assertions, gets the elevation from `S
 - Consumes: `apps.common.rls.TABLES` (the derived tenant-scoped table list), role `academiai` and its membership in `academiai_test` from Task 3, and the session role `academiai_test` from Task 4.
 - Produces: a pytest fixture named `rls_enforced` that leaves the connection acting as `academiai`; no production code consumes it.
 
-- [ ] **Step 1: Re-read the captured failure**
+- [x] **Step 1: Re-read the captured failure**
 
 Open the Task 4 Step 3 output. The three behaviour tests must be failing on role privileges, not on collection errors — a collection error means the conftest hook did not take effect and Task 4 needs fixing first.
 
-- [ ] **Step 2: Write the replacement file**
+- [x] **Step 2: Write the replacement file**
 
 Replace the contents of `backend/apps/common/tests/test_rls.py` with:
 
@@ -855,7 +855,7 @@ def test_rls_blocks_cross_tenant_updates(rls_enforced):
     assert Faculty.objects.get(code="FB3").name == "Fac B3"
 ```
 
-- [ ] **Step 3: Run the file under real enforcement**
+- [x] **Step 3: Run the file under real enforcement**
 
 ```
 cd backend
@@ -864,7 +864,7 @@ cd backend
 
 Expected: 6 passed. Two ways this can fail that are the environment's fault, not the test's, and how to read them: `permission denied for table …` inside a behaviour test means the fixture's `GRANT` ran but `academiai` is not a member of what it needs — check Task 3 Step 5's membership row; `role "academiai" is not permitted to connect`-style errors mean something re-ran `ALTER ROLE ... NOLOGIN`. If the posture guard fails instead, it is reporting a genuine gap (a table without FORCE, a missing policy, or a re-elevated role) — fix that cause; do not weaken the assertion.
 
-- [ ] **Step 4: Prove the guard actually fails on a bypassed connection**
+- [x] **Step 4: Prove the guard actually fails on a bypassed connection**
 
 The two-sided check from the spec, run as one command so the guard is seen doing its job rather than trusted:
 
@@ -892,7 +892,7 @@ Expected: the first run fails both tests — `test_runtime_role_is_demoted` on t
 > `pg_roles` check: `academiai` → `rolsuper=f rolbypassrls=f`, `academiai_test`
 > → `rolbypassrls=t`, `postgres` → `rolsuper=t`.
 
-- [ ] **Step 5: Correct the conftest docstring now that the tripwire exists**
+- [x] **Step 5: Correct the conftest docstring now that the tripwire exists**
 
 Task 4's hook docstring (`backend/conftest.py:33`) says `POSTGRES_TEST_USER= (empty) runs the suite as the runtime role instead.` That invocation is POSIX-only: in PowerShell — the human's documented shell — `$env:POSTGRES_TEST_USER=""` *removes* the variable, so `os.environ.get` falls back to the `"academiai_test"` default and the suite runs with the bypass while the operator believes it does not. The follow-up conversion plan verifies itself with this lever, so a silently inverted lever is worse than a cosmetic doc problem.
 
@@ -908,7 +908,7 @@ Keep the rest of the docstring as Task 4 wrote it; Step 2's new
 `test_suite_connection_bypasses_rls` is what makes the existing
 "tripwire" sentence refer to a test that is actually in the file.
 
-- [ ] **Step 6: Full suite, then commit**
+- [x] **Step 6: Full suite, then commit**
 
 ```
 cd backend
@@ -948,7 +948,7 @@ The suite passing on per-worker databases is not the same as the developer datab
 - Consumes: Task 5's demoted role, Task 6's suite at the recorded baseline, the running server restarted against it.
 - Produces: a D3 correction (its first bullet currently claims `academiai` is the bootstrap superuser *and* the app role — a rename artifact from `ad92276`) plus the three-role posture and the deferred test conversion.
 
-- [ ] **Step 1: Confirm the server serves tenant-scoped traffic as the demoted owner**
+- [x] **Step 1: Confirm the server serves tenant-scoped traffic as the demoted owner**
 
 If Task 5 Step 6 left `runserver` running, restart it so it reconnects as the demoted role, then:
 
@@ -958,7 +958,7 @@ curl -s -o NUL -w "%{http_code}" http://localhost:8000/api/v1/calendar/events/up
 
 Expected: `401` (unauthenticated but served). A `500` means an unauthenticated route reaches a tenant-scoped table without a GUC — that is a real bug the bypass was hiding; read the traceback.
 
-- [ ] **Step 2: Prove the tenantless query returns nothing on the developer database**
+- [x] **Step 2: Prove the tenantless query returns nothing on the developer database**
 
 > **Corrected at execution (Task 7 Step 2).** This step originally named
 > `academics_faculty` and `tenants_tenant`. Neither relation exists. Django's
@@ -976,7 +976,7 @@ docker compose exec -T db psql -U academiai -d academiai -c "SELECT set_config('
 
 Expected: the first is `0` — before this plan it returned every row. The second is the count for one tenant, which may also be 0 if that tenant has no faculties; if so, re-run it with a tenant id that does (`SELECT tenant_id, count(*) FROM faculties GROUP BY 1` is itself filtered, so read a tenant id from `tenants`, which is exempt). If the seeded demo data is missing entirely, `manage.py seed_demo` repopulates it through the request-free path — note in the report whether it needed `tenant_scope()`, because that command is a known candidate.
 
-- [ ] **Step 3: Confirm migrations still apply their own policies**
+- [x] **Step 3: Confirm migrations still apply their own policies**
 
 ```
 cd backend
@@ -1007,20 +1007,31 @@ Expected: `45 | 45`, matching the pre-fix measurement — the demotion must not 
 >   Task 5's rename (the membership followed the OID, not the name). It adds no
 >   row-level privilege, since `academiai_test` already has `BYPASSRLS` directly; what
 >   it adds is a `SET ROLE` route to the cluster-superuser attributes (`CREATEROLE`,
->   cross-database reach). Revoking it is tidy-up, pending a human yes.
->   `academiai_bootstrap` remains `super=t` (it is the initdb identity and cannot be
->   demoted); marking it `NOLOGIN` is likewise pending.
+>   cross-database reach).
+> - All three leftovers were then put to the human and, on a yes, executed:
+>   `REVOKE academiai_bootstrap FROM academiai_test` (memberships are now only
+>   `academiai_test | academiai`), `ALTER ROLE academiai_bootstrap NOLOGIN`
+>   (`rolcanlogin=f`; it stays `super=t` because it is the initdb identity and cannot
+>   be demoted), and `DROP ROLE academiai_app`. The drop failed first with *"some
+>   objects depend on it — privileges for database academiai"*: the pre-flight had
+>   checked ownership and membership but not database-level grants. `REVOKE ALL ON
+>   DATABASE academiai FROM academiai_app` cleared it. Final posture: `academiai
+>   super=f bypass=f createdb=t login=t`; `academiai_bootstrap super=t bypass=t
+>   login=f`; `academiai_test bypass=t createdb=t login=t`; `postgres super=t
+>   bypass=f login=t`.
 >
->   **Reproducibility gap this task surfaced, unresolved.** No file in the repo creates
->   `academiai_test` — `grep -rn academiai_test infrastructure/` returns nothing. Task 3
->   created it with manual SQL against this volume, but `backend/conftest.py:42` defaults
->   `POSTGRES_TEST_USER` to it, so a *fresh* clone that follows `README.md`
->   (`docker compose up -d`, then `pytest`) points every test at a role that does not
->   exist and the whole backend suite fails. Needs either an init script that creates it
->   or a documented setup step; a human decision, because it would put a `BYPASSRLS` role
->   into the committed dev bootstrap.
+>   **Reproducibility gap this task surfaced, now closed.** No file in the repo created
+>   `academiai_test` — Task 3 created it with manual SQL against this volume, but
+>   `backend/conftest.py:42` defaults `POSTGRES_TEST_USER` to it, so a *fresh* clone
+>   that followed `README.md` (`docker compose up -d`, then `pytest`) pointed every
+>   test at a role that does not exist. Resolved in `179ed0a` with
+>   `infrastructure/postgres/init/02-test-role.sql` — approved by the human precisely
+>   because it puts a `BYPASSRLS` role into the committed dev bootstrap, which the rest
+>   of that directory is careful never to do. The script is idempotent (applied twice
+>   against the live database, second run a no-op), touches no role other than
+>   `academiai_test`, and its header says the follow-up conversion plan deletes it.
 
-- [ ] **Step 4: Correct D3 in the decision log**
+- [x] **Step 4: Correct D3 in the decision log**
 
 In `docs/DECISIONS.md`, the two bullets at `:36-39` currently both name `academiai`, which is a leftover of the `ad92276` rename and describes an impossible two-role model with one name. Replace that bullet pair with:
 
@@ -1062,7 +1073,14 @@ there at first init), and a hosted deployment needs the same pre-install before
 a non-superuser `academiai` can run `migrate`.
 ```
 
-- [ ] **Step 5: Final verification, then commit**
+Shipped state (`e163c02`, corrected by `179ed0a` and `2e7d720`): the lead-in names
+each role's provenance (`postgres` from `POSTGRES_USER`, `academiai` from
+`init/01-app-role.sql`, `academiai_test` from `init/02-test-role.sql`) rather than
+crediting all three to one file, and the `postgres` bullet attributes creating
+`postgres` to Task 3 and the initdb rename to Task 5, not both to Task 3. Reviewers
+caught each error in turn; both were in prose the controller dictated.
+
+- [x] **Step 5: Final verification, then commit**
 
 ```
 cd backend
@@ -1084,9 +1102,16 @@ git add docs/DECISIONS.md
 git commit -m "docs(decisions): correct D3 role model and record RLS enforcement posture"
 ```
 
-- [ ] **Step 6: Ask about the leftover role, do not act on it**
+- [x] **Step 6: Ask about the leftover role, do not act on it**
 
 `academiai_app` is **left in place**: after `REASSIGN OWNED` it is a live login that owns nothing, and removing it is a decision, not a side effect. Ask the human at handoff, offering the statement without running it:
+
+**Asked, answered, executed.** The human approved dropping it, together with the two
+other leftovers (the stray `academiai_test → academiai_bootstrap` membership and
+`academiai_bootstrap NOLOGIN`). The statement below is what actually ran, after a
+database-level `REVOKE ALL ON DATABASE academiai FROM academiai_app` cleared the
+dependency `DROP ROLE` reported — ownership and membership had both already been
+empty, so the pre-flight check was incomplete as written here.
 
 ```
 docker compose exec -T db psql -U postgres -d academiai -c "DROP ROLE academiai_app"
@@ -1100,7 +1125,7 @@ Nothing in `backend/` references the name any more (the remaining hits are insid
 
 Two things this plan deliberately does **not** do, so neither gets lost:
 
-1. **Convert the 31 test files.** Their ~280 direct `Model.objects.create()` calls on tenant-scoped models need `with tenant_scope(tenant.id):` around the fixture writes, after which `academiai_test` is dropped and `conftest.py`'s hook deleted (its tripwire test fails first, which is the prompt). Its own plan, because a ~280-call mechanical diff is the worst possible thing to review on top of a security fix.
+1. **Convert the 31 test files.** Their ~280 direct `Model.objects.create()` calls on tenant-scoped models need `with tenant_scope(tenant.id):` around the fixture writes, after which `academiai_test` is dropped, `conftest.py`'s hook deleted, and `infrastructure/postgres/init/02-test-role.sql` removed with it (its tripwire test fails first, which is the prompt). Its own plan, because a ~280-call mechanical diff is the worst possible thing to review on top of a security fix.
 2. **Production migration prerequisites.** `00-extensions.sql` proves the extension cannot be created by a non-superuser, so a hosted deploy needs `vector` pre-installed by the provider, and the `CREATEDB` grant on `academiai` must be revoked there. Record it when the deployment plan is written.
 
 ## Completion report format
