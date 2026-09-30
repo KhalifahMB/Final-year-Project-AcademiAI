@@ -26,7 +26,6 @@ export default function ResourceDetailPage() {
 
   const {
     data: resource,
-    isLoading,
     isError,
     refetch,
   } = useQuery({

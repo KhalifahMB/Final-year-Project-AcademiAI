@@ -17,10 +17,21 @@
 
   /* Semantic color aliases (shadcn/ui compat) */
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-background: var(--bg);
   --color-foreground: var(--fg);
+
+  /* Raw palette exposed as utilities. Without these, `bg-surface`,
+     `bg-hover`, `border-border-strong`, `text-fg-soft`, `bg-danger` and
+     `text-bg` match no theme key and Tailwind emits no CSS for them. */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-hover: var(--hover);
+  --color-fg-soft: var(--fg-soft);
+  --color-danger: var(--danger);
 
   --color-primary: var(--accent);
   --color-primary-foreground: var(--on-accent);
