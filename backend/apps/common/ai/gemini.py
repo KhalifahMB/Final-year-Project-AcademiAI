@@ -2,15 +2,19 @@
 Gemini integration (google-genai SDK) with grounding and injection defenses.
 
 The legacy `google.generativeai` package is deprecated/unmaintained; all
-calls go through the supported `google.genai` client. When no API key is
-configured the module degrades to deterministic stubs so local pipelines
-remain testable.
+calls go through the supported `google.genai` client. Functions that produce
+user-visible model output raise AIServiceUnavailableError when the backend is
+unconfigured or a call fails, so an outage surfaces as a user-safe error
+instead of a fabricated answer. Only deterministic, non-model helpers
+(embeddings, topic/concept extraction fallbacks) degrade without a key, and
+none of those stand in for model-authored text shown to the user.
 
 Never treat document text as system instructions.
 """
 import json
 import logging
 import re
+import time
 from typing import Any
 
 from django.conf import settings
@@ -184,6 +188,198 @@ def ai_service_available() -> bool:
     return _get_client() is not None
 
 
+# ---------------------------------------------------------------------------
+# Model chain + retry
+# ---------------------------------------------------------------------------
+# Google reports capacity problems two ways: 503/429 "high demand" while the
+# model exists but is busy, and 404 when the configured name is retired. Both
+# are invisible to the caller as anything but a generic AI outage, so this
+# module owns the retry policy: walk the model chain, retry transient statuses
+# per model with exponential backoff, and give up only when every candidate
+# has failed.
+#
+# The client is built WITHOUT the SDK's own tenacity retry (google.genai
+# defaults HttpRetryOptions to a single attempt). Keeping retry in one place
+# means N models x M attempts is predictable instead of multiplying.
+
+RETRYABLE_STATUS = {408, 429, 500, 502, 503, 504}
+_BACKOFF_BASE_SECONDS = 0.5
+_BACKOFF_MAX_SECONDS = 4.0
+
+
+def model_chain() -> list[str]:
+    """GEMINI_MODEL first, then GEMINI_MODEL_FALLBACKS, de-duplicated."""
+    candidates = [getattr(settings, "GEMINI_MODEL", "")]
+    candidates += list(getattr(settings, "GEMINI_MODEL_FALLBACKS", []) or [])
+    seen: set[str] = set()
+    chain = []
+    for name in candidates:
+        if name and name not in seen:
+            seen.add(name)
+            chain.append(name)
+    return chain
+
+
+def _status_code(exc: Exception) -> int | None:
+    """HTTP status behind a google.genai error, or None if it has none."""
+    code = getattr(exc, "code", None)
+    return code if isinstance(code, int) else None
+
+
+def _is_transport_error(exc: Exception) -> bool:
+    """Connection resets/timeouts — no HTTP status, but worth one retry."""
+    module = type(exc).__module__ or ""
+    name = type(exc).__name__
+    return module.startswith("httpx") or any(
+        token in name for token in ("Timeout", "Connect", "Protocol", "Network")
+    )
+
+
+def _classify(exc: Exception) -> str:
+    """What to do with a failed attempt: "retry" the model, "skip" to the
+    next one, or "raise" because no other model would behave differently."""
+    status = _status_code(exc)
+    if status is None:
+        return "retry" if _is_transport_error(exc) else "raise"
+    if status in RETRYABLE_STATUS:
+        return "retry"
+    if status == 404:
+        return "skip"
+    return "raise"
+
+
+def _resolve_chain(preferred: str | None) -> list[str]:
+    chain = model_chain()
+    if preferred:
+        chain = [preferred] + [m for m in chain if m != preferred]
+    return chain
+
+
+def _run_with_fallback(fn, *, preferred: str | None, attempts: int | None):
+    """Call ``fn(model)`` across the model chain until it succeeds.
+
+    Transient failures (408/429/5xx, connection errors) retry the same model
+    with exponential backoff before advancing; a 404 advances immediately.
+    Raises AIServiceUnavailableError once every candidate has failed, with the
+    last API error attached as the cause for logging.
+    """
+    chain = _resolve_chain(preferred)
+    tries = max(1, attempts or settings.GEMINI_RETRY_ATTEMPTS)
+    last_exc: Exception | None = None
+
+    for index, model in enumerate(chain):
+        for attempt in range(tries):
+            try:
+                result = fn(model)
+            except Exception as exc:
+                action = _classify(exc)
+                if action == "raise":
+                    raise
+                last_exc = exc
+                if action == "skip":
+                    logger.warning("Model %s is not served; trying next", model)
+                    break
+                if attempt + 1 >= tries:
+                    logger.warning(
+                        "Model %s exhausted %d attempt(s); trying next",
+                        model, tries,
+                    )
+                    break
+                delay = min(
+                    _BACKOFF_MAX_SECONDS, _BACKOFF_BASE_SECONDS * (2 ** attempt)
+                )
+                logger.warning(
+                    "Transient Gemini failure on %s (attempt %d/%d); retrying in %.1fs",
+                    model, attempt + 1, tries, delay,
+                )
+                time.sleep(delay)
+            else:
+                if index:
+                    logger.info("Gemini recovered via fallback model %s", model)
+                return result
+
+    logger.error("All Gemini models failed; last error: %s", last_exc)
+    if last_exc is not None:
+        raise AIServiceUnavailableError() from last_exc
+    raise AIServiceUnavailableError()
+
+
+def generate_content_with_fallback(
+    contents: Any,
+    config: dict,
+    *,
+    client: Any = None,
+    attempts: int | None = None,
+    preferred: str | None = None,
+):
+    """Run generateContent against the model chain, retrying transient errors.
+
+    ``preferred`` is tried before the configured chain (deduplicated), so a
+    caller holding an explicit model keeps it as the primary candidate.
+
+    Raises AIServiceUnavailableError when the whole chain is exhausted (the
+    final API error is preserved as the cause for logs), and re-raises any
+    non-retryable API error as-is.
+    """
+    client = client if client is not None else _get_client()
+    if client is None:
+        raise AIServiceUnavailableError()
+
+    return _run_with_fallback(
+        lambda model: client.models.generate_content(
+            model=model, contents=contents, config=config
+        ),
+        preferred=preferred,
+        attempts=attempts,
+    )
+
+
+def generate_content_stream_with_fallback(
+    contents: Any,
+    config: dict,
+    *,
+    client: Any = None,
+    attempts: int | None = None,
+    preferred: str | None = None,
+):
+    """Yield streaming chunks, walking the model chain when a stream won't start.
+
+    generate_content_stream() returns a generator WITHOUT performing the HTTP
+    request — the call succeeds instantly and the failure surfaces on the first
+    next() instead. So the first chunk is pulled inside the retry loop: a
+    startup failure (capacity, DNS, dropped connection) retries and advances the
+    chain, while a healthy stream is then passed straight through.
+
+    Mid-stream drops are NOT retried: replaying a half-delivered answer on
+    another model would repeat text the caller has already emitted. Those
+    propagate to the caller, which reports an error event and persists nothing.
+    """
+    client = client if client is not None else _get_client()
+    if client is None:
+        raise AIServiceUnavailableError()
+
+    def _start(model: str):
+        stream = client.models.generate_content_stream(
+            model=model, contents=contents, config=config
+        )
+        iterator = iter(stream)
+        try:
+            first = next(iterator)
+        except StopIteration:
+            # Empty stream: yield nothing; the caller already treats a
+            # tokenless stream as a failed generation.
+            return None, iter(())
+        return first, iterator
+
+    first, iterator = _run_with_fallback(
+        _start, preferred=preferred, attempts=attempts
+    )
+    if first is not None:
+        yield first
+    yield from iterator
+
+
+
 def _sanitize_context(text: str, max_len: int = CONTEXT_MAX_CHARS) -> str:
     """Harden untrusted document/user text before it reaches a prompt.
 
@@ -231,6 +427,11 @@ def generate_grounded_answer(query: str, chunks: list, user_role: str = "student
     """
     chunks: list of dicts with id, content, rank, score, method
     Returns (answer_text, source_meta list)
+
+    Raises AIServiceUnavailableError when the AI backend is unconfigured or a
+    live call fails or returns an empty completion. Answers are never
+    fabricated: an unavailable service must surface as an explicit failure
+    rather than a placeholder string being persisted as a real reply.
     """
     source_meta = []
     context_parts = []
@@ -259,30 +460,30 @@ def generate_grounded_answer(query: str, chunks: list, user_role: str = "student
 
     client = _get_client()
     if client is None:
-        # Deterministic stub for local/dev without API key
-        if not chunks:
-            answer = (
-                "I could not find authorized academic resources relevant to your question. "
-                "Please ensure resources are uploaded and processed for your courses."
-            )
-        else:
-            answer = (
-                f"(Dev stub — set GEMINI_API_KEY for live answers.) "
-                f"Based on {len(chunks)} retrieved chunk(s), a grounded response would address: {query[:200]}"
-            )
-        return answer, source_meta
+        # No fabricated answer. Previously this returned a "(Dev stub — set
+        # GEMINI_API_KEY ...)" string that the UI rendered as if it were real
+        # grounded output. An unconfigured/unreachable backend must surface as
+        # an explicit failure so the caller can show a user-safe message.
+        logger.warning("Grounded answer requested but AI service is unavailable")
+        raise AIServiceUnavailableError()
 
     try:
-        resp = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=_generation_config(SYSTEM_GROUNDING),
+        resp = generate_content_with_fallback(
+            prompt,
+            _generation_config(SYSTEM_GROUNDING),
+            client=client,
         )
-        answer = (resp.text or "").strip() or "No response generated."
+        answer = (resp.text or "").strip()
+        if not answer:
+            raise AIServiceUnavailableError()
         return answer, source_meta
+    except AIServiceUnavailableError:
+        raise
     except Exception:
+        # Raise rather than returning a canned apology string: a fabricated
+        # message must never be persisted as if the model had produced it.
         logger.exception("Gemini generate_grounded_answer failed")
-        return "The AI service is temporarily unavailable. Please try again later.", source_meta
+        raise AIServiceUnavailableError()
 
 
 def generate_embeddings(texts: list[str]) -> list[list[float] | None]:
@@ -381,10 +582,8 @@ def generate_topics(description: str, max_topics: int = 8) -> list[str]:
     if client is None:
         return _fallback()
     try:
-        resp = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=_generation_config(TOPIC_SYSTEM),
+        resp = generate_content_with_fallback(
+            prompt, _generation_config(TOPIC_SYSTEM), client=client
         )
         raw = (resp.text or "").strip()
         raw = re.sub(r"^```json\s*|\s*```$", "", raw, flags=re.I | re.M)
@@ -458,10 +657,8 @@ def extract_concepts(text: str, max_concepts: int = 12) -> dict[str, Any]:
     if client is None:
         return _fallback()
     try:
-        resp = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=_generation_config(CONCEPT_SYSTEM),
+        resp = generate_content_with_fallback(
+            prompt, _generation_config(CONCEPT_SYSTEM), client=client
         )
         raw = (resp.text or "").strip()
         raw = re.sub(r"^```json\s*|\s*```$", "", raw, flags=re.I | re.M)
@@ -520,10 +717,8 @@ def generate_summary(text: str, max_words: int = 300) -> dict[str, Any]:
         f"{CANARY_OPEN}\n{_sanitize_context(text, 12000)}\n{CANARY_CLOSE}"
     )
     try:
-        resp = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=_generation_config(SUMMARY_SYSTEM),
+        resp = generate_content_with_fallback(
+            prompt, _generation_config(SUMMARY_SYSTEM), client=client
         )
 
         raw = (resp.text or "").strip()
@@ -579,10 +774,8 @@ def generate_quiz_json(context: str, num_questions: int = 5) -> dict[str, Any]:
             ],
         }
     try:
-        resp = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=_generation_config(QUIZ_SYSTEM),
+        resp = generate_content_with_fallback(
+            prompt, _generation_config(QUIZ_SYSTEM), client=client
         )
         raw = (resp.text or "").strip()
         raw = re.sub(r"^```json\s*|\s*```$", "", raw, flags=re.I | re.M)

@@ -17,6 +17,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.ai import ai_service_available
+from apps.common.ai.gemini import AI_SERVICE_UNAVAILABLE_MSG
 from apps.common.db import tenant_scope
 from apps.common.permissions import IsTenantMember
 from apps.common.throttling import AiRateThrottle
@@ -48,9 +50,11 @@ def _stream_events(client, user, message, context_type, session, agent_key=""):
     whole request, so writes here are RLS-safe.
     """
     if client is None:
-        # Dev stub
-        yield sse_event("token", {"text": f"Hello! I'm your ai agent. You said: {message}. (Set GEMINI_API_KEY for live responses.)"})
-        yield sse_event("done", {"session_id": str(session.id)})
+        # No fabricated greeting. A missing key previously produced
+        # "Hello! I'm your ai agent. You said: ... (Set GEMINI_API_KEY ...)"
+        # which the panel rendered as a real assistant turn and persisted.
+        logger.warning("Agent stream requested but AI service is unavailable")
+        yield sse_event("error", {"message": AI_SERVICE_UNAVAILABLE_MSG})
         return
 
     full_response = ""
@@ -136,6 +140,15 @@ class AgentStreamView(APIView):
 
         user = request.user
         agent_key = resolve_agent_key(requested_agent, user.role)
+
+        # Reject before creating/resuming a session: an unavailable AI service
+        # must not leave an empty conversation behind for every failed turn.
+        if not ai_service_available():
+            logger.warning("Agent stream rejected: AI service unavailable")
+            return Response(
+                {"success": False, "error": {"detail": AI_SERVICE_UNAVAILABLE_MSG}},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         session = None
         if session_id:

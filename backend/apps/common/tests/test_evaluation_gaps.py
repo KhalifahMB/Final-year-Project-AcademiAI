@@ -95,37 +95,56 @@ def test_ingestion_quarantines_eicar():
 
 @pytest.mark.django_db
 def test_gemini_error_surfaces_user_facing_error_not_stack():
-    from apps.common.ai.gemini import generate_grounded_answer
+    """TC-21: a live Gemini failure must raise a user-safe error — never a
+    fabricated answer string and never a raw SDK/exception message."""
+    from apps.common.ai.gemini import AIServiceUnavailableError, generate_grounded_answer
 
     horizon = {"id": "c1", "content": "Algorithms course material.", "score": 0.9, "method": "hybrid"}
     with patch("apps.common.ai.gemini._get_client") as client:
         client.return_value.models.generate_content.side_effect = TimeoutError("boom")
-        answer, source_meta = generate_grounded_answer("What is a red-black tree?", [horizon], "student")
+        with pytest.raises(AIServiceUnavailableError) as exc_info:
+            generate_grounded_answer("What is a red-black tree?", [horizon], "student")
 
-    assert "temporarily unavailable" in answer.lower()
-    assert "traceback" not in answer.lower() and "boom" not in answer.lower()
-    assert len(source_meta) == 1
+    msg = str(exc_info.value)
+    assert "unavailable" in msg.lower()
+    assert "traceback" not in msg.lower() and "boom" not in msg.lower()
 
 
 @pytest.mark.django_db
-def test_chat_turn_with_gemini_outage_persists_graceful_message():
-    """End-to-end: a chat POST during a Gemini outage must return a graceful
-    answer and persist it — the UI should never see an exception."""
-    from apps.chat.models import ChatSession
-    from apps.chat.views import ChatSessionViewSet  # noqa: F401 (route discovery)
+def test_grounded_answer_without_client_raises_not_stub():
+    """No API key must surface as an explicit failure, not a dev-stub string
+    that the UI would render (and persist) as a real answer."""
+    from apps.common.ai.gemini import AIServiceUnavailableError, generate_grounded_answer
+
+    horizon = {"id": "c1", "content": "Algorithms course material.", "score": 0.9, "method": "hybrid"}
+    with patch("apps.common.ai.gemini._get_client", return_value=None):
+        with pytest.raises(AIServiceUnavailableError) as exc_info:
+            generate_grounded_answer("What is a red-black tree?", [horizon], "student")
+
+    msg = str(exc_info.value)
+    assert "Dev stub" not in msg
+    assert "GEMINI_API_KEY" not in msg
+    assert "retrieved chunk" not in msg
+
+
+@pytest.mark.django_db
+def test_chat_turn_with_gemini_outage_returns_503_and_persists_nothing():
+    """End-to-end: a chat POST during a Gemini outage must return 503 and
+    leave no assistant message behind — the UI should never see an exception
+    or a placeholder reply."""
+    from apps.chat.models import ChatMessage, ChatSession
+    from apps.common.ai.gemini import AIServiceUnavailableError
 
     tenant = _tenant("chat-down")
     student = _user(tenant, "s@m.edu")
 
     session = ChatSession.objects.create(tenant=tenant, user=student, title="t")
 
-    with patch(
-        "apps.chat.services.turns.generate_grounded_answer",
-        return_value=(
-            "The AI service is temporarily unavailable. Please try again later.",
-            [],
-        ),
-    ):
+    with patch("apps.chat.services.turns.ai_service_available", return_value=True), \
+         patch(
+             "apps.chat.services.turns.generate_grounded_answer",
+             side_effect=AIServiceUnavailableError(),
+         ):
         client = APIClient()
         client.force_authenticate(student)
         resp = client.post(
@@ -134,8 +153,36 @@ def test_chat_turn_with_gemini_outage_persists_graceful_message():
             format="json",
         )
 
-    assert resp.status_code == 201, resp.data
-    assert "temporarily unavailable" in resp.data["assistant_message"]["content"].lower()
+    assert resp.status_code == 503, resp.data
+    detail = resp.data["error"]["detail"]
+    assert "unavailable" in detail.lower()
+    assert "Dev stub" not in detail
+    # No placeholder reply may be stored.
+    assert not ChatMessage.objects.filter(session=session, role="assistant").exists()
+
+
+@pytest.mark.django_db
+def test_chat_send_rejected_before_persisting_when_ai_unavailable():
+    """An unavailable service must not strand a user message in the session
+    with no reply."""
+    from apps.chat.models import ChatMessage, ChatSession
+
+    tenant = _tenant("chat-off")
+    student = _user(tenant, "s@m.edu")
+    session = ChatSession.objects.create(tenant=tenant, user=student, title="t")
+
+    with patch("apps.chat.services.turns.ai_service_available", return_value=False):
+        client = APIClient()
+        client.force_authenticate(student)
+        resp = client.post(
+            f"/api/v1/chat/sessions/{session.id}/messages/",
+            {"content": "What is dynamic programming?"},
+            format="json",
+        )
+
+    assert resp.status_code == 503, resp.data
+    assert "unavailable" in resp.data["error"]["detail"].lower()
+    assert not ChatMessage.objects.filter(session=session).exists()
 
 
 # ---------------------------------------------------------------------------
