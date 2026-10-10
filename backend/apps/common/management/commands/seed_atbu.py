@@ -9,6 +9,7 @@ left untouched.
 """
 from django.core.management.base import BaseCommand
 
+from apps.common.db import tenant_scope
 from apps.academics.models import Department, Faculty, Programme
 from apps.tenants.models import Tenant
 
@@ -218,59 +219,62 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"Tenant: {tenant.slug} ({'created' if created else 'exists'})")
 
-        for fac in FACULTIES:
-            faculty, fac_created = Faculty.objects.get_or_create(
-                tenant=tenant,
-                code=fac["code"],
-                defaults={"name": fac["name"]},
-            )
-            if not fac_created and faculty.name != fac["name"]:
-                faculty.name = fac["name"]
-                faculty.save()
-
-            for dep in fac["departments"]:
-                department, dep_created = Department.objects.get_or_create(
+        # Faculties, departments and programmes are RLS-scoped, and no request
+        # middleware binds the tenant here, so the command has to bind it itself.
+        with tenant_scope(tenant.id):
+            for fac in FACULTIES:
+                faculty, fac_created = Faculty.objects.get_or_create(
                     tenant=tenant,
-                    code=dep["code"],
-                    defaults={
-                        "faculty": faculty,
-                        "name": dep["name"],
-                    },
+                    code=fac["code"],
+                    defaults={"name": fac["name"]},
                 )
-                if not dep_created and department.faculty_id != faculty.pk:
-                    department.faculty = faculty
-                    department.save()
+                if not fac_created and faculty.name != fac["name"]:
+                    faculty.name = fac["name"]
+                    faculty.save()
 
-                for p in dep["programmes"]:
-                    programme, prog_created = Programme.objects.get_or_create(
+                for dep in fac["departments"]:
+                    department, dep_created = Department.objects.get_or_create(
                         tenant=tenant,
-                        code=p["code"],
+                        code=dep["code"],
                         defaults={
-                            "department": department,
-                            "name": p["name"],
-                            "degree_type": p["degree_type"],
-                            "duration_years": p["duration_years"],
+                            "faculty": faculty,
+                            "name": dep["name"],
                         },
                     )
-                    if not prog_created and (
-                        programme.department_id != department.pk
-                        or programme.name != p["name"]
-                        or programme.degree_type != p["degree_type"]
-                    ):
-                        programme.department = department
-                        programme.name = p["name"]
-                        programme.degree_type = p["degree_type"]
-                        programme.duration_years = p["duration_years"]
-                        programme.save()
+                    if not dep_created and department.faculty_id != faculty.pk:
+                        department.faculty = faculty
+                        department.save()
 
-                self.stdout.write(
-                    f"  {dep['code']} — {dep['name']} "
-                    f"({len(dep['programmes'])} programmes)"
-                )
+                    for p in dep["programmes"]:
+                        programme, prog_created = Programme.objects.get_or_create(
+                            tenant=tenant,
+                            code=p["code"],
+                            defaults={
+                                "department": department,
+                                "name": p["name"],
+                                "degree_type": p["degree_type"],
+                                "duration_years": p["duration_years"],
+                            },
+                        )
+                        if not prog_created and (
+                            programme.department_id != department.pk
+                            or programme.name != p["name"]
+                            or programme.degree_type != p["degree_type"]
+                        ):
+                            programme.department = department
+                            programme.name = p["name"]
+                            programme.degree_type = p["degree_type"]
+                            programme.duration_years = p["duration_years"]
+                            programme.save()
 
-        total_f = Faculty.objects.filter(tenant=tenant).count()
-        total_d = Department.objects.filter(tenant=tenant).count()
-        total_p = Programme.objects.filter(tenant=tenant).count()
+                    self.stdout.write(
+                        f"  {dep['code']} — {dep['name']} "
+                        f"({len(dep['programmes'])} programmes)"
+                    )
+
+            total_f = Faculty.objects.filter(tenant=tenant).count()
+            total_d = Department.objects.filter(tenant=tenant).count()
+            total_p = Programme.objects.filter(tenant=tenant).count()
         self.stdout.write(self.style.SUCCESS(
             f"Done. ATBU totals — faculties: {total_f}, departments: {total_d}, "
             f"programmes: {total_p}"

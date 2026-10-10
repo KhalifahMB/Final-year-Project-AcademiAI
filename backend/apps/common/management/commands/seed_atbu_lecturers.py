@@ -6,6 +6,7 @@ Existing placeholder lecturer (lecturer@gmail.com) is left untouched.
 """
 from django.core.management.base import BaseCommand
 
+from apps.common.db import tenant_scope
 from apps.academics.models import Department, Faculty
 from apps.accounts.models import LecturerProfile, User
 from apps.tenants.models import Tenant
@@ -37,64 +38,69 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         tenant = Tenant.objects.get(slug=TENANT_SLUG)
 
-        faculty = Faculty.objects.get(tenant=tenant, code=FACULTY_CODE)
-        department = Department.objects.get(tenant=tenant, code=DEPARTMENT_CODE)
+        # Users, lecturer profiles and the department rows they point at are all
+        # RLS-scoped, and a management command has no middleware to bind the
+        # tenant for it, so the binding is opened here.
+        with tenant_scope(tenant.id):
+            faculty = Faculty.objects.get(tenant=tenant, code=FACULTY_CODE)
+            department = Department.objects.get(tenant=tenant, code=DEPARTMENT_CODE)
 
-        created, updated, skipped = 0, 0, 0
-        for i, spec in enumerate(LECTURERS, start=1):
-            email = spec.get("email") or lecturer_email(spec["first"], spec["last"], i)
+            created, updated, skipped = 0, 0, 0
+            for i, spec in enumerate(LECTURERS, start=1):
+                email = spec.get("email") or lecturer_email(spec["first"], spec["last"], i)
 
-            user, user_created = User.objects.get_or_create(
-                tenant=tenant,
-                email=email,
-                defaults={
-                    "role": User.Role.LECTURER,
-                    "first_name": spec["first"],
-                    "last_name": spec["last"],
-                    "gender": spec["gender"],
-                    "is_active": True,
-                    "is_email_verified": True,
-                },
-            )
-            if user_created:
-                user.set_password(DEFAULT_PASSWORD)
-                user.save()
-            elif user.role != User.Role.LECTURER:
-                user.role = User.Role.LECTURER
-                user.save()
+                user, user_created = User.objects.get_or_create(
+                    tenant=tenant,
+                    email=email,
+                    defaults={
+                        "role": User.Role.LECTURER,
+                        "first_name": spec["first"],
+                        "last_name": spec["last"],
+                        "gender": spec["gender"],
+                        "is_active": True,
+                        "is_email_verified": True,
+                    },
+                )
+                if user_created:
+                    user.set_password(DEFAULT_PASSWORD)
+                    user.save()
+                elif user.role != User.Role.LECTURER:
+                    user.role = User.Role.LECTURER
+                    user.save()
 
-            profile, prof_created = LecturerProfile.objects.get_or_create(
-                user=user,
-                tenant=tenant,
-                defaults={
-                    "department": department,
-                    "staff_number": spec["staff"],
-                },
-            )
-            if not prof_created:
-                if (
-                    profile.department_id != department.pk
-                    or not profile.staff_number
-                ):
-                    profile.department = department
-                    profile.staff_number = spec["staff"]
-                    profile.save()
-                    updated += 1
+                profile, prof_created = LecturerProfile.objects.get_or_create(
+                    user=user,
+                    tenant=tenant,
+                    defaults={
+                        "department": department,
+                        "staff_number": spec["staff"],
+                    },
+                )
+                if not prof_created:
+                    if (
+                        profile.department_id != department.pk
+                        or not profile.staff_number
+                    ):
+                        profile.department = department
+                        profile.staff_number = spec["staff"]
+                        profile.save()
+                        updated += 1
+                    else:
+                        skipped += 1
                 else:
-                    skipped += 1
-            else:
-                created += 1
+                    created += 1
 
-            self.stdout.write(
-                f"  {email} | {spec['first']} {spec['last']} | "
-                f"{spec['staff']} {'created' if user_created else 'exists'}"
-            )
+                self.stdout.write(
+                    f"  {email} | {spec['first']} {spec['last']} | "
+                    f"{spec['staff']} {'created' if user_created else 'exists'}"
+                )
+
+            total = User.objects.filter(
+                tenant=tenant, role=User.Role.LECTURER
+            ).count()
 
         self.stdout.write(self.style.SUCCESS(
             f"Done. Lecturers created={created}, profiles updated={updated}, "
             f"skipped={skipped}"
         ))
-        total = User.objects.filter(
-            tenant=tenant, role=User.Role.LECTURER
-        ).count()
         self.stdout.write(f"ATBU total lecturers (role=lecturer): {total}")
