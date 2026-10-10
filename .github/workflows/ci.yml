@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Django tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start infrastructure (db, redis, rabbitmq, minio, mailpit)
+        # Mirrors the documented local setup (docker compose up -d). The db init
+        # scripts live in infrastructure/postgres/init; ACADEMIAI_DEV_TEST_ROLE=1
+        # opts the fresh volume into creating the BYPASSRLS `academiai_test` role
+        # that backend/conftest.py connects as (never enabled on deployments).
+        run: docker compose up -d --wait db redis minio minio-init mailpit
+        env:
+          ACADEMIAI_DEV_TEST_ROLE: '1'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: API schema generation (guards against introspection regressions)
+        # A D2-class bug (placeholder queryset vs filterset_fields) crashes schema
+        # generation outright; running it here turns that class of defect into a
+        # build-time failure instead of a runtime 500.
+        working-directory: backend
+        env:
+          DJANGO_DEBUG: 'True'
+          DJANGO_SECRET_KEY: ci-only-insecure-key-not-used-anywhere
+        run: python manage.py spectacular --file /tmp/schema.yaml --validate
+
+      - name: Run backend test suite
+        working-directory: backend
+        env:
+          DJANGO_DEBUG: 'True'
+          DJANGO_SECRET_KEY: ci-only-insecure-key-not-used-anywhere
+        # -n auto is required by AGENTS.md: test_rls.py mutates global role/RLS
+        # state and must run against its own per-worker database.
+        run: python -m pytest -q
+
+  frontend:
+    name: Frontend (lint, build, unit tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint (oxlint)
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: Unit tests (vitest)
+        working-directory: frontend
+        run: npm test -- --reporter=dot
