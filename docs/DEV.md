@@ -26,7 +26,9 @@
 cd backend
 docker compose up -d
 .\.venv\Scripts\python.exe manage.py migrate          # auto-enforces RLS via post_migrate
-.\.venv\Scripts\python.exe manage.py seed_demo
+.\.venv\Scripts\python.exe manage.py seed_demo           # tenant + admin only
+.\.venv\Scripts\python.exe manage.py seed_atbu           # 8 faculties, 43 departments, 57 programmes
+.\.venv\Scripts\python.exe manage.py seed_atbu_lecturers # 8 lecturer accounts
 .\.venv\Scripts\python.exe manage.py runserver
 .\.venv\Scripts\python.exe -m pytest -q               # runs with -n auto (xdist); per-worker DBs
 
@@ -38,5 +40,5 @@ npm run build        # vite build
 npm test -- --run    # vitest
 
 # Design verification
-node .opencode/skills/impeccable/scripts/detect.mjs --json <file>
+.opencode/skills/impeccable/scripts/impeccable detect --json <file>
 ```

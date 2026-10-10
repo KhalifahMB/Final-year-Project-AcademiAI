@@ -23,6 +23,11 @@ db.sqlite3
 media/
 staticfiles/
 
+# Celery beat persistent schedule (SQLite store; -wal/-shm appear on
+# Python 3.13+ where the stdlib dbm default backend is dbm.sqlite3)
+celerybeat-schedule*
+*.celerybeat-schedule
+
 # Environment
 .env
 .env.local
@@ -69,6 +74,8 @@ mailpit/
 .claude/
 .qwen/
 .kilo/
+.codex/
+CLAUDE.md
 
 .superdesign/
 

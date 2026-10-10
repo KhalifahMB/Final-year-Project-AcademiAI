@@ -59,10 +59,12 @@ Prefer explicit types (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`,
 - **For UI edits**, run the design detector on changed files:
 
   ```powershell
-  node .opencode/skills/impeccable/scripts/detect.mjs --json <file>
+  .\.opencode\skills\impeccable\scripts\impeccable.cmd detect --json <file>
   ```
 
-  A clean result prints `[]`. Read `DESIGN.md` / `docs/PRODUCT.md` before deep UI work.
+  A clean result prints `[]`. This is a compiled binary, not `node detect.mjs` — an older revision of
+  this guide documented a `detect.mjs` that no longer ships. Read `DESIGN.md` / `docs/PRODUCT.md`
+  before deep UI work.
 
 - **Run backend checks** (from `backend/`):
 
@@ -115,8 +117,12 @@ Prefer explicit types (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`,
 
 - Keep `README.md`, `SETUP.md`, and the living docs under `docs/` accurate when
   behaviour or the project layout changes.
-- Dated session notes and working audits belong under `docs/archive/` — not in
-  the living docs.
+- Dated session notes and working audits are not kept in the repository. Keep the
+  living docs current in place rather than accumulating a separate archive —
+  a stale audit is worse than no audit, because it reads as current.
+- The final-year project report lives under `docs/report/` and is evidence-backed.
+  Every figure in it must be reproducible; if you change behaviour that a chapter
+  cites, update the corresponding entry in `docs/report/EVIDENCE.md`.
 
 ## Code of conduct
 

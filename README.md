@@ -167,9 +167,10 @@ is curated and evaluated.
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — recorded specification decisions.
 - [`docs/DEV.md`](docs/DEV.md) — current development status + command cheatsheet.
 - [`docs/FRONTEND_STACK.md`](docs/FRONTEND_STACK.md) — screen + component inventory.
-- [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) — build plan.
 - [`docs/PRODUCT_ROADMAP.md`](docs/PRODUCT_ROADMAP.md) — product roadmap.
 - [`docs/DOCUMENTATION_INDEX.md`](docs/DOCUMENTATION_INDEX.md) — full index.
+- [`docs/report/`](docs/report/) — the final-year project report, evidence register,
+  defect register and 62 verified screenshots.
 - Brand contract: `DESIGN.md` (visuals) + `docs/PRODUCT.md` (product/voice).
 
 ---

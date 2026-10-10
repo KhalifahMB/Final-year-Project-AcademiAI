@@ -52,7 +52,10 @@ npm test          # vitest, happy-dom env
 ## Design verification
 
 When editing UI, the Impeccable detector finds design regressions the linter won't:
-```bash
-node .opencode/skills/impeccable/scripts/detect.mjs --json <file>
+```powershell
+.\.opencode\skills\impeccable\scripts\impeccable.cmd detect --json <file>
 ```
+A clean result prints `[]`. (POSIX shells: use the extensionless `impeccable` sibling.) Note this is a
+compiled binary, not `node detect.mjs` — an older revision of this file documented a `detect.mjs` that
+no longer ships.
 Run `npm run lint` + `npm run build` after UI/JSX edits; both must stay clean before finishing.

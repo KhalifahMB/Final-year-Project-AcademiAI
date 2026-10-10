@@ -70,6 +70,28 @@ cd backend
 .\.venv\Scripts\python.exe -m celery -A config worker -l INFO -P solo -Q ai,celery,email,ingestion
 ```
 
+Celery **beat** (separate terminal, required — this is the scheduler):
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m celery -A config beat -l INFO
+```
+
+Beat dispatches `CELERY_BEAT_SCHEDULE` (`config/settings.py`); the only
+current entry is `restrict_suspended_tenant_logins`, which enforces the 24 h
+post-suspension login grace period every 30 minutes.
+
+Run **exactly one** beat. Two schedulers sharing one schedule store each
+dispatch every entry, so the task would run twice per cycle — which is also
+why the worker must not be started with `-B`.
+
+Together with `runserver` and the worker, that makes three separate processes
+to leave running: the API, the worker, and the scheduler.
+
+Beat keeps its schedule state in `celerybeat-schedule` in `backend/`, a
+runtime artifact (gitignored). Deleting it is safe: the next beat start
+recreates it and the periodic entries simply restart their timing.
+
 API docs: http://localhost:8000/api/schema/swagger-ui/
 
 ## 3. Frontend
