@@ -473,6 +473,11 @@ def test_student_reminders_only_due_exams_and_milestones():
     tenant = _tenant("dash-remind")
     student = _user("stu@dash-remind.edu", tenant, role="student")
     _fac, _dep, _course, _session, _semester, offering = _campus(tenant)
+    # Exam reminders are scoped to the student's current enrolments, so the
+    # offering has to be enrolled for its exam to surface at all.
+    CourseEnrollment.objects.create(
+        tenant=tenant, course_offering=offering, student=student,
+    )
 
     today = timezone.localdate()
     in3 = today + datetime.timedelta(days=3)
@@ -526,6 +531,55 @@ def test_student_reminders_only_due_exams_and_milestones():
 
     # Reminders are sorted by date (today's milestone first).
     assert reminders[0]["when"] == today.isoformat()
+
+
+@pytest.mark.django_db
+def test_student_reminders_exclude_exams_for_offerings_not_enrolled_in():
+    """Exams must never leak from offerings the student has no enrolment in.
+
+    Guards the tenant-scoped filter that the reminders view relies on: an
+    earlier version returned the whole institution exam timetable.
+    """
+    tenant = _tenant("dash-remind-scope")
+    student = _user("stu@dash-remind-scope.edu", tenant, role="student")
+    _f, _d, _c, _s, _sem, enrolled_offering = _campus(tenant)
+    # A second, unrelated offering in the same tenant.
+    other_course = Course.objects.create(
+        tenant=tenant, department=_d, code="MATH200", title="Advanced Maths",
+    )
+    other_offering = CourseOffering.objects.create(
+        tenant=tenant, course=other_course, academic_session=_s, semester=_sem,
+    )
+    CourseEnrollment.objects.create(
+        tenant=tenant, course_offering=enrolled_offering, student=student,
+    )
+
+    soon = timezone.localdate() + datetime.timedelta(days=2)
+    at = timezone.make_aware(datetime.datetime.combine(soon, datetime.time(9, 0)))
+    CalendarEvent.objects.create(
+        tenant=tenant, title="Enrolled Exam", event_type=CalendarEvent.EventType.EXAM,
+        layer=CalendarLayer.EXAMS, start=at, end=at + datetime.timedelta(hours=2),
+        course_offering=enrolled_offering,
+    )
+    CalendarEvent.objects.create(
+        tenant=tenant, title="Other Exam", event_type=CalendarEvent.EventType.EXAM,
+        layer=CalendarLayer.EXAMS, start=at, end=at + datetime.timedelta(hours=2),
+        course_offering=other_offering,
+    )
+
+    resp = _auth(student).get("/api/v1/dashboard/student/reminders/")
+    assert resp.status_code == 200
+    titles = {r["title"] for r in resp.json()["reminders"]}
+    assert "Enrolled Exam" in titles
+    assert "Other Exam" not in titles
+
+    # Narrowing by an offering the caller is not enrolled in must not widen
+    # visibility — it returns nothing rather than the other course's exam.
+    resp = _auth(student).get(
+        f"/api/v1/dashboard/student/reminders/?course_offering={other_offering.id}",
+    )
+    assert resp.status_code == 200
+    assert {r["title"] for r in resp.json()["reminders"]} == set()
 
 
 @pytest.mark.django_db

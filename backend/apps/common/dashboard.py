@@ -35,6 +35,30 @@ def _tenant_cache_key(user, suffix: str) -> str:
     return f"dashboard:{tid}:{user.role}:{getattr(user, 'id', 'anon')}:{suffix}:v1"
 
 
+class CachedDashboardView(APIView):
+    """APIView with the read-through cache dance shared by dashboard views.
+
+    Subclasses implement ``cache_key(user)`` (unique per tenant/user/params)
+    and ``build(...)``; ``get_cached`` handles the cache.get / cache.set
+    round-trip so the 60s TTL strategy lives in exactly one place.
+    """
+
+    def cache_key(self, request) -> str:
+        raise NotImplementedError
+
+    def build(self, request):
+        raise NotImplementedError
+
+    def get_cached(self, request):
+        key = self.cache_key(request)
+        data = cache.get(key)
+        if data is not None:
+            return Response(data)
+        data = self.build(request)
+        cache.set(key, data, STALE_SECONDS)
+        return Response(data)
+
+
 # ----------------------------------------------------------------------
 # Student dashboard
 # ----------------------------------------------------------------------
@@ -47,20 +71,20 @@ def _tenant_cache_key(user, suffix: str) -> str:
         "chat sessions, recently-updated course resources, quick links."
     ),
 )
-class StudentDashboardView(APIView):
+class StudentDashboardView(CachedDashboardView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        return self.get_cached(request)
+
+    def cache_key(self, request):
+        return _tenant_cache_key(request.user, "student")
+
+    def build(self, request):
         user = request.user
         if not user.tenant_id:
-            return Response(self._empty())
-        key = _tenant_cache_key(user, "student")
-        data = cache.get(key)
-        if data is not None:
-            return Response(data)
-        data = self._build(user)
-        cache.set(key, data, STALE_SECONDS)
-        return Response(data)
+            return self._empty()
+        return self._build(user)
 
     @staticmethod
     def _empty():
@@ -285,20 +309,20 @@ class StudentDashboardView(APIView):
         "15+ list calls the frontend used to fire."
     ),
 )
-class AdminDashboardView(APIView):
+class AdminDashboardView(CachedDashboardView):
     permission_classes = [IsLecturerOrAdmin]
 
     def get(self, request):
+        return self.get_cached(request)
+
+    def cache_key(self, request):
+        return _tenant_cache_key(request.user, "tenant_admin")
+
+    def build(self, request):
         user = request.user
         if not user.tenant_id:
-            return Response(self._empty())
-        key = _tenant_cache_key(user, "tenant_admin")
-        data = cache.get(key)
-        if data is not None:
-            return Response(data)
-        data = self._build(user)
-        cache.set(key, data, STALE_SECONDS)
-        return Response(data)
+            return self._empty()
+        return self._build(user)
 
     @staticmethod
     def _empty():
@@ -439,20 +463,20 @@ class AdminDashboardView(APIView):
         "actually assigned to — never the whole tenant."
     ),
 )
-class LecturerDashboardView(APIView):
+class LecturerDashboardView(CachedDashboardView):
     permission_classes = [IsLecturerOrAdmin]
 
     def get(self, request):
+        return self.get_cached(request)
+
+    def cache_key(self, request):
+        return _tenant_cache_key(request.user, "lecturer")
+
+    def build(self, request):
         user = request.user
         if not user.tenant_id:
-            return Response(self._empty())
-        key = _tenant_cache_key(user, "lecturer")
-        data = cache.get(key)
-        if data is not None:
-            return Response(data)
-        data = self._build(user)
-        cache.set(key, data, STALE_SECONDS)
-        return Response(data)
+            return self._empty()
+        return self._build(user)
 
     @staticmethod
     def _empty():
@@ -878,6 +902,7 @@ class StudentRemindersView(APIView):
 
     @classmethod
     def _build(cls, tid, user, offering_id=None):
+        from apps.academics.models import CourseEnrollment
         from apps.calendar.models import CalendarEvent, CalendarLayer
         from apps.learning.models import Plan, PlanMilestone
 
@@ -969,24 +994,26 @@ class StudentRemindersView(APIView):
         "recent events. Cached 60s."
     ),
 )
-class AdminAuditSummaryView(APIView):
+class AdminAuditSummaryView(CachedDashboardView):
     permission_classes = [IsLecturerOrAdmin]
 
     def get(self, request):
-        user = request.user
-        tid = user.tenant_id
+        return self.get_cached(request)
+
+    @staticmethod
+    def _clamped_days(request) -> int:
         try:
             days = int(request.query_params.get("days", "14"))
         except (TypeError, ValueError):
             days = 14
-        days = max(1, min(days, 90))
-        key = f"dashboard:{tid}:admin-audit-summary:{days}:v1"
-        data = cache.get(key)
-        if data is not None:
-            return Response(data)
-        data = self._build(tid, days)
-        cache.set(key, data, STALE_SECONDS)
-        return Response(data)
+        return max(1, min(days, 90))
+
+    def cache_key(self, request):
+        tid = request.user.tenant_id
+        return f"dashboard:{tid}:admin-audit-summary:{self._clamped_days(request)}:v1"
+
+    def build(self, request):
+        return self._build(request.user.tenant_id, self._clamped_days(request))
 
     @staticmethod
     def _build(tid, days):
@@ -1083,8 +1110,7 @@ class AiGreetingView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        from django.conf import settings
-        from apps.common.ai.gemini import _get_client
+        from apps.common.ai.gemini import _get_client, generate_content_with_fallback
 
         user = request.user
         cache_key = f"ai-greeting:{user.tenant_id}:{user.id}:v1"
@@ -1151,10 +1177,7 @@ class AiGreetingView(APIView):
             return Response(result)
 
         try:
-            resp = client.models.generate_content(
-                model=settings.GEMINI_MODEL,
-                contents=prompt,
-            )
+            resp = generate_content_with_fallback(prompt, {}, client=client)
             greeting_text = (resp.text or "").strip()
             if not greeting_text:
                 greeting_text = f"Welcome back, {first_name}! Ready to dive in?"
@@ -1179,8 +1202,7 @@ class AiInsightView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        from django.conf import settings
-        from apps.common.ai.gemini import _get_client
+        from apps.common.ai.gemini import _get_client, generate_content_with_fallback
 
         user = request.user
         dashboard_type = request.data.get("dashboard_type", "student")
@@ -1219,10 +1241,7 @@ class AiInsightView(APIView):
             return Response(result)
 
         try:
-            resp = client.models.generate_content(
-                model=settings.GEMINI_MODEL,
-                contents=prompt,
-            )
+            resp = generate_content_with_fallback(prompt, {}, client=client)
             raw = (resp.text or "").strip()
             raw = re.sub(r"^```json\s*|\s*```$", "", raw, flags=re.I)
             parsed = json.loads(raw) if raw else None
