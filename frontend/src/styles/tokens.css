@@ -1,9 +1,9 @@
 /* =========================================================
    AcademiAI design tokens (Tailwind v4 @theme)
-   Direction: grounded institutional UI (wireframe spec)
-   — Violet accent #6C5CE7 · paper light / near-black dark
+   Direction: grounded institutional UI — "Colophon" rebrand
+   — Iron Gall accent (deep scholarly teal ink) · paper light / slate-ink dark
    — Geist + Geist Mono in-app · Fraunces serif on landing
-   — Hairline borders · grain + 48px grid textures
+   — Hairline borders · grain + 48px grid textures · zero color gradients
    ========================================================= */
 @theme {
   /* Radii — modern, not bubbly (Open Design spec: lg 12, md 8, sm 6) */
@@ -69,7 +69,7 @@
 
   /* Popover/dropdown/modal shadow — ONLY place shadows appear */
   --shadow-pop:
-    0 12px 32px rgba(18, 10, 40, 0.12), 0 2px 8px rgba(18, 10, 40, 0.06);
+    0 12px 32px rgba(28, 24, 16, 0.12), 0 2px 8px rgba(28, 24, 16, 0.06);
 
   /* Typography — Geist (app), Fraunces (landing display), Geist Mono (meta) */
   --font-sans:
@@ -94,7 +94,7 @@
 }
 
 /* =========================================================
-   Light mode — warm paper canvas, violet accent
+   Light mode — warm paper canvas, Iron Gall accent
    ========================================================= */
 :root {
   color-scheme: light;
@@ -105,23 +105,23 @@
   --surface-2: oklch(0.965 0.004 85);
   --hover: oklch(0.945 0.005 85);
 
-  /* Text */
-  --fg: oklch(0.2 0.018 285);
-  --fg-soft: oklch(0.37 0.02 285);
-  --muted: oklch(0.53 0.015 285);
-  --faint: oklch(0.7 0.01 285);
+  /* Text — warm sepia ink: one neutral family with the paper canvas */
+  --fg: oklch(0.22 0.015 75);
+  --fg-soft: oklch(0.38 0.018 75);
+  --muted: oklch(0.52 0.014 75);
+  --faint: oklch(0.66 0.01 75);
 
   /* Lines — hairline on paper */
   --border: oklch(0.905 0.006 85);
   --border-strong: oklch(0.83 0.008 85);
   --input: var(--surface-2);
-  --ring: oklch(0.577 0.195 282);
+  --ring: oklch(0.48 0.075 210);
 
-  /* Single accent — brand violet #6C5CE7 ≈ oklch(0.577 0.195 282) */
-  --accent: oklch(0.577 0.195 282);
-  --accent-strong: oklch(0.5 0.19 282);
-  --accent-soft: oklch(0.945 0.028 282);
-  --accent-line: oklch(0.86 0.07 282);
+  /* Single accent — Iron Gall: deep teal ink, the color of manuscript penwork */
+  --accent: oklch(0.48 0.075 210);
+  --accent-strong: oklch(0.4 0.075 210);
+  --accent-soft: oklch(0.955 0.02 210);
+  --accent-line: oklch(0.86 0.045 210);
   --on-accent: oklch(0.99 0.002 85);
 
   /* Status (data, not decoration) */
@@ -131,8 +131,9 @@
   --warn-soft: oklch(0.955 0.03 85);
   --danger: oklch(0.52 0.19 25);
   --danger-soft: oklch(0.955 0.02 25);
-  --info: oklch(0.52 0.11 245);
-  --info-soft: oklch(0.955 0.02 245);
+  /* Info = slate: information is carried by form (mono badges), not hue */
+  --info: oklch(0.45 0.02 260);
+  --info-soft: oklch(0.955 0.008 260);
 
   /* Aliases used by shadcn/card components */
   --background: var(--bg);
@@ -161,7 +162,7 @@
 
   /* Shadows reserved for popovers/dropdowns/modals ONLY */
   --shadow-pop:
-    0 12px 32px rgba(18, 10, 40, 0.12), 0 2px 8px rgba(18, 10, 40, 0.06);
+    0 12px 32px rgba(28, 24, 16, 0.12), 0 2px 8px rgba(28, 24, 16, 0.06);
 
   /* Layout */
   --topbar-h: 56px;
@@ -170,34 +171,35 @@
 }
 
 /* =========================================================
-   Dark mode — near-black canvases, violet accent
+   Dark mode — near-black canvases, Iron Gall accent
    ========================================================= */
 .dark {
   color-scheme: dark;
 
-  /* Canvas + surfaces — near-black blue-violet (#0B0B0E ≈ oklch(.145 .015 282)) */
-  --bg: oklch(0.145 0.015 282);
-  --surface: oklch(0.19 0.018 282);
-  --surface-2: oklch(0.235 0.02 282);
-  --hover: oklch(0.27 0.022 282);
+  /* Canvas + surfaces — near-black slate-ink (accent-anchored, no violet cast) */
+  --bg: oklch(0.15 0.012 220);
+  --surface: oklch(0.195 0.014 220);
+  --surface-2: oklch(0.24 0.016 220);
+  --hover: oklch(0.275 0.018 220);
 
   /* Text */
-  --fg: oklch(0.97 0.008 282);
-  --fg-soft: oklch(0.85 0.01 282);
-  --muted: oklch(0.68 0.012 282);
-  --faint: oklch(0.52 0.015 282);
+  --fg: oklch(0.97 0.008 220);
+  --fg-soft: oklch(0.85 0.01 220);
+  --muted: oklch(0.68 0.012 220);
+  --faint: oklch(0.52 0.015 220);
 
   /* Lines — hairline on near-black */
-  --border: oklch(0.275 0.02 282);
-  --border-strong: oklch(0.35 0.025 282);
-  --input: oklch(0.235 0.02 282);
-  --ring: oklch(0.72 0.17 282);
+  --border: oklch(0.275 0.02 220);
+  --border-strong: oklch(0.35 0.024 220);
+  --input: oklch(0.24 0.016 220);
+  --ring: oklch(0.76 0.1 200);
 
-  --accent: oklch(0.72 0.17 282);
-  --accent-strong: oklch(0.78 0.15 282);
-  --accent-soft: oklch(0.32 0.07 282);
-  --accent-line: oklch(0.42 0.09 282);
-  --on-accent: oklch(0.98 0.005 282);
+  /* Iron Gall lifted for dark canvases; on-accent flips to ink-on-teal */
+  --accent: oklch(0.76 0.1 200);
+  --accent-strong: oklch(0.82 0.09 200);
+  --accent-soft: oklch(0.32 0.045 210);
+  --accent-line: oklch(0.44 0.06 210);
+  --on-accent: oklch(0.17 0.03 220);
 
   --success: oklch(0.75 0.13 152);
   --success-soft: oklch(0.3 0.05 152);
@@ -205,8 +207,8 @@
   --warn-soft: oklch(0.32 0.05 85);
   --danger: oklch(0.71 0.17 25);
   --danger-soft: oklch(0.31 0.06 25);
-  --info: oklch(0.73 0.11 245);
-  --info-soft: oklch(0.3 0.05 245);
+  --info: oklch(0.72 0.03 260);
+  --info-soft: oklch(0.3 0.02 260);
 
   --background: var(--bg);
   --foreground: var(--fg);

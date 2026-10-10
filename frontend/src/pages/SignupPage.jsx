@@ -209,7 +209,7 @@ export default function SignupPage() {
       }
     >
       {error && (
-        <Alert variant="destructive" role="alert" className="mb-4 border-red-500/30 bg-[var(--danger-soft)] text-red-700 dark:text-red-400">
+        <Alert variant="destructive" role="alert" className="mb-4 border-[var(--danger)]/30 bg-[var(--danger-soft)] text-[var(--danger)]">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}

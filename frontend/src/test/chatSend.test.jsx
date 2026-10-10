@@ -42,7 +42,8 @@ async function openChat() {
     id: 'u1', email: 'stud@uni.edu', role: 'student', first_name: 'Stu', tenant: {},
   });
   chatApi.createSession.mockResolvedValue({
-    data: { id: 's1', title: 'New chat' },
+    id: 's1',
+    title: 'New chat',
   });
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 0 } },
@@ -119,5 +120,35 @@ describe('chat send', () => {
 
   it('returns an empty list for no attachments', () => {
     expect(confirmedResourceIds([])).toEqual([]);
+  });
+
+  // An unavailable AI backend used to be streamed as a fabricated answer
+  // ("(Dev stub — set GEMINI_API_KEY …) Based on N retrieved chunk(s) …"),
+  // which rendered and persisted like a real reply. The server now sends a
+  // terminal `error` event; the page must alert and give the draft back.
+  it('surfaces the server message and restores the draft when the stream errors', { timeout: 90000 }, async () => {
+    const chatApi = await openChat();
+    const SERVER_MSG = 'The AI service is currently unavailable. Please try again later.';
+
+    chatApi.stream.mockImplementation((_sid, _content, { onError }) => {
+      onError?.(new Error(SERVER_MSG));
+      return { abort: vi.fn() };
+    });
+
+    const user = userEvent.setup();
+    const input = screen.getByTestId('chat-input');
+    await user.type(input, 'Summarize the key ideas');
+    await user.click(input);
+    await user.type(input, '{Enter}');
+
+    await waitFor(() => expect(screen.getByText(SERVER_MSG)).toBeInTheDocument(), {
+      timeout: 10000,
+    });
+    // No fabricated answer may reach the transcript.
+    expect(screen.queryByText(/Dev stub/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/retrieved chunk/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/GEMINI_API_KEY/)).not.toBeInTheDocument();
+    // The draft is returned so the user can retry without retyping.
+    await waitFor(() => expect(screen.getByTestId('chat-input')).toHaveValue('Summarize the key ideas'));
   });
 });

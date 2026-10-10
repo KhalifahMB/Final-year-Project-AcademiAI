@@ -39,7 +39,7 @@ const chartTooltipStyle = {
 export default function AnalyticsPage() {
   const statsQ = useQuery({
     queryKey: ["platform-stats"],
-    queryFn: async () => (await platformApi.stats()).data,
+    queryFn: () => platformApi.stats(),
     staleTime: 30_000,
   });
 

@@ -86,7 +86,7 @@ export default function SummaryPanel({
             <div className="card-surface overflow-hidden">
               {/* Accent hairline — single accent economy */}
               <div
-                className="h-[3px] w-full bg-gradient-to-r from-[var(--accent)] via-[var(--accent)] to-[var(--info)]"
+                className="h-[3px] w-full bg-[var(--accent)]"
                 aria-hidden
               />
 

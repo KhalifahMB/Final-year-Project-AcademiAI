@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
+import StatStrip from '@/components/shared/StatStrip';
 import StatTile from '@/components/shared/StatTile';
 import EmptyState from '@/components/shared/EmptyState';
 import { EmptyCoursesIllustration } from '@/components/shared/illustrations';
@@ -98,16 +99,15 @@ export default function MyCoursesPage() {
       description="Your enrollments for the current academic sessions."
     >
       {!isLoading && enrollments.length > 0 && (
-        <div className="mb-4 grid grid-cols-3 gap-2.5">
+        <StatStrip className="mb-4">
           <StatTile label="Enrolled" value={counts.total} icon={BookOpen} />
           <StatTile
             label="Active"
             value={counts.active}
             icon={GraduationCap}
-            tone="emerald"
           />
-          <StatTile label="Completed" value={counts.completed} tone="violet" />
-        </div>
+          <StatTile label="Completed" value={counts.completed} />
+        </StatStrip>
       )}
 
       {error ? (

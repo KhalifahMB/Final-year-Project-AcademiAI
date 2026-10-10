@@ -48,7 +48,7 @@ export default function AiInsightCard({ dashboardType = 'student', className, 'd
   if (!data) return null;
 
   return (
-    <div className={cn('rounded-xl border bg-gradient-to-br from-primary/5 to-accent/5 p-4', className)} data-testid={testId}>
+    <div className={cn('rounded-xl border bg-card p-4', className)} data-testid={testId}>
       <div className="flex items-center gap-2 mb-2">
         <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10">
           <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden />

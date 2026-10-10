@@ -649,7 +649,7 @@ function ActivePlans({ items }) {
           </h3>
         </div>
         <Link
-          to="/planner"
+          to="/plans"
           className="inline-flex items-center gap-0.5 text-[12px] font-[600] text-[var(--accent-strong)] hover:underline"
         >
           Planner
@@ -673,7 +673,7 @@ function ActivePlans({ items }) {
             return (
               <li key={p.id}>
                 <Link
-                  to="/planner"
+                  to="/plans"
                   className="group block rounded-[var(--radius-md)] px-2 py-2 transition-colors hover:bg-[var(--hover)]"
                 >
                   <div className="flex items-center justify-between gap-2">

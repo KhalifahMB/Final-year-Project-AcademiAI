@@ -9,6 +9,7 @@ import EmptyState from '@/components/shared/EmptyState';
 import { EmptyResourcesIllustration } from '@/components/shared/illustrations';
 import Pagination from '@/components/shared/Pagination';
 import StatusBadge from '@/components/shared/StatusBadge';
+import StatStrip from '@/components/shared/StatStrip';
 import StatTile from '@/components/shared/StatTile';
 import ResourceCard from '@/components/resources/ResourceCard';
 import { Button } from '@/components/ui/button';
@@ -370,12 +371,11 @@ const ResourceRow = ({ r }) => (
  }
  >
  {/* Stats strip */}
-  <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4" data-testid="resources-stats">
- <StatTile label="Total materials" value={counts.all} />
- <StatTile label="Ready" value={counts.ready} tone="emerald" icon={Sparkles} />
- <StatTile label="Processing" value={counts.processing + counts.pending} tone="sky" />
- <StatTile label="Failed" value={counts.failed} tone="red" />
- </div>
+  <StatStrip className="mb-4" data-testid="resources-stats">
+ <StatTile label="Total materials" value={counts.all} />  <StatTile label="Ready" value={counts.ready} tone="ok" icon={Sparkles} />
+  <StatTile label="Processing" value={counts.processing + counts.pending} tone="info" />
+  <StatTile label="Failed" value={counts.failed} tone="bad" />
+ </StatStrip>
 
  {/* Toolbar */}
  <div className="mb-3 flex flex-wrap items-center gap-2">

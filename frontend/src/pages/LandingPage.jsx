@@ -15,7 +15,6 @@ import {
   ListChecks,
   Lock,
   Megaphone,
-  Quote,
   Rss,
   Search,
   ShieldCheck,
@@ -171,7 +170,25 @@ const SIGNALS = [
   },
 ];
 
-const TESTIMONIALS = [];
+/* Verifiable product principles (mirrors PRODUCT.md) — never
+   fabricated quotes; unattributable claims don't ship. */
+const COMMITMENTS = [
+  {
+    num: '01',
+    title: 'Grounded truth over fluency',
+    text: 'If retrieval cannot support an answer, the assistant says so. No invented content — every claim traces to a document, page and score you can open.',
+  },
+  {
+    num: '02',
+    title: 'Hard isolation',
+    text: 'Row-level security at the database layer seals each institution\u2019s materials, index and audit trail inside its own tenant.',
+  },
+  {
+    num: '03',
+    title: 'Full audit',
+    text: 'Every significant action is logged and reviewable. Trust here is verified, not assumed.',
+  },
+];
 
 const FAQS = [
   {
@@ -391,7 +408,9 @@ export default function LandingPage() {
         <div className="landing-shell landing-nav__inner">
           <Link to="/" className="landing-brand" aria-label="AcademiAI home">
             <BrandMark size="h-8 w-8" />
-            <span>AcademiAI</span>
+            <span>
+              Academi<span className="text-[var(--accent-strong)]">AI</span>
+            </span>
           </Link>
           <nav
             className="landing-nav__links"
@@ -540,14 +559,17 @@ export default function LandingPage() {
                 role actually learns and teaches.
               </p>
             </div>
-            <div className="landing-feature-grid">
-              {FEATURES.map(({ icon: Icon, title, text }) => (
-                <article key={title} className="landing-feature">
-                  <span className="landing-feature__icon">
-                    <Icon aria-hidden="true" />
+            <div className="landing-ledger">
+              {FEATURES.map(({ icon: Icon, title, text }, i) => (
+                <article key={title} className="landing-ledger__row">
+                  <span className="landing-ledger__num" aria-hidden="true">
+                    {String(i + 1).padStart(2, '0')}
                   </span>
-                  <h3>{title}</h3>
-                  <p>{text}</p>
+                  <Icon className="landing-ledger__icon" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <h3>{title}</h3>
+                    <p>{text}</p>
+                  </div>
                 </article>
               ))}
             </div>
@@ -745,25 +767,22 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ------------------------------------------- Testimonials */}
-        <section className="landing-testimonials landing-section">
+        {/* ------------------------------------------- Commitments */}
+        <section className="landing-commitments landing-section">
           <div className="landing-shell">
             <div className="landing-section__heading">
-              <p className="landing-eyebrow">In the field</p>
-              <h2>Built with universities, not for them.</h2>
+              <p className="landing-eyebrow">Commitments</p>
+              <h2>Three promises we can prove.</h2>
             </div>
-            <div className="landing-testimonials__grid">
-              {TESTIMONIALS.map(({ quote, name, role }) => (
-                <figure key={name} className="landing-testimonial">
-                  <Quote className="h-4 w-4 text-[var(--landing-accent)]" aria-hidden="true" />
-                  <blockquote className="landing-testimonial__quote">
-                    {quote}
-                  </blockquote>
-                  <figcaption className="landing-testimonial__foot">
-                    <span className="landing-testimonial__name">{name}</span>
-                    <span className="landing-testimonial__role">{role}</span>
-                  </figcaption>
-                </figure>
+            <div className="landing-commitments__grid">
+              {COMMITMENTS.map(({ num, title, text }) => (
+                <article key={num} className="landing-commitment">
+                  <span className="landing-commitment__num" aria-hidden="true">
+                    {num}
+                  </span>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </article>
               ))}
             </div>
           </div>
@@ -826,7 +845,9 @@ export default function LandingPage() {
         <div className="landing-shell landing-footer__inner">
           <Link to="/" className="landing-brand">
             <BrandMark size="h-7 w-7" />
-            <span>AcademiAI</span>
+            <span>
+              Academi<span className="text-[var(--accent-strong)]">AI</span>
+            </span>
           </Link>
           <nav className="landing-footer__links" aria-label="Footer">
             <a href="#security">Security</a>

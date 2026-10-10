@@ -573,8 +573,8 @@ function SystemHealth({ data, isLoading }) {
           hint={`${data?.error_rate ?? 0}% of events`}
           tone={
             errorCount > 0
-              ? 'bg-red-500/15 text-red-700 dark:text-red-400'
-              : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+              ? 'bg-[var(--danger-soft)] text-[var(--danger)]'
+              : 'bg-[var(--success-soft)] text-[var(--success)]'
           }
         />
         <MetricTile

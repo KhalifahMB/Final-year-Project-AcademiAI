@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import EmptyState from '@/components/shared/EmptyState';
+import StatStrip from '@/components/shared/StatStrip';
 import StatTile from '@/components/shared/StatTile';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -277,15 +278,14 @@ export default function CoursesPage() {
 
   {/* Stats */}
   {!isLoading && courses.length > 0 && (
-  <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+  <StatStrip className="mb-4">
   <StatTile label="Total courses" value={courses.length} icon={BookOpen} />
-  <StatTile label="Active" value={activeCount} icon={GraduationCap} tone="emerald" />
+  <StatTile label="Active" value={activeCount} icon={GraduationCap} />
   <StatTile
   label="Credit units"
   value={courses.reduce((s, c) => s + (Number(c.credit_unit) || 0), 0)}
-  tone="violet"
   />
-  </div>
+  </StatStrip>
   )}
 
   {error ? (

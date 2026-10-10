@@ -36,7 +36,7 @@ export const profileSchema = z.object({
 
 export const verifyEmailSchema = z.object({
   email: z.string().email(),
-  code: z.string().min(4, "Enter the verification code"),
+  code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
 });
 
 export const passwordResetRequestSchema = z.object({
@@ -46,7 +46,7 @@ export const passwordResetRequestSchema = z.object({
 export const passwordResetConfirmSchema = z
   .object({
     email: z.string().email(),
-    token: z.string().min(4, "Enter the reset code"),
+    token: z.string().regex(/^\d{6}$/, "Enter the 6-digit code"),
     password: z.string().min(8, "At least 8 characters"),
     confirm: z.string().min(8),
   })

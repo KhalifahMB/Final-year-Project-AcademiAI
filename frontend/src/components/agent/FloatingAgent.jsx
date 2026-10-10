@@ -49,6 +49,54 @@ const DEFAULT_TONE = {
   exec: 'var(--danger)',
 };
 
+const POSITION_STORAGE_KEY = 'academiai:agent-position';
+// Keep clear of the orb's own box plus a small breathing gap.
+const ORB_EDGE = 60;
+const POSITION_OFFSET = 80;
+
+function defaultPosition() {
+  return {
+    x: window.innerWidth - POSITION_OFFSET,
+    y: window.innerHeight - POSITION_OFFSET,
+  };
+}
+
+function clampAxis(value, viewportSize) {
+  return Math.max(0, Math.min(value, Math.max(0, viewportSize - ORB_EDGE)));
+}
+
+/**
+ * Keep the orb inside the viewport.
+ *
+ * The drag handler clamps as it moves, but the *persisted* value is loaded
+ * verbatim — so a position saved while the window was larger (or from a
+ * malformed write) would place the orb permanently off-screen with no way to
+ * drag it back. Clamp on load and again on every resize.
+ */
+function clampPosition(pos, width, height) {
+  const x = Number(pos?.x);
+  const y = Number(pos?.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return defaultPosition();
+  return {
+    x: clampAxis(x, width),
+    y: clampAxis(y, height),
+  };
+}
+
+function loadPosition() {
+  try {
+    const saved = localStorage.getItem(POSITION_STORAGE_KEY);
+    if (!saved) return defaultPosition();
+    return clampPosition(
+      JSON.parse(saved),
+      window.innerWidth,
+      window.innerHeight,
+    );
+  } catch {
+    return defaultPosition();
+  }
+}
+
 export default function FloatingAgent() {
   const {
     messages,
@@ -74,16 +122,7 @@ export default function FloatingAgent() {
   const [showHistory, setShowHistory] = useState(false);
   const [showAgents, setShowAgents] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [position, setPosition] = useState(() => {
-    try {
-      const saved = localStorage.getItem('academiai:agent-position');
-      return saved
-        ? JSON.parse(saved)
-        : { x: window.innerWidth - 80, y: window.innerHeight - 80 };
-    } catch {
-      return { x: window.innerWidth - 80, y: window.innerHeight - 80 };
-    }
-  });
+  const [position, setPosition] = useState(loadPosition);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef(null);
   const dragMovedRef = useRef(false);
@@ -99,8 +138,23 @@ export default function FloatingAgent() {
   const enabled = settings.enabled !== false;
 
   useEffect(() => {
-    localStorage.setItem('academiai:agent-position', JSON.stringify(position));
+    localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(position));
   }, [position]);
+
+  // Shrinking the window can strand the orb outside the new viewport (the
+  // drag clamp only runs while dragging), so re-clamp whenever it resizes.
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition((prev) =>
+        prev.x === clampAxis(prev.x, window.innerWidth) &&
+        prev.y === clampAxis(prev.y, window.innerHeight)
+          ? prev
+          : clampPosition(prev, window.innerWidth, window.innerHeight),
+      );
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({
@@ -145,15 +199,12 @@ export default function FloatingAgent() {
       if (Math.abs(e.clientX - s.startX) + Math.abs(e.clientY - s.startY) > 5) {
         dragMovedRef.current = true;
       }
-      const newX = Math.max(
-        0,
-        Math.min(window.innerWidth - 60, s.origX + (e.clientX - s.startX)),
+      const next = clampPosition(
+        { x: s.origX + (e.clientX - s.startX), y: s.origY + (e.clientY - s.startY) },
+        window.innerWidth,
+        window.innerHeight,
       );
-      const newY = Math.max(
-        0,
-        Math.min(window.innerHeight - 60, s.origY + (e.clientY - s.startY)),
-      );
-      setPosition({ x: newX, y: newY });
+      setPosition(next);
     };
 
     const handleUp = () => {

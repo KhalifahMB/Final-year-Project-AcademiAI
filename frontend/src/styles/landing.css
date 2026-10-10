@@ -2,9 +2,7 @@
    Landing — wireframe "grounded institutional" system.
    Public pages + auth edition, scoped via .landing-page /
    .landing-auth so authenticated surfaces keep their material
-   language (components.css).
-
-   Voice: violet accent · paper light / near-black dark ·
+   language (components.css).    Voice: Iron Gall accent · paper light / slate-ink dark ·
    Fraunces display serif · Geist body · grain + 48px grid ·
    hairline panels. Values bind to the tokens in tokens.css.
    ========================================================= */
@@ -40,8 +38,7 @@
   }
 
   /* =========================================================
-     Landing scope — wireframe tokens.
-     All values derive from the app tokens (violet/paper);
+     Landing scope — wireframe tokens.      All values derive from the app tokens (iron-gall/paper);
      --landing-* aliases are kept so sibling pages (auth,
      request-institution) bind to the same language.
      ========================================================= */
@@ -216,25 +213,8 @@
     position: relative;
     padding-block: clamp(72px, 9vw, 128px) clamp(64px, 8vw, 112px);
   }
-  .landing-hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background:
-      radial-gradient(
-        900px 520px at 78% -12%,
-        color-mix(in oklab, var(--accent) 12%, transparent) 0%,
-        transparent 62%
-      ),
-      radial-gradient(
-        720px 420px at 8% 12%,
-        color-mix(in oklab, var(--accent) 7%, transparent) 0%,
-        transparent 60%
-      );
-    pointer-events: none;
-    mask-image: linear-gradient(to bottom, black 30%, transparent 92%);
-  }
+  /* Colophon rebrand: the radial accent washes are gone — the hero's
+     atmosphere is the 48px grid below (plus grain), nothing else. */
   .landing-hero::after {
     content: '';
     position: absolute;
@@ -548,7 +528,7 @@
   }
   /* :not(.landing-eyebrow) — the eyebrow is a <p> too, and this descendant
      selector outranks .landing-eyebrow, which silently downgraded all ten
-     section eyebrows from 11px violet mono to 16px muted body text. */
+     section eyebrows from 11px Iron Gall mono to 16px muted body text. */
   .landing-section__heading p:not(.landing-eyebrow),
   .landing-section__heading--split p:not(.landing-eyebrow) {
     color: var(--landing-muted);
@@ -613,66 +593,51 @@
 
   /* =========================================================
      Platform — "One isolated workspace per institution."
-     Six-card feature grid; hairline panels, violet icon chips.
+     Platform capabilities — a numbered ledger, not a card grid.
+     Hairline rows, mono index, quiet icons. Colophon rebrand.
      ========================================================= */
-  .landing-feature-grid {
+  .landing-ledger {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 56px;
+    border-top: 1px solid var(--landing-line);
   }
-  .landing-feature {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    border: 1px solid var(--landing-line);
-    border-radius: var(--radius-lg);
-    background: var(--landing-panel);
-    padding: 26px 24px;
-    transition:
-      border-color 0.2s ease,
-      transform 0.2s ease;
+  .landing-ledger__row {
+    display: grid;
+    grid-template-columns: 34px 24px minmax(0, 1fr);
+    column-gap: 14px;
+    align-items: start;
+    padding-block: 20px;
+    border-bottom: 1px solid var(--landing-line);
   }
-  @media (prefers-reduced-motion: no-preference) {
-    .landing-feature:hover {
-      border-color: var(--accent-line);
-      transform: translateY(-2px);
-    }
-  }
-  .landing-feature__icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
-    border: 1px solid var(--accent-line);
-    background: var(--accent-soft);
+  .landing-ledger__num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
     color: var(--landing-accent-strong);
+    padding-top: 3px;
   }
-  .landing-feature__icon svg {
-    width: 18px;
-    height: 18px;
+  .landing-ledger__icon {
+    width: 20px;
+    height: 20px;
+    color: var(--landing-muted);
+    padding-top: 1px;
   }
-  .landing-feature h3 {
+  .landing-ledger__row h3 {
     font-size: 16px;
     font-weight: 620;
     letter-spacing: -0.01em;
   }
-  .landing-feature p {
-    margin-top: auto;
+  .landing-ledger__row p {
+    margin-top: 6px;
     color: var(--landing-muted);
     font-size: 13.5px;
     line-height: 1.6;
   }
 
   @media (max-width: 900px) {
-    .landing-feature-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-  @media (max-width: 620px) {
-    .landing-feature-grid {
+    .landing-ledger {
       grid-template-columns: 1fr;
     }
   }
@@ -1066,54 +1031,43 @@
   }
 
   /* =========================================================
-     Testimonials — three short, institution-attributed quotes.
+     Commitments — verifiable product principles in a colophon
+     strip: hairline-topped rows with mono index, not quote cards.
      ========================================================= */
-  .landing-testimonials {
+  .landing-commitments {
     background: var(--landing-paper);
   }
-  .landing-testimonials__grid {
+  .landing-commitments__grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px;
+    gap: 40px;
   }
-  .landing-testimonial {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    border: 1px solid var(--landing-line);
-    border-radius: var(--radius-lg);
-    background: var(--landing-panel);
-    padding: 26px 24px;
-  }
-  .landing-testimonial__quote {
-    margin: 0;
-    color: var(--landing-fg);
-    font-size: 14.5px;
-    line-height: 1.6;
-  }
-  .landing-testimonial__quote::before {
-    content: '\201C';
-    color: var(--landing-accent);
-  }
-  .landing-testimonial__foot {
-    margin-top: auto;
+  .landing-commitment {
     display: grid;
-    gap: 2px;
+    gap: 8px;
+    border-top: 1px solid var(--landing-line-strong);
+    padding-top: 20px;
   }
-  .landing-testimonial__name {
-    font-size: 13.5px;
-    font-weight: 640;
-    color: var(--landing-fg);
-  }
-  .landing-testimonial__role {
+  .landing-commitment__num {
     font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.06em;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--landing-accent-strong);
+  }
+  .landing-commitment h3 {
+    font-size: 17px;
+    font-weight: 620;
+    letter-spacing: -0.01em;
+  }
+  .landing-commitment p {
     color: var(--landing-muted);
+    font-size: 13.5px;
+    line-height: 1.6;
   }
 
   @media (max-width: 900px) {
-    .landing-testimonials__grid {
+    .landing-commitments__grid {
       grid-template-columns: 1fr;
     }
   }
@@ -1735,7 +1689,7 @@
   .variant-card__bg {
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, var(--accent-soft) 0%, transparent 50%);
+    background: var(--accent-soft);
     opacity: 0;
     transition: opacity 0.3s ease;
   }
