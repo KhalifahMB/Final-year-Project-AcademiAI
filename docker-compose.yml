@@ -13,7 +13,7 @@ services:
       POSTGRES_PASSWORD: postgres
       # Opt-in only: init/02-test-role.sh creates a BYPASSRLS login when this is 1,
       # which must never happen on a deployment. Developers set it in .env.
-      ACADEMIAI_DEV_TEST_ROLE: ${ACADEMIAI_DEV_TEST_ROLE:-0}
+      ACADEMIAI_DEV_TEST_ROLE: \${ACADEMIAI_DEV_TEST_ROLE:-0}
     ports:
       - '5432:5432'
     volumes:
@@ -96,8 +96,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # # MOVED OUT OF THE VOLUMES BLOCK AND BACK INTO SERVICES
-  # # backend:
+  # backend:
   #   build: ./backend
   #   profiles: ['app']
   #   env_file: .env
@@ -117,24 +116,49 @@ services:
   #     minio:
   #       condition: service_healthy
   #   command: >
-  #     sh -c "python manage.py migrate &&
-  #            python manage.py apply_rls &&
-  #            python manage.py runserver 0.0.0.0:8000"
+  #     sh -c "python manage.py migrate && python manage.py apply_rls && python manage.py runserver 0.0.0.0:8000"
 
-  # worker:
-  #   build: ./backend
-  #   profiles: ['app']
-  #   env_file: .env
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #     rabbitmq:
-  #       condition: service_healthy
-  #   command: celery -A config worker -l info -Q ai,ingestion,email,celery
+  worker:
+    build: ./backend
+    profiles: ['app']
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    command: celery -A config worker -l info -Q ai,ingestion,email,celery
+
+  # Beat is the scheduler that dispatches CELERY_BEAT_SCHEDULE entries (settings.py).
+  # Without it `restrict_suspended_tenant_logins` never runs.
+  # EXACTLY ONE beat may run at a time: two schedulers sharing a schedule store both fire
+  # every entry, so each periodic task is dispatched twice per interval.
+  # Hence no `deploy.replicas` > 1 and no `-B` on the worker.
+  # --schedule points at a named volume, not the container filesystem: beat's
+  # PersistentScheduler stores last_run_at per entry there. On a container without it,
+  # every restart would reset the schedule and re-fire any interval-based entry immediately on startup.
+  beat:
+    build: ./backend
+    profiles: ['app']
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - beat_state:/state
+    command: >
+      celery -A config beat -l info --schedule=/state/celerybeat-schedule
+    deploy:
+      replicas: 1
 
 volumes:
   postgres_data:
   minio_data:
   mailpit_data:
+  beat_state:

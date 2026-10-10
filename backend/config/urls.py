@@ -14,21 +14,21 @@ from apps.tenants.stats import PublicStatsView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/v1/auth/", include("apps.accounts.urls")),
-    path("api/v1/", include("apps.tenants.urls")),
-    path("api/v1/", include("apps.academics.urls")),
-    path("api/v1/", include("apps.resources.urls")),
-    path("api/v1/", include("apps.knowledge.urls")),
-    path("api/v1/", include("apps.chat.urls")),
-    path("api/v1/", include("apps.assessments.urls")),
-    path("api/v1/", include("apps.learning.urls")),
-    path("api/v1/", include("apps.audit.urls")),
-    path("api/v1/", include("apps.common.urls")),
-    path("api/v1/", include("apps.platform.urls")),
-    path("api/v1/", include("apps.logs.urls")),
-    path("api/v1/", include("apps.agent.urls")),
-    path("api/v1/", include("apps.calendar.urls")),
-    path("api/v1/", include("apps.notifications.urls")),
+    path("api/v1/auth/", include("apps.accounts.urls"),name="accounts"),
+    path("api/v1/", include("apps.tenants.urls"),name="tenants"),
+    path("api/v1/", include("apps.academics.urls"), name="academics"),
+    path("api/v1/", include("apps.resources.urls"), name="resources"),
+    path("api/v1/", include("apps.knowledge.urls"), name="knowledge"),
+    path("api/v1/", include("apps.chat.urls"), name="chats"),
+    path("api/v1/", include("apps.assessments.urls"), name="assessments"),
+    path("api/v1/", include("apps.learning.urls"), name="learning"),
+    path("api/v1/", include("apps.audit.urls"), name="audit"),
+    path("api/v1/", include("apps.common.urls"), name="common"),
+    path("api/v1/", include("apps.platform.urls"), name="platform"),
+    path("api/v1/", include("apps.logs.urls"), name="logs"),
+    path("api/v1/", include("apps.agent.urls"), name="agent"),
+    path("api/v1/", include("apps.calendar.urls"), name="calendar"),
+    path("api/v1/", include("apps.notifications.urls"), name="notifications"),
     path("api/public/stats/", PublicStatsView.as_view(), name="public-stats"),
     # OpenAPI
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
@@ -45,9 +45,6 @@ urlpatterns = [
 ]
 
 if settings.DEBUG and not getattr(settings, "TESTING", False):
-    import debug_toolbar
-
-    urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns
     # Serve user uploads (custom agent avatars etc.) in development.
     from django.conf.urls.static import static
 
