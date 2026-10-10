@@ -52,6 +52,13 @@ def _set_tenant(tenant_id):
 
 
 def _clear_tenant():
+    # The "no tenant context" state in the wild is `''`: PostgreSQL's RESET on
+    # a placeholder custom GUC restores an empty string, which is exactly what
+    # a pooled connection carries after a previous tenant-bound request
+    # RESETs it. The tenant_isolation policies must DENY in that state, never
+    # raise — the NULLIF(current_setting(...), '')::uuid guard turns both ''
+    # and an unset (NULL) setting into a NULL tenant id, which every USING /
+    # WITH CHECK clause treats as "no match".
     _scalar("SELECT set_config('app.current_tenant_id', '', false)")
 
 
