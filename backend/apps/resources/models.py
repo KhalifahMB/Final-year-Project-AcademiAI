@@ -2,12 +2,28 @@
 Resource metadata, versions, and chunks (embeddings via pgvector).
 Binary files live in object storage; only metadata and chunks in PostgreSQL.
 """
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVectorField
 from django.db import models
+from django.db.models import Func, GeneratedField, TextField
 from pgvector.django import VectorField
 
 from apps.common.models import TenantScopedModel
 from django.conf import settings
 from django.utils import timezone
+
+
+class _EnglishTsVector(Func):
+    """Postgres ``to_tsvector('english', <text>)``.
+
+    Used as the definition of a STORED generated column so the lexical leg of hybrid
+    retrieval reads a pre-computed vector instead of parsing and lexing every chunk's
+    full text on every query.
+    """
+
+    function = "to_tsvector"
+    template = "%(function)s('english', %(expressions)s)"
+    output_field = SearchVectorField()
 
 
 class Resource(TenantScopedModel):
@@ -128,6 +144,12 @@ class ResourceChunk(TenantScopedModel):
     token_count = models.PositiveIntegerField(null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
 
+    ts_vector = GeneratedField(
+        expression=_EnglishTsVector("content"),
+        output_field=SearchVectorField(),
+        db_persist=True,
+    )
+
     class Meta:
         db_table = "resource_chunks"
         constraints = [
@@ -137,6 +159,10 @@ class ResourceChunk(TenantScopedModel):
         ]
         indexes = [
             models.Index(fields=["tenant", "resource_version"]),
+            GinIndex(
+                fields=["ts_vector"],
+                name="resource_chunks_ts_vector_gin",
+            ),
         ]
 
 
