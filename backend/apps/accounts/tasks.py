@@ -44,7 +44,7 @@ def send_verification_email(self, user_id: str, code: str):
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=30)
-def send_password_reset_email(self, user_id: str, token: str):
+def send_password_reset_email(self, user_id: str, code: str):
     from .models import User
 
     try:
@@ -54,8 +54,8 @@ def send_password_reset_email(self, user_id: str, token: str):
     subject = "AcademiAI — Reset your password"
     context = {
         "first_name": user.first_name or user.email,
-        "code": token,
-        "reset_url": _frontend(f"/password-reset?token={token}"),
+        "code": code,
+        "reset_url": _frontend("/password-reset"),
         "expiry_minutes": settings.AUTH_PASSWORD_RESET_EXPIRY_MINUTES,
     }
     try:

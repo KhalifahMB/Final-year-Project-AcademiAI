@@ -378,11 +378,11 @@ class PasswordResetRequestView(APIView):
         email = ser.validated_data.get("email")
         user = User.objects.filter(email__iexact=email).first()
         if user:
-            token = services.create_password_reset_token(user)
+            code = services.create_password_reset_code(user)
             try:
                 from .tasks import send_password_reset_email
 
-                send_password_reset_email(str(user.id), token)
+                send_password_reset_email(str(user.id), code)
             except Exception:
                 logger.exception("Failed to queue password reset email")
         # Always same response (no enumeration)
@@ -402,7 +402,7 @@ class PasswordResetConfirmView(APIView):
         tags=["Authentication"],
         request=PasswordResetConfirmSerializer,
         responses={200: MessageResponseSerializer, 400: MessageResponseSerializer},
-        summary="Confirm password reset with a single-use token",
+        summary="Confirm password reset with a single-use 6-digit code",
         auth=[],
     )
     def post(self, request):

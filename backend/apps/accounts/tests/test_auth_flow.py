@@ -3,6 +3,8 @@ Full authentication flow: signup → verify → login → me → password change
 Uses the services layer directly to obtain the verification code (only its
 hash is persisted; plaintext is never stored or logged).
 """
+import re
+
 import pytest
 from django.core import mail
 from rest_framework.test import APIClient
@@ -139,25 +141,26 @@ def test_password_reset_flow_single_use_and_generic_responses():
     assert resp_known.data["message"] == resp_unknown.data["message"]
 
     user = User.objects.get(email="reset@reset-u.edu")
-    token = services.create_password_reset_token(user)
+    code = services.create_password_reset_code(user)
+    assert re.fullmatch(r"\d{6}", code)
 
     resp = anon.post(
         "/api/v1/auth/password-reset/confirm/",
         {
             "email": "reset@reset-u.edu",
-            "token": token,
+            "token": code,
             "new_password": "BrandNew!2026pw",
         },
         format="json",
     )
     assert resp.status_code == 200
 
-    # Token reuse denied.
+    # Code reuse denied.
     resp = anon.post(
         "/api/v1/auth/password-reset/confirm/",
         {
             "email": "reset@reset-u.edu",
-            "token": token,
+            "token": code,
             "new_password": "AgainNew!2026pw",
         },
         format="json",
@@ -177,6 +180,64 @@ def test_password_reset_flow_single_use_and_generic_responses():
         format="json",
     )
     assert resp.status_code == 200
+
+
+@pytest.mark.django_db
+def test_password_reset_rejects_anything_that_is_not_6_digits():
+    tenant = Tenant.objects.create(name="Six Univ", slug="six-u")
+    User.objects.create_user(
+        email="six@six-u.edu",
+        password=PASSWORD,
+        tenant=tenant,
+        role="tenant_admin",
+        is_email_verified=True,
+    )
+    anon = APIClient()
+
+    for bad in ("12345", "1234567", "abcdef"):
+        resp = anon.post(
+            "/api/v1/auth/password-reset/confirm/",
+            {
+                "email": "six@six-u.edu",
+                "token": bad,
+                "new_password": "BrandNew!2026pw",
+            },
+            format="json",
+        )
+        assert resp.status_code == 400, bad
+        assert "6-digit" in str(resp.data["error"]["detail"])
+
+
+@pytest.mark.django_db
+def test_password_reset_code_is_6_digits_and_guesses_are_capped():
+    """A 6-digit space is only safe if a wrong guess burns an attempt."""
+    from django.conf import settings as dj_settings
+
+    tenant = Tenant.objects.create(name="Cap Univ", slug="cap-u")
+    user = User.objects.create_user(
+        email="cap@cap-u.edu",
+        password=PASSWORD,
+        tenant=tenant,
+        role="tenant_admin",
+        is_email_verified=True,
+    )
+    code = services.create_password_reset_code(user)
+    assert re.fullmatch(r"\d{6}", code)
+
+    wrong = "000000" if code != "000000" else "000001"
+    for _ in range(dj_settings.AUTH_MAX_RESET_ATTEMPTS):
+        with pytest.raises(ValueError, match="Invalid or expired reset code"):
+            services.confirm_password_reset(user.email, wrong, "BrandNew!2026pw")
+
+    # Once exhausted, even the right code is refused.
+    with pytest.raises(ValueError, match="Too many attempts"):
+        services.confirm_password_reset(user.email, code, "BrandNew!2026pw")
+
+    # Requesting a fresh code resets the counter and the reset goes through.
+    fresh = services.create_password_reset_code(user)
+    services.confirm_password_reset(user.email, fresh, "BrandNew!2026pw")
+    user.refresh_from_db()
+    assert user.check_password("BrandNew!2026pw")
 
 
 @pytest.mark.django_db

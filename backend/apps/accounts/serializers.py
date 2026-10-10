@@ -185,7 +185,10 @@ class SignupSerializer(serializers.Serializer):
 
 class VerifyEmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    code = serializers.CharField(max_length=12)
+    code = serializers.RegexField(
+        regex=r"^\d{6}$",
+        error_messages={"invalid": "Enter the 6-digit verification code."},
+    )
 
 
 class ResendVerificationSerializer(serializers.Serializer):
@@ -203,7 +206,10 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    token = serializers.CharField()
+    token = serializers.RegexField(
+        regex=r"^\d{6}$",
+        error_messages={"invalid": "Enter the 6-digit reset code."},
+    )
     new_password = serializers.CharField(min_length=8)
 
     def validate_new_password(self, value):

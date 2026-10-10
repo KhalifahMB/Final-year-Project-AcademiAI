@@ -51,8 +51,10 @@ export default function PasswordResetPage() {
       setOk('If that email exists, a reset code was sent.');
       confirmForm.setValue('email', values.email);
       setStep('confirm');
-    } catch {
-      setError('Request failed. Please try again.');
+    } catch (err) {
+      setError(
+        err?.response?.data?.error?.detail || 'Request failed. Please try again.',
+      );
     }
   };
 
@@ -66,8 +68,12 @@ export default function PasswordResetPage() {
         password: values.password,
       });
       setOk('Password updated. You can now sign in.');
-    } catch {
-      setError('Reset failed. The code may be expired or invalid.');
+    } catch (err) {
+      // Surface the server's reason ("Too many attempts…") when there is one.
+      setError(
+        err?.response?.data?.error?.detail ||
+          'Reset failed. The code may be expired or invalid.',
+      );
     }
   };
 
@@ -175,11 +181,24 @@ export default function PasswordResetPage() {
                           autoComplete="new-password"
                           {...field}
                         />
+                      ) : name === 'token' ? (
+                        <Input
+                          className="h-10 text-center font-mono text-base tracking-[0.3em]"
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          maxLength={6}
+                          placeholder="6-digit code"
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(e.target.value.replace(/\D/g, '').slice(0, 6))
+                          }
+                        />
                       ) : (
                         <Input
                           className="h-10"
-                          type={name === 'token' ? 'text' : 'email'}
-                          placeholder={name === 'token' ? '6-digit code' : undefined}
+                          type="email"
+                          autoComplete="email"
                           {...field}
                         />
                       )}
