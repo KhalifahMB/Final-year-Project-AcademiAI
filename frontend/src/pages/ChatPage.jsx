@@ -62,10 +62,6 @@ import {
 } from '@/components/chat/chatShared';
 import MultiResourcePicker from '@/components/chat/MultiResourcePicker';
 
-// A pending upload's id is a local `upload-…` string, not the UUID the API
-// expects, so it must never leave the composer.
-export { confirmedResourceIds } from '@/components/chat/chatShared';
-
 const SUGGESTIONS = [
   {
     icon: Sparkles,
@@ -165,60 +161,6 @@ export default function ChatPage() {
     if (currentSources.length > 0 && !isMobile) setSourcesRailOpen(true);
   }, [currentSources.length, isMobile]);
 
-  // Deep-link session via ?session=. Opens the matching conversation once the
-  // sidebar list is available so we get the real title; if the list settled
-  // without the session (paged out, deleted, or list error) we still open the
-  // id directly — getMessages needs only the id, and failures surface in the
-  // chat pane — so a deep link never silently no-ops.
-  useEffect(() => {
-    if (sessionId) return;
-    const sid = searchParams.get('session');
-    if (!sid) return;
-    const existing = sessions.find((s) => s.id === sid);
-    if (existing) {
-      openSession(existing);
-      return;
-    }
-    if (sessionsQ.isLoading) return;
-    openSession({ id: sid });
-     }, [sessionId, searchParams, sessions, sessionsQ.isLoading]);
-
-  // Restore the in-progress conversation from sessionStorage when the page is
-  // (re)mounted — e.g. after switching sidebar tabs in the same browser tab.
-  // This is what keeps the chat alive across tab switches instead of resetting.
-  useEffect(() => {
-    const snap = loadSnapshot();
-    if (!snap || !snap.sessionId) return;
-    // Only restore if there is no explicit ?session= deep link (which wins).
-    const sid = searchParams.get('session');
-    if (sid) return;
-    setSessionId(snap.sessionId);
-    setSessionTitle(snap.sessionTitle || 'Conversation');
-    setTitleDraft(snap.sessionTitle || '');
-    if (Array.isArray(snap.messages)) setMessages(snap.messages);
-    if (typeof snap.input === 'string') setInput(snap.input);
-    if (snap.sessionId)
-      setSearchParams({ session: snap.sessionId }, { replace: true });
-  }, []);
-
-  // Persist the active conversation so it survives page unmounts between tabs.
-  // Debounced so typing can't serialize the whole message array on every
-  // keystroke; the snapshot only writes once the user pauses.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      saveSnapshot({ sessionId, sessionTitle, messages, input });
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [sessionId, sessionTitle, messages, input]);
-
-  // Auto-grow textarea
-  useEffect(() => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
-  }, [input]);
-
   const openSession = useCallback(
     async (s) => {
       if (activeStream.current) {
@@ -243,6 +185,60 @@ export default function ChatPage() {
     },
     [isMobile, setSearchParams],
   );
+
+  // Deep-link session via ?session=. Opens the matching conversation once the
+  // sidebar list is available so we get the real title; if the list settled
+  // without the session (paged out, deleted, or list error) we still open the
+  // id directly — getMessages needs only the id, and failures surface in the
+  // chat pane — so a deep link never silently no-ops.
+  useEffect(() => {
+    if (sessionId) return;
+    const sid = searchParams.get('session');
+    if (!sid) return;
+    const existing = sessions.find((s) => s.id === sid);
+    if (existing) {
+      openSession(existing);
+      return;
+    }
+    if (sessionsQ.isLoading) return;
+    openSession({ id: sid });
+  }, [sessionId, searchParams, sessions, sessionsQ.isLoading, openSession]);
+
+  // Restore the in-progress conversation from sessionStorage when the page is
+  // (re)mounted — e.g. after switching sidebar tabs in the same browser tab.
+  // This is what keeps the chat alive across tab switches instead of resetting.
+  useEffect(() => {
+    const snap = loadSnapshot();
+    if (!snap || !snap.sessionId) return;
+    // Only restore if there is no explicit ?session= deep link (which wins).
+    const sid = searchParams.get('session');
+    if (sid) return;
+    setSessionId(snap.sessionId);
+    setSessionTitle(snap.sessionTitle || 'Conversation');
+    setTitleDraft(snap.sessionTitle || '');
+    if (Array.isArray(snap.messages)) setMessages(snap.messages);
+    if (typeof snap.input === 'string') setInput(snap.input);
+    if (snap.sessionId)
+      setSearchParams({ session: snap.sessionId }, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Persist the active conversation so it survives page unmounts between tabs.
+  // Debounced so typing can't serialize the whole message array on every
+  // keystroke; the snapshot only writes once the user pauses.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveSnapshot({ sessionId, sessionTitle, messages, input });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [sessionId, sessionTitle, messages, input]);
+
+  // Auto-grow textarea
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
+  }, [input]);
 
   const startNewChat = useCallback(() => {
     if (activeStream.current) {

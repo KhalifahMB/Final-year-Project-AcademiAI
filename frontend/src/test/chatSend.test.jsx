@@ -12,7 +12,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from '@/App';
-import { confirmedResourceIds } from '@/pages/ChatPage';
+import { confirmedResourceIds } from '@/components/chat/chatShared';
 
 // vi.mock is hoisted above the imports, so resolve the shared factory lazily
 // inside the async factory instead of referencing it at module scope.

@@ -1,4 +1,4 @@
-import { createContext, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '@/services/api';
 import { AUTH_QUERY_OPTIONS, USER_QUERY_KEY } from '@/services/authQuery';
@@ -8,22 +8,24 @@ import {
   clearUserScopedStorage,
   setSessionFlag,
 } from '@/lib/session';
-
-export const AuthContext = createContext(null);
+import { AuthContext } from './AuthContext';
 
 export function AuthProvider({ children }) {
   const qc = useQueryClient();
 
   const { data: user, isLoading, error } = useQuery(AUTH_QUERY_OPTIONS);
 
-  const login = async (email, password) => {
-    const result = await authApi.login({ email, password });
-    setSessionFlag();
-    qc.setQueryData(USER_QUERY_KEY, result.user);
-    return result;
-  };
+  const login = useCallback(
+    async (email, password) => {
+      const result = await authApi.login({ email, password });
+      setSessionFlag();
+      qc.setQueryData(USER_QUERY_KEY, result.user);
+      return result;
+    },
+    [qc],
+  );
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await authApi.logout();
     } catch {
@@ -34,9 +36,12 @@ export function AuthProvider({ children }) {
     qc.setQueryData(USER_QUERY_KEY, null);
     qc.clear();
     go('/');
-  };
+  }, [qc]);
 
-  const reload = () => qc.invalidateQueries({ queryKey: USER_QUERY_KEY });
+  const reload = useCallback(
+    () => qc.invalidateQueries({ queryKey: USER_QUERY_KEY }),
+    [qc],
+  );
 
   const value = useMemo(
     () => ({
@@ -49,7 +54,7 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!user,
     }),
 
-    [user, isLoading, error, qc],
+    [user, isLoading, error, login, logout, reload],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

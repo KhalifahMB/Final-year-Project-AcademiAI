@@ -46,7 +46,7 @@ export function useNotifications() {
     NOTIFICATIONS_QUERY_OPTIONS,
   );
 
-  const results = data?.results || [];
+  const results = useMemo(() => data?.results || [], [data?.results]);
 
   const unreadCount = data?.unread_count ?? 0;
   const hasUnread = unreadCount > 0;
@@ -107,6 +107,7 @@ export function useNotifications() {
     [
       results,
       unreadCount,
+      hasUnread,
       isLoading,
       isFetching,
       isError,

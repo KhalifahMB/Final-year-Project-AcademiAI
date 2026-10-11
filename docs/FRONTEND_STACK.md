@@ -141,7 +141,8 @@ Both mount inside `AppShell` and share the single `['notifications']` query from
 
 | Module | Purpose | Exports |
 |--------|---------|---------|
-| `AuthContext.jsx` | Auth session context + provider — cookie-JWT login/logout, session flag, shared cache key | `AuthProvider`, `AuthContext` |
+| `AuthContext.js` | Auth session context object consumed by `useAuth` | `AuthContext` |
+| `AuthProvider.jsx` | Auth session provider — cookie-JWT login/logout, session flag, shared cache key | `AuthProvider` |
 
 > `USER_QUERY_KEY`, `AUTH_QUERY_OPTIONS` and `fetchUser` (the deduped `/auth/me` query) live in `services/authQuery.js`; the context and hook re-import them from there.
 

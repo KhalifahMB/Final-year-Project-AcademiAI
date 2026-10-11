@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import {
   Dialog,
@@ -49,15 +49,20 @@ export default function EntityDialog({
     defaultValues: Object.fromEntries(fields.map((f) => [f.name, ''])),
   });
 
+  const fieldsRef = useRef(fields);
+  useEffect(() => {
+    fieldsRef.current = fields;
+  }, [fields]);
+
   useEffect(() => {
     if (!open) return;
     const values = {};
-    fields.forEach((f) => {
+    fieldsRef.current.forEach((f) => {
       const v = initial?.[f.name];
       values[f.name] = v == null ? '' : String(v);
     });
     form.reset(values);
-  }, [open, initial]);
+  }, [open, initial, form]);
 
   const submit = (values) => {
     const payload = {};
