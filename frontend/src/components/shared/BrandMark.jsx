@@ -100,7 +100,7 @@ export default function BrandMark({
           ].join(' ')}
         >
           Academi
-          <span className="text-[var(--accent-strong)]">AI</span>
+          <span className="text-[var(--c-accent-strong)]">AI</span>
         </span>
       </span>
     );

@@ -835,8 +835,6 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
         </Link>
       </div>
 
-      <AiInsightCard dashboardType="student" className="mb-6" data-testid="ai-insight-card" />
-
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {kpis.map(({ icon: I, label, value, hint }) => (
@@ -856,6 +854,12 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
           </div>
         ))}
       </div>
+
+      <AiInsightCard
+        dashboardType="student"
+        className="mt-6 max-w-md"
+        data-testid="ai-insight-card"
+      />
 
       {/* Main grid */}
       <div className="mt-6 grid gap-5 lg:grid-cols-3">

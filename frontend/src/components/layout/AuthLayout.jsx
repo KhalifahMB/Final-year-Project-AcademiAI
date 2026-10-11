@@ -147,7 +147,7 @@ export default function AuthLayout({
           <Link to="/" className="landing-brand">
             <BrandMark size="h-7 w-7" />
             <span>
-              Academi<span className="text-[var(--accent-strong)]">AI</span>
+              Academi<span className="text-[var(--c-accent-strong)]">AI</span>
             </span>
           </Link>
           <span>Grounded learning, institution by institution.</span>

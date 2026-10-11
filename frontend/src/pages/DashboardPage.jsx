@@ -293,7 +293,7 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <AiInsightCard dashboardType="admin" className="mb-6" />
+          <AiInsightCard dashboardType="admin" className="mt-6 max-w-md" />
 
           {/* Quick actions */}
           <section className="mt-6">
