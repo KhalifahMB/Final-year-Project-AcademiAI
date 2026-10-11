@@ -439,14 +439,14 @@ export default function LecturerDashboard({ dash, firstName }) {
         </Link>
       </div>
 
+      <AiInsightCard dashboardType="lecturer" className="mb-6" />
+
       {/* KPI grid */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {kpis.map((k) => (
           <KpiTile key={k.label} {...k} />
         ))}
       </div>
-
-      <AiInsightCard dashboardType="lecturer" className="mt-6 max-w-md" />
 
       {/* Main grid */}
       <div className="mt-6 grid gap-5 lg:grid-cols-3">

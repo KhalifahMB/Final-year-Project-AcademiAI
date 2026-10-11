@@ -859,12 +859,6 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
         ))}
       </div>
 
-      <AiInsightCard
-        dashboardType="student"
-        className="mt-6 max-w-md"
-        data-testid="ai-insight-card"
-      />
-
       {/* Main grid */}
       <div className="mt-6 grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
