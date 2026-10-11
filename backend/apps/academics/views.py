@@ -233,6 +233,82 @@ class CourseViewSet(AdminWriteViewSet):
     search_fields = ["code", "title"]
     filterset_fields = ["department", "status"]
 
+    @extend_schema(
+        tags=["Course Analytics"],
+        summary="Course roster (enrolled students)",
+        description=(
+            "Students enrolled in any offering of this course. Tenant admins "
+            "may view any course; a lecturer may view only courses they are "
+            "assigned to teach; everyone else is denied (403)."
+        ),
+    )
+    @action(detail=True, methods=["get"], url_path="roster")
+    def roster(self, request, pk=None):
+        course = self.get_object()
+        user = request.user
+        is_admin = bool(getattr(user, "is_tenant_admin", False)) or bool(
+            getattr(user, "is_superuser", False)
+        )
+        if not is_admin:
+            assigned = (
+                getattr(user, "role", None) == "lecturer"
+                and LecturerCourseAssignment.objects.filter(
+                    tenant_id=user.tenant_id,
+                    lecturer=user,
+                    course_offering__course=course,
+                ).exists()
+            )
+            if not assigned:
+                return Response(
+                    {"detail": "You are not assigned to this course."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        enrollments = (
+            CourseEnrollment.objects.filter(
+                tenant_id=user.tenant_id,
+                course_offering__course=course,
+                status=CourseEnrollment.Status.ENROLLED,
+            )
+            .select_related(
+                "student", "course_offering", "course_offering__semester",
+                "course_offering__academic_session",
+            )
+            .order_by("student__email")
+        )
+        students = {}
+        for e in enrollments:
+            entry = students.setdefault(
+                str(e.student_id),
+                {
+                    "id": str(e.student_id),
+                    "email": e.student.email,
+                    "name": (
+                        f"{e.student.first_name} {e.student.last_name}".strip()
+                        or e.student.email
+                    ),
+                    "offerings": [],
+                },
+            )
+            entry["offerings"].append(
+                {
+                    "id": str(e.course_offering_id),
+                    "semester": getattr(e.course_offering.semester, "name", None),
+                    "session": getattr(
+                        e.course_offering.academic_session, "name", None
+                    ),
+                }
+            )
+        return Response(
+            {
+                "course_id": str(course.id),
+                "course_code": course.code,
+                "course_title": course.title,
+                "student_count": len(students),
+                "students": list(students.values()),
+            }
+        )
+
 
 @extend_schema(tags=["Course Offerings"])
 class CourseOfferingViewSet(AdminWriteViewSet):

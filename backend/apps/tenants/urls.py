@@ -7,7 +7,7 @@ from .request_views import (
 )
 from .stats import PlatformStatsView, PlatformTenantDetailView, PlatformAuditLogView
 from apps.common.dashboard import (
-    StudentDashboardView, AdminDashboardView,
+    StudentDashboardView, AdminDashboardView, AdminUsageView,
     StudentActivityView, StudentStreakView, StudentRemindersView,
     AdminAuditSummaryView,
 )
@@ -25,6 +25,7 @@ urlpatterns = [
     # Aggregate dashboards (one call per role replaces 4-15 list requests)
     path("dashboard/student/", StudentDashboardView.as_view(), name="dashboard-student"),
     path("dashboard/admin/", AdminDashboardView.as_view(), name="dashboard-admin"),
+    path("admin/usage/", AdminUsageView.as_view(), name="admin-usage"),
     path("dashboard/student/activity/", StudentActivityView.as_view(), name="dashboard-student-activity"),
     path("dashboard/student/streak/", StudentStreakView.as_view(), name="dashboard-student-streak"),
     path("dashboard/student/reminders/", StudentRemindersView.as_view(), name="dashboard-student-reminders"),

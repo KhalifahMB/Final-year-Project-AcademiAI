@@ -475,6 +475,35 @@ class AdminDashboardView(CachedDashboardView):
         }
 
 
+class AdminUsageView(CachedDashboardView):
+    """Admin-only tenant usage analytics.
+
+    Exposes the tenant usage aggregates (totals, users by role, materials by
+    status, academic structure) but gated to tenant admins / platform
+    superusers, so students and lecturers receive 403.
+    """
+
+    permission_classes = [IsAdminRoleOrSuperuser]
+
+    def get(self, request):
+        return self.get_cached(request)
+
+    def cache_key(self, request):
+        return _tenant_cache_key(request.user, "admin_usage")
+
+    def build(self, request):
+        user = request.user
+        if not user.tenant_id:
+            return AdminDashboardView._empty()
+        data = AdminDashboardView._build(user)
+        return {
+            "totals": data.get("totals", {}),
+            "users_by_role": data.get("users_by_role", []),
+            "materials_by_status": data.get("materials_by_status", []),
+            "structure": data.get("structure", []),
+        }
+
+
 # ----------------------------------------------------------------------
 # Lecturer dashboard (aggregate view of assigned courses)
 # ----------------------------------------------------------------------

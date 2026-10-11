@@ -1,8 +1,10 @@
+import json
 import logging
 
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -48,7 +50,7 @@ from .services import (
     register_completed_upload,
     reset_for_retry,
 )
-from .summary_tasks import summarize_resource_task
+from .summary_tasks import iter_summary_stream, summarize_resource_task
 
 logger = logging.getLogger(__name__)
 
@@ -783,6 +785,68 @@ class ResourceViewSet(TenantModelViewSet):
         )
         claim_job(task.id, request.user.id)
         return Response({"job_id": task.id, "status": "pending"}, status=status.HTTP_202_ACCEPTED)
+
+    @extend_schema(tags=["Summaries"])
+    @action(
+        detail=True,
+        methods=["get", "post"],
+        url_path="summarize/stream",
+        throttle_classes=[AiRateThrottle],
+    )
+    def summarize_stream(self, request, pk=None):
+        """Stream an AI summary of this material as Server-Sent Events.
+
+        Same visibility/readiness gates as ``summarize``; instead of queueing
+        an async job it streams the overview token-by-token and persists a
+        ResourceSummary when the stream completes.
+        """
+        resource = self.get_object()
+
+        if not resource.has_extractable_text:
+            return Response(
+                {"success": False, "error": {"detail": "This material has no extractable text and cannot be summarized. It may contain images or binary content."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if resource.processing_status != Resource.ProcessingStatus.READY:
+            return Response(
+                {"success": False, "error": {"detail": "Material is still being processed."}},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if resource.id not in _authorized_resource_ids(request.user, None):
+            return Response(
+                {"success": False, "error": {"detail": "You do not have access to this material."}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not ai_service_available():
+            return Response(
+                {
+                    "success": False,
+                    "error": {"detail": "The AI service is currently unavailable. Please try again later."},
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        user = request.user
+
+        def sse_event(event: str, data: dict) -> bytes:
+            return (
+                f"event: {event}\n"
+                f"data: {json.dumps(data, default=str)}\n\n"
+            ).encode("utf-8")
+
+        def stream():
+            for event, payload in iter_summary_stream(
+                str(resource.id), str(user.tenant_id), str(user.id)
+            ):
+                yield sse_event(event, payload)
+
+        response = StreamingHttpResponse(stream(), content_type="text/event-stream")
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
 
     @extend_schema(tags=["Summaries"], responses=ResourceSummarySerializer(many=True))
     @action(detail=True, methods=["get"])

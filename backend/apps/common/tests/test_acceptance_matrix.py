@@ -3,21 +3,20 @@ Acceptance matrix — one test per row of the verification brief.
 
 Each test is named after its matrix row (``test_row_NN_*``) so the pytest
 report maps 1:1 onto the table. Docstrings state the brief's expected
-behaviour; where the shipped implementation differs, the test asserts the
-*actual* behaviour and the docstring records the deviation.
+behaviour; the tests assert the shipped implementation now satisfies it.
 
 Rows (as verified here):
-  01  RBAC  — student cannot read admin analytics
-  02  RBAC  — lecturer cannot read another course's roster
+  01  RBAC  — student cannot read admin analytics (/admin/usage -> 403)
+  02  RBAC  — lecturer cannot read another course's roster (403)
   03  Auth  — valid login returns JWT access+refresh
   04  Auth  — wrong password is rejected (401)
   05  Auth  — an expired access token is rejected (401)
   06  Upload (lecturer) — create tenant-visible PDF + presigned + complete
-  07  Upload (student)  — create with no scope; owner-only visibility
+  07  Upload (student)  — create with no scope defaults to private
   08a Upload           — disallowed file type rejected (400)
-  08b Upload           — malware (EICAR) rejected (400)
-  09  Ingestion        — PDF chunked + embedded, resource becomes ready
-  10  Summarize        — async summary queued then persisted
+  08b Upload           — malware (EICAR) quarantined by the worker scan
+  09  Ingestion        — PDF chunked + embedded, resource ready, audited
+  10  Summarize        — summary streamed token-by-token via SSE
   11  Chat RAG         — answer cites the retrieved chunk
 
 Run:  pytest apps/common/tests/test_acceptance_matrix.py -v -s -n 0
@@ -41,6 +40,7 @@ from apps.academics.models import (
     CourseOffering,
     Department,
     Faculty,
+    LecturerCourseAssignment,
     Semester,
 )
 from apps.audit.models import AuditLog
@@ -171,16 +171,18 @@ class _FakeS3:
 def test_row_01_student_blocked_from_admin_analytics():
     tenant = _tenant("rbac-01")
     student = _user(tenant, "s@rbac01.edu")
+    admin = _user(tenant, "a@rbac01.edu", role="tenant_admin")
 
-    # The brief's literal path does not exist -> 404 (not 403).
-    literal = _auth(student).get("/api/v1/admin/usage/")
-    assert literal.status_code == 404
+    # Non-admins are denied the admin usage surface.
+    denied = _auth(student).get("/api/v1/admin/usage/")
+    assert denied.status_code == 403
 
-    # The real admin-analytics surface in this codebase is /dashboard/admin/.
-    real = _auth(student).get("/api/v1/dashboard/admin/")
-    assert real.status_code == 403
+    # Admins get the tenant usage aggregates.
+    ok = _auth(admin).get("/api/v1/admin/usage/")
+    assert ok.status_code == 200, ok.data
+    assert "totals" in ok.data and "users_by_role" in ok.data
 
-    print("ROW 01 actual: /admin/usage -> 404 (route absent); /dashboard/admin -> 403")
+    print("ROW 01 actual: student -> 403; admin -> 200 (tenant usage totals)")
 
 
 # --------------------------------------------------------------------------- #
@@ -200,17 +202,25 @@ def test_row_02_lecturer_blocked_from_other_course_roster():
         status=CourseEnrollment.Status.ENROLLED,
     )
 
-    client = _auth(lecturer)
-    # The brief's literal path does not exist -> 404.
-    literal = client.get(f"/api/v1/courses/{offering_b.course_id}/roster/")
-    assert literal.status_code == 404
+    # A lecturer who is NOT assigned to the course is denied its roster.
+    denied = _auth(lecturer).get(f"/api/v1/courses/{offering_b.course_id}/roster/")
+    assert denied.status_code == 403
 
-    # Real roster surface is the admin-only enrollment list -> 403 for a lecturer,
-    # even when filtered to another course's offering.
-    real = _auth(lecturer).get(f"/api/v1/course-enrollments/?course_offering={offering_b.id}")
-    assert real.status_code == 403
+    # Students may never read a roster.
+    assert _auth(student).get(
+        f"/api/v1/courses/{offering_b.course_id}/roster/"
+    ).status_code == 403
 
-    print("ROW 02 actual: /courses/{id}/roster -> 404; /course-enrollments -> 403")
+    # Once assigned, the lecturer sees the enrolled student.
+    LecturerCourseAssignment.objects.create(
+        tenant=tenant, course_offering=offering_b, lecturer=lecturer,
+    )
+    ok = _auth(lecturer).get(f"/api/v1/courses/{offering_b.course_id}/roster/")
+    assert ok.status_code == 200, ok.data
+    assert ok.data["student_count"] == 1
+    assert ok.data["students"][0]["email"] == student.email
+
+    print("ROW 02 actual: unassigned lecturer -> 403; student -> 403; assigned lecturer -> 200 roster")
 
 
 # --------------------------------------------------------------------------- #
@@ -282,18 +292,11 @@ def test_row_06_lecturer_uploads_tenant_visible_pdf(mock_delay):
     lecturer = _user(tenant, "l@up06.edu", role="lecturer")
     client = _auth(lecturer)
 
-    # "public" is not a valid scope token in this codebase; the tenant-wide
-    # equivalent is "institution". Assert the rejection and use the real token.
-    bad = client.post(
+    # "public" is accepted as a convenience alias and stored canonically as
+    # the tenant-wide "institution" scope.
+    created = client.post(
         "/api/v1/resources/",
-        {"title": "Bad", "visibility_scope": "public", "mime_type": "application/pdf"},
-        format="json",
-    )
-    assert bad.status_code == 400, bad.data
-
-    created = _auth(lecturer).post(
-        "/api/v1/resources/",
-        {"title": "Lecture notes", "visibility_scope": "institution", "mime_type": "application/pdf"},
+        {"title": "Lecture notes", "visibility_scope": "public", "mime_type": "application/pdf"},
         format="json",
     )
     assert created.status_code == 201, created.data
@@ -338,16 +341,15 @@ def test_row_07_student_default_scope_owner_only():
     assert resp.status_code == 201, resp.data
     rid = resp.data["id"]
 
-    # Brief expects "private"; the shipped default is "course" (model default).
+    # A student's personal upload (no offering) defaults to private.
     actual_scope = resp.data["visibility_scope"]
-    assert actual_scope == "course"
+    assert actual_scope == "private", resp.data
 
-    # But the effective behaviour matches the brief: only the uploader can read
-    # it (a COURSE resource with no offering is uploader-only).
+    # Owner-only visibility.
     assert _auth(student).get(f"/api/v1/resources/{rid}/").status_code == 200
     assert _auth(other).get(f"/api/v1/resources/{rid}/").status_code == 404
 
-    print(f"ROW 07 actual: 201; visibility_scope='{actual_scope}' (brief says private); other user -> 404")
+    print(f"ROW 07 actual: 201; visibility_scope='{actual_scope}'; other user -> 404")
 
 
 # --------------------------------------------------------------------------- #
@@ -372,22 +374,50 @@ def test_row_08a_disallowed_file_type_400():
 # row 08b — Upload: malware (EICAR) rejected
 # --------------------------------------------------------------------------- #
 @pytest.mark.django_db
-def test_row_08b_malware_eicar_rejected():
+def test_row_08b_malware_eicar_quarantined():
+    from apps.resources.tasks import process_resource_ingestion
+
     tenant = _tenant("up-08b")
-    student = _user(tenant, "s@up08b.edu")
+    owner = _user(tenant, "o@up08b.edu", role="tenant_admin")
 
     eicar = b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+
+    # Defense in depth: the quick-upload path rejects EICAR before storage.
     upload = SimpleUploadedFile("sneaky.pdf", eicar, content_type="application/pdf")
-    resp = _auth(student).post("/api/v1/chat/upload/", {"file": upload}, format="multipart")
+    quick = _auth(owner).post("/api/v1/chat/upload/", {"file": upload}, format="multipart")
+    assert quick.status_code == 400, quick.data
+    assert "EICAR" in str(quick.data)
 
-    assert resp.status_code == 400, resp.data
-    assert "EICAR" in str(resp.data)
-    # Brief expects quarantine + status=failed + no chunks. Actual: the upload
-    # is rejected outright, so no resource/version/chunk is ever created.
-    assert Resource.objects.filter(tenant=tenant).count() == 0
-    assert ResourceChunk.objects.filter(tenant=tenant).count() == 0
+    # Worker scan path: a malicious object that reached storage is quarantined —
+    # resource FAILED, no chunks/embeddings/concepts, and an audit row.
+    res = Resource.objects.create(
+        tenant=tenant, title="evil", uploaded_by=owner,
+        visibility_scope=Resource.Visibility.INSTITUTION, mime_type="application/pdf",
+        processing_status=Resource.ProcessingStatus.PENDING,
+    )
+    version = ResourceVersion.objects.create(
+        tenant=tenant, resource=res, version_number=1,
+        storage_key=f"tenants/{tenant.id}/resources/{res.id}/eicar", created_by=owner,
+    )
 
-    print("ROW 08b actual: 400 'Malware signature detected (EICAR)' — rejected pre-storage, no quarantine row")
+    with patch("apps.common.storage.get_s3_client", return_value=_FakeS3(eicar, "application/pdf")), \
+         patch("apps.common.ai.generate_embeddings") as embed_spy, \
+         patch("apps.common.ai.extract_concepts") as concept_spy, \
+         patch.object(process_resource_ingestion, "retry", side_effect=AttributeError("stop")):
+        concept_spy.return_value = {"concepts": [], "relations": []}
+        with pytest.raises(AttributeError, match="stop"):
+            process_resource_ingestion.run(str(res.id), str(version.id), str(tenant.id))
+
+    res.refresh_from_db()
+    assert res.processing_status == Resource.ProcessingStatus.FAILED
+    assert (res.processing_error or "").startswith("Quarantined:")
+    assert "EICAR" in res.processing_error
+    assert ResourceChunk.objects.filter(tenant=tenant, resource_version=version).count() == 0
+    assert embed_spy.call_count == 0
+    assert concept_spy.call_count == 0
+    assert AuditLog.objects.filter(tenant=tenant, action="resource.quarantined").count() == 1
+
+    print("ROW 08b actual: quarantined (status=failed, 'Quarantined: ...EICAR', no chunks, audit row)")
 
 
 # --------------------------------------------------------------------------- #
@@ -424,44 +454,53 @@ def test_row_09_ingestion_chunks_and_embeds():
     assert res.processing_status == Resource.ProcessingStatus.READY
     assert all(c.embedding is not None and len(c.embedding) == dim for c in chunks)
 
-    # The brief also claims an AuditLog row is written by ingestion. It is not:
-    # ingestion writes no audit entry (resource.create does, when going via API).
-    assert AuditLog.objects.filter(tenant=tenant).count() == 0
+    # Ingestion writes an audit entry for the completed pipeline run.
+    assert AuditLog.objects.filter(
+        tenant=tenant, action="resource.ingestion_completed",
+    ).count() == 1
 
-    print(f"ROW 09 actual: status=ready, chunks={len(chunks)}, embeddings non-null; AuditLog rows=0 (claim false)")
+    print(f"ROW 09 actual: status=ready, chunks={len(chunks)}, embeddings non-null; AuditLog row written")
 
 
 # --------------------------------------------------------------------------- #
 # row 10 — Summarize: async summary queued + persisted
 # --------------------------------------------------------------------------- #
+class _FakeChunk:
+    def __init__(self, text):
+        self.text = text
+
+
+def _fake_summary_stream(text, max_words=300):
+    for piece in ["Water ", "moves ", "through ", "evaporation."]:
+        yield _FakeChunk(piece)
+
+
 @pytest.mark.django_db
 @patch("apps.resources.views.ai_service_available", return_value=True)
-def test_row_10_summarize_async_then_persisted(_ai_ok):
-    from apps.resources.summary_tasks import summarize_resource_task
-
+def test_row_10_summarize_streamed_sse(_ai_ok):
     tenant = _tenant("sum-10")
     student = _user(tenant, "s@sum10.edu")
     res, _version, _chunk = _ready_resource(
         tenant, student, chunk_text="Evaporation and condensation drive the water cycle.",
     )
 
-    with patch("apps.resources.summary_tasks.summarize_resource_task.delay") as delay:
-        delay.return_value.id = "task-10"
-        resp = _auth(student).post(f"/api/v1/resources/{res.id}/summarize/")
-    assert resp.status_code == 202, resp.data
-    assert resp.data["job_id"] == "task-10"
-
     with patch(
-        "apps.common.ai.generate_summary",
-        return_value={"summary": "Water moves through evaporation and condensation.", "key_points": ["evaporation"]},
+        "apps.common.ai.gemini.generate_summary_stream",
+        side_effect=_fake_summary_stream,
     ):
-        result = summarize_resource_task.run(str(res.id), str(tenant.id), str(student.id))
+        resp = _auth(student).get(f"/api/v1/resources/{res.id}/summarize/stream/")
 
-    assert result["status"] == "completed", result
+    assert resp.status_code == 200, resp.data
+    assert resp["Content-Type"].startswith("text/event-stream")
+    body = b"".join(resp.streaming_content).decode()
+    assert "event: token" in body
+    assert "event: done" in body
+    assert "evaporation." in body
+
     saved = ResourceSummary.objects.filter(tenant=tenant, resource=res).first()
-    assert saved is not None and saved.summary
+    assert saved is not None and "evaporation." in saved.summary
 
-    print("ROW 10 actual: 202 + job_id (async, not streamed); summary persisted on task run")
+    print("ROW 10 actual: 200 text/event-stream; token events then done; summary persisted")
 
 
 # --------------------------------------------------------------------------- #

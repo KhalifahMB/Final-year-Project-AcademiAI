@@ -109,3 +109,99 @@ def summarize_resource_task(self, resource_id: str, tenant_id: str, user_id: str
             "summary": summary_text,
             "key_points": key_points,
         }
+
+
+_AI_UNAVAILABLE_MSG = (
+    "The AI service is currently unavailable. Please try again later."
+)
+
+
+def iter_summary_stream(resource_id: str, tenant_id: str, user_id: str):
+    """SSE event generator — (event_name, payload) tuples for a streamed summary.
+
+    Generator body runs AFTER the request middleware's ``finally`` RESET the
+    tenant GUC, so every DB block opens its own ``tenant_scope()``. Events:
+    ``meta`` (resource identity), repeated ``token`` (prose chunks), and a
+    terminal ``done`` carrying the persisted ``ResourceSummary`` id — or a
+    single ``error`` with a user-safe message and nothing persisted.
+    """
+    from apps.accounts.models import User
+    from apps.common.ai import AIServiceUnavailableError
+    from apps.common.ai.gemini import generate_summary_stream
+    from apps.common.db import tenant_scope
+    from apps.resources.models import Resource, ResourceChunk, ResourceSummary
+
+    with tenant_scope(tenant_id):
+        resource = Resource.objects.filter(id=resource_id).first()
+        if resource is None:
+            yield "error", {"message": "This material is no longer available."}
+            return
+        title = resource.title
+        chunks = list(
+            ResourceChunk.objects.filter(
+                tenant_id=tenant_id,
+                resource_version__resource=resource,
+            )
+            .order_by("chunk_index")
+            .values_list("content", flat=True)[:30]
+        )
+
+    text = "\n\n".join(chunks)
+    if not text.strip():
+        yield "error", {"message": "This material has no extractable text."}
+        return
+
+    yield "meta", {"resource_id": str(resource_id), "resource_title": title}
+
+    parts = []
+    try:
+        for chunk in generate_summary_stream(text):
+            txt = getattr(chunk, "text", "") or ""
+            if txt:
+                parts.append(txt)
+                yield "token", {"text": txt}
+    except AIServiceUnavailableError:
+        yield "error", {"message": _AI_UNAVAILABLE_MSG}
+        return
+    except Exception:
+        logger.exception("Streaming summary failed resource=%s", resource_id)
+        yield "error", {"message": _AI_UNAVAILABLE_MSG}
+        return
+
+    summary_text = "".join(parts).strip()
+    if not summary_text:
+        yield "error", {"message": _AI_UNAVAILABLE_MSG}
+        return
+
+    summary_id = None
+    with tenant_scope(tenant_id):
+        try:
+            user = User.objects.filter(id=user_id).first()
+            obj = ResourceSummary.objects.create(
+                tenant_id=tenant_id,
+                resource=resource,
+                created_by=user,
+                version_number=(
+                    resource.versions.order_by("-version_number")
+                    .values_list("version_number", flat=True)
+                    .first()
+                    or 1
+                ),
+                summary=summary_text,
+                key_points=[],
+                word_count=len(summary_text.split()),
+                model_name="",
+            )
+            summary_id = str(obj.id)
+        except Exception:
+            logger.exception(
+                "Failed to persist streamed summary resource=%s", resource_id
+            )
+
+    yield "done", {
+        "summary_id": summary_id,
+        "resource_id": str(resource_id),
+        "resource_title": title,
+        "summary": summary_text,
+        "word_count": len(summary_text.split()),
+    }
