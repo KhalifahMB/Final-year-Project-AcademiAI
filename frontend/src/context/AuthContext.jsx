@@ -1,10 +1,13 @@
-/* eslint-disable react-refresh/only-export-components */
 import { createContext, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi } from '@/services/api';
 import { AUTH_QUERY_OPTIONS, USER_QUERY_KEY } from '@/services/authQuery';
 import { go } from '@/lib/navigation';
-import { clearSessionFlag, clearUserScopedStorage, setSessionFlag } from '@/lib/session';
+import {
+  clearSessionFlag,
+  clearUserScopedStorage,
+  setSessionFlag,
+} from '@/lib/session';
 
 export const AuthContext = createContext(null);
 
@@ -45,7 +48,7 @@ export function AuthProvider({ children }) {
       reload,
       isAuthenticated: !!user,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [user, isLoading, error, qc],
   );
 

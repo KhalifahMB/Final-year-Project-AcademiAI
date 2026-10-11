@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import AuthLayout from "@/components/layout/AuthLayout";
-import { authApi } from "@/services/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
-import { MailCheck, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import AuthLayout from '@/components/layout/AuthLayout';
+import { authApi } from '@/services/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
+import { MailCheck, RefreshCw } from 'lucide-react';
 
 const CODE_LENGTH = 6;
 
@@ -16,13 +16,13 @@ export default function VerifyEmailPage() {
   const location = useLocation();
   const initialEmail =
     location.state?.email ||
-    new URLSearchParams(location.search).get("email") ||
-    "";
+    new URLSearchParams(location.search).get('email') ||
+    '';
 
   const [email, setEmail] = useState(initialEmail);
-  const [digits, setDigits] = useState(Array(CODE_LENGTH).fill(""));
-  const [error, setError] = useState("");
-  const [ok, setOk] = useState("");
+  const [digits, setDigits] = useState(Array(CODE_LENGTH).fill(''));
+  const [error, setError] = useState('');
+  const [ok, setOk] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -35,7 +35,7 @@ export default function VerifyEmailPage() {
     return () => clearTimeout(t);
   }, [cooldown]);
 
-  const code = digits.join("");
+  const code = digits.join('');
 
   const focusFirstEmpty = () => {
     const idx = digits.findIndex((d) => !d);
@@ -48,12 +48,11 @@ export default function VerifyEmailPage() {
     // Focus first box when page loads (email already filled if coming from signup)
     const t = setTimeout(() => inputsRef.current[0]?.focus(), 150);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const setDigit = (i, val) => {
     // Allow only digits; support multi-char paste via val
-    const clean = val.replace(/\D/g, "").slice(0, CODE_LENGTH);
+    const clean = val.replace(/\D/g, '').slice(0, CODE_LENGTH);
     if (!clean) return;
     if (clean.length === 1) {
       setDigits((prev) => {
@@ -79,31 +78,31 @@ export default function VerifyEmailPage() {
   };
 
   const onKeyDown = (i, e) => {
-    if (e.key === "Backspace") {
+    if (e.key === 'Backspace') {
       if (digits[i]) {
         setDigits((prev) => {
           const next = [...prev];
-          next[i] = "";
+          next[i] = '';
           return next;
         });
       } else if (i > 0) {
         setDigits((prev) => {
           const next = [...prev];
-          next[i - 1] = "";
+          next[i - 1] = '';
           return next;
         });
         setTimeout(() => inputsRef.current[i - 1]?.focus(), 0);
       }
       e.preventDefault();
-    } else if (e.key === "ArrowLeft" && i > 0) {
+    } else if (e.key === 'ArrowLeft' && i > 0) {
       setTimeout(() => inputsRef.current[i - 1]?.focus(), 0);
-    } else if (e.key === "ArrowRight" && i < CODE_LENGTH - 1) {
+    } else if (e.key === 'ArrowRight' && i < CODE_LENGTH - 1) {
       setTimeout(() => inputsRef.current[i + 1]?.focus(), 0);
     }
   };
 
   const onPaste = (i, e) => {
-    const text = e.clipboardData?.getData("text") || "";
+    const text = e.clipboardData?.getData('text') || '';
     if (!text) return;
     e.preventDefault();
     setDigit(i, text);
@@ -112,25 +111,25 @@ export default function VerifyEmailPage() {
   const submit = async (e) => {
     if (e) e.preventDefault();
     if (!email.trim()) {
-      setError("Please enter your email address.");
+      setError('Please enter your email address.');
       return;
     }
     if (code.length !== CODE_LENGTH) {
-      setError("Please enter the full 6-digit code.");
+      setError('Please enter the full 6-digit code.');
       focusFirstEmpty();
       return;
     }
-    setError("");
+    setError('');
     setLoading(true);
     try {
       await authApi.verifyEmail({ email: email.trim(), code });
-      setOk("Verified! Redirecting you to sign in…");
-      setTimeout(() => navigate("/login"), 1000);
+      setOk('Verified! Redirecting you to sign in…');
+      setTimeout(() => navigate('/login'), 1000);
     } catch (err) {
       setError(
         err.response?.data?.error?.detail ||
           err.response?.data?.detail ||
-          "Verification failed",
+          'Verification failed',
       );
     } finally {
       setLoading(false);
@@ -140,20 +139,20 @@ export default function VerifyEmailPage() {
   const resend = async () => {
     if (cooldown > 0 || resending) return;
     if (!email.trim()) {
-      setError("Enter your email to resend the code.");
+      setError('Enter your email to resend the code.');
       return;
     }
-    setError("");
+    setError('');
     setResending(true);
     try {
       await authApi.resendVerification({ email: email.trim() });
-      setOk("A new code has been sent to your email.");
+      setOk('A new code has been sent to your email.');
       setCooldown(30);
-      setDigits(Array(CODE_LENGTH).fill(""));
+      setDigits(Array(CODE_LENGTH).fill(''));
       setTimeout(() => inputsRef.current[0]?.focus(), 0);
     } catch (err) {
       setError(
-        err.response?.data?.error?.detail || "Could not resend the code.",
+        err.response?.data?.error?.detail || 'Could not resend the code.',
       );
     } finally {
       setResending(false);
@@ -168,15 +167,12 @@ export default function VerifyEmailPage() {
       subtitle={
         initialEmail
           ? `We sent a 6-digit code to ${initialEmail}. Enter it below to activate your account.`
-          : "Enter the 6-digit code we emailed you to activate your account."
+          : 'Enter the 6-digit code we emailed you to activate your account.'
       }
       footer={
         <>
-          Back to{" "}
-          <Link
-            to="/login"
-            className="landing-text-link font-medium"
-          >
+          Back to{' '}
+          <Link to="/login" className="landing-text-link font-medium">
             sign in
           </Link>
         </>
@@ -188,7 +184,10 @@ export default function VerifyEmailPage() {
         </Alert>
       ) : null}
       {ok ? (
-        <Alert role="status" className="mb-5 border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)]">
+        <Alert
+          role="status"
+          className="mb-5 border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)]"
+        >
           <AlertDescription>{ok}</AlertDescription>
         </Alert>
       ) : null}
@@ -214,13 +213,13 @@ export default function VerifyEmailPage() {
             {digits.map((d, i) => (
               <Input
                 key={i}
-                id={i === 0 ? "code-0" : undefined}
+                id={i === 0 ? 'code-0' : undefined}
                 ref={(el) => {
                   inputsRef.current[i] = el;
                 }}
                 type="text"
                 inputMode="numeric"
-                autoComplete={i === 0 ? "one-time-code" : "off"}
+                autoComplete={i === 0 ? 'one-time-code' : 'off'}
                 maxLength={1}
                 value={d}
                 onChange={(e) => setDigit(i, e.target.value)}
@@ -228,11 +227,11 @@ export default function VerifyEmailPage() {
                 onPaste={(e) => onPaste(i, e)}
                 onFocus={(e) => e.target.select()}
                 className={cn(
-                  "h-12 w-full min-w-0 flex-1 rounded-xl border-2 text-center font-mono text-xl font-semibold tracking-widest caret-primary transition-colors",
-                  "px-0 sm:text-2xl",
+                  'h-12 w-full min-w-0 flex-1 rounded-xl border-2 text-center font-mono text-xl font-semibold tracking-widest caret-primary transition-colors',
+                  'px-0 sm:text-2xl',
                   d
-                    ? "border-primary/40 bg-primary/5 text-foreground"
-                    : "border-border",
+                    ? 'border-primary/40 bg-primary/5 text-foreground'
+                    : 'border-border',
                 )}
               />
             ))}
@@ -247,7 +246,7 @@ export default function VerifyEmailPage() {
           disabled={loading || code.length !== CODE_LENGTH}
           className="h-11 w-full font-medium"
         >
-          {loading ? "Verifying…" : "Verify email"}
+          {loading ? 'Verifying…' : 'Verify email'}
         </Button>
 
         <div className="flex items-center justify-center gap-2 text-sm">
@@ -261,14 +260,14 @@ export default function VerifyEmailPage() {
             className="h-8 gap-1.5 px-2 font-medium text-primary"
           >
             <RefreshCw
-              className={cn("h-3.5 w-3.5", resending && "animate-spin")}
+              className={cn('h-3.5 w-3.5', resending && 'animate-spin')}
               aria-hidden
             />
             {resending
-              ? "Sending…"
+              ? 'Sending…'
               : cooldown > 0
                 ? `Resend in ${cooldown}s`
-                : "Resend code"}
+                : 'Resend code'}
           </Button>
         </div>
       </form>

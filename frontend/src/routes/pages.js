@@ -2,7 +2,7 @@ import { lazy } from 'react';
 
 // Lazy-load every page so the initial bundle stays small. Centralized here
 // so the route groups only reference names, never import paths.
-export const LandingPage = lazy(() => import('@/pages/LandingPage'));
+export const LandingPage = lazy(() => import('@/pages/landing/variants/CinnabarLanding'));
 export const LoginPage = lazy(() => import('@/pages/LoginPage'));
 export const SignupPage = lazy(() => import('@/pages/SignupPage'));
 export const VerifyEmailPage = lazy(() => import('@/pages/VerifyEmailPage'));
@@ -12,6 +12,10 @@ export const PasswordResetPage = lazy(
 export const RequestInstitutionPage = lazy(
   () => import('@/pages/RequestInstitutionPage'),
 );
+
+// Preview-only route: three landing directions behind a picker. Not linked
+// from the app; promote the chosen variant to `/` when decided.
+export const LandingLab = lazy(() => import('@/pages/landing/LandingLab'));
 
 export const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 export const ChatPage = lazy(() => import('@/pages/ChatPage'));

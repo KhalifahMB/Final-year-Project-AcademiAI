@@ -1,4 +1,10 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import { Loader2 } from 'lucide-react';
 import { createViewer } from 'omni-doc-viewer';
 import api from '@/services/api';
@@ -107,7 +113,8 @@ const ResourcePreview = forwardRef(function ResourcePreview(
         blob = await api
           .get(contentPath, { responseType: 'blob' })
           .then((r) => r.data);
-        if (blobCache.size >= 24) blobCache.delete(blobCache.keys().next().value);
+        if (blobCache.size >= 24)
+          blobCache.delete(blobCache.keys().next().value);
         blobCache.set(contentPath, blob);
       }
       if (cancelled) return;
@@ -168,7 +175,6 @@ const ResourcePreview = forwardRef(function ResourcePreview(
     };
     // Intentionally keyed only on the document identity — callback props are
     // read through refs so parent re-renders never restart the engine.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preview?.content_path]);
 
   // Lazy PPTX speaker-notes extraction (only when the user toggles them).
@@ -202,7 +208,9 @@ const ResourcePreview = forwardRef(function ResourcePreview(
       // instead. Continuous keeps the dialog's scroll-based model.
       if (view && view.getState?.().viewMode === 'paged') {
         const total = view.getPageCount?.() || 1;
-        view.goToPage?.(Math.max(1, Math.min(total, Math.round((percent / 100) * total))));
+        view.goToPage?.(
+          Math.max(1, Math.min(total, Math.round((percent / 100) * total))),
+        );
         return;
       }
       // Continuous scroll-percentage restoration. PDF/office cells stream in
@@ -291,9 +299,12 @@ const ResourcePreview = forwardRef(function ResourcePreview(
         <div ref={stageRef} className="min-h-full w-full" />
       </div>
 
-      {!viewerState || viewerState.status === 'loading' || viewerState.status === 'idle' ? (
+      {!viewerState ||
+      viewerState.status === 'loading' ||
+      viewerState.status === 'idle' ? (
         <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden /> Loading preview…
+          <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />{' '}
+          Loading preview…
         </div>
       ) : null}
 
@@ -319,7 +330,15 @@ const ResourcePreview = forwardRef(function ResourcePreview(
               className="rounded p-0.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg-soft)]"
               aria-label="Close notes"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
                 <path d="M18 6 6 18M6 6l12 12" />
               </svg>
             </button>

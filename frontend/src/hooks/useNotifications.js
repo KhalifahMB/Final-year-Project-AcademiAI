@@ -1,9 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '@/services/api';
 
 const NOTIFICATIONS_QUERY_KEY = ['notifications'];
@@ -31,7 +27,8 @@ const NOTIFICATIONS_QUERY_OPTIONS = {
 
 function hasUnreadBadge(notification) {
   return (
-    !notification.is_read && (notification.severity === 'warn' || notification.severity === 'critical')
+    !notification.is_read &&
+    (notification.severity === 'warn' || notification.severity === 'critical')
   );
 }
 
@@ -83,7 +80,10 @@ export function useNotifications() {
     onSuccess: () => {
       qc.setQueryData(NOTIFICATIONS_QUERY_KEY, (old) => {
         if (!old) return old;
-        const results = (old.results || []).map((n) => ({ ...n, is_read: true }));
+        const results = (old.results || []).map((n) => ({
+          ...n,
+          is_read: true,
+        }));
         return { ...old, results, unread_count: 0 };
       });
     },
@@ -103,7 +103,16 @@ export function useNotifications() {
       markRead: markRead.mutateAsync,
       markAllRead: markAllRead.mutateAsync,
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [results, unreadCount, isLoading, isFetching, isError, refresh, markRead, markAllRead],
+
+    [
+      results,
+      unreadCount,
+      isLoading,
+      isFetching,
+      isError,
+      refresh,
+      markRead,
+      markAllRead,
+    ],
   );
 }

@@ -64,7 +64,6 @@ import MultiResourcePicker from '@/components/chat/MultiResourcePicker';
 
 // A pending upload's id is a local `upload-…` string, not the UUID the API
 // expects, so it must never leave the composer.
-// eslint-disable-next-line react-refresh/only-export-components
 export { confirmedResourceIds } from '@/components/chat/chatShared';
 
 const SUGGESTIONS = [
@@ -182,8 +181,7 @@ export default function ChatPage() {
     }
     if (sessionsQ.isLoading) return;
     openSession({ id: sid });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, searchParams, sessions, sessionsQ.isLoading]);
+     }, [sessionId, searchParams, sessions, sessionsQ.isLoading]);
 
   // Restore the in-progress conversation from sessionStorage when the page is
   // (re)mounted — e.g. after switching sidebar tabs in the same browser tab.
@@ -201,7 +199,6 @@ export default function ChatPage() {
     if (typeof snap.input === 'string') setInput(snap.input);
     if (snap.sessionId)
       setSearchParams({ session: snap.sessionId }, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Persist the active conversation so it survives page unmounts between tabs.

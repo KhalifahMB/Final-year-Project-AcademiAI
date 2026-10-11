@@ -9,7 +9,6 @@ import BrandMark from '@/components/shared/BrandMark';
 export function NotFoundPage() {
   const location = useLocation();
   useEffect(() => {
-    // eslint-disable-next-line no-console
     console.warn('404:', location.pathname);
   }, [location.pathname]);
   return (
@@ -20,7 +19,11 @@ export function NotFoundPage() {
       </p>
       <h1 className="mt-2 text-xl font-semibold">Page not found</h1>
       <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-        The page <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{location.pathname}</code> doesn't exist.
+        The page{' '}
+        <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+          {location.pathname}
+        </code>{' '}
+        doesn't exist.
       </p>
       <div className="mt-6 flex gap-2">
         <Button asChild>
