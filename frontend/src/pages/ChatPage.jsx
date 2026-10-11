@@ -744,7 +744,10 @@ export default function ChatPage() {
                       </span>
                       <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
                         What can I help you{' '}
-                        <span className="text-[var(--accent-strong)]">study</span> today?
+                        <span className="text-[var(--accent-strong)]">
+                          study
+                        </span>{' '}
+                        today?
                       </h1>
                       <p className="max-w-md text-sm text-muted-foreground">
                         Ask questions about your authorized materials. Responses

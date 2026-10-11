@@ -1676,15 +1676,20 @@
     background: var(--landing-panel);
     padding: 32px;
     overflow: hidden;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
   }
   .variant-card:hover {
     border-color: var(--accent-line);
-    box-shadow: 0 24px 48px -24px color-mix(in oklab, var(--fg) 20%, transparent);
+    box-shadow: 0 24px 48px -24px
+      color-mix(in oklab, var(--fg) 20%, transparent);
   }
   .variant-card.active {
     border-color: var(--accent);
-    box-shadow: 0 0 0 1px var(--accent), 0 24px 48px -24px color-mix(in oklab, var(--fg) 20%, transparent);
+    box-shadow:
+      0 0 0 1px var(--accent),
+      0 24px 48px -24px color-mix(in oklab, var(--fg) 20%, transparent);
   }
   .variant-card__bg {
     position: absolute;
@@ -1802,7 +1807,8 @@
     border-bottom: 1px solid var(--landing-line);
     background: var(--glass-shell-tint);
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur))
+      saturate(var(--glass-saturate));
   }
   .preview-back {
     color: var(--landing-muted);

@@ -75,7 +75,7 @@ AcademiAI's differentiator is the combination of three mechanisms that no neighb
 ## Brand Commitments
 
 - Name "AcademiAI" is final
-- The brand mark is code-drawn: inline SVG in `BrandMark.jsx` is canonical (theme-aware); static variants live at `frontend/public/images/Logo/academiai-mark[-dark|-maskable].svg`, with adaptive `favicon.svg` and regenerated PNG fallbacks (`favicon-*`, `pwa-*`)
+- The brand mark is code-drawn: inline SVG in `BrandMark.jsx` is canonical (theme-aware); static brand SVGs live at `frontend/public/brand/cinnabar-mark-{light,dark}.svg` plus `app-icon.svg` (the maskable source), with adaptive `favicon.svg` and regenerated PNG fallbacks (`favicon-*`, `pwa-*`, `apple-touch-icon`)
 - Avatar set exists at `frontend/src/assets/avatars/` (6 assets)
 - The formal visual contract is `DESIGN.md` — an established design system, not an open question. Colour, typography, material, and motion decisions belong there and must not be re-litigated inside a product task
 - Product/voice truth lives in this file; `DESIGN.md` holds visuals. Neither file restates the other's authority
@@ -83,14 +83,14 @@ AcademiAI's differentiator is the combination of three mechanisms that no neighb
 
 ## Evidence on Hand
 
-- Logo: `frontend/public/images/Logo/academiai_icon_light.png`, `academiai_icon_dark.png`
+- Logo: `frontend/public/brand/cinnabar-mark-light.svg`, `frontend/public/brand/cinnabar-mark-dark.svg`
 - Landing imagery: the page is drawn in code, not photography. Section art is inline SVG in `frontend/src/components/shared/landingPlates.jsx` (see `DESIGN.md` → Landing System). The only raster landing asset is `frontend/public/images/landing/hero-academiai-tutor.png`, used as the `og:image` in `frontend/index.html`
 - Favicons and PWA icons in `frontend/public/`
 - Complete working frontend with shadcn/ui component library and Tailwind v4 design tokens (59 page/view modules under `frontend/src/pages/`)
 - Full backend with Django REST Framework, pgvector, Celery workers
 - Product requirements: `docs/product/PRD.md` (product, problem, goals, non-goals, roles, hierarchy, functional + non-functional requirements, acceptance principles), with `docs/product/requirements.md` alongside it. **The path previously cited here — `docs/unzipped/AcademiAI-final-agent-package/documentation/docs/product/PRD.md` — no longer exists on disk; the document moved to `docs/product/`.** Other working docs are indexed in `docs/DOCUMENTATION_INDEX.md`
 - Code-level proof for the shipped capability set, usable as evidence rather than assertion: role agents and personas `backend/apps/agent/manifest.py`; cohort analytics `backend/apps/academics/analytics.py`; dashboard cohort aggregation `backend/apps/common/dashboard.py`; ICS export `backend/apps/calendar/services/ics.py` + `views.py`; timetable parsing `backend/apps/calendar/services/schedule_parse.py`; reading filters `frontend/src/lib/agentFilters.js`; RLS and tenant isolation `docs/DECISIONS.md`
-- **Unusable, still on disk** (re-verified 2026-10-05): `frontend/public/images/{abuja_campus_sunset,holographic_ai_library_collaboration,ai_knowledge_graph_visualization,brandkit}.webp` are referenced by no code. Each has disqualifying content baked into the pixels — a fabricated "94.2% accuracy" metric, a real "UC Berkeley" name, unverifiable "1536-dim / UMAP / MTEB" claims, real "ABUJA UNIVERSITY" signage, or a competing brand spec. Do not wire them into any public surface without a human review
+- **Removed (2026-10-11):** `frontend/public/images/{abuja_campus_sunset,holographic_ai_library_collaboration,ai_knowledge_graph_visualization,brandkit}.webp` were deleted — referenced by no code, and each had disqualifying content baked into the pixels (a fabricated "94.2% accuracy" metric, a real "UC Berkeley" name, unverifiable "1536-dim / UMAP / MTEB" claims, real "ABUJA UNIVERSITY" signage, or a competing brand spec). Do not re-add them
 - **No customer evidence exists.** No testimonials, named institutional customers, case studies, press, or usage benchmarks are on hand, and none may be invented for demos or marketing
 - **No RAG quality benchmark exists** until a labelled ground-truth set is curated and `manage.py evaluate_rag` is run
 

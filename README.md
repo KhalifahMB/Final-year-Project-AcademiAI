@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/images/Logo/academiai_icon_light.png" alt="AcademiAI logo" width="96" height="96" />
+<img src="frontend/public/brand/cinnabar-mark-light.svg" alt="AcademiAI logo" width="96" height="96" />
 
 # AcademiAI
 

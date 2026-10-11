@@ -12,7 +12,8 @@ import rehypeHighlight from 'rehype-highlight';
  * clickable chips that activate the corresponding source in the
  * right-hand sources rail. Non-matching numbers are left as-is.
  */
-function renderCitedText(text, sources, onSourceClick) {
+
+export function renderCitedText(text, sources, onSourceClick) {
   if (!text) return text;
   // Only look for citations where there is an actual source with that rank.
   const rankSet = new Set((sources || []).map((s) => Number(s.rank)));
