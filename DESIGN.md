@@ -469,7 +469,7 @@ before this was fixed.
 ## Component Inventory
 
 ### Existing (preserve)
-- `BrandMark` — **official AcademiAI mark** (the Iron Gall "A + mortarboard + circuit", one accent tassel node). Renders `<img>` from `public/images/Logo/academiai_app_icon_{light,dark}.png` with an explicit variant per theme — *not* inline SVG, so it cannot read `currentColor`; that is why both copies are baked and must be regenerated together. Ship assets: the mark, a maskable app icon (`pwa-*`, `apple-touch-icon`) and a 16px-safe micro-mark (`favicon-*`) — browsers read none of these from CSS custom properties, so the two-bake rule applies to the logo and is not negotiable. Page content stays inline SVG. Current state and regeneration prompts: `docs/BRAND_ASSETS.md`.
+- `BrandMark` — **official AcademiAI mark** (the Cinnabar "A" with an accent underline). Rendered as **theme-aware inline SVG** in `BrandMark.jsx`, so it follows the design tokens and needs no baked per-theme copy. Static brand SVGs ship at `frontend/public/brand/cinnabar-mark-{light,dark}.svg` and `app-icon.svg` (the maskable source); `frontend/public/favicon.svg` is adaptive via `prefers-color-scheme`. PNG fallbacks (`favicon-{16,32,48}`, `apple-touch-icon`, `pwa-{192,512}`) are rasterised from those SVGs and must be regenerated together when the mark changes. Page content stays inline SVG.
 - `Avatar` — 3-tier fallback (upload → preset → initials)
 - `ConfirmDialog` — Controlled alert dialog
 - `EmptyState` — Centered placeholder with CTA
