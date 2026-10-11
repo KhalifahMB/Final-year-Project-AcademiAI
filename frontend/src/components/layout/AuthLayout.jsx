@@ -25,13 +25,13 @@ export default function AuthLayout({
   eyebrow,
 }) {
   return (
-    <div className="landing-page landing-auth">
+    <div className="cinnabar landing-page landing-auth">
       <header className="landing-nav">
         <div className="landing-shell landing-nav__inner">
           <Link to="/" className="landing-brand" aria-label="AcademiAI home">
             <BrandMark size="h-8 w-8" />
             <span>
-              Academi<span className="text-[var(--accent-strong)]">AI</span>
+              Academi<span className="text-[var(--c-accent-strong)]">AI</span>
             </span>
           </Link>
           <nav className="landing-nav__links" aria-label="Landing page sections">
