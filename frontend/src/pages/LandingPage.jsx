@@ -403,7 +403,7 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="landing-page">
+    <div className="cinnabar landing-page">
       <header className="landing-nav">
         <div className="landing-shell landing-nav__inner">
           <Link to="/" className="landing-brand" aria-label="AcademiAI home">
