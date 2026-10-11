@@ -93,6 +93,7 @@ class StudentDashboardView(CachedDashboardView):
             "enrolled_courses": [],
             "recent_resources": [],
             "recent_chats": [],
+            "reading_history": [],
             "quiz_attempts": 0,
             "next_deadline": None,
         }
@@ -105,7 +106,7 @@ class StudentDashboardView(CachedDashboardView):
         from apps.resources.models import Resource
         from apps.chat.models import ChatSession
         from apps.assessments.models import Quiz, QuizAttempt
-        from apps.learning.models import Note, Bookmark
+        from apps.learning.models import Note, Bookmark, ResourceReadingPosition
 
         tenant_id = user.tenant_id
 
@@ -166,6 +167,30 @@ class StudentDashboardView(CachedDashboardView):
                 "id", "title", "mime_type", "updated_at", "visibility_scope",
             )
         )
+
+        # Continue reading — the materials this student actually opened, most
+        # recent first, with their saved reading progress. This is the real
+        # "pick up where you left off" signal (distinct from enrolled courses).
+        reading_history = [
+            {
+                "id": str(p.resource_id),
+                "title": p.resource.title,
+                "mime_type": p.resource.mime_type,
+                "section": p.section or "",
+                "scroll_percentage": round(p.scroll_percentage or 0),
+                "last_read_at": p.last_read_at.isoformat() if p.last_read_at else None,
+            }
+            for p in (
+                ResourceReadingPosition.objects.filter(
+                    tenant_id=tenant_id,
+                    user=user,
+                    resource__processing_status=Resource.ProcessingStatus.READY,
+                )
+                .select_related("resource")
+                .order_by("-last_read_at")[:6]
+            )
+            if p.resource_id
+        ]
 
         # Recent chats
         recent_chats = list(
@@ -283,6 +308,7 @@ class StudentDashboardView(CachedDashboardView):
             },
             "enrolled_courses": enrolled_courses,
             "continue_courses": continue_courses,
+            "reading_history": reading_history,
             "up_next": up_next,
             "concept_mastery": concept_mastery,
             "recent_resources": [

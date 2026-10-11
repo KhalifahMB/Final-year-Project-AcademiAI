@@ -143,6 +143,7 @@ export function makeApiMock() {
           totals: {},
           enrolled_courses: [],
           recent_resources: [],
+          reading_history: [],
           recent_chats: [],
         }),
       ),
