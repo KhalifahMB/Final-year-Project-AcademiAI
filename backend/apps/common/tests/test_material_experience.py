@@ -2,7 +2,9 @@
 Regression tests for the material-experience improvements:
 
 - retry_processing: failed materials can be re-queued (owner/admin only)
-- preview: text content inline, PDFs via signed URL
+- preview: text content inline; PDF/office/sheet delegate rendering to the
+  client via a same-origin `content_path`; binary formats with extracted text
+  fall back to chunk text
 - summarize: visibility authorization enforced
 - quiz generation: available to students, scoped to authorized materials
 - chat history: messages filterable by session, scoped to the owner
@@ -101,7 +103,8 @@ def test_retry_denied_for_non_owner():
 
 
 @pytest.mark.django_db
-def test_preview_text_and_pdf():
+@patch("apps.resources.services.upload_service.get_s3_client")
+def test_preview_text_and_pdf(s3):
     t = make_tenant("preview")
     owner = make_user("o@preview.edu", t)
 
@@ -117,21 +120,24 @@ def test_preview_text_and_pdf():
     )
     client = auth_client(owner)
 
-    with patch("apps.resources.services.upload_service.get_s3_client") as s3:
-        obj = MagicMock()
-        obj["Body"].read.return_value = b"Hello preview content"
-        s3.return_value.get_object.return_value = obj
-        resp = client.get(f"/api/v1/resources/{txt.id}/preview/")
+    s3.return_value.get_object.return_value = {
+        "Body": MagicMock()
+    }
+    s3.return_value.get_object.return_value["Body"].read.return_value = b"Hello preview content"
+    resp = client.get(f"/api/v1/resources/{txt.id}/preview/")
     assert resp.status_code == 200
     assert resp.data["kind"] == "text"
     assert "Hello preview content" in resp.data["content"]
 
-    with patch("apps.resources.views.generate_presigned_download_url") as g:
-        g.return_value = "https://signed.example/pdf"
-        resp = client.get(f"/api/v1/resources/{pdf.id}/preview/")
+    # PDFs are streamed through the API on the SAME origin (no cross-origin
+    # presigned S3 fetch): the client pulls the bytes with its auth cookies
+    # and renders them with its own engine. Payload is a relative path, not a
+    # signed URL, and building it needs no storage round-trip.
+    resp = client.get(f"/api/v1/resources/{pdf.id}/preview/")
     assert resp.status_code == 200
     assert resp.data["kind"] == "pdf"
-    assert resp.data["preview_url"].startswith("https://signed")
+    assert resp.data["content_path"] == f"/resources/{pdf.id}/content/"
+    assert resp.data["mime_type"] == "application/pdf"
 
 
 @pytest.mark.django_db
@@ -250,9 +256,7 @@ def test_chat_history_scoped_to_owner_and_session():
 
 
 @pytest.mark.django_db
-def test_preview_office_format_serves_extracted_text():
-    from apps.resources.models import ResourceChunk, ResourceVersion
-
+def test_preview_office_format_delegates_to_client_renderer():
     t = make_tenant("officepreview")
     owner = make_user("o@officepreview.edu", t)
     key = f"tenants/{t.id}/resources/deck/slides.pptx"
@@ -263,29 +267,55 @@ def test_preview_office_format_serves_extracted_text():
         processing_status=Resource.ProcessingStatus.READY,
         has_extractable_text=True,
     )
+    client = auth_client(owner)
+
+    # Office documents aren't served as raw bytes or pre-rendered text: the
+    # payload names a same-origin `content_path` and the client renders the
+    # file with its own engine. Building the payload touches no storage, so a
+    # renderer that fails later degrades to the dialog's download fallback.
+    resp = client.get(f"/api/v1/resources/{res.id}/preview/")
+    assert resp.status_code == 200
+    assert resp.data["kind"] == "office"
+    assert resp.data["content_path"] == f"/resources/{res.id}/content/"
+
+
+@pytest.mark.django_db
+def test_preview_non_renderable_binary_serves_extracted_chunk_text():
+    from apps.resources.models import ResourceChunk, ResourceVersion
+
+    t = make_tenant("otherpreview")
+    owner = make_user("o@otherpreview.edu", t)
+    key = f"tenants/{t.id}/resources/rec/recording.dat"
+    res = Resource.objects.create(
+        tenant=t, title="Recording.dat", uploaded_by=owner,
+        storage_key=key,
+        mime_type="application/octet-stream",
+        processing_status=Resource.ProcessingStatus.READY,
+        has_extractable_text=True,
+    )
     ver = ResourceVersion.objects.create(
         tenant=t, resource=res, version_number=1, storage_key=key, created_by=owner
     )
     ResourceChunk.objects.create(
         tenant=t, resource_version=ver, chunk_index=0,
-        content="Big-O notation describes algorithm growth.",
+        content="Extracted transcript line one.",
     )
     ResourceChunk.objects.create(
         tenant=t, resource_version=ver, chunk_index=1,
-        content="Merge sort runs in O(n log n).",
+        content="Extracted transcript line two.",
     )
     client = auth_client(owner)
 
-    # Classification falls back to "other" when the magic sniff can't reach
-    # storage; the office-format branch must still serve the chunk text.
+    # A binary format the client can't render (and storage is unreachable for a
+    # magic sniff) still degrades to an inline text preview from the chunks.
     with patch("apps.resources.views.get_s3_client") as s3:
         s3.side_effect = Exception("no storage in test")
         resp = client.get(f"/api/v1/resources/{res.id}/preview/")
 
     assert resp.status_code == 200
     assert resp.data["kind"] == "text"
-    assert "Big-O notation" in resp.data["content"]
-    assert "O(n log n)" in resp.data["content"]
+    assert "Extracted transcript line one." in resp.data["content"]
+    assert "Extracted transcript line two." in resp.data["content"]
     assert resp.data["truncated"] is False
 
 

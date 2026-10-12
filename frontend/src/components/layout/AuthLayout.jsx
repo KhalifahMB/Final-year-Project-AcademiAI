@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
  *
  * Unifies every auth page (/login, /signup, /verify-email, /password-reset,
  * /request-institution) with the grounded institutional landing system:
- * paper canvas, Fraunces display type, violet accent, hairline cards,
+ * paper canvas, Fraunces display type, Cinnabar accent, hairline cards,
  * and the same sticky nav + footer. No glass, no indigo glow — one voice.
  */
 export default function AuthLayout({
@@ -25,12 +25,14 @@ export default function AuthLayout({
   eyebrow,
 }) {
   return (
-    <div className="landing-page landing-auth">
+    <div className="cinnabar landing-page landing-auth">
       <header className="landing-nav">
         <div className="landing-shell landing-nav__inner">
           <Link to="/" className="landing-brand" aria-label="AcademiAI home">
             <BrandMark size="h-8 w-8" />
-            <span>AcademiAI</span>
+            <span>
+              Academi<span className="text-[var(--c-accent-strong)]">AI</span>
+            </span>
           </Link>
           <nav className="landing-nav__links" aria-label="Landing page sections">
             <Link to="/#solution">Product</Link>
@@ -144,7 +146,9 @@ export default function AuthLayout({
         <div className="landing-shell landing-footer__inner">
           <Link to="/" className="landing-brand">
             <BrandMark size="h-7 w-7" />
-            <span>AcademiAI</span>
+            <span>
+              Academi<span className="text-[var(--c-accent-strong)]">AI</span>
+            </span>
           </Link>
           <span>Grounded learning, institution by institution.</span>
         </div>

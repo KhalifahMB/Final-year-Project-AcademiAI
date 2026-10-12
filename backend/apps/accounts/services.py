@@ -124,9 +124,18 @@ def _hash_value(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
+def _six_digit_code() -> str:
+    """Random 6-digit code, zero-padded (``000000``–``999999``).
+
+    Only the SHA-256 hash is stored, so the whole 10**6 space is guessable in
+    principle — callers must cap attempts per record (see ``AUTH_MAX_*_ATTEMPTS``).
+    """
+    return f"{secrets.randbelow(10**6):06d}"
+
+
 def create_verification_code(user: User) -> str:
     """Generate a single-use verification code; return plaintext only for email delivery."""
-    code = f"{secrets.randbelow(10**6):06d}"
+    code = _six_digit_code()
     EmailVerificationCode.objects.filter(user=user, is_used=False).update(is_used=True)
     EmailVerificationCode.objects.create(
         user=user,
@@ -333,19 +342,20 @@ def reactivate_tenant_users(tenant) -> int:
     ).update(is_active=True)
 
 
-def create_password_reset_token(user: User) -> str:
-    token = secrets.token_urlsafe(32)
+def create_password_reset_code(user: User) -> str:
+    """Generate a single-use 6-digit reset code; return plaintext only for email delivery."""
+    code = _six_digit_code()
     PasswordResetToken.objects.filter(user=user, is_used=False).update(is_used=True)
     PasswordResetToken.objects.create(
         user=user,
-        token_hash=_hash_value(token),
+        token_hash=_hash_value(code),
         expires_at=timezone.now()
         + timedelta(minutes=settings.AUTH_PASSWORD_RESET_EXPIRY_MINUTES),
     )
-    return token
+    return code
 
 
-def confirm_password_reset(email: str, token: str, new_password: str) -> None:
+def confirm_password_reset(email: str, code: str, new_password: str) -> None:
     # Do not reveal whether email exists
     user = User.objects.filter(email__iexact=email).first()
     if not user:
@@ -357,8 +367,14 @@ def confirm_password_reset(email: str, token: str, new_password: str) -> None:
         .order_by("-created_at")
         .first()
     )
-    if not record or record.token_hash != _hash_value(token):
-        raise ValueError("Invalid or expired reset token.")
+    if not record:
+        raise ValueError("Invalid or expired reset code.")
+    if record.attempts >= settings.AUTH_MAX_RESET_ATTEMPTS:
+        raise ValueError("Too many attempts. Request a new code.")
+    if record.token_hash != _hash_value(code):
+        record.attempts += 1
+        record.save(update_fields=["attempts"])
+        raise ValueError("Invalid or expired reset code.")
     record.is_used = True
     record.save(update_fields=["is_used"])
     user.set_password(new_password)

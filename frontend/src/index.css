@@ -14,8 +14,14 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+/* Class-based theming: `dark:` must key off the `.dark` element that
+   useTheme toggles, not the OS preference (Tailwind v4 defaults to the
+   media query and ignores darkMode in tailwind.config.js). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @import './styles/tokens.css';
 @import './styles/base.css';
 @import './styles/components.css';
 @import './styles/landing.css';
 @import './styles/highlight.css';
+@import './pages/landing/variants/cinnabar.css';

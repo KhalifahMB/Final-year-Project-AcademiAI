@@ -1,18 +1,31 @@
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
-  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 /**
  * Generic create/edit modal driven by a field spec:
@@ -33,28 +46,32 @@ export default function EntityDialog({
   submitLabel,
 }) {
   const form = useForm({
-    defaultValues: Object.fromEntries(fields.map((f) => [f.name, ""])),
+    defaultValues: Object.fromEntries(fields.map((f) => [f.name, ''])),
   });
+
+  const fieldsRef = useRef(fields);
+  useEffect(() => {
+    fieldsRef.current = fields;
+  }, [fields]);
 
   useEffect(() => {
     if (!open) return;
     const values = {};
-    fields.forEach((f) => {
+    fieldsRef.current.forEach((f) => {
       const v = initial?.[f.name];
-      values[f.name] = v == null ? "" : String(v);
+      values[f.name] = v == null ? '' : String(v);
     });
     form.reset(values);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initial]);
+  }, [open, initial, form]);
 
   const submit = (values) => {
     const payload = {};
     fields.forEach((f) => {
       const v = values[f.name];
-      if (v === "" || v == null) {
+      if (v === '' || v == null) {
         if (f.required) payload[f.name] = v;
       } else {
-        payload[f.name] = f.type === "number" ? Number(v) : v;
+        payload[f.name] = f.type === 'number' ? Number(v) : v;
       }
     });
     onSubmit(payload);
@@ -78,18 +95,32 @@ export default function EntityDialog({
                 key={f.name}
                 control={form.control}
                 name={f.name}
-                rules={f.required ? { required: `${f.label} is required` } : undefined}
+                rules={
+                  f.required
+                    ? { required: `${f.label} is required` }
+                    : undefined
+                }
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
                       {f.label}
-                      {f.required ? <span className="text-destructive"> *</span> : null}
+                      {f.required ? (
+                        <span className="text-destructive"> *</span>
+                      ) : null}
                     </FormLabel>
                     <FormControl>
-                      {f.type === "select" ? (
-                        <Select value={field.value || undefined} onValueChange={field.onChange}>
+                      {f.type === 'select' ? (
+                        <Select
+                          value={field.value || undefined}
+                          onValueChange={field.onChange}
+                        >
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder={f.placeholder || `Select ${f.label.toLowerCase()}`} />
+                            <SelectValue
+                              placeholder={
+                                f.placeholder ||
+                                `Select ${f.label.toLowerCase()}`
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {(f.options || []).map((o) => (
@@ -99,12 +130,16 @@ export default function EntityDialog({
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : f.type === "textarea" ? (
-                        <Textarea rows={3} placeholder={f.placeholder} {...field} />
+                      ) : f.type === 'textarea' ? (
+                        <Textarea
+                          rows={3}
+                          placeholder={f.placeholder}
+                          {...field}
+                        />
                       ) : (
                         <Input
-                          type={f.type || "text"}
-                          step={f.type === "number" ? "any" : undefined}
+                          type={f.type || 'text'}
+                          step={f.type === 'number' ? 'any' : undefined}
                           placeholder={f.placeholder}
                           {...field}
                         />
@@ -116,11 +151,16 @@ export default function EntityDialog({
               />
             ))}
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={onClose} disabled={pending}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onClose}
+                disabled={pending}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={pending} className="shadow-sm">
-                {pending ? "Saving…" : submitLabel || "Save"}
+                {pending ? 'Saving…' : submitLabel || 'Save'}
               </Button>
             </DialogFooter>
           </form>

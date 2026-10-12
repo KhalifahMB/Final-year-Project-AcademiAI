@@ -140,6 +140,10 @@ export const chatDoneEventContract = z
   .object({ assistant_message: chatMessageContract })
   .passthrough();
 
+export const chatErrorEventContract = z
+  .object({ message: z.string().optional() })
+  .passthrough();
+
 // --- agent SSE stream events (POST /agent/stream/) ---------------------------
 
 export const agentTokenEventContract = z.union([

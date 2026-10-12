@@ -80,6 +80,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Third-party
+    # Required for GinIndex / SearchVectorField on ResourceChunk.ts_vector.
+    "django.contrib.postgres",
     "rest_framework",
     "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
@@ -103,6 +105,9 @@ INSTALLED_APPS = [
     "apps.agent",
     "apps.calendar",
     "apps.notifications",
+
+    # extension
+    'django_extensions'
 ]
 
 MIDDLEWARE = [
@@ -118,9 +123,9 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-if DEBUG and not TESTING:
-    INSTALLED_APPS.append("debug_toolbar")
-    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
+# Debug Toolbar is intentionally disabled: django-debug-toolbar is not part of
+# the supported dev toolchain here (it is listed in requirements but excluded
+# from active use). Do not re-enable without reinstating its URL patterns.
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -145,14 +150,37 @@ TEMPLATES = [
 # POSTGRES_USER must be a non-superuser WITHOUT BYPASSRLS so that
 # PostgreSQL Row-Level Security is genuinely enforced (see
 # infrastructure/postgres/init/01-app-role.sql).
+def _postgres_conn_from_url(url):
+    """Parse a postgres:// connection string into the connection fields.
+
+    Honours DATABASE_URL (most managed providers ship one URL instead of
+    five discrete variables) without pulling in dj-database-url. Discrete
+    POSTGRES_* env vars still win over the URL when both are set.
+    """
+    from urllib.parse import urlsplit, unquote
+
+    parts = urlsplit(url)
+    if parts.scheme not in ("postgres", "postgresql"):
+        raise ValueError("DATABASE_URL must use the postgres:// scheme")
+    return {
+        "NAME": (parts.path or "/").lstrip("/") or "academiai",
+        "USER": unquote(parts.username or "academiai"),
+        "PASSWORD": unquote(parts.password or ""),
+        "HOST": parts.hostname or "localhost",
+        "PORT": str(parts.port or 5432),
+    }
+
+
+_db_url = os.getenv("DATABASE_URL")
+_db_from_url = _postgres_conn_from_url(_db_url) if _db_url else {}
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "academiai"),
-        "USER": os.getenv("POSTGRES_USER", "academiai"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "academiai"),
-        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        "NAME": os.getenv("POSTGRES_DB", _db_from_url.get("NAME", "academiai")),
+        "USER": os.getenv("POSTGRES_USER", _db_from_url.get("USER", "academiai")),
+        "PASSWORD": os.getenv("POSTGRES_PASSWORD", _db_from_url.get("PASSWORD", "academiai")),
+        "HOST": os.getenv("POSTGRES_HOST", _db_from_url.get("HOST", "localhost")),
+        "PORT": os.getenv("POSTGRES_PORT", _db_from_url.get("PORT", "5432")),
         "OPTIONS": {"options": "-c search_path=public"},
         # Reuse pooled connections between requests instead of one-per-thread,
         # cutting connection churn for Gunicorn workers and Celery tasks. Keep
@@ -360,8 +388,6 @@ CELERY_TASK_STORE_EAGER_RESULT = CELERY_TASK_ALWAYS_EAGER
 CELERY_TASK_ROUTES = {
     "apps.resources.tasks.*": {"queue": "ingestion"},
     "apps.resources.summary_tasks.*": {"queue": "ai"},
-    "apps.knowledge.tasks.*": {"queue": "ingestion"},
-    "apps.chat.tasks.*": {"queue": "ai"},
     "apps.assessments.tasks.*": {"queue": "ai"},
     "apps.accounts.tasks.send_tenant_suspension_emails": {"queue": "email"},
     "apps.platform.tasks.*": {"queue": "email"},
@@ -393,9 +419,33 @@ AWS_S3_SIGNATURE_VERSION = "s3v4"
 AWS_S3_FILE_OVERWRITE = False
 
 # Gemini
+# Defaults must name models Google still serves. gemini-1.5-flash and
+# text-embedding-004 were retired: generateContent/embedContent return 404
+# "is not found for API version v1beta", which the AI layer reports as a generic
+# 503 — indistinguishable from a missing key. Verified live against the API.
+# Capacity for any single model also fluctuates minute to minute (503 "high
+# demand"): gemini-3.6-flash passed 6/6 then failed every call minutes later,
+# while gemini-3.5-flash stayed healthy across the same window. No single
+# default can be relied on, so GEMINI_MODEL is only the first candidate in a
+# chain that apps.common.ai.gemini walks on 404/429/503 — see model_chain().
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
-GEMINI_EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL", "text-embedding-004")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+# Tried in order after GEMINI_MODEL. Comma-separated; blanks are dropped.
+GEMINI_MODEL_FALLBACKS = [
+    m.strip()
+    for m in os.getenv(
+        "GEMINI_MODEL_FALLBACKS",
+        "gemini-3.5-flash-lite, gemini-3.1-flash-lite, gemini-3.6-flash",
+    ).split(",")
+    if m.strip()
+]
+# Per-model retry count for transient failures (429/5xx), on top of the model
+# chain itself. Retries use exponential backoff in generate_content_with_fallback.
+GEMINI_RETRY_ATTEMPTS = max(1, int(os.getenv("GEMINI_RETRY_ATTEMPTS", "2")))
+GEMINI_EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
+# gemini-embedding-001 natively emits 3072 dims; EMBEDDING_DIMENSION is passed as
+# output_dimensionality, so 768 below is a truncating request, not a native size.
+# Changing this value invalidates every stored ResourceChunk.embedding.
 EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "768"))
 # Cache single-query embedding vectors in Redis for this many seconds (300 = 5 min).
 # Retrieval re-embeds the same query text repeatedly; this avoids redundant API calls.
@@ -405,6 +455,7 @@ EMB_CACHE_TTL = int(os.getenv("EMB_CACHE_TTL", "300"))
 AUTH_VERIFICATION_CODE_EXPIRY_MINUTES = int(os.getenv("AUTH_VERIFICATION_CODE_EXPIRY_MINUTES", "15"))
 AUTH_PASSWORD_RESET_EXPIRY_MINUTES = int(os.getenv("AUTH_PASSWORD_RESET_EXPIRY_MINUTES", "30"))
 AUTH_MAX_VERIFICATION_ATTEMPTS = int(os.getenv("AUTH_MAX_VERIFICATION_ATTEMPTS", "5"))
+AUTH_MAX_RESET_ATTEMPTS = int(os.getenv("AUTH_MAX_RESET_ATTEMPTS", "5"))
 
 # Email
 # Local dev routes SMTP through Mailpit (`docker compose up -d` -> service
@@ -430,10 +481,7 @@ CLAMAV_STRICT = os.getenv(
     "True" if not DEBUG else "False",
 ).lower() in ("1", "true", "yes")
 
-# Debug Toolbar (dev only)
-INTERNAL_IPS = ["127.0.0.1", "localhost"]
-DEBUG_TOOLBAR_CONFIG = {"SHOW_TOOLBAR_CALLBACK": lambda request: DEBUG}
-DEBUG_TOOLBAR_CONFIG['IS_RUNNING_TESTS'] = False
+# Debug Toolbar config intentionally omitted alongside the app/middleware above.
 
 # --- Production security hardening (env-driven; no-ops under DEBUG) -------
 if not DEBUG:
@@ -464,6 +512,11 @@ if not DEBUG:
         _insecure.append("AWS_SECRET_ACCESS_KEY")
     if "academiai:academiai@" in os.getenv("CELERY_BROKER_URL", ""):
         _insecure.append("CELERY_BROKER_URL")
+    # An empty key is not an insecure default so much as an absent dependency:
+    # _get_client() returns None and every AI endpoint degrades to a 503 that
+    # looks exactly like an upstream outage. Fail at boot instead.
+    if not GEMINI_API_KEY.strip():
+        _insecure.append("GEMINI_API_KEY (empty)")
     if _insecure:
         raise RuntimeError(
             "Insecure default credential(s) used in production: "

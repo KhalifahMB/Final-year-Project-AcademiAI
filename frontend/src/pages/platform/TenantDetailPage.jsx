@@ -63,7 +63,7 @@ export default function TenantDetailPage() {
 
   const detailQ = useQuery({
     queryKey: ["platform-tenant-detail", id],
-    queryFn: async () => (await platformApi.tenantDetail(id)).data,
+    queryFn: () => platformApi.tenantDetail(id),
     staleTime: 30_000,
   });
 

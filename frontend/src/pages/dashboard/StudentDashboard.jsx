@@ -4,7 +4,7 @@
  * Sections:
  *  1. Greeting + "Ask anything" CTA
  *  2. Up next (quiz due-dates)
- *  3. Continue learning (2-col course cards w/ progress meter)
+ *  3. Continue learning (2-col recently-opened materials w/ reading progress)
  *  4. Study activity filled area chart (This week / vs last week / Streak stats)
  *  5. Sidebar stats grid (Concept mastery colored bars)
  *  6. New in library (recent resources)
@@ -180,7 +180,7 @@ function ConceptMastery({ items }) {
   );
 }
 
-function ContinueLearning({ courses }) {
+function ContinueLearning({ items }) {
   return (
     <section className="card p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -191,54 +191,52 @@ function ContinueLearning({ courses }) {
           </h3>
         </div>
         <Link
-          to="/my-courses"
+          to="/resources"
           className="inline-flex items-center gap-0.5 text-[12px] font-[600] text-[var(--accent-strong)] hover:underline"
         >
-          All courses
+          All resources
           <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
-      {courses.length === 0 ? (
+      {items.length === 0 ? (
         <p className="text-[12.5px] text-[var(--muted)]">
-          No courses yet. Once you’re enrolled they’ll appear here.
+          Nothing opened yet. Materials you read will appear here.
         </p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {courses.slice(0, 4).map((c) => {
-            const tone = c.status === 'on_track' ? 'ok' : 'warn';
+          {items.slice(0, 4).map((r) => {
+            const pct = Math.round(Number(r.scroll_percentage) || 0);
+            const tone = pct >= 100 ? 'ok' : 'accent';
             return (
               <Link
-                key={c.id}
-                to={`/courses/${c.id}`}
+                key={r.id}
+                to={`/resources/${r.id}`}
                 className="group rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)]/40 p-4 transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--hover)]"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex h-8 min-w-0 max-w-full items-center overflow-hidden rounded-[var(--radius-sm)] bg-[var(--accent-soft)] px-2 font-mono text-[11px] font-[650] text-[var(--accent-strong)]">
-                    <span className="truncate">{c.code}</span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--accent-soft)] text-[var(--accent-strong)]">
+                    <FileText className="h-4 w-4" aria-hidden />
                   </span>
-                  <Pill tone={tone}>
-                    {c.status === 'on_track' ? 'On track' : 'Behind'}
+                  <Pill tone={pct >= 100 ? 'ok' : pct > 0 ? 'accent' : 'soft'}>
+                    {pct >= 100 ? 'Read' : pct > 0 ? 'Reading' : 'Opened'}
                   </Pill>
                 </div>
                 <p className="mt-3 truncate text-[13.5px] font-[620] leading-snug">
-                  {c.title}
-                </p>
-                <p className="mt-0.5 text-[12px] text-[var(--muted)]">
-                  {c.semester || 'Current semester'}
+                  {r.title}
                 </p>
                 <div className="mt-4">
                   <div className="mb-1 flex items-center justify-between text-[11.5px] text-[var(--muted)]">
                     <span>Progress</span>
                     <span className="num font-[600] text-[var(--fg)]">
-                      {c.progress_pct}%
+                      {pct}%
                     </span>
                   </div>
-                  <Meter pct={c.progress_pct} tone={tone} />
+                  <Meter pct={pct} tone={tone} label={r.title} />
                 </div>
-                {c.last_accessed && (
+                {r.last_read_at && (
                   <p className="mt-2.5 flex items-center gap-1 text-[11.5px] text-[var(--muted)]">
                     <Clock className="h-3 w-3" aria-hidden />
-                    <TimeAgo iso={c.last_accessed} />
+                    <TimeAgo iso={r.last_read_at} />
                   </p>
                 )}
               </Link>
@@ -649,7 +647,7 @@ function ActivePlans({ items }) {
           </h3>
         </div>
         <Link
-          to="/planner"
+          to="/plans"
           className="inline-flex items-center gap-0.5 text-[12px] font-[600] text-[var(--accent-strong)] hover:underline"
         >
           Planner
@@ -673,7 +671,7 @@ function ActivePlans({ items }) {
             return (
               <li key={p.id}>
                 <Link
-                  to="/planner"
+                  to="/plans"
                   className="group block rounded-[var(--radius-md)] px-2 py-2 transition-colors hover:bg-[var(--hover)]"
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -777,7 +775,7 @@ function buildTotalSeries(timeline) {
 export default function StudentDashboard({ dash, studentActivity, studentRange, setStudentRange, firstName }) {
   const counts = dash?.counts || {};
   const upNext = dash?.up_next || [];
-  const continueCourses = dash?.continue_courses || [];
+  const readingHistory = dash?.reading_history || [];
   const concepts = dash?.concept_mastery || [];
   const recentResources = dash?.recent_resources || [];
   const timeline = studentActivity?.data?.timeline || [];
@@ -835,7 +833,11 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
         </Link>
       </div>
 
-      <AiInsightCard dashboardType="student" className="mb-6" data-testid="ai-insight-card" />
+      <AiInsightCard
+        dashboardType="student"
+        className="mb-6"
+        data-testid="ai-insight-card"
+      />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -860,7 +862,7 @@ export default function StudentDashboard({ dash, studentActivity, studentRange, 
       {/* Main grid */}
       <div className="mt-6 grid gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
-          <ContinueLearning courses={continueCourses} />
+          <ContinueLearning items={readingHistory} />
           <StudyActivity
             chartData={chartData}
             range={studentRange}

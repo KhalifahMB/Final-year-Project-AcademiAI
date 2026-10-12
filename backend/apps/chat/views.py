@@ -25,6 +25,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.ai import AIServiceUnavailableError, ai_service_available
+from apps.common.ai.gemini import AI_SERVICE_UNAVAILABLE_MSG
 from apps.common.db import tenant_scope
 from apps.common.jobs import claim_job
 from apps.common.permissions import IsTenantMember
@@ -39,7 +41,7 @@ from apps.resources.models import Resource, ResourceVersion
 from apps.resources.serializers import ResourceSerializer
 from apps.resources.tasks import process_resource_ingestion
 
-from .models import ChatSession
+from .models import ChatMessage, ChatSession
 from .serializers import (
     ChatSessionSerializer,
     ChatMessageSerializer,
@@ -107,13 +109,14 @@ class ChatMessageViewSet(viewsets.ReadOnlyModelViewSet):
 
     serializer_class = ChatMessageSerializer
     permission_classes = [IsTenantMember]
-    queryset = ChatSession.objects.none()
+    # Declared against the real model so django-filter validation during
+    # OpenAPI schema generation sees a `session` field (an empty ChatSession
+    # queryset made /api/schema/ fail with "non-model field names: session").
+    queryset = ChatMessage.objects.none()
     filterset_fields = ["session"]
     filter_backends = [DjangoFilterBackend]
 
     def get_queryset(self):
-        from .models import ChatMessage
-
         if getattr(self, "swagger_fake_view", False):
             return ChatMessage.objects.none()
         qs = (
@@ -181,10 +184,19 @@ class ChatSendMessageView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        user_msg, assistant_msg = services.execute_send_turn(
-            user, session, ser.validated_data["content"],
-            ser.validated_data.get("resource_ids") or [],
-        )
+        try:
+            user_msg, assistant_msg = services.execute_send_turn(
+                user, session, ser.validated_data["content"],
+                ser.validated_data.get("resource_ids") or [],
+            )
+        except AIServiceUnavailableError as e:
+            # Never persist a placeholder as the assistant's reply — the turn
+            # is abandoned and the user gets an explicit, retryable error.
+            logger.warning("Chat send rejected: AI service unavailable")
+            return Response(
+                {"success": False, "error": {"detail": str(e)}},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         return Response(
             {
@@ -326,8 +338,10 @@ class ChatStreamMessageView(APIView):
     event (`event: done`) includes the full persisted assistant message
     with sources so the client can reconcile its local state.
 
-    When no Gemini key is set, falls back to a single stub event (same
-    behaviour as the sync endpoint) so dev preview still works.
+    If the AI backend is unavailable the stream terminates with a single
+    `event: error` carrying a user-safe message and no assistant message is
+    persisted. Availability is also checked up front so an outage is reported
+    as a 503 before the user's message is stored.
     """
 
     permission_classes = [IsTenantMember]
@@ -353,6 +367,18 @@ class ChatStreamMessageView(APIView):
         # Synchronous pre-work (runs inside the middleware tenant scope):
         # persist the user's message, set a fallback title, and resolve the
         # authorized grounding context once.
+        # Reject before persisting: an unavailable AI service must not strand
+        # a user message in the session with no reply.
+        if not ai_service_available():
+            logger.warning("Chat stream rejected: AI service unavailable")
+            return Response(
+                {
+                    "success": False,
+                    "error": {"detail": AI_SERVICE_UNAVAILABLE_MSG},
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         user_msg = services.append_user_message(session, content)
         services.bump_session_title(session, content)
         chunks, retrieval_ms, confidence = services.retrieve_grounding_chunks(

@@ -1,45 +1,370 @@
 [
   {
-    "query": "What do you know about: systems expert applications system?",
+    "query": "What do you know about: vlan gigabitethernet interface port?",
     "tenant_slug": "ATBU",
     "user_email": "muhammadelkufahn8442@gmail.com",
     "course_offering_id": null,
     "relevant_chunk_ids": [
-      "c5c453ca-d0ab-46a4-9446-da4e949f9980",
-      "67245bcf-7c9f-432c-be1c-5108e7bb9c0e",
-      "5ddd17d9-0dc3-42db-940e-cdd28612bb4a",
-      "06f6c858-8b56-49d7-9dde-208ffcbd063a",
-      "8052b68a-8a30-47da-9b8e-1aa5265246b3",
-      "36c69b0c-0f6d-4586-b598-34c475e0028b"
+      "3eb0f706-ae78-4389-99d8-ecf7b53f560f",
+      "ee6e3f77-a5b3-4361-9436-feda4a0b43cf",
+      "c95c7b60-5ee9-4b44-8c46-371d88b25359",
+      "ff97c795-8306-4c38-9f5e-95d882342ac7",
+      "77258833-817f-4872-bd9b-6937286b76c4",
+      "679852d2-4296-4b4a-96a0-1b3f2eb5fdad",
+      "37bb414a-997f-4119-a318-4cd300011c80",
+      "b3faa150-0df3-4e9b-961e-8b3320dab7ad",
+      "a2207696-b569-4af8-b357-91bb11877660",
+      "d2d05b3f-5892-4518-a625-0f0661234313",
+      "1fa490da-289d-498f-8c3e-7d9364dcd120",
+      "048cd02a-b3ad-4712-8f8e-630077c354c0",
+      "b871f89f-472b-4edd-a64e-8d3cd2026019",
+      "750c43ff-8ca6-47ca-9288-a9dc147ae2c7",
+      "059ef89f-7bbc-453a-9e83-c12333a256f6",
+      "0da8d422-a74f-4de7-8597-e818eba5f2b0",
+      "3a087168-37aa-408a-b6c4-d5a36eea6258",
+      "3822729d-6684-4b89-a7b5-b35b784f5f42",
+      "1964e903-11ea-4825-b745-4568696a0ca3"
     ]
   },
   {
-    "query": "What do you know about: reviewer table key paper?",
+    "query": "What do you know about: command undo huawei keys?",
     "tenant_slug": "ATBU",
     "user_email": "muhammadelkufahn8442@gmail.com",
     "course_offering_id": null,
     "relevant_chunk_ids": [
-      "44b9ed79-2205-42fc-ade3-50b4603335a1",
-      "944ebeb9-1e83-45ce-b241-8ac81b800c0f",
+      "5aaa262e-e5a0-407e-89dc-6cda40efe011",
+      "cb73cb61-5a11-4f78-8a8f-a27388ff16aa",
+      "0c46c70a-ffe5-4d3e-8d15-85955adcae4c",
+      "2d9eb690-517c-4e66-bff2-92322b6da7b1",
+      "4368ce75-04e5-48b7-b2bc-ab08549c72b2",
+      "7ceba58a-a115-49ee-b099-49185c3da367"
+    ]
+  },
+  {
+    "query": "What do you know about: view command huawei ospf?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "5aaa262e-e5a0-407e-89dc-6cda40efe011",
+      "00983d52-8d84-4c0d-9285-4cd4ba20ed3d",
+      "cb73cb61-5a11-4f78-8a8f-a27388ff16aa",
+      "0c46c70a-ffe5-4d3e-8d15-85955adcae4c",
+      "2d9eb690-517c-4e66-bff2-92322b6da7b1",
+      "4368ce75-04e5-48b7-b2bc-ab08549c72b2",
+      "7ceba58a-a115-49ee-b099-49185c3da367"
+    ]
+  },
+  {
+    "query": "What do you know about: mac vlan module vlanif?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "299f2838-3c8b-491b-9add-5a02659f38a3",
+      "c6f3d62c-23cc-4223-9832-c08e8a224e15",
+      "a523afec-2793-4116-b788-70dfa98a516d",
+      "05a7b09d-8b4b-4aac-a609-4e63ccbd84f9",
+      "e338b600-bca5-46a5-9650-7b928943c33d",
+      "87134a8c-8fb7-4b2c-b9df-1ec914812e4d",
+      "0144b771-6f3a-4f92-9063-10216e305d08",
+      "b791f5c0-43e4-4bde-8431-e6ba483cfd5e",
+      "13115548-557a-4b58-bdbe-c8c68a1fa9c3",
+      "cf70ff18-b3c8-4504-858c-1cf28c1c391d",
+      "9448253b-c8ff-4bf5-8162-47e293c749e4",
+      "048cd02a-b3ad-4712-8f8e-630077c354c0",
+      "4ea69ef8-acda-4db1-869b-fbeffdfbd599",
+      "4656319d-5620-44ee-874b-f95fbf43c694",
+      "27c6317e-2a44-4e91-9a30-22bf7037d076",
+      "059ef89f-7bbc-453a-9e83-c12333a256f6",
+      "f5f686ec-a7b8-4b3a-92d9-e16f2c1b91bd"
+    ]
+  },
+  {
+    "query": "What do you know about: destination mask hop next?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "1f76f226-8b67-4cea-a68b-740fcd7cfffe",
+      "43e32309-1564-4d9c-ac2d-3dfe14769ea8",
+      "098cef88-114f-4e60-b533-43861ed59e16"
+    ]
+  },
+  {
+    "query": "What do you know about: data information network payload?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "f2669ffd-fb1c-4b81-9b28-3444ebccbdf0",
+      "e8bc7036-5cdb-47d6-b930-cba7645488e2",
+      "09cad8a0-ebe0-403c-b4f1-363002b3fb85",
+      "391723ef-ecef-4b2d-ac16-31215019c69f",
+      "7bcde73a-6ea5-4cd6-a714-c67f7dab736f",
+      "07db74e3-5a8f-4bb4-9a8f-c1927a488e46",
+      "a835a9a2-e1e1-4019-b431-69d559250c66",
+      "6e548dca-5218-4bc8-a7f8-d6f1ce84da5f"
+    ]
+  },
+  {
+    "query": "What do you know about: ctrl commands command cursor?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "1911f77c-85ab-407b-a915-9fa463b709c1",
+      "cb73cb61-5a11-4f78-8a8f-a27388ff16aa",
+      "2d9eb690-517c-4e66-bff2-92322b6da7b1"
+    ]
+  },
+  {
+    "query": "What do you know about: form normal table paper?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "b2f01e65-12a0-4591-a4f1-1338af161f8e",
       "85b43364-096d-4d6d-a198-da876bfe237d",
+      "19a9714e-09ec-45d6-be0b-f66f20cff9e7",
       "bcd6a389-cafa-45fc-9c1c-1e9cbd15d0c6",
-      "3305db6c-b8cd-4268-a3b7-aac8951ed1fb",
-      "c94ec2fd-f617-4789-8837-e960efba7757",
-      "8e8d922d-3148-4b91-9a16-17bbd97eece7",
-      "fee6c34d-1c1a-490a-ad7e-d276d6e7b913",
-      "b13b2523-6c43-4d57-8c73-1c9bb9322cfe",
-      "38adcfba-ea5d-4f81-b2b9-c5a269b2a676",
-      "b2f01e65-12a0-4591-a4f1-1338af161f8e"
+      "97f9659d-b0c0-4151-8a43-f2de97168c78",
+      "b9137be0-3a93-483e-a8f2-f8b0ec71f42d",
+      "944ebeb9-1e83-45ce-b241-8ac81b800c0f"
     ]
   },
   {
-    "query": "What do you know about: middleware communication enterprise service?",
+    "query": "What do you know about: link port root aabc?",
     "tenant_slug": "ATBU",
     "user_email": "muhammadelkufahn8442@gmail.com",
     "course_offering_id": null,
     "relevant_chunk_ids": [
-      "88a5b911-cfc9-420b-9156-db5f21995e7e",
-      "61b52e34-915a-4085-8eff-dd7de1d1a9bc"
+      "47744206-bedf-4aec-a82d-9eac62fd76d7",
+      "21d5cc2b-4014-427d-9869-102a9eef6b5f",
+      "b0c556a5-9a8a-48bd-9772-e2b9f3b00a45",
+      "c2d84e2f-8455-4dee-a1a9-8c0274b6da12",
+      "f522270e-5dd7-4298-9253-8aaadcc8d24f"
+    ]
+  },
+  {
+    "query": "What do you know about: nat address acl dynamic?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "a2e275ac-2b2c-4961-a724-52f015e32643",
+      "9ca992eb-e3bb-4c4a-952c-183e661a2ee3",
+      "19eba218-74da-4579-ad27-a081ee285bbc",
+      "ac6996dc-a4e1-47aa-add7-77e3348af700",
+      "3af6a175-5a33-4648-9f5d-0cd5da7236f9"
+    ]
+  },
+  {
+    "query": "What do you know about: address protocol data header?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "5599ad19-960b-4a87-8051-3a6ca3e1ff63",
+      "065cd1aa-6a1c-4453-9b90-44010d625d8b"
+    ]
+  },
+  {
+    "query": "What do you know about: broadcast domains frames interfaces?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "93013de8-fa34-45f7-bc48-af988fe60ccb"
+    ]
+  },
+  {
+    "query": "What do you know about: commands need you common?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "2a9a724d-dfa3-4956-aaa7-fd077140fb6b",
+      "51808e75-8c51-475b-8a0c-f34c48f3a462"
+    ]
+  },
+  {
+    "query": "What do you know about: traffic network intrusion zones?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "92c8df01-14fa-4bc1-89c3-bd690df35867"
+    ]
+  },
+  {
+    "query": "What do you know about: interface vlan physical sub?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "3eb0f706-ae78-4389-99d8-ecf7b53f560f",
+      "c95c7b60-5ee9-4b44-8c46-371d88b25359",
+      "ff97c795-8306-4c38-9f5e-95d882342ac7",
+      "679852d2-4296-4b4a-96a0-1b3f2eb5fdad",
+      "37bb414a-997f-4119-a318-4cd300011c80",
+      "1fa490da-289d-498f-8c3e-7d9364dcd120",
+      "b871f89f-472b-4edd-a64e-8d3cd2026019",
+      "3a087168-37aa-408a-b6c4-d5a36eea6258",
+      "3822729d-6684-4b89-a7b5-b35b784f5f42"
+    ]
+  },
+  {
+    "query": "What do you know about: expert tools include system?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "d72053c9-3a0a-48ca-b845-5743736a03aa",
+      "67245bcf-7c9f-432c-be1c-5108e7bb9c0e"
+    ]
+  },
+  {
+    "query": "What do you know about: stp port network ports?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "c10d0501-6bd5-4257-8ecf-9ccd7e8f800e",
+      "2ea2a773-1b50-4b9d-8a40-974f3b215bbf",
+      "b3faa150-0df3-4e9b-961e-8b3320dab7ad",
+      "c2d84e2f-8455-4dee-a1a9-8c0274b6da12",
+      "f47fb127-3391-4b5e-897a-867920257b3d",
+      "6cc6d919-afbb-4509-a226-4d281d76a4dd",
+      "d4dc1a1e-d0c3-45cd-84fa-65a7a2a8a038",
+      "bc50df13-8da6-46de-9aa7-e7e85857e124"
+    ]
+  },
+  {
+    "query": "What do you know about: vlan principles broadcast configuration?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "ef4e3b6e-ed99-44d4-beb3-1f2596b7b4c6",
+      "13cf4bed-c44f-4edc-8306-3e0fde6444eb"
+    ]
+  },
+  {
+    "query": "What do you know about: vlan mac address gigabitethernet?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "299f2838-3c8b-491b-9add-5a02659f38a3",
+      "c6f3d62c-23cc-4223-9832-c08e8a224e15",
+      "a523afec-2793-4116-b788-70dfa98a516d",
+      "3eb0f706-ae78-4389-99d8-ecf7b53f560f",
+      "ee6e3f77-a5b3-4361-9436-feda4a0b43cf",
+      "05a7b09d-8b4b-4aac-a609-4e63ccbd84f9",
+      "53cafa5b-6c10-49aa-898c-5da1f13c9511",
+      "959cc54d-5f49-4e1b-9293-11acd64c31c2",
+      "54fe5d66-4a4d-44f4-95b6-4ae63e0cbb7e",
+      "679852d2-4296-4b4a-96a0-1b3f2eb5fdad",
+      "06523932-813a-43b8-acb8-a20fbba8e6f2",
+      "e338b600-bca5-46a5-9650-7b928943c33d",
+      "5cad18d1-5d9a-46c6-afa2-c1a7f8c9df5e",
+      "87134a8c-8fb7-4b2c-b9df-1ec914812e4d",
+      "a2207696-b569-4af8-b357-91bb11877660",
+      "0144b771-6f3a-4f92-9063-10216e305d08",
+      "fe196bd8-4b0d-4e97-a74b-998846aeb618",
+      "b791f5c0-43e4-4bde-8431-e6ba483cfd5e",
+      "da8c54e8-3283-479e-bab5-c7247eafb70a",
+      "13115548-557a-4b58-bdbe-c8c68a1fa9c3",
+      "cf70ff18-b3c8-4504-858c-1cf28c1c391d",
+      "d2d05b3f-5892-4518-a625-0f0661234313",
+      "048cd02a-b3ad-4712-8f8e-630077c354c0",
+      "4ea69ef8-acda-4db1-869b-fbeffdfbd599",
+      "4656319d-5620-44ee-874b-f95fbf43c694",
+      "750c43ff-8ca6-47ca-9288-a9dc147ae2c7",
+      "ac6996dc-a4e1-47aa-add7-77e3348af700",
+      "cd128e89-a3c6-49e1-8d26-30b7a6a73560",
+      "27c6317e-2a44-4e91-9a30-22bf7037d076",
+      "059ef89f-7bbc-453a-9e83-c12333a256f6",
+      "0da8d422-a74f-4de7-8597-e818eba5f2b0",
+      "16e97e6f-fa4a-4d99-81b4-f5609379af07",
+      "f5f686ec-a7b8-4b3a-92d9-e16f2c1b91bd",
+      "20ef6737-512f-4563-926d-187765c48fbf",
+      "1964e903-11ea-4825-b745-4568696a0ca3",
+      "14a19362-5aa5-43ff-a4e9-15540c3a71a4"
+    ]
+  },
+  {
+    "query": "What do you know about: network topology lan bureau?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "e4a0be39-610c-41c9-96a0-3697a0b1e6d2",
+      "a287f549-971b-40df-9951-c5138ae9f55f",
+      "c99a70b0-8544-4e73-886f-a10e5df7f977"
+    ]
+  },
+  {
+    "query": "What do you know about: vlan gigabitethernet pvid hybrid?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "299f2838-3c8b-491b-9add-5a02659f38a3",
+      "3eb0f706-ae78-4389-99d8-ecf7b53f560f",
+      "ee6e3f77-a5b3-4361-9436-feda4a0b43cf",
+      "c95c7b60-5ee9-4b44-8c46-371d88b25359",
+      "679852d2-4296-4b4a-96a0-1b3f2eb5fdad",
+      "87134a8c-8fb7-4b2c-b9df-1ec914812e4d",
+      "a2207696-b569-4af8-b357-91bb11877660",
+      "d2d05b3f-5892-4518-a625-0f0661234313",
+      "048cd02a-b3ad-4712-8f8e-630077c354c0",
+      "4656319d-5620-44ee-874b-f95fbf43c694",
+      "b871f89f-472b-4edd-a64e-8d3cd2026019",
+      "750c43ff-8ca6-47ca-9288-a9dc147ae2c7",
+      "059ef89f-7bbc-453a-9e83-c12333a256f6",
+      "0da8d422-a74f-4de7-8597-e818eba5f2b0",
+      "3822729d-6684-4b89-a7b5-b35b784f5f42",
+      "1964e903-11ea-4825-b745-4568696a0ca3"
+    ]
+  },
+  {
+    "query": "What do you know about: port stp link network?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "f2669ffd-fb1c-4b81-9b28-3444ebccbdf0",
+      "21d5cc2b-4014-427d-9869-102a9eef6b5f",
+      "c10d0501-6bd5-4257-8ecf-9ccd7e8f800e",
+      "2ea2a773-1b50-4b9d-8a40-974f3b215bbf",
+      "b3faa150-0df3-4e9b-961e-8b3320dab7ad",
+      "c2d84e2f-8455-4dee-a1a9-8c0274b6da12",
+      "f47fb127-3391-4b5e-897a-867920257b3d",
+      "6cc6d919-afbb-4509-a226-4d281d76a4dd",
+      "d4dc1a1e-d0c3-45cd-84fa-65a7a2a8a038",
+      "bc50df13-8da6-46de-9aa7-e7e85857e124",
+      "a835a9a2-e1e1-4019-b431-69d559250c66",
+      "f522270e-5dd7-4298-9253-8aaadcc8d24f"
+    ]
+  },
+  {
+    "query": "What do you know about: public address port internal?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "24dcdae3-9dfc-47c8-b908-296b215a95f7"
+    ]
+  },
+  {
+    "query": "What do you know about: ack destination source number?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "22cd1d77-3541-4da5-96ff-721ee16dfac2"
     ]
   },
   {
@@ -48,235 +373,469 @@
     "user_email": "muhammadelkufahn8442@gmail.com",
     "course_offering_id": null,
     "relevant_chunk_ids": [
-      "e925a65a-3c1e-4985-a02f-25c6c3ef5c1f",
-      "6c7b1a41-7e5f-4b1c-93e6-ab96821f5347",
+      "b3159aa4-f7d9-42a4-939d-e35ce0b48ac6",
       "0c5b2c92-bd30-4abe-a8b5-ebe9a324a47c",
-      "de616b1b-5ad9-4ddd-a724-71528fd5bbd4",
+      "ce4f8070-eec5-4dea-a750-b40467d4985a",
+      "de616b1b-5ad9-4ddd-a724-71528fd5bbd4"
+    ]
+  },
+  {
+    "query": "What do you know about: route rtb rta static?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "7d077c89-bf56-4074-96b3-58fb0bb11a44",
+      "2501e2c8-cbb5-4ef4-8819-14e8c7ea2feb",
+      "a845f6e9-6a22-4c7a-befd-a1d3f7450a8e",
+      "baf2a4e2-c78b-4562-809c-e2656e07ac3c",
+      "f6d1439b-c4f1-471d-9f61-81dea85923ee",
+      "99098a57-8911-4856-a042-a9fad6598dca",
+      "3eab398c-0af4-4652-a6e2-0eea56ee3220"
+    ]
+  },
+  {
+    "query": "What do you know about: command cursor huawei character?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "5aaa262e-e5a0-407e-89dc-6cda40efe011",
+      "1911f77c-85ab-407b-a915-9fa463b709c1",
+      "cb73cb61-5a11-4f78-8a8f-a27388ff16aa",
+      "0c46c70a-ffe5-4d3e-8d15-85955adcae4c",
+      "2d9eb690-517c-4e66-bff2-92322b6da7b1",
+      "4368ce75-04e5-48b7-b2bc-ab08549c72b2",
+      "f11b013b-ceee-4455-a767-759d480a6420",
+      "7ceba58a-a115-49ee-b099-49185c3da367"
+    ]
+  },
+  {
+    "query": "What do you know about: command undo huawei keys?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "5aaa262e-e5a0-407e-89dc-6cda40efe011",
+      "cb73cb61-5a11-4f78-8a8f-a27388ff16aa",
+      "0c46c70a-ffe5-4d3e-8d15-85955adcae4c",
+      "2d9eb690-517c-4e66-bff2-92322b6da7b1",
+      "4368ce75-04e5-48b7-b2bc-ab08549c72b2",
+      "7ceba58a-a115-49ee-b099-49185c3da367"
+    ]
+  },
+  {
+    "query": "What do you know about: layer data network transmission?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "33631d71-efc1-4aea-a373-7c132d9e3c4e",
+      "f2669ffd-fb1c-4b81-9b28-3444ebccbdf0",
+      "a8037d6b-3947-41db-a047-b7f4f68c1328",
+      "09cad8a0-ebe0-403c-b4f1-363002b3fb85",
+      "391723ef-ecef-4b2d-ac16-31215019c69f",
+      "d2ef6e8d-6464-40f1-9f03-5318d2664f51",
+      "b5ed2487-475a-43e1-8c19-d28f5ceb4771",
+      "51d9ddab-9000-4f4c-9e13-5fc959c03173",
+      "7bcde73a-6ea5-4cd6-a714-c67f7dab736f",
+      "e61eced4-897d-4540-b395-e8e672952598",
+      "a835a9a2-e1e1-4019-b431-69d559250c66",
+      "6e548dca-5218-4bc8-a7f8-d6f1ce84da5f"
+    ]
+  },
+  {
+    "query": "What do you know about: answer data database system?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "39cba42a-884d-4b55-baae-081c6138c1ff",
+      "6ba286ba-84c9-4737-9e49-6a87b6430df5",
+      "4d73040e-1f91-4ebf-8b0d-dfe3ec526908",
+      "ba2a6b04-e607-4b40-be6c-d04925f1bd82",
+      "06627156-df59-4fdf-957c-5166275c2141",
+      "b3159aa4-f7d9-42a4-939d-e35ce0b48ac6",
+      "8c6978f6-65be-48c7-b576-ce0ae95bc5f1",
+      "ef2e1a7c-c710-47f9-838b-4eaa81251474",
+      "b76f4a71-a2a5-45ca-bf39-5e3328347296",
+      "f7e74e8d-497a-4f79-819a-06af4458e3a1",
+      "fd6ac8ff-36f1-4a37-a052-3bfe5883a06a",
+      "e9347d00-5d10-43de-813c-bd0e70a155b4",
+      "ce4f8070-eec5-4dea-a750-b40467d4985a",
+      "d236d5f2-b0ba-4ee0-ae16-4cb994de23df",
+      "de616b1b-5ad9-4ddd-a724-71528fd5bbd4"
+    ]
+  },
+  {
+    "query": "What do you know about: vlan assignment frame mac?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "299f2838-3c8b-491b-9add-5a02659f38a3",
+      "e14fe122-a869-473f-89ea-b6d99627c82f",
+      "c6f3d62c-23cc-4223-9832-c08e8a224e15",
+      "a523afec-2793-4116-b788-70dfa98a516d",
+      "ef4e3b6e-ed99-44d4-beb3-1f2596b7b4c6",
+      "37bb414a-997f-4119-a318-4cd300011c80",
+      "5cad18d1-5d9a-46c6-afa2-c1a7f8c9df5e",
+      "87134a8c-8fb7-4b2c-b9df-1ec914812e4d",
+      "8c3bf071-3982-4d02-88ff-b8221ee45956",
+      "b791f5c0-43e4-4bde-8431-e6ba483cfd5e",
+      "13115548-557a-4b58-bdbe-c8c68a1fa9c3",
+      "1fa490da-289d-498f-8c3e-7d9364dcd120",
+      "048cd02a-b3ad-4712-8f8e-630077c354c0",
+      "4656319d-5620-44ee-874b-f95fbf43c694",
+      "7e01a736-05d8-4b9b-90f1-91edbb0b6b0a",
+      "27c6317e-2a44-4e91-9a30-22bf7037d076",
+      "059ef89f-7bbc-453a-9e83-c12333a256f6",
+      "16e97e6f-fa4a-4d99-81b4-f5609379af07",
+      "3822729d-6684-4b89-a7b5-b35b784f5f42",
+      "20ef6737-512f-4563-926d-187765c48fbf"
+    ]
+  },
+  {
+    "query": "What do you know about: mac address destination vlanif?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "c6f3d62c-23cc-4223-9832-c08e8a224e15",
+      "05a7b09d-8b4b-4aac-a609-4e63ccbd84f9",
+      "53cafa5b-6c10-49aa-898c-5da1f13c9511",
+      "959cc54d-5f49-4e1b-9293-11acd64c31c2",
+      "54fe5d66-4a4d-44f4-95b6-4ae63e0cbb7e",
+      "06523932-813a-43b8-acb8-a20fbba8e6f2",
+      "e338b600-bca5-46a5-9650-7b928943c33d",
+      "5cad18d1-5d9a-46c6-afa2-c1a7f8c9df5e",
+      "0144b771-6f3a-4f92-9063-10216e305d08",
+      "fe196bd8-4b0d-4e97-a74b-998846aeb618",
+      "b791f5c0-43e4-4bde-8431-e6ba483cfd5e",
+      "a2e275ac-2b2c-4961-a724-52f015e32643",
+      "da8c54e8-3283-479e-bab5-c7247eafb70a",
+      "13115548-557a-4b58-bdbe-c8c68a1fa9c3",
+      "cf70ff18-b3c8-4504-858c-1cf28c1c391d",
+      "048cd02a-b3ad-4712-8f8e-630077c354c0",
+      "4ea69ef8-acda-4db1-869b-fbeffdfbd599",
+      "4656319d-5620-44ee-874b-f95fbf43c694",
+      "098cef88-114f-4e60-b533-43861ed59e16",
+      "cd128e89-a3c6-49e1-8d26-30b7a6a73560",
+      "27c6317e-2a44-4e91-9a30-22bf7037d076",
+      "059ef89f-7bbc-453a-9e83-c12333a256f6",
+      "16e97e6f-fa4a-4d99-81b4-f5609379af07",
+      "f5f686ec-a7b8-4b3a-92d9-e16f2c1b91bd",
+      "20ef6737-512f-4563-926d-187765c48fbf",
+      "14a19362-5aa5-43ff-a4e9-15540c3a71a4"
+    ]
+  },
+  {
+    "query": "What do you know about: layer data link network?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "33631d71-efc1-4aea-a373-7c132d9e3c4e",
+      "f2669ffd-fb1c-4b81-9b28-3444ebccbdf0",
+      "a8037d6b-3947-41db-a047-b7f4f68c1328",
+      "09cad8a0-ebe0-403c-b4f1-363002b3fb85",
+      "391723ef-ecef-4b2d-ac16-31215019c69f",
+      "d2ef6e8d-6464-40f1-9f03-5318d2664f51",
+      "c2d84e2f-8455-4dee-a1a9-8c0274b6da12",
+      "b5ed2487-475a-43e1-8c19-d28f5ceb4771",
+      "51d9ddab-9000-4f4c-9e13-5fc959c03173",
+      "7bcde73a-6ea5-4cd6-a714-c67f7dab736f",
+      "e61eced4-897d-4540-b395-e8e672952598",
+      "a835a9a2-e1e1-4019-b431-69d559250c66",
+      "6e548dca-5218-4bc8-a7f8-d6f1ce84da5f"
+    ]
+  },
+  {
+    "query": "What do you know about: address configuration dhcpv icmpv?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "81ce29bb-8fd8-4b00-b38a-7dcef3ec7d9e",
+      "5550f969-7fc6-4865-92f6-d473d32d3b80"
+    ]
+  },
+  {
+    "query": "What do you know about: port rstp state edge?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "b3faa150-0df3-4e9b-961e-8b3320dab7ad",
+      "da51fcab-d1ef-401f-845e-e1b1a9895cd8"
+    ]
+  },
+  {
+    "query": "What do you know about: nnnnnnnn network address part?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "0f6be11a-c684-4b08-8122-7a68a8d26d0a",
+      "5550f969-7fc6-4865-92f6-d473d32d3b80",
+      "dc1e92af-7cd5-4da4-b68f-ef53d1106e26",
+      "a2e275ac-2b2c-4961-a724-52f015e32643",
+      "1c024b74-79bf-4a92-8a08-53ee38b0d5d3",
+      "4364d1aa-82df-445a-a6c3-a59709b0f006",
+      "eea8ccb4-4553-473c-8a7a-35b8e39645cc",
+      "464977a9-7a68-452d-92a7-9d50c481c237",
+      "10f19821-43c1-43fe-9c76-13b357b6ea5b",
+      "29c02ed6-ea9f-496b-832a-bc3552c2fb1e",
+      "8f077822-b20c-4d52-baad-ff1040e6d8c6",
+      "af6e257b-cb78-4217-968a-44bed7795395",
+      "f1fa9d82-d551-4851-97fc-818d50fefcb8"
+    ]
+  },
+  {
+    "query": "What do you know about: area ospf neighbor full?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "1a993b6c-0f48-4a38-881a-6c71ab8ab89e",
+      "0c428004-ce35-4e6b-9dd6-1d58ce83c130",
+      "ba2e8042-7b95-4aac-aed2-664b63825280",
+      "c0cab275-de6c-4c54-9df9-37bb1ae3e393"
+    ]
+  },
+  {
+    "query": "What do you know about: route routing metric preference?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "6295f5db-13b4-4880-9873-0bef1a97766a",
+      "99098a57-8911-4856-a042-a9fad6598dca",
+      "f13ded40-df41-44b6-801a-8ad86238b944"
+    ]
+  },
+  {
+    "query": "What do you know about: data applications information understand?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "e8bc7036-5cdb-47d6-b930-cba7645488e2",
+      "391723ef-ecef-4b2d-ac16-31215019c69f",
+      "07db74e3-5a8f-4bb4-9a8f-c1927a488e46",
+      "6e548dca-5218-4bc8-a7f8-d6f1ce84da5f"
+    ]
+  },
+  {
+    "query": "What do you know about: port stp link network?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "f2669ffd-fb1c-4b81-9b28-3444ebccbdf0",
+      "21d5cc2b-4014-427d-9869-102a9eef6b5f",
+      "c10d0501-6bd5-4257-8ecf-9ccd7e8f800e",
+      "2ea2a773-1b50-4b9d-8a40-974f3b215bbf",
+      "b3faa150-0df3-4e9b-961e-8b3320dab7ad",
+      "c2d84e2f-8455-4dee-a1a9-8c0274b6da12",
+      "f47fb127-3391-4b5e-897a-867920257b3d",
+      "6cc6d919-afbb-4509-a226-4d281d76a4dd",
+      "d4dc1a1e-d0c3-45cd-84fa-65a7a2a8a038",
+      "bc50df13-8da6-46de-9aa7-e7e85857e124",
+      "a835a9a2-e1e1-4019-b431-69d559250c66",
+      "f522270e-5dd7-4298-9253-8aaadcc8d24f"
+    ]
+  },
+  {
+    "query": "What do you know about: gigabitethernet vlan hybrid port?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "3eb0f706-ae78-4389-99d8-ecf7b53f560f",
+      "ee6e3f77-a5b3-4361-9436-feda4a0b43cf",
+      "c95c7b60-5ee9-4b44-8c46-371d88b25359",
+      "679852d2-4296-4b4a-96a0-1b3f2eb5fdad",
+      "b3faa150-0df3-4e9b-961e-8b3320dab7ad",
+      "a2207696-b569-4af8-b357-91bb11877660",
+      "d2d05b3f-5892-4518-a625-0f0661234313",
+      "048cd02a-b3ad-4712-8f8e-630077c354c0",
+      "b871f89f-472b-4edd-a64e-8d3cd2026019",
+      "750c43ff-8ca6-47ca-9288-a9dc147ae2c7",
+      "059ef89f-7bbc-453a-9e83-c12333a256f6",
+      "0da8d422-a74f-4de7-8597-e818eba5f2b0",
+      "1964e903-11ea-4825-b745-4568696a0ca3"
+    ]
+  },
+  {
+    "query": "What do you know about: mac switch address frame?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "a523afec-2793-4116-b788-70dfa98a516d",
+      "05a7b09d-8b4b-4aac-a609-4e63ccbd84f9",
+      "53cafa5b-6c10-49aa-898c-5da1f13c9511",
+      "959cc54d-5f49-4e1b-9293-11acd64c31c2",
+      "54fe5d66-4a4d-44f4-95b6-4ae63e0cbb7e",
+      "06523932-813a-43b8-acb8-a20fbba8e6f2",
+      "ef4e3b6e-ed99-44d4-beb3-1f2596b7b4c6",
+      "e338b600-bca5-46a5-9650-7b928943c33d",
+      "5cad18d1-5d9a-46c6-afa2-c1a7f8c9df5e",
+      "0144b771-6f3a-4f92-9063-10216e305d08",
+      "fe196bd8-4b0d-4e97-a74b-998846aeb618",
+      "b791f5c0-43e4-4bde-8431-e6ba483cfd5e",
+      "da8c54e8-3283-479e-bab5-c7247eafb70a",
+      "cf70ff18-b3c8-4504-858c-1cf28c1c391d",
+      "048cd02a-b3ad-4712-8f8e-630077c354c0",
+      "4ea69ef8-acda-4db1-869b-fbeffdfbd599",
+      "4656319d-5620-44ee-874b-f95fbf43c694",
+      "cd128e89-a3c6-49e1-8d26-30b7a6a73560",
+      "27c6317e-2a44-4e91-9a30-22bf7037d076",
+      "059ef89f-7bbc-453a-9e83-c12333a256f6",
+      "16e97e6f-fa4a-4d99-81b4-f5609379af07",
+      "f5f686ec-a7b8-4b3a-92d9-e16f2c1b91bd",
+      "20ef6737-512f-4563-926d-187765c48fbf",
+      "14a19362-5aa5-43ff-a4e9-15540c3a71a4"
+    ]
+  },
+  {
+    "query": "What do you know about: vlan gigabitethernet interface port?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "3eb0f706-ae78-4389-99d8-ecf7b53f560f",
+      "ee6e3f77-a5b3-4361-9436-feda4a0b43cf",
+      "c95c7b60-5ee9-4b44-8c46-371d88b25359",
+      "ff97c795-8306-4c38-9f5e-95d882342ac7",
+      "77258833-817f-4872-bd9b-6937286b76c4",
+      "679852d2-4296-4b4a-96a0-1b3f2eb5fdad",
+      "37bb414a-997f-4119-a318-4cd300011c80",
+      "b3faa150-0df3-4e9b-961e-8b3320dab7ad",
+      "a2207696-b569-4af8-b357-91bb11877660",
+      "d2d05b3f-5892-4518-a625-0f0661234313",
+      "1fa490da-289d-498f-8c3e-7d9364dcd120",
+      "048cd02a-b3ad-4712-8f8e-630077c354c0",
+      "b871f89f-472b-4edd-a64e-8d3cd2026019",
+      "750c43ff-8ca6-47ca-9288-a9dc147ae2c7",
+      "059ef89f-7bbc-453a-9e83-c12333a256f6",
+      "0da8d422-a74f-4de7-8597-e818eba5f2b0",
+      "3a087168-37aa-408a-b6c4-d5a36eea6258",
+      "3822729d-6684-4b89-a7b5-b35b784f5f42",
+      "1964e903-11ea-4825-b745-4568696a0ca3"
+    ]
+  },
+  {
+    "query": "What do you know about: root port bridge non?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "47744206-bedf-4aec-a82d-9eac62fd76d7",
+      "21d5cc2b-4014-427d-9869-102a9eef6b5f",
+      "b0c556a5-9a8a-48bd-9772-e2b9f3b00a45",
+      "5a26bdf2-8750-40fb-a6e5-4c7d91eb1a66",
+      "f522270e-5dd7-4298-9253-8aaadcc8d24f",
+      "99a594f1-02c5-4246-8de9-2c19975f53d9",
+      "48f89d9e-9f31-4d7f-b241-026654f703ec"
+    ]
+  },
+  {
+    "query": "What do you know about: vrp system file files?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "877a5629-2606-4d08-a833-2062b6c60b0a",
       "b3159aa4-f7d9-42a4-939d-e35ce0b48ac6"
     ]
   },
   {
-    "query": "What do you know about: form normal reviewer accept?",
+    "query": "What do you know about: ipv static configure route?",
     "tenant_slug": "ATBU",
     "user_email": "muhammadelkufahn8442@gmail.com",
     "course_offering_id": null,
     "relevant_chunk_ids": [
-      "8c12a2d7-c1c9-4ed5-99b0-47e254509f68",
-      "f6db4e4b-bf19-4621-9afb-14abaa7aea34",
-      "944ebeb9-1e83-45ce-b241-8ac81b800c0f",
-      "de909b91-12f8-43cf-a30d-53121416060f"
+      "88c61d2a-7702-4097-95b2-cd8ed8800f3e",
+      "2501e2c8-cbb5-4ef4-8819-14e8c7ea2feb",
+      "f6d1439b-c4f1-471d-9f61-81dea85923ee"
     ]
   },
   {
-    "query": "What do you know about: data answer mapping independence?",
+    "query": "What do you know about: address ipv addresses network?",
     "tenant_slug": "ATBU",
     "user_email": "muhammadelkufahn8442@gmail.com",
     "course_offering_id": null,
     "relevant_chunk_ids": [
-      "06627156-df59-4fdf-957c-5166275c2141",
-      "52e79f0e-c885-4531-8895-f7076a5c125f",
-      "365a857a-d8cc-403c-bcf4-388a73fa35cd",
-      "dabdc220-ff75-4e2d-a718-daaef07542de",
-      "369c2753-a666-4a38-acc0-8da76fb9a498",
-      "cfc15266-2b5b-4559-b55e-56e92afa72d0",
-      "e925a65a-3c1e-4985-a02f-25c6c3ef5c1f",
-      "5b4e8d55-6a62-4aba-b7db-b040c961170a",
-      "a0cfbe19-049c-47a1-bcb4-4e65d6cb40b7",
-      "4d73040e-1f91-4ebf-8b0d-dfe3ec526908",
-      "ba2a6b04-e607-4b40-be6c-d04925f1bd82",
-      "6c7b1a41-7e5f-4b1c-93e6-ab96821f5347",
-      "fd6ac8ff-36f1-4a37-a052-3bfe5883a06a",
-      "6ba286ba-84c9-4737-9e49-6a87b6430df5",
-      "0c5b2c92-bd30-4abe-a8b5-ebe9a324a47c",
-      "8985165f-10c2-40cb-988b-2f60630e2e09"
+      "91a0b386-e5fe-4a36-b012-a70320cc6576",
+      "0f6be11a-c684-4b08-8122-7a68a8d26d0a",
+      "33631d71-efc1-4aea-a373-7c132d9e3c4e",
+      "2232aa9d-1038-4190-b9e4-55a0e82a0bae",
+      "1cf96ddc-766f-463b-85f2-5f47c9d89df1",
+      "5550f969-7fc6-4865-92f6-d473d32d3b80",
+      "053482bf-f31e-4c8f-b5e9-2a6f5bf7b7d8",
+      "54fe5d66-4a4d-44f4-95b6-4ae63e0cbb7e",
+      "dc1e92af-7cd5-4da4-b68f-ef53d1106e26",
+      "42577a29-d89d-4d55-891d-9c8877de8a85",
+      "a2e275ac-2b2c-4961-a724-52f015e32643",
+      "1c024b74-79bf-4a92-8a08-53ee38b0d5d3",
+      "bc269b21-7682-4711-9f96-a6793e799a1b",
+      "eea8ccb4-4553-473c-8a7a-35b8e39645cc",
+      "464977a9-7a68-452d-92a7-9d50c481c237",
+      "10f19821-43c1-43fe-9c76-13b357b6ea5b",
+      "29c02ed6-ea9f-496b-832a-bc3552c2fb1e",
+      "a38a0197-a5e4-42df-9ad9-3ba538bbcadd",
+      "8f077822-b20c-4d52-baad-ff1040e6d8c6",
+      "af6e257b-cb78-4217-968a-44bed7795395",
+      "f1fa9d82-d551-4851-97fc-818d50fefcb8"
     ]
   },
   {
-    "query": "What do you know about: expert systems computer development?",
+    "query": "What do you know about: paper author contact email?",
     "tenant_slug": "ATBU",
     "user_email": "muhammadelkufahn8442@gmail.com",
     "course_offering_id": null,
     "relevant_chunk_ids": [
-      "5ddd17d9-0dc3-42db-940e-cdd28612bb4a",
-      "06f6c858-8b56-49d7-9dde-208ffcbd063a",
-      "b5a6927b-c3e8-4249-aac1-740075e1dc05",
-      "8052b68a-8a30-47da-9b8e-1aa5265246b3",
-      "36c69b0c-0f6d-4586-b598-34c475e0028b"
+      "b2f01e65-12a0-4591-a4f1-1338af161f8e",
+      "338d262f-9a76-42bd-a84b-34189f55c7ea",
+      "b9137be0-3a93-483e-a8f2-f8b0ec71f42d"
     ]
   },
   {
-    "query": "What do you know about: paper author constraint table?",
+    "query": "What do you know about: network address addresses bits?",
     "tenant_slug": "ATBU",
     "user_email": "muhammadelkufahn8442@gmail.com",
     "course_offering_id": null,
     "relevant_chunk_ids": [
-      "25677d3e-ad34-4b9f-9941-bdaa07f31d2f",
-      "944ebeb9-1e83-45ce-b241-8ac81b800c0f",
-      "85b43364-096d-4d6d-a198-da876bfe237d",
-      "5216ee1f-411e-4e58-b287-fe2ae2f93a55",
-      "bcd6a389-cafa-45fc-9c1c-1e9cbd15d0c6",
-      "3305db6c-b8cd-4268-a3b7-aac8951ed1fb",
-      "fee6c34d-1c1a-490a-ad7e-d276d6e7b913",
-      "38adcfba-ea5d-4f81-b2b9-c5a269b2a676",
-      "0442b8e5-502d-463a-95bd-32bb9d0b18c5",
-      "b2f01e65-12a0-4591-a4f1-1338af161f8e"
+      "0f6be11a-c684-4b08-8122-7a68a8d26d0a",
+      "2232aa9d-1038-4190-b9e4-55a0e82a0bae",
+      "1cf96ddc-766f-463b-85f2-5f47c9d89df1",
+      "5550f969-7fc6-4865-92f6-d473d32d3b80",
+      "053482bf-f31e-4c8f-b5e9-2a6f5bf7b7d8",
+      "54fe5d66-4a4d-44f4-95b6-4ae63e0cbb7e",
+      "dc1e92af-7cd5-4da4-b68f-ef53d1106e26",
+      "42577a29-d89d-4d55-891d-9c8877de8a85",
+      "a2e275ac-2b2c-4961-a724-52f015e32643",
+      "1c024b74-79bf-4a92-8a08-53ee38b0d5d3",
+      "bc269b21-7682-4711-9f96-a6793e799a1b",
+      "eea8ccb4-4553-473c-8a7a-35b8e39645cc",
+      "464977a9-7a68-452d-92a7-9d50c481c237",
+      "10f19821-43c1-43fe-9c76-13b357b6ea5b",
+      "29c02ed6-ea9f-496b-832a-bc3552c2fb1e",
+      "a38a0197-a5e4-42df-9ad9-3ba538bbcadd",
+      "8f077822-b20c-4d52-baad-ff1040e6d8c6",
+      "af6e257b-cb78-4217-968a-44bed7795395",
+      "f1fa9d82-d551-4851-97fc-818d50fefcb8"
     ]
   },
   {
-    "query": "What do you know about: table date name author?",
+    "query": "What do you know about: domain dns name addresses?",
     "tenant_slug": "ATBU",
     "user_email": "muhammadelkufahn8442@gmail.com",
     "course_offering_id": null,
     "relevant_chunk_ids": [
-      "25677d3e-ad34-4b9f-9941-bdaa07f31d2f",
-      "3305db6c-b8cd-4268-a3b7-aac8951ed1fb",
-      "38adcfba-ea5d-4f81-b2b9-c5a269b2a676",
-      "0442b8e5-502d-463a-95bd-32bb9d0b18c5",
-      "b2f01e65-12a0-4591-a4f1-1338af161f8e"
-    ]
-  },
-  {
-    "query": "What do you know about: database level management systems?",
-    "tenant_slug": "ATBU",
-    "user_email": "muhammadelkufahn8442@gmail.com",
-    "course_offering_id": null,
-    "relevant_chunk_ids": [
-      "7fd6e676-e730-41c7-9c7d-0a91fac841c0",
-      "fd6ac8ff-36f1-4a37-a052-3bfe5883a06a",
-      "6ba286ba-84c9-4737-9e49-6a87b6430df5",
-      "8985165f-10c2-40cb-988b-2f60630e2e09",
-      "b76f4a71-a2a5-45ca-bf39-5e3328347296",
-      "f7e74e8d-497a-4f79-819a-06af4458e3a1"
-    ]
-  },
-  {
-    "query": "What do you know about: level data answer database?",
-    "tenant_slug": "ATBU",
-    "user_email": "muhammadelkufahn8442@gmail.com",
-    "course_offering_id": null,
-    "relevant_chunk_ids": [
-      "06627156-df59-4fdf-957c-5166275c2141",
-      "52e79f0e-c885-4531-8895-f7076a5c125f",
-      "365a857a-d8cc-403c-bcf4-388a73fa35cd",
-      "dabdc220-ff75-4e2d-a718-daaef07542de",
-      "369c2753-a666-4a38-acc0-8da76fb9a498",
-      "cfc15266-2b5b-4559-b55e-56e92afa72d0",
-      "a8dba68d-6e1a-4aff-a248-3a78d2c84ccb",
-      "e925a65a-3c1e-4985-a02f-25c6c3ef5c1f",
-      "5b4e8d55-6a62-4aba-b7db-b040c961170a",
-      "a0cfbe19-049c-47a1-bcb4-4e65d6cb40b7",
-      "4d73040e-1f91-4ebf-8b0d-dfe3ec526908",
-      "ba2a6b04-e607-4b40-be6c-d04925f1bd82",
-      "7fd6e676-e730-41c7-9c7d-0a91fac841c0",
-      "fd6ac8ff-36f1-4a37-a052-3bfe5883a06a",
-      "6ba286ba-84c9-4737-9e49-6a87b6430df5",
-      "89be1017-c1a0-4226-b4cb-07162ebe6d20",
-      "de616b1b-5ad9-4ddd-a724-71528fd5bbd4",
-      "8985165f-10c2-40cb-988b-2f60630e2e09",
-      "b76f4a71-a2a5-45ca-bf39-5e3328347296",
-      "f7e74e8d-497a-4f79-819a-06af4458e3a1"
-    ]
-  },
-  {
-    "query": "What do you know about: data database large physical?",
-    "tenant_slug": "ATBU",
-    "user_email": "muhammadelkufahn8442@gmail.com",
-    "course_offering_id": null,
-    "relevant_chunk_ids": [
-      "06627156-df59-4fdf-957c-5166275c2141",
-      "52e79f0e-c885-4531-8895-f7076a5c125f",
-      "365a857a-d8cc-403c-bcf4-388a73fa35cd",
-      "dabdc220-ff75-4e2d-a718-daaef07542de",
-      "369c2753-a666-4a38-acc0-8da76fb9a498",
-      "5b4e8d55-6a62-4aba-b7db-b040c961170a",
-      "a0cfbe19-049c-47a1-bcb4-4e65d6cb40b7",
-      "4d73040e-1f91-4ebf-8b0d-dfe3ec526908",
-      "ba2a6b04-e607-4b40-be6c-d04925f1bd82",
-      "fd6ac8ff-36f1-4a37-a052-3bfe5883a06a",
-      "6ba286ba-84c9-4737-9e49-6a87b6430df5",
-      "0c5b2c92-bd30-4abe-a8b5-ebe9a324a47c",
-      "de616b1b-5ad9-4ddd-a724-71528fd5bbd4",
-      "8985165f-10c2-40cb-988b-2f60630e2e09",
-      "b76f4a71-a2a5-45ca-bf39-5e3328347296",
-      "b3159aa4-f7d9-42a4-939d-e35ce0b48ac6",
-      "f7e74e8d-497a-4f79-819a-06af4458e3a1"
-    ]
-  },
-  {
-    "query": "What do you know about: paper index clustered table?",
-    "tenant_slug": "ATBU",
-    "user_email": "muhammadelkufahn8442@gmail.com",
-    "course_offering_id": null,
-    "relevant_chunk_ids": [
-      "dfe6c2ca-3650-4deb-ad37-779c00f9faed",
-      "944ebeb9-1e83-45ce-b241-8ac81b800c0f",
-      "85b43364-096d-4d6d-a198-da876bfe237d",
-      "bcd6a389-cafa-45fc-9c1c-1e9cbd15d0c6",
-      "3305db6c-b8cd-4268-a3b7-aac8951ed1fb",
-      "42d62b7c-c86a-4ddd-acce-38939e81a861",
-      "8e8d922d-3148-4b91-9a16-17bbd97eece7",
-      "fee6c34d-1c1a-490a-ad7e-d276d6e7b913",
-      "38adcfba-ea5d-4f81-b2b9-c5a269b2a676",
-      "b2f01e65-12a0-4591-a4f1-1338af161f8e"
-    ]
-  },
-  {
-    "query": "What do you know about: file data physical system?",
-    "tenant_slug": "ATBU",
-    "user_email": "muhammadelkufahn8442@gmail.com",
-    "course_offering_id": null,
-    "relevant_chunk_ids": [
-      "369c2753-a666-4a38-acc0-8da76fb9a498",
-      "4d73040e-1f91-4ebf-8b0d-dfe3ec526908",
-      "ba2a6b04-e607-4b40-be6c-d04925f1bd82",
-      "0c5b2c92-bd30-4abe-a8b5-ebe9a324a47c",
-      "de616b1b-5ad9-4ddd-a724-71528fd5bbd4",
-      "b76f4a71-a2a5-45ca-bf39-5e3328347296",
-      "b3159aa4-f7d9-42a4-939d-e35ce0b48ac6",
-      "f7e74e8d-497a-4f79-819a-06af4458e3a1"
-    ]
-  },
-  {
-    "query": "What do you know about: index table clustered data?",
-    "tenant_slug": "ATBU",
-    "user_email": "muhammadelkufahn8442@gmail.com",
-    "course_offering_id": null,
-    "relevant_chunk_ids": [
-      "dfe6c2ca-3650-4deb-ad37-779c00f9faed",
-      "42d62b7c-c86a-4ddd-acce-38939e81a861",
-      "5d2b40f3-96a3-487a-aab7-65c5d85e143c",
-      "8e8d922d-3148-4b91-9a16-17bbd97eece7",
-      "fee6c34d-1c1a-490a-ad7e-d276d6e7b913"
-    ]
-  },
-  {
-    "query": "What do you know about: cloud edge data fog?",
-    "tenant_slug": "ATBU",
-    "user_email": "muhammadelkufahn8442@gmail.com",
-    "course_offering_id": null,
-    "relevant_chunk_ids": [
-      "0de89b24-956b-49a1-8eae-c69f5138349a",
-      "1866d8d4-79fa-4c6a-a0d0-3bc02c7c96e8",
-      "26118bc0-e0e1-454c-9330-bd1ce982bbea",
-      "dd14ec2b-4105-4ca0-88f6-e889e53dcff8"
-    ]
-  },
-  {
-    "query": "What do you know about: middleware computing centric distributed?",
-    "tenant_slug": "ATBU",
-    "user_email": "muhammadelkufahn8442@gmail.com",
-    "course_offering_id": null,
-    "relevant_chunk_ids": [
-      "b86177df-f0cd-46a9-8962-e7b97386ae4c"
-    ]
-  },
-  {
-    "query": "What do you know about: name reviewer first last?",
-    "tenant_slug": "ATBU",
-    "user_email": "muhammadelkufahn8442@gmail.com",
-    "course_offering_id": null,
-    "relevant_chunk_ids": [
-      "3f6005a6-0e7e-4e50-bda0-caf28061b1b4"
+      "78fae7a4-f8b1-400c-bde3-a662e276d1c6"
     ]
   },
   {
@@ -285,18 +844,144 @@
     "user_email": "muhammadelkufahn8442@gmail.com",
     "course_offering_id": null,
     "relevant_chunk_ids": [
-      "67245bcf-7c9f-432c-be1c-5108e7bb9c0e",
-      "5ddd17d9-0dc3-42db-940e-cdd28612bb4a",
-      "8052b68a-8a30-47da-9b8e-1aa5265246b3"
+      "d72053c9-3a0a-48ca-b845-5743736a03aa",
+      "67245bcf-7c9f-432c-be1c-5108e7bb9c0e"
     ]
   },
   {
-    "query": "What do you know about: energy elsevier computing international?",
+    "query": "What do you know about: mac vlan module vlanif?",
     "tenant_slug": "ATBU",
     "user_email": "muhammadelkufahn8442@gmail.com",
     "course_offering_id": null,
     "relevant_chunk_ids": [
-      "b97b69cd-f42a-49cb-8e3e-36fa01f3a29c"
+      "299f2838-3c8b-491b-9add-5a02659f38a3",
+      "c6f3d62c-23cc-4223-9832-c08e8a224e15",
+      "a523afec-2793-4116-b788-70dfa98a516d",
+      "05a7b09d-8b4b-4aac-a609-4e63ccbd84f9",
+      "e338b600-bca5-46a5-9650-7b928943c33d",
+      "87134a8c-8fb7-4b2c-b9df-1ec914812e4d",
+      "0144b771-6f3a-4f92-9063-10216e305d08",
+      "b791f5c0-43e4-4bde-8431-e6ba483cfd5e",
+      "13115548-557a-4b58-bdbe-c8c68a1fa9c3",
+      "cf70ff18-b3c8-4504-858c-1cf28c1c391d",
+      "9448253b-c8ff-4bf5-8162-47e293c749e4",
+      "048cd02a-b3ad-4712-8f8e-630077c354c0",
+      "4ea69ef8-acda-4db1-869b-fbeffdfbd599",
+      "4656319d-5620-44ee-874b-f95fbf43c694",
+      "27c6317e-2a44-4e91-9a30-22bf7037d076",
+      "059ef89f-7bbc-453a-9e83-c12333a256f6",
+      "f5f686ec-a7b8-4b3a-92d9-e16f2c1b91bd"
+    ]
+  },
+  {
+    "query": "What do you know about: ipv lla address bits?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "91a0b386-e5fe-4a36-b012-a70320cc6576",
+      "053482bf-f31e-4c8f-b5e9-2a6f5bf7b7d8",
+      "1c024b74-79bf-4a92-8a08-53ee38b0d5d3",
+      "bc269b21-7682-4711-9f96-a6793e799a1b",
+      "464977a9-7a68-452d-92a7-9d50c481c237",
+      "29c02ed6-ea9f-496b-832a-bc3552c2fb1e",
+      "a38a0197-a5e4-42df-9ad9-3ba538bbcadd",
+      "af6e257b-cb78-4217-968a-44bed7795395",
+      "f1fa9d82-d551-4851-97fc-818d50fefcb8"
+    ]
+  },
+  {
+    "query": "What do you know about: database level data answer?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "39cba42a-884d-4b55-baae-081c6138c1ff",
+      "6ba286ba-84c9-4737-9e49-6a87b6430df5",
+      "4d73040e-1f91-4ebf-8b0d-dfe3ec526908",
+      "ba2a6b04-e607-4b40-be6c-d04925f1bd82",
+      "06627156-df59-4fdf-957c-5166275c2141",
+      "8c6978f6-65be-48c7-b576-ce0ae95bc5f1",
+      "ef2e1a7c-c710-47f9-838b-4eaa81251474",
+      "7fd6e676-e730-41c7-9c7d-0a91fac841c0",
+      "b76f4a71-a2a5-45ca-bf39-5e3328347296",
+      "f7e74e8d-497a-4f79-819a-06af4458e3a1",
+      "fd6ac8ff-36f1-4a37-a052-3bfe5883a06a",
+      "e9347d00-5d10-43de-813c-bd0e70a155b4",
+      "ce4f8070-eec5-4dea-a750-b40467d4985a",
+      "d236d5f2-b0ba-4ee0-ae16-4cb994de23df",
+      "de616b1b-5ad9-4ddd-a724-71528fd5bbd4"
+    ]
+  },
+  {
+    "query": "What do you know about: network talent cultivate development?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "7e82ca23-c298-463b-bc34-476feba65487",
+      "7e8ac4e9-0d6f-4c4a-982d-0c446ecf190a"
+    ]
+  },
+  {
+    "query": "What do you know about: ftp mode files transfer?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "ce4e8854-f104-4371-97f0-c1268c8c0d73"
+    ]
+  },
+  {
+    "query": "What do you know about: chaining fact backward decision?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "46102092-f74d-420d-89c4-522c0f0d5996"
+    ]
+  },
+  {
+    "query": "What do you know about: commands need you common?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "2a9a724d-dfa3-4956-aaa7-fd077140fb6b",
+      "51808e75-8c51-475b-8a0c-f34c48f3a462"
+    ]
+  },
+  {
+    "query": "What do you know about: bridge root stp cost?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "2ea2a773-1b50-4b9d-8a40-974f3b215bbf",
+      "b0c556a5-9a8a-48bd-9772-e2b9f3b00a45",
+      "5a26bdf2-8750-40fb-a6e5-4c7d91eb1a66",
+      "99a594f1-02c5-4246-8de9-2c19975f53d9",
+      "48f89d9e-9f31-4d7f-b241-026654f703ec"
+    ]
+  },
+  {
+    "query": "What do you know about: layer data network transmission?",
+    "tenant_slug": "ATBU",
+    "user_email": "muhammadelkufahn8442@gmail.com",
+    "course_offering_id": null,
+    "relevant_chunk_ids": [
+      "33631d71-efc1-4aea-a373-7c132d9e3c4e",
+      "f2669ffd-fb1c-4b81-9b28-3444ebccbdf0",
+      "a8037d6b-3947-41db-a047-b7f4f68c1328",
+      "09cad8a0-ebe0-403c-b4f1-363002b3fb85",
+      "391723ef-ecef-4b2d-ac16-31215019c69f",
+      "d2ef6e8d-6464-40f1-9f03-5318d2664f51",
+      "b5ed2487-475a-43e1-8c19-d28f5ceb4771",
+      "51d9ddab-9000-4f4c-9e13-5fc959c03173",
+      "7bcde73a-6ea5-4cd6-a714-c67f7dab736f",
+      "e61eced4-897d-4540-b395-e8e672952598",
+      "a835a9a2-e1e1-4019-b431-69d559250c66",
+      "6e548dca-5218-4bc8-a7f8-d6f1ce84da5f"
     ]
   }
 ]

@@ -28,7 +28,6 @@ import {
   Sparkles,
   Moon,
   Sun,
-  Monitor,
   Search,
   ArrowRight,
 } from 'lucide-react';
@@ -41,7 +40,7 @@ export default function CommandPalette({ open, onOpen }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { user } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { dark, toggle } = useTheme();
 
   const isStaff = user?.role === 'tenant_admin' || user?.is_superuser;
   const isLecturer = user?.role === 'lecturer';
@@ -217,21 +216,21 @@ export default function CommandPalette({ open, onOpen }) {
 
         <CommandSeparator />
         <CommandGroup heading="Theme">
-          <CommandItem onSelect={() => setTheme('light')}>
+          <CommandItem
+            onSelect={() => dark && toggle()}
+            aria-checked={!dark}
+          >
             <Sun className={ICON_CLS} aria-hidden /> Light
-            {theme === 'light' && (
+            {!dark && (
               <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden />
             )}
           </CommandItem>
-          <CommandItem onSelect={() => setTheme('dark')}>
+          <CommandItem
+            onSelect={() => !dark && toggle()}
+            aria-checked={dark}
+          >
             <Moon className={ICON_CLS} aria-hidden /> Dark
-            {theme === 'dark' && (
-              <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden />
-            )}
-          </CommandItem>
-          <CommandItem onSelect={() => setTheme('system')}>
-            <Monitor className={ICON_CLS} aria-hidden /> System
-            {theme === 'system' && (
+            {dark && (
               <Check className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden />
             )}
           </CommandItem>

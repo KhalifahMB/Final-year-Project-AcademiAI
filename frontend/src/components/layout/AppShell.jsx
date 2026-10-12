@@ -258,7 +258,6 @@ function NavItem({ item, collapsed, active, onNavigate }) {
         !collapsed && 'active:scale-[0.985]',
       )}
     >
-      <span className="nav-indicator" aria-hidden />
       <Icon className="h-4 w-4 shrink-0" aria-hidden />
       {!collapsed && (
         <>

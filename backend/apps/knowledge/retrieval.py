@@ -5,8 +5,8 @@ import logging
 from collections import defaultdict
 from uuid import UUID
 
-from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
-from django.db.models import Q
+from django.contrib.postgres.search import SearchQuery, SearchRank
+from django.db.models import F, Q
 from pgvector.django import CosineDistance
 
 from apps.resources.models import Resource, ResourceChunk
@@ -219,13 +219,17 @@ def hybrid_retrieve(query: str, tenant_id, user, course_offering_id=None, top_k=
         resource_version__resource_id__in=resource_ids,
     )
 
-    # Lexical (PostgreSQL full-text)
+    # Lexical (PostgreSQL full-text).
+    # Reads the STORED `ts_vector` generated column rather than rebuilding
+    # `to_tsvector('english', content)` per row, and gates on `@@` so the planner can
+    # use the GIN index (resource_chunks_ts_vector_gin). Without both, this leg is a
+    # sequential parse of every authorised chunk's full text (D16).
     lexical_ids = []
     try:
-        vector = SearchVector("content", config="english")
         search_q = SearchQuery(query, config="english")
         lexical = (
-            base.annotate(rank=SearchRank(vector, search_q))
+            base.annotate(rank=SearchRank(F("ts_vector"), search_q))
+            .filter(ts_vector=search_q)
             .filter(rank__gt=0.01)
             .order_by("-rank")[: top_k * 2]
         )

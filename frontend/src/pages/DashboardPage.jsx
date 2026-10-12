@@ -280,6 +280,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          <AiInsightCard dashboardType="admin" className="mb-3" />
+
           {/* Stats row */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {stats.map((s) => (
@@ -292,8 +294,6 @@ export default function DashboardPage() {
               />
             ))}
           </div>
-
-          <AiInsightCard dashboardType="admin" className="mb-6" />
 
           {/* Quick actions */}
           <section className="mt-6">

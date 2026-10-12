@@ -1,0 +1,4 @@
+# init/ scripts are run by the Linux postgres entrypoint, where a carriage return
+# breaks the interpreter. A Windows clone with core.autocrlf=true converts them on
+# checkout, so pin shell scripts to LF in the working tree.
+*.sh text eol=lf

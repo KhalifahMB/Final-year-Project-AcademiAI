@@ -1,0 +1,424 @@
+{
+  "tenant": "ATBU",
+  "user_email": "muhammadelkufahn8442@gmail.com",
+  "course_offering_id": null,
+  "model": "gemini-3.5-flash",
+  "context_chunks": 40,
+  "requested_items": 20,
+  "items_reviewed": 20,
+  "source_attribution_rate": 0.1,
+  "item_relevance_mean": 4.8,
+  "item_correctness_proportion": 0.9,
+  "source_grounding_proportion": 0.9,
+  "distractor_plausibility_mean": 3.75,
+  "duplicate_item_rate": 0.0,
+  "duplicate_threshold": 0.85,
+  "items_judged": 20,
+  "reviewers": {
+    "expert_reviewers": 0,
+    "automated_judge": 1,
+    "note": "No independent human expert panel; rubric dimensions are model-judged. Objective dimensions need no judge."
+  },
+  "items": [
+    {
+      "question_text": "When designing physical storage for a relational DBMS table where columns like 'committee_comments' contain very large text blocks, which data type is most appropriate?",
+      "options": [
+        "VARCHAR(255)",
+        "CHAR(1000)",
+        "TEXT or NTEXT (or equivalent large object types)",
+        "BOOLEAN"
+      ],
+      "correct_index": 2,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 5,
+        "notes": "The question is directly grounded in the source passage and accurately assesses data type selection for storing large text blocks."
+      }
+    },
+    {
+      "question_text": "What physical design and operational consideration is paramount to ensure a database can recover quickly from a system crash?",
+      "options": [
+        "Frequent denormalization of tables",
+        "Implementing a robust transaction logging and recovery mechanism",
+        "Minimizing the number of indexes",
+        "Storing all data in volatile memory"
+      ],
+      "correct_index": 1,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The question and correct option are verbatim matches to a Q&A pair embedded within the source passage."
+      }
+    },
+    {
+      "question_text": "Which DDL statement is appropriate to create an index on the 'title' column of the 'Paper' table?",
+      "options": [
+        "SELECT * FROM Paper WHERE title = 'Database Concepts';",
+        "CREATE INDEX idx_paper_title ON Paper (title);",
+        "ALTER TABLE Paper MODIFY COLUMN title INDEXED;",
+        "INSERT INTO IndexTable (column_name) VALUES ('title');"
+      ],
+      "correct_index": 1,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The item directly evaluates a topic present in the source passage with accurate SQL syntax and plausible distractors."
+      }
+    },
+    {
+      "question_text": "Which DML statement is used to record a new paper submission entry in the 'Paper' table?",
+      "options": [
+        "CREATE TABLE Paper (paper_id INT, title VARCHAR(255));",
+        "INSERT INTO Paper (paper_id, title, abstract, file_name) VALUES (101, 'New DBMS Approach' , ' ... ' , 'new_approach.pdf');",
+        "UPDATE Paper SET title = 'Revised Title' WHERE paper_id = 101;",
+        "DELETE FROM Paper WHERE paper_id = 101;"
+      ],
+      "correct_index": 1,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The item correctly tests the DML command for inserting new records as detailed in the passage."
+      }
+    },
+    {
+      "question_text": "In the ANSI-SPARC architecture, which mapping establishes the correspondence between user-specific views and the global conceptual schema?",
+      "options": [
+        "Conceptual/Internal Mapping",
+        "External/Conceptual Mapping",
+        "Physical/Logical Mapping",
+        "Application/Data Mapping"
+      ],
+      "correct_index": 1,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The question is directly answered in the text and assesses knowledge of the ANSI-SPARC architecture accurately."
+      }
+    },
+    {
+      "question_text": "How is a data professional classified if they routinely construct intricate queries and analytical reports using SQL or BI tools?",
+      "options": [
+        "Naïve (Parametric) User",
+        "Casual User",
+        "Sophisticated (Power) User",
+        "Database Administrator"
+      ],
+      "correct_index": 2,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 5,
+        "notes": "The question and correct answer are directly supported by the provided text, and the distractors are plausible user roles from the same domain."
+      }
+    },
+    {
+      "question_text": "In the computer field, what serves as the carrier of all kinds of information?",
+      "options": [
+        "Data",
+        "Router",
+        "Switch",
+        "Ethernet tail"
+      ],
+      "correct_index": 0,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The question is directly relevant, completely grounded in the passage, and has plausible distractors."
+      }
+    },
+    {
+      "question_text": "What is the fixed size of an IPv4 packet header?",
+      "options": [
+        "10 bytes",
+        "20 bytes",
+        "30 bytes",
+        "40 bytes"
+      ],
+      "correct_index": 1,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The question and correct option are directly supported by the text which states the fixed size is 20 bytes."
+      }
+    },
+    {
+      "question_text": "What is the allowed optional size range for the Options field in an IPv4 packet header?",
+      "options": [
+        "0–20 bytes",
+        "0–40 bytes",
+        "10–50 bytes",
+        "20–60 bytes"
+      ],
+      "correct_index": 1,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The question is directly answered in the text under the IP header description where options size is stated as 0-40 bytes."
+      }
+    },
+    {
+      "question_text": "What is the process of dividing an IP packet into multiple smaller pieces when its size exceeds the maximum supported link size called?",
+      "options": [
+        "Encapsulation",
+        "Decapsulation",
+        "Fragmentation",
+        "Routing"
+      ],
+      "correct_index": 2,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The question is directly answered by the source passage, and the distractors are appropriate networking terms."
+      }
+    },
+    {
+      "question_text": "What happens to an IP packet when its Time to Live (TTL) value reaches 0?",
+      "options": [
+        "It is returned to the original application",
+        "It is stored in the router cache permanently",
+        "The packet is discarded",
+        "It is converted automatically into an IPv6 packet"
+      ],
+      "correct_index": 2,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 3,
+        "notes": "The question is directly answered by the text, which states that if the TTL value is reduced to 0, the data packet is discarded."
+      }
+    },
+    {
+      "question_text": "Which component of an IP address is specifically used to identify a network?",
+      "options": [
+        "Host part",
+        "Network part",
+        "Option field",
+        "Padding field"
+      ],
+      "correct_index": 1,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 3,
+        "notes": "The question accurately tests the definition of the Network part as stated directly in the source passage."
+      }
+    },
+    {
+      "question_text": "Under classful IP address classification, what is the range for Class B addresses?",
+      "options": [
+        "0.0.0.0–127.255.255.255",
+        "128.0.0.0–191.255.255.255",
+        "192.0.0.0–223.255.255.255",
+        "224.0.0.0–239.255.255.255"
+      ],
+      "correct_index": 1,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 5,
+        "notes": "The question accurately tests the Class B IP address range provided in the passage, using other address class ranges as distractors."
+      }
+    },
+    {
+      "question_text": "According to IP address classification, what are Class D addresses (224.0.0.0–239.255.255.255) used for?",
+      "options": [
+        "Assigned to individual hosts",
+        "Used for research",
+        "Used for multicast",
+        "Used for default routing"
+      ],
+      "correct_index": 2,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The question accurately asks about Class D IP address usage as explicitly defined in the provided passage."
+      }
+    },
+    {
+      "question_text": "What is the primary purpose designated for Class E IP addresses (240.0.0.0–255.255.255.255)?",
+      "options": [
+        "Assigned to hosts",
+        "Used for research",
+        "Used for multicast",
+        "Reserved for VLAN management"
+      ],
+      "correct_index": 1,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The question accurately tests the purpose of Class E IP addresses as explicitly stated in the source text."
+      }
+    },
+    {
+      "question_text": "The Ping application tests the reachability of a destination node using which protocol?",
+      "options": [
+        "TCP",
+        "UDP",
+        "ICMP",
+        "HTTP"
+      ],
+      "correct_index": 2,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The question directly tests information explicitly provided in the text regarding Ping and the ICMP protocol."
+      }
+    },
+    {
+      "question_text": "If a network device receives a packet but cannot access the network where the destination device resides, which message does it send to the source?",
+      "options": [
+        "ICMP Echo Request",
+        "ICMP Destination Unreachable",
+        "TCP Reset",
+        "IP Fragmentation Notice"
+      ],
+      "correct_index": 1,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The question accurately tests facts explicitly stated in the source passage regarding ICMP error reporting."
+      }
+    },
+    {
+      "question_text": "How does a router determine how to forward IP packets towards their destination?",
+      "options": [
+        "By broadcasting packets to all attached interfaces",
+        "Based on optimal routes stored in its IP routing table",
+        "By inspecting Ethernet tail error checksums",
+        "By converting IPv4 addresses directly into MAC addresses"
+      ],
+      "correct_index": 1,
+      "source_chunk_id": null,
+      "source_attributed": false,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": true,
+        "grounded": true,
+        "distractor_plausibility": 4,
+        "notes": "The question is fully supported by the text regarding routing table packet forwarding and optimal route selection."
+      }
+    },
+    {
+      "question_text": "According to the VLAN planning table provided in the text, which department or user group is assigned to VLAN ID 3?",
+      "options": [
+        "Office users",
+        "Financing department users",
+        "Classroom users",
+        "Device management function"
+      ],
+      "correct_index": 2,
+      "source_chunk_id": "87134a8c-8fb7-4b2c-b9df-1ec914812e4d",
+      "source_attributed": true,
+      "duplicate": false,
+      "judge": {
+        "relevant": 5,
+        "correct": false,
+        "grounded": false,
+        "distractor_plausibility": 1,
+        "notes": "The question asks about VLAN ID 3 and classroom users, which are not mentioned in the source passage."
+      }
+    },
+    {
+      "question_text": "In the provided VLAN plan, what function is assigned to VLAN ID 100?",
+      "options": [
+        "Office users",
+        "Financing department users",
+        "Classroom users",
+        "Device management function"
+      ],
+      "correct_index": 3,
+      "source_chunk_id": "1da5cdda-7e01-4095-b3c1-842e04e0ca74",
+      "source_attributed": true,
+      "duplicate": false,
+      "judge": {
+        "relevant": 1,
+        "correct": false,
+        "grounded": false,
+        "distractor_plausibility": 1,
+        "notes": "The source passage contains no mention of VLAN ID 100 or the provided options."
+      }
+    }
+  ]
+}

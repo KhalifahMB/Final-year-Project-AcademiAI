@@ -117,13 +117,41 @@ class ConceptInteractionSerializer(serializers.ModelSerializer):
 
 
 class PlanTaskSerializer(serializers.ModelSerializer):
+    milestone = serializers.PrimaryKeyRelatedField(
+        queryset=PlanMilestone.objects.none(),
+    )
+    milestone_title = serializers.CharField(source="milestone.title", read_only=True)
+
     class Meta:
         model = PlanTask
         fields = [
-            "id", "title", "description", "estimated_minutes",
-            "status", "completed_at", "resource",
+            "id", "milestone", "milestone_title", "title", "description",
+            "estimated_minutes", "status", "completed_at", "resource",
         ]
         read_only_fields = ["id", "completed_at"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user and user.is_authenticated:
+            self.fields["milestone"].queryset = PlanMilestone.objects.filter(
+                plan__tenant=user.tenant, plan__user=user,
+            )
+
+    def validate_milestone(self, value):
+        # The task's milestone must belong to a plan the user owns in the
+        # current tenant — never another user's or another tenant's milestone
+        # (IDOR defense; sibling protection to PlanMilestoneSerializer.plan).
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user and user.is_authenticated and value is not None:
+            owned = PlanMilestone.objects.filter(
+                pk=value.pk, plan__tenant=user.tenant, plan__user=user,
+            ).exists()
+            if not owned:
+                raise serializers.ValidationError("Milestone not found in your plans.")
+        return value
 
 
 class PlanMilestoneSerializer(serializers.ModelSerializer):

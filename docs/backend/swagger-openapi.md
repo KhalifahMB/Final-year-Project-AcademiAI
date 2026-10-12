@@ -6,13 +6,21 @@ Use OpenAPI 3 as the API contract.
 
 For Django REST Framework, use **drf-spectacular** to generate the OpenAPI schema and Swagger UI/ReDoc documentation.
 
-The generated documentation should be available in development at routes such as:
+The generated documentation is mounted at these routes
+(`backend/config/urls.py:34-44`):
 
-- `/api/schema/`
-- `/api/docs/`
-- `/api/redoc/`
+- `/api/schema/` — the raw OpenAPI 3 document
+- `/api/schema/swagger-ui/` — Swagger UI
+- `/api/schema/redoc/` — ReDoc
 
-Exact route names can be changed in the implementation, but the contract must remain OpenAPI 3.
+> **Status: currently broken.** `GET /api/schema/` returns HTTP 500 —
+> `TypeError: 'Meta.fields' must not contain non-model field names: session`, raised from
+> `backend/apps/chat/views.py:112-113`, where `ChatSessionViewSet` declares
+> `filterset_fields` naming a non-model field. The endpoint is not covered by any test, so
+> CI does not catch it. Recorded as **D2** in
+> [`docs/report/DEFECTS.md`](../report/DEFECTS.md#d2--the-openapi-schema-endpoint-returns-http-500-high).
+> Until it is fixed, the checked-in `backend/AcademiAI API.yaml` is stale and should not be
+> treated as the contract.
 
 ## Documentation requirements
 

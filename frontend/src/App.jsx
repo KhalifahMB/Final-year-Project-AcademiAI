@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
-import { AuthProvider } from '@/context/AuthContext';
+import { AuthProvider } from '@/context/AuthProvider';
 import { setNavigator } from '@/lib/navigation';
 import { AppRoutes } from '@/routes/AppRoutes';
 

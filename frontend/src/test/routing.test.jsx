@@ -167,7 +167,16 @@ describe('routing and access control', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders the dashboard for an authenticated student', async () => {
+  // Per-test budget: this is the first test to mount a heavy lazy route, so it pays
+  // for a cold Vite transform cache, and that cost is wildly variable on this
+  // machine: a cold `import()` of the graph measured 25.1s on its own and this test
+  // 20.5s, the whole 7-test file took 10.0s once warm, and the cold mount cost
+  // 75.4s once after `npm run build` invalidated the cache (vite.config.js documents
+  // 10.6-16.3s quiet, 55-68s under load, against a 30s global testTimeout). The 15s
+  // this asserted could never win, so it failed deterministically in isolation.
+  // Budget set above the worst observed; same treatment as chatSend.test.jsx
+  // (4d6db1b).
+  it('renders the dashboard for an authenticated student', { timeout: 120000 }, async () => {
     localStorage.setItem('academiai:session', '1');
     authApi.me.mockResolvedValue({
       id: 'u1', email: 'stud@uni.edu', role: 'student', first_name: 'Stu', tenant: {},
@@ -178,9 +187,9 @@ describe('routing and access control', () => {
       () => {
         expect(screen.getAllByText(/continue learning|up next/i).length).toBeGreaterThan(0);
       },
-      { timeout: 15000 },
+      { timeout: 90000 },
     );
-  }, 30000);
+  });
 
   it('denies a student access to an admin-only page (walks them to /forbidden)', async () => {
     localStorage.setItem('academiai:session', '1');

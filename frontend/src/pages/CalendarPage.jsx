@@ -245,6 +245,11 @@ export default function CalendarPage() {
     else setCurrent((c) => addDays(c, n * (view === 'week' ? 7 : 1)));
   };
 
+  // The ‹ › nav steps by the active view; name the buttons accordingly so a
+  // screen reader hears "Previous month/week/day" rather than a bare
+  // "Previous". Agenda advances a day at a time (see `shift` above).
+  const navUnit = view === 'month' ? 'month' : view === 'week' ? 'week' : 'day';
+
   const navigateDate = (day) => {
     setSelectedDate(day);
     setCurrent(day);
@@ -301,7 +306,7 @@ export default function CalendarPage() {
               variant="ghost"
               size="icon"
               onClick={() => shift(-1)}
-              aria-label="Previous"
+              aria-label={`Previous ${navUnit}`}
               className="h-8 w-8 rounded-l-md rounded-r-none border border-r-0 border-[var(--border)] text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -318,7 +323,7 @@ export default function CalendarPage() {
               variant="ghost"
               size="icon"
               onClick={() => shift(1)}
-              aria-label="Next"
+              aria-label={`Next ${navUnit}`}
               className="h-8 w-8 rounded-r-md rounded-l-none border border-l-0 border-[var(--border)] text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg)]"
             >
               <ChevronRight className="h-4 w-4" />

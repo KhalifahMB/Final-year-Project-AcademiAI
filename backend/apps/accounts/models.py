@@ -156,6 +156,9 @@ class PasswordResetToken(UUIDModel, TimeStampedModel):
     token_hash = models.CharField(max_length=128)
     expires_at = models.DateTimeField()
     is_used = models.BooleanField(default=False)
+    # 6-digit codes are short: cap guesses per record so a wrong-code spray
+    # exhausts it instead of grinding through the 10**6 space.
+    attempts = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
         db_table = "password_reset_tokens"

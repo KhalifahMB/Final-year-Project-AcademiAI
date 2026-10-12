@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import EmptyState from '@/components/shared/EmptyState';
+import StatStrip from '@/components/shared/StatStrip';
 import StatTile from '@/components/shared/StatTile';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -50,15 +51,15 @@ export default function ProgressPage() {
  />
  ) : (
  <>
- <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+ <StatStrip className="mb-4">
  <StatTile label="Concepts tracked" value={list.length} icon={BrainCircuit} />
- <StatTile label="Average mastery" value={`${avg}%`} icon={TrendingUp} tone="violet" />
+ <StatTile label="Average mastery" value={`${avg}%`} icon={TrendingUp} />
  <StatTile
  label="Mastered (≥80%)"
  value={list.filter((p) => Number(p.progress_value) >= 80).length}
- tone="emerald"
+ tone="ok"
  />
- </div>
+ </StatStrip>
  <ul className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
  {list.map((p) => {
  const value = Number(p.progress_value) || 0;

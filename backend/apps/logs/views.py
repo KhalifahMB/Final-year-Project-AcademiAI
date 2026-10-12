@@ -3,7 +3,7 @@ Tenant log viewing endpoints (tenant_admin only).
 """
 from collections import Counter
 
-from django.db.models import Avg
+from django.db.models import Avg, Q
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets

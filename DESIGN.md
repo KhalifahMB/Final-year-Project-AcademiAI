@@ -4,9 +4,9 @@
 
 ## Design Direction
 
-**Style:** Grounded institutional — precise, credible, technical. Near-black and warm-paper canvases, hairline borders defining every panel, a single brand-violet accent (`#6C5CE7`) for action and focus, mono metadata everywhere the machine talks.
+**Style:** Grounded institutional — precise, credible, technical. Near-black and warm-paper canvases, hairline borders defining every panel, a single **Cinnabar** accent (scholarly oxblood, `oklch(0.415 0.125 27)`) for action and focus, mono metadata everywhere the machine talks.
 
-**Posture:** Hard-surface, hairline-primary. Surfaces are opaque flat panels with `1px` hairlines; the shell (topbar) may blur over content because density scrolls beneath it. A single accent economy — violet is reserved for primary actions, links, active nav, and focus rings. Status colors are data, never decoration. Both light and dark themes are equal first-class citizens, derived entirely from tokens.
+**Posture:** Hard-surface, hairline-primary. Surfaces are opaque flat panels with `1px` hairlines; the shell (topbar) may blur over content because density scrolls beneath it. A single accent economy — Cinnabar is reserved for primary actions, links, active nav, and focus rings. Status colors are data, never decoration. Zero color gradients anywhere: interest comes from grain/grid texture, hairlines, and mono metadata. Both light and dark themes are equal first-class citizens, derived entirely from tokens.
 
 **Product category:** Multi-tenant academic AI platform. The interface must communicate trust, isolation, and institutional seriousness (RLS-guarded RAG). The design borrows from developer tooling (Linear / Vercel) for credibility: dense but legible, technical but calm, premium without decoration.
 
@@ -14,10 +14,11 @@
 - **Hairline surfaces, not glass everything.** Panels are opaque (`--surface`/`--surface-2`) with `1px` hairlines. Translucency + `backdrop-filter` is reserved for the floating shell (topbar) and overlays (modals, command palette) only. Never glass behind long-form text or dense tables.
 - **Dense data stays clean.** Tables, list rows, form fields, and code keep high-contrast opaque backgrounds.
 - **Dual text system.** The landing voice is editorial serif (Fraunces + Inter); the authenticated app is functional (Geist + Geist Mono). The serif is a landing/signpost voice, never an in-app default.
-- **Status colors are data, not decoration.** Success/warn/danger/info carry meaning only; the single violet accent carries emphasis.
+- **Status colors are data, not decoration.** Success/warn/danger carry meaning only; the single Cinnabar accent carries emphasis. Info is slate — information is carried by form (mono badges), not hue.
 
 **Anti-patterns to enforce:**
-- No purple/blue gradient everything
+- No color gradients anywhere (zero-gradient ban — the only allowed `gradient()` uses are the 48px grid pattern, `mask-image` fades, and the skeleton shimmer)
+- No confetti tone palettes: counts and metadata render neutral; color appears only when a value is a status
 - No giant gradient blobs
 - No glass behind long-form text or dense tables (legibility)
 - No neomorph on list rows, table cells, or form fields
@@ -34,46 +35,48 @@
 
 ## Color System
 
-All colors use `oklch()` for perceptual uniformity. Light and dark modes defined via CSS custom properties. Brand violet `#6C5CE7` ≈ `oklch(0.577 0.195 282)`.
+All colors use `oklch()` for perceptual uniformity. Light and dark modes defined via CSS custom properties. Brand accent is **Cinnabar** — scholarly oxblood `oklch(0.415 0.125 27)` (≈ `#8A2A24`), named for the red mineral pigment of seal and rubric. Light text/borders share one warm sepia-ink family (hue ~62–84) with the paper canvas; dark canvases anchor to warm near-black (hue 62).
 
 ### Light Mode
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--bg` | `oklch(0.985 0.003 85)` | Page canvas (warm paper `#FAF9F6`) |
-| `--surface` | `oklch(0.995 0.002 85)` | Cards, surfaces |
-| `--surface-2` | `oklch(0.965 0.004 85)` | Secondary surfaces, inputs |
-| `--hover` | `oklch(0.945 0.005 85)` | Hover states |
-| `--fg` | `oklch(0.2 0.018 285)` | Primary text |
-| `--fg-soft` | `oklch(0.37 0.02 285)` | Secondary text |
-| `--muted` | `oklch(0.53 0.015 285)` | Muted text, placeholders |
-| `--faint` | `oklch(0.7 0.01 285)` | Faintest text |
-| `--border` | `oklch(0.905 0.006 85)` | Hairline borders |
-| `--border-strong` | `oklch(0.83 0.008 85)` | Stronger borders |
-| `--accent` | `oklch(0.577 0.195 282)` | Brand violet — primary accent |
-| `--accent-strong` | `oklch(0.5 0.19 282)` | Accent hover |
-| `--accent-soft` | `oklch(0.945 0.028 282)` | Accent background tint |
-| `--on-accent` | `oklch(0.99 0.002 85)` | Text on accent |
+| `--bg` | `oklch(0.973 0.011 84)` | Page canvas (Atlas paper) |
+| `--surface` | `oklch(0.986 0.009 84)` | Cards, surfaces |
+| `--surface-2` | `oklch(0.951 0.014 82)` | Secondary surfaces, inputs |
+| `--hover` | `oklch(0.928 0.016 80)` | Hover states |
+| `--fg` | `oklch(0.245 0.02 62)` | Primary text (warm sepia ink) |
+| `--fg-soft` | `oklch(0.4 0.02 62)` | Secondary text |
+| `--muted` | `oklch(0.45 0.018 62)` | Muted text, placeholders |
+| `--faint` | `oklch(0.56 0.016 66)` | Faintest text |
+| `--border` | `oklch(0.855 0.02 78)` | Hairline borders |
+| `--border-strong` | `oklch(0.7 0.03 72)` | Stronger borders |
+| `--accent` | `oklch(0.415 0.125 27)` | Cinnabar — primary accent |
+| `--accent-strong` | `oklch(0.355 0.12 27)` | Accent hover |
+| `--accent-soft` | `oklch(0.945 0.028 32)` | Accent background tint |
+| `--on-accent` | `oklch(0.985 0.008 84)` | Text on accent |
 | `--success` | `oklch(0.5 0.125 150)` | Success state |
 | `--warn` | `oklch(0.5 0.115 80)` | Warning state |
 | `--danger` | `oklch(0.52 0.19 25)` | Error/destructive |
-| `--info` | `oklch(0.52 0.11 245)` | Informational |
+| `--info` | `oklch(0.45 0.02 260)` | Informational (slate) |
 
 ### Dark Mode
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--bg` | `oklch(0.145 0.015 282)` | Page canvas (near-black `#0B0B0E`) |
-| `--surface` | `oklch(0.19 0.018 282)` | Cards, surfaces |
-| `--surface-2` | `oklch(0.235 0.02 282)` | Secondary surfaces |
-| `--hover` | `oklch(0.27 0.022 282)` | Hover states |
-| `--fg` | `oklch(0.97 0.008 282)` | Primary text |
-| `--accent` | `oklch(0.72 0.17 282)` | Brand violet (lifted for dark bg) |
-| `--accent-strong` | `oklch(0.78 0.15 282)` | Accent hover |
-| `--accent-soft` | `oklch(0.32 0.07 282)` | Accent background tint |
+| `--bg` | `oklch(0.165 0.012 62)` | Page canvas (warm near-black) |
+| `--surface` | `oklch(0.198 0.014 62)` | Cards, surfaces |
+| `--surface-2` | `oklch(0.205 0.014 62)` | Secondary surfaces |
+| `--hover` | `oklch(0.245 0.016 62)` | Hover states |
+| `--fg` | `oklch(0.945 0.012 75)` | Primary text |
+| `--accent` | `oklch(0.72 0.12 30)` | Cinnabar (lifted for dark bg; `--on-accent` flips to ink) |
+| `--accent-strong` | `oklch(0.8 0.11 32)` | Accent hover |
+| `--accent-soft` | `oklch(0.28 0.05 30)` | Accent background tint |
 
 ### Rules
-- **Single accent economy.** One violet accent used for primary actions, links, active nav, and focus rings. Never a second hue for emphasis.
+- **Single accent economy.** One Cinnabar accent used for primary actions, links, active nav, and focus rings. Never a second hue for emphasis.
+- **Zero color gradients.** No color-ramp backgrounds or gradient text anywhere. Permitted `gradient()` uses: the 48px blueprint grid, `mask-image` fades, and the skeleton shimmer.
+- **Neutral metadata.** File-type chips and visibility scopes render in one neutral treatment (`surface-2` + `fg-soft`); they are metadata, not status.
 - **All material derived from tokens.** Shell tint, blur, hairline, and depth defined once from `--bg`/`--surface`/`--fg`/`--accent`/`--border` so light and dark both look native.
 - **Status colors are semantic.** They carry meaning (success=green, danger=red) and must not be repurposed for decoration.
 
@@ -141,6 +144,7 @@ Fonts are self-hosted via `@fontsource-variable` (Geist, Geist Mono, Fraunces), 
 
 ### Rules
 - **One serif voice only:** Fraunces appears on the public landing/auth shell; it never becomes an in-app default heading face.
+- **Wordmark lockup:** the landing/auth brand sets the name in Fraunces with the "AI" suffix in `--accent-strong` (`.landing-brand`); in-app marks stay sans.
 - **Mono for machine voice:** IDs, tenant metadata, `v2.1 • RLS`-style badges, RAG confidence, timestamps use Geist Mono.
 - **Body measure:** 65–75ch for long-form text. Never full-width paragraphs on large screens.
 - **Headings:** Balanced wrapping (`text-wrap: balance`). No orphan headings.
@@ -253,7 +257,6 @@ Depth follows the material layer:
 - Font: 13.5px / 580 weight.
 - Radius: `--radius-md` (8px).
 - Active press: `translateY(1px)` (respects reduced-motion).
-- On the landing, primary CTAs may use the violet accent directly.
 - **One implementation only:** `components/ui/button.jsx` (+ `button-variants.js`). The old
   `.btn` / `.btn-*` CSS utilities were deleted once nothing imported them; don't reintroduce a
   parallel button system as class strings. Use `<Button asChild>` to style a `<Link>`.
@@ -271,6 +274,8 @@ Depth follows the material layer:
 - **Resource cards:** `panel-surface`, file icon, title, description (2-line clamp), status badge, scope chip, timestamp.
 - **Stat cards:** `panel-surface` + subtle neomorph accent (see Material). Icon + label + value + optional trend. No sparklines.
 - **Dashboard cards:** `panel-surface`. Section header (h2) + content. No nested cards (opaque sub-panels for tables/charts is fine).
+- **StatTile tones are semantic:** `neutral` (default) for plain counts, `accent` for a headline metric, ok/warn/bad/info only when the number itself is a status (ready/failed buckets, threshold-gated scores). Never decorative variety.
+- **KPI strips:** a row of StatTiles shares one hairline panel via `StatStrip` (internal 1px dividers, horizontal scroll on narrow screens) — never a grid of separate bordered cards.
 - **Version/meta badges:** Geist Mono, `surface-2` fill, hairline, uppercase micro-label + value (e.g. `v2.1 • RLS`).
 
 ## Tables
@@ -364,15 +369,16 @@ a broken one.
 - **Nav:** Centered AcademiAI brand with the official logo, links (Product / Security / Roles / How it works), `Sign in` + `Request workspace` CTAs.
 - **Hero:** Eyebrow (`MULTI-TENANT • GROUNDED • INSTITUTION-FIRST`), serif H1, two CTAs, and a code-drawn grounded chat mock with visible citations.
 - **Dept trust strip:** Institution wordmarks. One row, hairline separation.
-- **Sections:** Problem → platform isolation → 3 grounding steps → hard-isolation diagram → grounding demo → role agents → confusion signals → testimonials → institution request form.
+- **Sections:** Problem → platform capabilities ledger → 3 grounding steps → hard-isolation diagram → grounding demo → role agents → confusion signals → commitments → institution request form.
 - **Request form:** Work email + institution name → leads to institution onboarding.
 - Both themes are token-driven and first-class; grain + grid textures optional at section scale.
 
 ### Landing plates
 
 `components/shared/landingPlates.jsx` holds the section-scale line art, wired into
-`LandingPage` as a media column beside a section heading. The landing stays
-code-drawn: no photography, no rendered product screenshots.
+the landing as a media column beside a section heading. The landing page stays
+code-drawn: no photography, no rendered product screenshots. (This is a rule about the
+**landing page**, not the repo — marketing imagery lives outside it, below.)
 
 - **Same inline-SVG rule as empty-state illustrations.** An `<img src="*.svg">`
   cannot read the app's custom properties, so a raster file can never be
@@ -388,12 +394,38 @@ code-drawn: no photography, no rendered product screenshots.
 - Larger canvas than empty-state art: `0 0 320 240`, `stroke-width: 1.5`, capped
   at `420px` by `.landing-section__heading--split > :last-child`.
 
+### Generated brand assets (marketing only)
+
+`docs/BRAND_ASSETS.md` holds the prompts for the **marketing** imagery: one hero
+plate (a still life of three sealed tenant volumes on rails that never meet) and a
+six-mark icon set drawn at Lucide's silhouette with photographic material. Generated
+imagery is permitted **outside** the app — OG/social images, press kit, docs.
+
+- **Never enters the UI.** A generated raster in a component is an `<img>`: an
+  isolated document that cannot read the app's custom properties. It hardcodes its
+  hue at generation time and needs a second, separately-baked dark-mode copy per
+  asset — a 2× asset count that silently desynchronises the moment a token moves.
+  The interface keeps inline SVG + `lucide-react`, which theme for free from one
+  source.
+- **The logo is the deliberate exception.** Favicons, PWA icons, apple-touch icons and
+  `og:image` are consumed by browsers and crawlers, not by React — nothing can hand
+  them a CSS custom property, so `BrandMark`'s two baked copies are the only option,
+  not a compromise. `public/favicon.svg` is the one logo asset that *can* be
+  theme-aware, so it is hand-traced rather than generated.
+- **Single accent.** Cinnabar is the only chromatic colour; there is no purple,
+  violet, indigo or magenta in the shipped palette. Purple in a render is a bad
+  render, not a variant. Status hues stay semantic.
+- **Wordless and fact-free,** by the same rule as plates and illustrations: no text,
+  numbers, metrics, citations or institution names baked into an image.
+- Both themes are first-class: generate a Light and a Dark plate per asset.
+- Renders live in the asset store, **not** in version control.
+
 ### Eyebrow specificity trap
 
 `.landing-eyebrow` is a `<p>`, so any `.landing-section__heading p`-style
 descendant rule outranks it and silently downgrades the eyebrow to body copy.
 Section paragraph rules must exclude it: `p:not(.landing-eyebrow)`. Ten of the
-eleven landing eyebrows were rendering at 16px muted instead of 11px violet mono
+eleven landing eyebrows were rendering at 16px muted instead of 11px Cinnabar mono
 before this was fixed.
 
 ## Responsive Behavior
@@ -437,7 +469,7 @@ before this was fixed.
 ## Component Inventory
 
 ### Existing (preserve)
-- `BrandMark` — **official AcademiAI logo** (light: icon on paper; dark: icon in white pill). Always the official mark — never the wireframe's generic "A".
+- `BrandMark` — **official AcademiAI mark** (the Cinnabar "A" with an accent underline). Rendered as **theme-aware inline SVG** in `BrandMark.jsx`, so it follows the design tokens and needs no baked per-theme copy. Static brand SVGs ship at `frontend/public/brand/cinnabar-mark-{light,dark}.svg` and `app-icon.svg` (the maskable source); `frontend/public/favicon.svg` is adaptive via `prefers-color-scheme`. PNG fallbacks (`favicon-{16,32,48}`, `apple-touch-icon`, `pwa-{192,512}`) are rasterised from those SVGs and must be regenerated together when the mark changes. Page content stays inline SVG.
 - `Avatar` — 3-tier fallback (upload → preset → initials)
 - `ConfirmDialog` — Controlled alert dialog
 - `EmptyState` — Centered placeholder with CTA

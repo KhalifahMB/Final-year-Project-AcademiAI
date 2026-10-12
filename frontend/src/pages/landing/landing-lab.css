@@ -1,0 +1,132 @@
+/* /landing-lab — preview chrome only. Scoped to .lab* so it can't leak into
+   the variants or the live site. Uses tokens so it follows the active theme. */
+
+.lab {
+  position: relative;
+}
+
+.lab::after {
+  content: '';
+  display: block;
+  height: 6.5rem;
+}
+
+.lab-bar {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+  background: color-mix(in oklab, var(--surface) 82%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 1px 0 oklch(1 0 0 / 0.4) inset,
+    0 18px 40px -20px oklch(0 0 0 / 0.4);
+}
+
+.lab-bar__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.lab-bar__back:hover,
+.lab-bar__back:focus-visible {
+  color: var(--fg);
+  background: var(--hover);
+  outline: none;
+}
+
+.lab-bar__back svg {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.lab-bar__tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.15rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.lab-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 550;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.lab-tab:hover,
+.lab-tab:focus-visible {
+  color: var(--fg);
+  outline: none;
+}
+
+.lab-tab svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.lab-tab--active {
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: 0 1px 2px oklch(0 0 0 / 0.08);
+  border: 1px solid var(--border);
+}
+
+.lab-bar__blurb {
+  margin: 0;
+  padding-right: 0.85rem;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--faint);
+  white-space: nowrap;
+  max-width: 26ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 720px) {
+  .lab-bar__blurb {
+    display: none;
+  }
+  .lab-bar {
+    width: calc(100vw - 1.5rem);
+    justify-content: space-between;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-tab,
+  .lab-bar__back {
+    transition: none;
+  }
+}

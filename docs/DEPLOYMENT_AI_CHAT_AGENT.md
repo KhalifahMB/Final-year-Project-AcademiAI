@@ -35,8 +35,10 @@ dev stubs — documented, but see §3.
 | **F1 — unbounded agent input** | `apps/agent/views.py:105` | `message` capped at 10,000 chars (mirrors the chat serializer) — rejects context/cost abuse. |
 
 > The agent turn still sends **history + tool results** into the model with the
-> caps requested by the model window (gemini-1.5-flash ≈ 1M tokens), but a
-> per-turn token budget would still be worthwhile — see §3.
+> caps requested by the model window (default `gemini-3.5-flash`; the `≈1M
+> tokens` figure was measured against the retired `gemini-1.5-flash`, so
+> re-verify against the current default), but a per-turn token budget would
+> still be worthwhile — see §3.
 
 ---
 
@@ -68,9 +70,28 @@ dev stubs — documented, but see §3.
 
 ## 5. LLM integration hardening
 
-- **`GEMINI_API_KEY` is not covered by the prod fail-fast guards** (`settings.py:435-453`) — an empty key silently degrades to dev stubs in prod. Add a `DEBUG=False` guard that requires the key.
-- **No retry/backoff or status-code discrimination** on Gemini failures (429/500/400 identical; chat/agent generation retries zero times, while ingestion/summarization do). Add retry with backoff for 429/5xx; keep 4xx fail-fast.
+- **~~`GEMINI_API_KEY` is not covered by the prod fail-fast guards~~ — fixed.** An empty
+  `GEMINI_API_KEY` now joins the `DEBUG=False` insecure-default guard in `config/settings.py`
+  and aborts boot. Note an empty key never produced "dev stubs": the AI layer raises
+  `AIServiceUnavailableError` (503) instead, so prod degradation was silent but *not* stub text.
+- **~~No application-level retry or status-code discrimination~~ — fixed.** The `google-genai`
+  SDK retries **nothing** by default (`HttpRetryOptions` unset → `stop_after_attempt(1)`), so
+  pre-fix a single 503 failed the turn outright. `apps/common/ai/gemini.py` now owns the policy:
+  `generate_content_with_fallback()` and `generate_content_stream_with_fallback()` walk
+  `GEMINI_MODEL` → `GEMINI_MODEL_FALLBACKS`, retrying 408/429/5xx and connection errors with
+  exponential backoff, skipping a 404 (retired model) straight to the next candidate, and failing
+  fast on any other 4xx. The final provider error is attached as `__cause__` so logs still show
+  *why* every candidate failed. **Streaming caveat:** `generate_content_stream()` defers the HTTP
+  call to the first `next()`, so the first chunk is pulled *inside* the retry loop; a mid-stream
+  drop is deliberately **not** replayed on another model (that would duplicate text already sent)
+  and surfaces as an `error` event instead.
 - **Agent "streaming" is not real streaming** — one `generate_content` per turn, then a single big SSE token event. If perceived latency matters, switch the loop's final call to `generate_content_stream` and forward tokens as they arrive.
+- **Streaming generators must re-open `tenant_scope()`.** Their body runs after the middleware's
+  `finally` RESET, so any RLS-scoped write without an explicit scope is filtered to zero rows.
+  Django then raises `NotUpdated` on `save(update_fields=...)` — *after* the answer was already
+  streamed, so the user saw a full reply followed by an error. Fixed in `agent_loop.py`
+  (`persist_session_history`) alongside the pre-existing `tenant_scope` on tool-execution inserts;
+  `agent/tests.py::test_agent_history_save_runs_inside_tenant_scope` pins it.
 - **Concurrency**: chat/agent writes to the same session are un-locked; parallel SSE generations on one session can interleave history/`recent_messages`. Guard with `select_for_update` around session state mutations (or a per-session mutex).
 
 ---
@@ -79,7 +100,7 @@ dev stubs — documented, but see §3.
 
 | Finding | Location | Action |
 |---------|----------|--------|
-| Lexical `SearchVector("content")` computed per row, no GIN index | `apps/knowledge/retrieval.py:202` | `SearchVectorField` / GIN migration (also blocks M6 in the backend checklist). |
+| ~~Lexical `SearchVector("content")` computed per row, no GIN index~~ **Resolved** — stored generated `tsvector` + `GIN` (migration `0009`), query ranks the stored column; backend checklist **M6** updated. | `apps/resources/models.py`, `apps/knowledge/retrieval.py` | Done (D16). |
 | Semantic retrieval has **no similarity threshold** — takes top-k nearest regardless of absolute similarity. Irrelevant chunks can rank. | `apps/knowledge/retrieval.py:223` | Add a minimum cosine-similarity gate before RRF. |
 | Chunks have no page/section metadata; a fixed 1200-char window with 150 overlap may split mid-word. | `apps/resources/tasks.py:17,164` | Add boundary-aware splitting + metadata; `metadata` is currently `{}`. |
 | Embedding failures silently store `embedding=NULL` (excluded from semantic search). Fine, but silent. | `apps/common/ai/gemini.py:332` | Log a metric when `None` vectors occur — indicator of provider trouble. |
@@ -91,9 +112,11 @@ dev stubs — documented, but see §3.
 
 ```bash
 # Env
-export GEMINI_API_KEY=<real key>            # add fail-fast guard for this in DEBUG=False
-export GEMINI_MODEL=gemini-1.5-flash        # default; verify context window assumptions
-export GEMINI_EMBEDDING_MODEL=text-embedding-004
+export GEMINI_API_KEY=<real key>            # guarded in DEBUG=False (config/settings.py)
+export GEMINI_MODEL=gemini-3.5-flash        # FIRST candidate only — capacity moves minute to minute
+export GEMINI_MODEL_FALLBACKS="gemini-3.5-flash-lite, gemini-3.1-flash-lite, gemini-3.6-flash"
+export GEMINI_RETRY_ATTEMPTS=2              # per-model tries before advancing the chain
+export GEMINI_EMBEDDING_MODEL=gemini-embedding-001   # text-embedding-004 is retired (404)
 export EMB_CACHE_TTL=300                    # redis rAG/embedding cache TTL
 
 # After migrate (see DEPLOYMENT_BACKEND.md)
@@ -111,4 +134,5 @@ export EMB_CACHE_TTL=300                    # redis rAG/embedding cache TTL
 - [ ] `AiInsightView`/`AiGreetingView` throttled
 - [ ] No `str(e)` internals reach SSE `tool_result` events (F7b guard)
 - [ ] Two concurrent streams on one session don't corrupt `recent_messages`/`message_count`
-- [ ] Keyless `GEMINI_API_KEY` is impossible in prod (fail-fast guard)
+- [x] Keyless `GEMINI_API_KEY` is impossible in prod (fail-fast guard) — added to the
+      `DEBUG=False` insecure-default guard in `config/settings.py`.

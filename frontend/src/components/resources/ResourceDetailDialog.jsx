@@ -30,7 +30,8 @@ import { useReadingPosition } from '@/hooks/useReadingPosition';
 const SUMMARIES_QUERY_KEY = (resourceId) => ['resource-summaries', resourceId];
 const EPHEMERAL_PREFIX = 'ephemeral-';
 
-const AI_UNAVAILABLE_MSG = 'The AI service is currently unavailable. Please try again later.';
+const AI_UNAVAILABLE_MSG =
+  'The AI service is currently unavailable. Please try again later.';
 
 // Markers that signal an AI error/placeholder leaked from the backend or an
 // SDK instead of real content. Such output must never be shown or saved.
@@ -68,12 +69,18 @@ function normalizeJobResult(r) {
   };
 }
 
-export default function ResourceDetailDialog({ resource: resourceProp, open, onClose, onUpdate }) {
+export default function ResourceDetailDialog({
+  resource: resourceProp,
+  open,
+  onClose,
+  onUpdate,
+}) {
   const qc = useQueryClient();
 
   // If only a resource ID is provided (e.g. from a chat citation), fetch
   // the full resource payload so the dialog can render correctly.
-  const needsFetch = open && resourceProp && resourceProp.id && !resourceProp.title;
+  const needsFetch =
+    open && resourceProp && resourceProp.id && !resourceProp.title;
   const {
     data: fetchedResource,
     isLoading: fetchingResource,
@@ -123,39 +130,55 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
   const previewScrollRef = useRef(null);
   const previewKindRef = useRef(null);
   const previewEngineRef = useRef(null);
-  const { savedPosition, isResuming, save: saveReadPosition, restore: restoreReadPosition, dismissResume } = useReadingPosition(open ? resource?.id : null);
+  const {
+    savedPosition,
+    isResuming,
+    save: saveReadPosition,
+    restore: restoreReadPosition,
+    dismissResume,
+  } = useReadingPosition(open ? resource?.id : null);
+
+  // Reset transient UI state each time the dialog (re)opens or the
+  // resource/summary identity changes. Derived during render (the documented
+  // alternative to writing state in an effect) so the reset lands on the same
+  // commit; side effects like the body scroll lock still live in an effect.
+  const openKey = open && resource?.id
+    ? `${resource.id}:${resource.latest_summary?.id ?? ''}:${
+        resource.latest_summary?.summary ? '1' : '0'
+      }`
+    : null;
+  const [lastOpenKey, setLastOpenKey] = useState(null);
+  if (lastOpenKey !== openKey) {
+    setLastOpenKey(openKey);
+    setExpanded(false);
+    setEditing(false);
+    setSummaryJobId(null);
+    setSummaryLoading(false);
+    setSummaryError('');
+    setEphemeralSummary(null);
+    setWorkerOutdatedWarned(false);
+    const latest = resource?.latest_summary;
+    setActiveSummaryId(latest?.id && latest?.summary ? latest.id : null);
+    // Never auto-pop the summary banner on (re)open — it stays collapsed
+    // behind the "View summary" trigger so opening a resource is unobtrusive.
+    setShowSummary(false);
+  }
 
   // Collapse sidebar when entering focus mode
   useEffect(() => {
     if (!open) return;
     if (expanded && typeof window !== 'undefined') {
       window.dispatchEvent(
-        new CustomEvent('academiai:request-sidebar', { detail: { collapsed: true } }),
+        new CustomEvent('academiai:request-sidebar', {
+          detail: { collapsed: true },
+        }),
       );
     }
   }, [expanded, open]);
 
   useEffect(() => {
     if (open) {
-      // Reset transient UI state each time the dialog opens.
-      // eslint-disable-next-line react/set-state-in-effect
-      setExpanded(false);
-      setEditing(false);
-      setSummaryJobId(null);
-      setSummaryLoading(false);
-      setSummaryError('');
-      setEphemeralSummary(null);
-      setWorkerOutdatedWarned(false);
       warnOnceRef.current = false;
-      const latest = resource?.latest_summary;
-      if (latest?.id && latest?.summary) {
-        setActiveSummaryId(latest.id);
-      } else {
-        setActiveSummaryId(null);
-      }
-      // Never auto-pop the summary banner on open — it stays collapsed behind
-      // the "View summary" trigger so opening a resource is unobtrusive.
-      setShowSummary(false);
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -169,8 +192,10 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
         }
       }
     }
-    return () => { document.body.style.overflow = ''; };
-  }, [open, resource?.id, resource?.latest_summary, saveReadPosition]);
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [open, saveReadPosition]);
 
   // ESC closes dialog / exits expanded
   useEffect(() => {
@@ -242,7 +267,10 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
 
   const allSummaries = useMemo(() => {
     const list = [...(summaries || [])];
-    if (ephemeralSummary && !list.some((s) => s.summary === ephemeralSummary.summary)) {
+    if (
+      ephemeralSummary &&
+      !list.some((s) => s.summary === ephemeralSummary.summary)
+    ) {
       list.unshift(ephemeralSummary);
     }
     return list;
@@ -250,7 +278,9 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
 
   const activeSummary = useMemo(() => {
     if (activeSummaryId) {
-      const found = allSummaries.find((s) => String(s.id) === String(activeSummaryId));
+      const found = allSummaries.find(
+        (s) => String(s.id) === String(activeSummaryId),
+      );
       if (found) return found;
     }
     const latest = resource?.latest_summary;
@@ -280,7 +310,12 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
             } else {
               const normalized = normalizeJobResult(r);
               if (!normalized) {
-                const msg = (r && r.summary && looksLikeAIError(r.summary) && AI_UNAVAILABLE_MSG) || 'The AI returned an empty summary.';
+                const msg =
+                  (r &&
+                    r.summary &&
+                    looksLikeAIError(r.summary) &&
+                    AI_UNAVAILABLE_MSG) ||
+                  'The AI returned an empty summary.';
                 setSummaryError(msg);
                 toast.error(msg);
                 return;
@@ -288,9 +323,11 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
               const refreshed = await refetchSummaries();
               const list = refreshed.data || [];
               const persisted =
-                (!normalized.ephemeral && normalized.id && list.find((s) => String(s.id) === String(normalized.id)))
-                || list[0]
-                || null;
+                (!normalized.ephemeral &&
+                  normalized.id &&
+                  list.find((s) => String(s.id) === String(normalized.id))) ||
+                list[0] ||
+                null;
 
               if (persisted) {
                 setEphemeralSummary(null);
@@ -309,7 +346,9 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
                     { duration: 8000 },
                   );
                 } else {
-                  toast.success('Summary ready (couldn\'t be saved — ask an admin)');
+                  toast.success(
+                    "Summary ready (couldn't be saved — ask an admin)",
+                  );
                 }
               }
             }
@@ -326,7 +365,9 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
         setSummaryLoading(false);
         setSummaryJobId(null);
         const msg = cleanAIError(
-          err.response?.data?.error?.detail || err.message || 'Could not poll summary job',
+          err.response?.data?.error?.detail ||
+            err.message ||
+            'Could not poll summary job',
         );
         setSummaryError(msg);
         toast.error(msg);
@@ -343,12 +384,17 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
     setSummaryError('');
     setSummaryLoading(true);
     try {
-      const { data } = await api.post(`/resources/${resource.id}/summarize/`, {});
+      const { data } = await api.post(
+        `/resources/${resource.id}/summarize/`,
+        {},
+      );
       setSummaryJobId(data.job_id);
     } catch (err) {
       setSummaryLoading(false);
       const msg = cleanAIError(
-        err.response?.data?.error?.detail || err.message || 'Could not start summary',
+        err.response?.data?.error?.detail ||
+          err.message ||
+          'Could not start summary',
       );
       setSummaryError(msg);
       toast.error(msg);
@@ -377,7 +423,9 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
       await refetchSummaries();
       qc.invalidateQueries({ queryKey: ['resources'] });
     } catch (err) {
-      toast.error(err.response?.data?.error?.detail || 'Could not delete summary');
+      toast.error(
+        err.response?.data?.error?.detail || 'Could not delete summary',
+      );
     } finally {
       setDeletingId(null);
     }
@@ -386,12 +434,17 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
   const isOwnerOrAdmin =
     !!user &&
     !!resource &&
-    (user.role === 'tenant_admin' || user.is_superuser || resource.uploaded_by === user.id);
+    (user.role === 'tenant_admin' ||
+      user.is_superuser ||
+      resource.uploaded_by === user.id);
 
   const canDeleteSummary = (s) =>
     !!user &&
     !!s &&
-    (user.is_superuser || user.role === 'tenant_admin' || !s.created_by || s.created_by === user.id);
+    (user.is_superuser ||
+      user.role === 'tenant_admin' ||
+      !s.created_by ||
+      s.created_by === user.id);
 
   const {
     data: preview,
@@ -430,7 +483,10 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
 
   // If we're still fetching a resource stub (id-only), show a minimal
   // loading dialog so the portal doesn't crash accessing undefined fields.
-  if (needsFetch && (fetchFailed || fetchingResource || !resource || !resource.title)) {
+  if (
+    needsFetch &&
+    (fetchFailed || fetchingResource || !resource || !resource.title)
+  ) {
     const loadingContent = (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur">
         <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-6 shadow-lg">
@@ -440,7 +496,10 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
             </p>
           ) : (
             <>
-              <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden />
+              <Loader2
+                className="h-5 w-5 animate-spin text-primary"
+                aria-hidden
+              />
               <p className="text-xs text-muted-foreground">Loading material…</p>
             </>
           )}
@@ -574,7 +633,12 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
           </button>
-          <span className={cn('hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:flex', ft.tint)}>
+          <span
+            className={cn(
+              'hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:flex',
+              ft.tint,
+            )}
+          >
             <FileIcon className="h-[18px] w-[18px]" aria-hidden />
           </span>
           <div className="min-w-0">
@@ -583,13 +647,19 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
             </h2>
             <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
               <StatusBadge status={resource.processing_status} />
-              <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium capitalize', scopeMeta.tint)}>
+              <span
+                className={cn(
+                  'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium capitalize',
+                  scopeMeta.tint,
+                )}
+              >
                 {scopeMeta.label}
               </span>
               {savedCount > 0 && (
                 <span className="hidden items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary sm:inline-flex">
                   <Sparkles className="h-3 w-3" aria-hidden />
-                  {savedCount} saved {savedCount === 1 ? 'summary' : 'summaries'}
+                  {savedCount} saved{' '}
+                  {savedCount === 1 ? 'summary' : 'summaries'}
                 </span>
               )}
             </div>
@@ -605,7 +675,11 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
             aria-label={expanded ? 'Exit focus mode' : 'Focus mode'}
             className="h-8 w-8"
           >
-            {expanded ? <Minimize2 className="h-4 w-4" aria-hidden /> : <Maximize2 className="h-4 w-4" aria-hidden />}
+            {expanded ? (
+              <Minimize2 className="h-4 w-4" aria-hidden />
+            ) : (
+              <Maximize2 className="h-4 w-4" aria-hidden />
+            )}
           </Button>
           <Button
             type="button"
@@ -629,7 +703,10 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
           allSummaries={allSummaries}
           show={showSummary}
           onShow={() => setShowSummary(true)}
-          onSelectSummary={(id) => { setActiveSummaryId(id); setShowSummary(true); }}
+          onSelectSummary={(id) => {
+            setActiveSummaryId(id);
+            setShowSummary(true);
+          }}
           onDismiss={() => setShowSummary(false)}
           canDeleteSummary={canDeleteSummary}
           onDeleteSummary={deleteSummary}
@@ -643,7 +720,12 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
 
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {/* Preview */}
-          <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', expanded ? '' : 'border-r')}>
+          <div
+            className={cn(
+              'flex min-h-0 flex-1 flex-col overflow-hidden',
+              expanded ? '' : 'border-r',
+            )}
+          >
             <div className="min-h-0 flex-1 overflow-hidden bg-muted/20">
               {resource.processing_status === 'failed' ? (
                 <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
@@ -651,27 +733,53 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
                     <TriangleAlert className="h-4 w-4" />
                     <AlertDescription>
                       <span className="font-medium">Processing failed.</span>{' '}
-                      {resource.processing_error || 'The file could not be processed.'}
+                      {resource.processing_error ||
+                        'The file could not be processed.'}
                     </AlertDescription>
                   </Alert>
                   {isOwnerOrAdmin && (
-                    <Button type="button" size="sm" variant="outline" onClick={retry} disabled={retrying} className="border-[var(--warn)]/40 text-[var(--warn)] hover:bg-[var(--warn-soft)]">
-                      <RefreshCw className={cn('mr-2 h-3.5 w-3.5', retrying && 'animate-spin')} aria-hidden />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={retry}
+                      disabled={retrying}
+                      className="border-[var(--warn)]/40 text-[var(--warn)] hover:bg-[var(--warn-soft)]"
+                    >
+                      <RefreshCw
+                        className={cn(
+                          'mr-2 h-3.5 w-3.5',
+                          retrying && 'animate-spin',
+                        )}
+                        aria-hidden
+                      />
                       {retrying ? 'Restarting…' : 'Retry processing'}
                     </Button>
                   )}
                 </div>
               ) : resource.processing_status !== 'ready' ? (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" aria-hidden />
-                  <p>This material is <span className="font-medium text-foreground">{resource.processing_status}</span>.</p>
+                  <Loader2
+                    className="h-5 w-5 animate-spin text-primary"
+                    aria-hidden
+                  />
+                  <p>
+                    This material is{' '}
+                    <span className="font-medium text-foreground">
+                      {resource.processing_status}
+                    </span>
+                    .
+                  </p>
                   <p className="max-w-sm text-center text-xs text-muted-foreground">
-                    Text extraction and embedding are queued. The preview unlocks when processing completes. This usually takes 10–60 seconds.
+                    Text extraction and embedding are queued. The preview
+                    unlocks when processing completes. This usually takes 10–60
+                    seconds.
                   </p>
                 </div>
               ) : previewLoading ? (
                 <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading preview…
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />{' '}
+                  Loading preview…
                 </div>
               ) : previewError ? (
                 <div className="flex h-full items-center justify-center p-6 text-sm text-destructive">
@@ -681,9 +789,14 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
                 <>
                   {isResuming && (
                     <div className="flex items-center gap-2 border-b border-[var(--warn)]/30 bg-[var(--warn-soft)] px-4 py-2 text-[12px] text-[var(--warn)]">
-                      <BookmarkCheck className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <BookmarkCheck
+                        className="h-3.5 w-3.5 shrink-0"
+                        aria-hidden
+                      />
                       <span>
-                        You were {Math.round(savedPosition?.scroll_percentage || 0)}% through this document.
+                        You were{' '}
+                        {Math.round(savedPosition?.scroll_percentage || 0)}%
+                        through this document.
                       </span>
                       <button
                         type="button"
@@ -717,74 +830,116 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
                     }}
                   >
                     {preview.content}
-                    {preview.truncated && '\n\n… (truncated at 512 KB — download for full file)'}
+                    {preview.truncated &&
+                      '\n\n… (truncated at 512 KB — download for full file)'}
                   </pre>
                 </>
-              ) : preview?.kind === 'pdf' || preview?.kind === 'office' || preview?.kind === 'sheet' ? (
+              ) : preview?.kind === 'pdf' ||
+                preview?.kind === 'office' ||
+                preview?.kind === 'sheet' ? (
                 previewRenderError ? (
                   <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm">
                     <p className="text-destructive">{previewRenderError}</p>
-                    <Button type="button" variant="outline" size="sm" onClick={download}>
-                      <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Download file
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={download}
+                    >
+                      <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />{' '}
+                      Download file
                     </Button>
                   </div>
                 ) : (
-                <>
-                  {isResuming && (
-                    <div className="flex items-center gap-2 border-b border-[var(--warn)]/30 bg-[var(--warn-soft)] px-4 py-2 text-[12px] text-[var(--warn)]">
-                      <BookmarkCheck className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                      <span>
-                        You were {Math.round(savedPosition?.scroll_percentage || 0)}% through this document.
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => previewEngineRef.current?.restore?.(savedPosition?.scroll_percentage)}
-                        className="ml-1 font-semibold underline underline-offset-2 hover:opacity-80"
-                      >
-                        Resume
-                      </button>
-                      <button
-                        type="button"
-                        onClick={dismissResume}
-                        className="ml-auto rounded p-0.5 hover:bg-[var(--warn)]/20"
-                        aria-label="Dismiss"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
-                  <ResourcePreview
-                    ref={previewEngineRef}
-                    preview={preview}
-                    resource={resource}
-                    scrollRef={(el) => {
-                      previewScrollRef.current = el;
-                    }}
-                    onScrollPct={saveReadPosition}
-                    onReady={() => {
-                      // Reading-position resume for engine-backed kinds can't run
-                      // on mount — the DOM is empty (scrollHeight 0) until the
-                      // engine has laid out pages. Defer until `onReady`.
-                      if (isResuming && savedPosition?.scroll_percentage) {
-                        previewEngineRef.current?.restore?.(savedPosition.scroll_percentage);
+                  <>
+                    {isResuming && (
+                      <div className="flex items-center gap-2 border-b border-[var(--warn)]/30 bg-[var(--warn-soft)] px-4 py-2 text-[12px] text-[var(--warn)]">
+                        <BookmarkCheck
+                          className="h-3.5 w-3.5 shrink-0"
+                          aria-hidden
+                        />
+                        <span>
+                          You were{' '}
+                          {Math.round(savedPosition?.scroll_percentage || 0)}%
+                          through this document.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            previewEngineRef.current?.restore?.(
+                              savedPosition?.scroll_percentage,
+                            )
+                          }
+                          className="ml-1 font-semibold underline underline-offset-2 hover:opacity-80"
+                        >
+                          Resume
+                        </button>
+                        <button
+                          type="button"
+                          onClick={dismissResume}
+                          className="ml-auto rounded p-0.5 hover:bg-[var(--warn)]/20"
+                          aria-label="Dismiss"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                    <ResourcePreview
+                      ref={previewEngineRef}
+                      preview={preview}
+                      resource={resource}
+                      scrollRef={(el) => {
+                        previewScrollRef.current = el;
+                      }}
+                      onScrollPct={saveReadPosition}
+                      onReady={() => {
+                        // Reading-position resume for engine-backed kinds can't run
+                        // on mount — the DOM is empty (scrollHeight 0) until the
+                        // engine has laid out pages. Defer until `onReady`.
+                        if (isResuming && savedPosition?.scroll_percentage) {
+                          previewEngineRef.current?.restore?.(
+                            savedPosition.scroll_percentage,
+                          );
+                        }
+                      }}
+                      onError={(err) =>
+                        setPreviewRenderError(
+                          err?.message || 'Could not load the preview.',
+                        )
                       }
-                    }}
-                    onError={(err) => setPreviewRenderError(err?.message || 'Could not load the preview.')}
-                  />
-                </>
+                    />
+                  </>
                 )
               ) : preview?.kind === 'image' ? (
                 <div className="flex h-full items-center justify-center overflow-auto p-4">
-                  <img src={preview.preview_url} alt={`Preview of ${resource.title}`} className="max-h-full max-w-full rounded-md object-contain shadow-sm" />
+                  <img
+                    src={preview.preview_url}
+                    alt={`Preview of ${resource.title}`}
+                    className="max-h-full max-w-full rounded-md object-contain shadow-sm"
+                  />
                 </div>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-sm text-muted-foreground">
-                  <div className={cn('flex h-14 w-14 items-center justify-center rounded-2xl', ft.tint)}>
+                  <div
+                    className={cn(
+                      'flex h-14 w-14 items-center justify-center rounded-2xl',
+                      ft.tint,
+                    )}
+                  >
                     <FileIcon className="h-6 w-6" aria-hidden />
                   </div>
-                  <p>{preview?.detail || 'Preview is not available for this file type.'}</p>
-                  <Button type="button" variant="outline" size="sm" onClick={download}>
-                    <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden /> Download file
+                  <p>
+                    {preview?.detail ||
+                      'Preview is not available for this file type.'}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={download}
+                  >
+                    <Download className="mr-1.5 h-3.5 w-3.5" aria-hidden />{' '}
+                    Download file
                   </Button>
                 </div>
               )}
@@ -816,7 +971,10 @@ export default function ResourceDetailDialog({ resource: resourceProp, open, onC
               savedCount={savedCount}
               activeSummary={activeSummary}
               showSummary={showSummary}
-              onSelectSummary={(id) => { setActiveSummaryId(id); setShowSummary(true); }}
+              onSelectSummary={(id) => {
+                setActiveSummaryId(id);
+                setShowSummary(true);
+              }}
               onToggleShowSummary={() => setShowSummary((v) => !v)}
               canDeleteSummary={canDeleteSummary}
               onDeleteSummary={deleteSummary}

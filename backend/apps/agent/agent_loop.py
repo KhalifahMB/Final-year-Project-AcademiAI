@@ -4,14 +4,21 @@ with tools → execute tool calls → feed results back → repeat → stream.
 """
 import json
 import logging
-import time
 
-from django.conf import settings
-
+from apps.common.ai.gemini import (
+    AIServiceUnavailableError,
+    generate_content_with_fallback,
+)
 from apps.common.db import tenant_scope
 from apps.common.constants import AGENT_MAX_TOOL_ITERATIONS, AGENT_HISTORY_SLOTS, AGENT_TITLE_MAX_CHARS
 
 logger = logging.getLogger(__name__)
+
+# Surfaced verbatim to the user in the agent's error event. Kept separate
+# from the generic "something went wrong" wording because an exhausted model
+# chain is an availability problem, not a malformed request: retrying later
+# is the right user advice.
+AGENT_UNAVAILABLE_MSG = "The AI assistant is temporarily unavailable. Please try again in a moment."
 
 AGENT_BASE_RULES = """Rules:
 1. Always respect role boundaries — you can only access data the current user is authorized to see.
@@ -109,18 +116,24 @@ def run_agent_turn(client, model_name, user, message, context_type, history=None
         if session.message_count == 0 and session.title == "New conversation":
             session.title = message.strip()[:AGENT_TITLE_MAX_CHARS] or "New conversation"
             update_fields.append("title")
-        session.save(update_fields=update_fields)
+        # tenant_scope() is a no-op inside a request but REQUIRED under the
+        # streaming generators, whose body runs after the middleware's finally
+        # RESET. Without it RLS filters the UPDATE to zero rows and Django
+        # raises NotUpdated — after the answer has already been streamed.
+        with tenant_scope(session.tenant_id):
+            session.save(update_fields=update_fields)
 
     for iteration in range(max_iterations):
         try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config={
+            response = generate_content_with_fallback(
+                contents,
+                {
                     "system_instruction": system_prompt,
                     "tools": [{"function_declarations": TOOL_DEFINITIONS}],
                     "automatic_function_calling": {"disable": True},
                 },
+                client=client,
+                preferred=model_name,
             )
 
             function_calls = []
@@ -173,6 +186,11 @@ def run_agent_turn(client, model_name, user, message, context_type, history=None
             contents.append({"role": "model", "parts": response.candidates[0].content.parts})
             contents.append({"role": "user", "parts": tool_results})
 
+        except AIServiceUnavailableError:
+            logger.exception("Agent turn hit an unavailable AI backend")
+            yield ("error", {"message": AGENT_UNAVAILABLE_MSG})
+            persist_session_history(full_response)
+            return
         except Exception:
             logger.exception("Agent turn failed at iteration %d", iteration)
             yield ("error", {"message": "I encountered an error processing your request. Please try again."})

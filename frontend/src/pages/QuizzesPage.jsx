@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
+import StatStrip from '@/components/shared/StatStrip';
 import StatTile from '@/components/shared/StatTile';
 import EmptyState from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
@@ -134,12 +135,11 @@ useQuery({
 
  {/* Stats strip */}
  {!isLoading && (data || []).length > 0 && (
- <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
- <StatTile label="Total" value={counts.all} icon={ClipboardList} tone="indigo" />
- <StatTile label="Published" value={counts.published || 0} icon={CheckCircle2} tone="emerald" />
- <StatTile label="Drafts" value={counts.draft || 0} icon={Clock} tone="amber" />
- <StatTile label="Your best" value={Math.max(0, ...(data || []).map((q) => q.best_score || 0))} suffix="%" icon={Trophy} tone="violet" />
- </div>
+ <StatStrip className="mb-4">  <StatTile label="Total" value={counts.all} icon={ClipboardList} />
+  <StatTile label="Published" value={counts.published || 0} icon={CheckCircle2} tone="ok" />
+  <StatTile label="Drafts" value={counts.draft || 0} icon={Clock} tone="warn" />
+  <StatTile label="Your best" value={Math.max(0, ...(data || []).map((q) => q.best_score || 0))} suffix="%" icon={Trophy} />
+ </StatStrip>
  )}
 
   {/* Filter chips */}

@@ -87,7 +87,7 @@ def test_end_to_end_turn_persists_citations_and_retrieved_chunk_ids():
             "retrieval_method": "hybrid",
         }
     ]
-    with patch(
+    with patch("apps.chat.services.turns.ai_service_available", return_value=True), patch(
         "apps.chat.services.turns.generate_grounded_answer",
         return_value=("Water evaporates then condenses.", source_meta),
     ):

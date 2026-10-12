@@ -2,10 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <!-- site-url:start -->
+    <link rel="canonical" href="__SITE_URL__/" />
+    <meta property="og:url" content="__SITE_URL__/" />
+    <!-- site-url:end -->
     <script>
       // Set the theme class before the stylesheet paints. useTheme() keeps
       // ownership of every later change; this only removes the light-flash
@@ -20,30 +25,81 @@
         }
       })();
     </script>
-    <title>AcademiAI — an AI tutor for every university, grounded in your materials</title>
+    <title>
+      AcademiAI — an AI tutor for every university, grounded in your materials
+    </title>
     <meta
       name="description"
       content="AcademiAI gives every university its own AI tutor — grounded answers from authorised course materials, auto-generated quizzes, and cohort-level insight."
     />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="AcademiAI" />
-    <meta property="og:title" content="AcademiAI — an AI tutor for every university" />
+    <meta property="og:locale" content="en" />
+    <meta
+      property="og:title"
+      content="AcademiAI — an AI tutor for every university"
+    />
     <meta
       property="og:description"
       content="Grounded answers from authorised course materials, auto-generated quizzes, and cohort-level insight for every university."
     />
-    <meta property="og:image" content="/images/landing/hero-academiai-tutor.png" />
+    <meta
+      property="og:image"
+      content="__SITE_URL__/images/landing/hero-academiai-tutor.png"
+    />
+    <meta property="og:image:width" content="1672" />
+    <meta property="og:image:height" content="941" />
+    <meta
+      property="og:image:alt"
+      content="AcademiAI — grounded academic AI that cites the exact page and passage behind every answer."
+    />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="AcademiAI — an AI tutor for every university" />
+    <meta
+      name="twitter:title"
+      content="AcademiAI — an AI tutor for every university"
+    />
     <meta
       name="twitter:description"
       content="Grounded answers from authorised course materials, auto-generated quizzes, and cohort-level insight."
     />
-    <link rel="apple-touch-icon" href="/pwa-192.png" />
-    <meta name="theme-color" content="#6C5CE7" />
+    <meta
+      name="twitter:image"
+      content="__SITE_URL__/images/landing/hero-academiai-tutor.png"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="AcademiAI — grounded academic AI that cites the exact page and passage behind every answer."
+    />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#8A2A24" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#211B15" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="AcademiAI" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "name": "AcademiAI",
+            "slogan": "An AI tutor for every university, grounded in your materials"
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "AcademiAI",
+            "applicationCategory": "EducationalApplication",
+            "operatingSystem": "Web",
+            "description": "Multi-tenant academic AI platform: grounded tutoring from authorised course materials, auto-generated quizzes, cohort insight and progress tracking.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

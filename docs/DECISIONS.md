@@ -30,19 +30,46 @@ supplied refresh token. The blacklist lives in the database
 **Gap:** The spec mandates RLS and forbids `BYPASSRLS` but does not define how
 migrations run versus the runtime role.
 
-**Decision:** Two-role model implemented via
-`infrastructure/postgres/init/01-app-role.sql`:
+**Decision:** Three-role model. `postgres` comes from `POSTGRES_USER` in
+`docker-compose.yml`, `academiai` from `infrastructure/postgres/init/01-app-role.sql`,
+and `academiai_test` from `infrastructure/postgres/init/02-test-role.sh`:
 
-- `academiai` — Docker bootstrap superuser; owns nothing at runtime.
-- `academiai` — LOGIN, `NOSUPERUSER`, **NOBYPASSRLS**, `CREATEDB`
-  (needed by pytest-django; revoke in production). Used by Django for
-  migrations, runtime traffic, and tests.
+- `postgres` — Docker bootstrap superuser, declared as `POSTGRES_USER` in
+  `docker-compose.yml`. Owns nothing at runtime. A volume initialised while
+  `POSTGRES_USER` was still `academiai` has no `postgres` role at all, and its
+  `academiai` is the initdb superuser; on such a volume, Tasks 3 and 5 of
+  `docs/superpowers/plans/2026-09-22-chat-send-fix-and-rls-enforcement.md`
+  create `postgres` and then rename the initdb identity out of the way and
+  recreate `academiai` as the non-superuser app role. That is the case this
+  local volume is in.
+- `academiai` — LOGIN, `NOSUPERUSER`, **NOBYPASSRLS**, `NOCREATEROLE`,
+  `CREATEDB` (needed by pytest-django; revoke in production). Used by Django
+  for migrations, runtime traffic, and — through `SET ROLE` — the isolation
+  tests. It owns every relation in `public`, which is why migrations can run at
+  all as a non-superuser.
+- `academiai_test` — LOGIN, `BYPASSRLS`, `CREATEDB`, member of `academiai`.
+  **Dev/CI only**, selected by `backend/conftest.py` for pytest databases, and
+  created by `init/02-test-role.sh` only when `ACADEMIAI_DEV_TEST_ROLE=1` — the
+  whole `init/` directory is mounted as container init scripts, so an
+  ungated file there would run on a deployment too. It exists because 31 test
+  files still write tenant-scoped rows outside `tenant_scope()`; the follow-up
+  conversion plan removes it. Never grant it to a deployment.
 
 All tenant-scoped tables use `ENABLE ROW LEVEL SECURITY` +
 `FORCE ROW LEVEL SECURITY` + a policy keyed on
 `current_setting('app.current_tenant_id', true)`. Because the runtime role is
 the table owner, FORCE is required and applied. Database-level tests
-(`apps/common/tests/test_rls.py`) prove cross-tenant read/insert/update denial.
+(`apps/common/tests/test_rls.py`) run `SET ROLE academiai`, assert that role is
+neither superuser nor BYPASSRLS, assert every derived tenant-scoped table is
+ENABLE + FORCE + policy-bearing, and then try to defeat isolation;
+`test_suite_connection_bypasses_rls` records the suite's remaining bypass as a
+tripwire to delete once the unscoped fixture writes are converted.
+
+Two prerequisites this decision depends on, both measured rather than assumed:
+`template1` must already carry the `vector` extension (pgvector is not
+`trusted`, so a non-superuser cannot create it; `init/00-extensions.sql` puts it
+there at first init), and a hosted deployment needs the same pre-install before
+a non-superuser `academiai` can run `migrate`.
 
 ## D4 — Tenant GUC lifecycle (implementation-critical)
 
@@ -59,11 +86,33 @@ GUC is set would return nothing once RLS is active.
 
 ## D5 — Gemini models and embedding dimension
 
-**Decision:** Generation defaults to `gemini-1.5-flash`, embeddings to
-`text-embedding-004`, dimension 768. All configurable via env
-(`GEMINI_MODEL`, `GEMINI_EMBEDDING_MODEL`, `EMBEDDING_DIMENSION`).
-The AI module (`apps/common/ai/gemini.py`) degrades to deterministic stubs
-when no API key is configured so local pipelines remain testable.
+**Decision:** Generation defaults to `gemini-3.5-flash`, then walks
+`GEMINI_MODEL_FALLBACKS` (`gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`,
+`gemini-3.6-flash`); embeddings default to `gemini-embedding-001`, dimension 768.
+All configurable via env (`GEMINI_MODEL`, `GEMINI_MODEL_FALLBACKS`,
+`GEMINI_RETRY_ATTEMPTS`, `GEMINI_EMBEDDING_MODEL`, `EMBEDDING_DIMENSION`).
+
+Supersedes the original `gemini-1.5-flash` / `text-embedding-004` defaults: both
+were retired by Google and now return `404 NOT_FOUND` for `generateContent` /
+`embedContent`, which the AI layer reports as a generic 503. A single fixed
+default is also not sufficient: capacity for one model moves minute to minute
+(`gemini-3.6-flash` passed 6/6 calls and then failed every call minutes later,
+while `gemini-3.5-flash` stayed healthy across the same window). So
+`apps/common/ai/gemini.py` owns a model chain plus per-model retry:
+`generate_content_with_fallback()` and `generate_content_stream_with_fallback()`
+retry 408/429/5xx and connection errors with exponential backoff, skip a 404 to
+the next candidate, and fail fast on other 4xx. The SDK's own retry is left off
+(`stop_after_attempt(1)`) so retries happen in exactly one place.
+`gemini-embedding-001` natively emits 3072 dims, so `EMBEDDING_DIMENSION` is sent
+as `output_dimensionality` — changing it invalidates every stored
+`ResourceChunk.embedding`.
+
+**Rejected — keyless dev stubs.** The AI layer no longer degrades to
+deterministic stub output when `GEMINI_API_KEY` is empty; it raises
+`AIServiceUnavailableError` (HTTP 503). Stub answers were indistinguishable
+from real grounded output in the UI and could be persisted as model replies.
+An empty key in a `DEBUG=False` boot now fails fast alongside the existing
+insecure-default-credential guard in `config/settings.py`.
 
 ## D6 — Document extraction stack
 
@@ -316,3 +365,26 @@ landed in `ChatPage.jsx` and `StudentDashboard.jsx`:
    (`dashboardApi.studentStreak()`) instead of deriving a trailing-bucket
    count that disagreed with the Study streak card (which also counted
    resource reading).
+
+## D25 — Password reset uses a 6-digit code, not a long token
+
+**Decision:** The password-reset credential was `secrets.token_urlsafe(32)` — a
+43-character string (`Pis5MzZbIfv6miMy41FSwG2ECODNVGMyPBbS1CaVtEM`) that the
+email rendered inside the monospace OTP box and that users had to copy by hand.
+It is now a zero-padded 6-digit code, generated by the same helper as the email
+verification code (`_six_digit_code()`), stored only as a SHA-256 hash.
+
+Shortening the space to 10**6 makes attempt limiting mandatory rather than
+optional, so `PasswordResetToken` gains an `attempts` column capped by the new
+`AUTH_MAX_RESET_ATTEMPTS` setting (default 5, mirrored from
+`AUTH_MAX_VERIFICATION_ATTEMPTS`). Exhausted records answer "Too many attempts.
+Request a new code." — even for the correct code — and requesting a fresh code
+resets the counter. Both serializers now validate `^\d{6}$` before the store is
+touched; the API field stays `token` for wire compatibility.
+
+**Impact:** `password_reset_email.html/.txt` are code-first (no `?token=` link,
+the CTA points at `/password-reset`), the reset input is `inputMode="numeric"`
+with `maxLength=6` and strips non-digits, and both zod schemas require exactly
+6 digits. Migration `accounts.0005_passwordresettoken_attempts`.
+Tests in `apps/accounts/tests/test_auth_flow.py` and
+`frontend/src/test/passwordReset.test.jsx`.

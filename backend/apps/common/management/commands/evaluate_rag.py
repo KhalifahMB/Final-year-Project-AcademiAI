@@ -102,6 +102,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from apps.accounts.models import User
+        from apps.common.db import tenant_scope
         from apps.knowledge.retrieval import hybrid_retrieve
         from apps.tenants.models import Tenant
 
@@ -143,15 +144,18 @@ class Command(BaseCommand):
                 ))
                 continue
             relevant = case["relevant_chunk_ids"]
-            for mode, runner in per_mode_cases.items():
-                start = time.perf_counter()
-                ranked = runner(user, tenant.id, case["query"], case.get("course_offering_id"))
-                latencies[mode].append((time.perf_counter() - start) * 1000)
-                modes[mode].append({
-                    "p": _precision_at_k(ranked, relevant, k),
-                    "r": _recall_at_k(ranked, relevant, k),
-                    "mrr": _reciprocal_rank(ranked, relevant),
-                })
+            # Bind RLS tenant scope: management runs have no request middleware,
+            # so corpus tables would otherwise be filtered to zero rows.
+            with tenant_scope(tenant.id):
+                for mode, runner in per_mode_cases.items():
+                    start = time.perf_counter()
+                    ranked = runner(user, tenant.id, case["query"], case.get("course_offering_id"))
+                    latencies[mode].append((time.perf_counter() - start) * 1000)
+                    modes[mode].append({
+                        "p": _precision_at_k(ranked, relevant, k),
+                        "r": _recall_at_k(ranked, relevant, k),
+                        "mrr": _reciprocal_rank(ranked, relevant),
+                    })
 
         self.stdout.write(f"\nRetrieval evaluation @K={k} over {len(cases)} case(s)\n")
         self.stdout.write(f"{'mode':<10} {'P@K':>8} {'R@K':>8} {'MRR':>8} {'p95(ms)':>10}")

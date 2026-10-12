@@ -17,6 +17,7 @@ import {
   chatSessionContract,
   chatTokenEventContract,
   chatDoneEventContract,
+  chatErrorEventContract,
   agentTokenEventContract,
   agentErrorEventContract,
   noteListContract,
@@ -146,8 +147,17 @@ const SSE_OVERFLOW = 'SSE stream buffer overflow';
 async function createSSEStream(path, { method = 'POST', body, signal }, onEvent) {
   const res = await apiFetch(path, { method, body, signal });
   if (!res.ok || !res.body) {
+    // Prefer the API's own user-safe `error.detail` over a raw body dump —
+    // otherwise a 503 renders as `HTTP 503: {"success": false, ...}`.
     const text = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+    let detail = text.slice(0, 200);
+    try {
+      const parsed = JSON.parse(text);
+      detail = parsed?.error?.detail || parsed?.detail || detail;
+    } catch {
+      /* non-JSON body — fall back to the truncated text */
+    }
+    throw new Error(detail || `Request failed (HTTP ${res.status})`);
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -291,10 +301,11 @@ export const courseApi = {
 };
 
 export const platformApi = {
-  stats: () => api.get('/platform/stats/'),
-  tenantDetail: (id) => api.get(`/platform/tenants/${id}/`),
-  health: () => api.get('/platform/health/'),
-  auditLogs: (params) => api.get('/platform/audit-logs/', { params }),
+  stats: () => api.get('/platform/stats/').then((r) => r.data),
+  tenantDetail: (id) => api.get(`/platform/tenants/${id}/`).then((r) => r.data),
+  health: () => api.get('/platform/health/').then((r) => r.data),
+  auditLogs: (params) =>
+    api.get('/platform/audit-logs/', { params }).then((r) => r.data),
   tenants: {
     list: (params) => api.get('/tenants/', { params }),
     update: (id, payload) => api.patch(`/tenants/${id}/`, payload),
@@ -398,6 +409,12 @@ export const chatApi = {
             } else if (event === 'done') {
               enforceContract(chatDoneEventContract, parsed, 'chat.stream.done');
               if (onDone) onDone(parsed.assistant_message);
+              return false;
+            } else if (event === 'error') {
+              enforceContract(chatErrorEventContract, parsed, 'chat.stream.error');
+              if (onError) {
+                onError(new Error(parsed.message || 'The AI service is currently unavailable. Please try again later.'));
+              }
               return false;
             }
             return undefined;

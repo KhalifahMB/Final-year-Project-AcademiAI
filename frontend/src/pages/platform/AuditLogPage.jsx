@@ -41,8 +41,7 @@ export default function AuditLogPage() {
       const params = { page, page_size: 20 };
       if (actionFilter) params.action = actionFilter;
       if (entityFilter) params.entity_type = entityFilter;
-      const { data } = await platformApi.auditLogs(params);
-      return data;
+      return platformApi.auditLogs(params);
     },
     staleTime: 15_000,
   });

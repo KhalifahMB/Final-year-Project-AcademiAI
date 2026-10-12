@@ -224,28 +224,19 @@
     box-shadow: var(--neo-light), var(--neo-dark);
   }
 
-  /* Ambient app canvas — the color behind the glass. Subtle, accent-derived,
-     both themes equal. Applied once at the shell root so frosted surfaces blur. */
+  /* Ambient app canvas. Colophon rebrand: zero color gradients anywhere —
+     interest comes from grain + grid textures, never hue ramps. Kept as a
+     flat token hook so the shell root stays swappable. */
   .app-canvas {
-    background:
-      radial-gradient(
-        1200px 700px at 8% -10%,
-        color-mix(in oklab, var(--accent) 7%, transparent) 0%,
-        transparent 60%
-      ),
-      radial-gradient(
-        900px 600px at 100% 0%,
-        color-mix(in oklab, var(--accent) 5%, transparent) 0%,
-        transparent 55%
-      ),
-      var(--bg);
+    background: var(--bg);
   }
 
   /* =========================================================
      Navigation material — sidebar + topbar (glass-first nav)
      ========================================================= */
 
-  /* Active nav item: accent-tinted glass pill + left indicator + neomorph */
+  /* Active nav item: accent-soft fill + accent text (DESIGN.md — never a
+     thick colored left border, no glass, no neomorph on nav). */
   .nav-item {
     position: relative;
     border-radius: var(--radius-md);
@@ -257,33 +248,9 @@
   .nav-item:active:not(:disabled) {
     transform: translateY(0);
   }
-  .nav-item .nav-indicator {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    height: 16px;
-    width: 3px;
-    border-radius: 999px;
-    transform: translateY(-50%) scaleY(0);
-    background: var(--accent);
-    transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1);
-  }
   .nav-item.nav-active {
-    background:
-      linear-gradient(
-        120deg,
-        color-mix(in oklab, var(--accent) 14%, transparent),
-        color-mix(in oklab, var(--accent) 4%, transparent)
-      ),
-      var(--glass-card-tint);
-    backdrop-filter: blur(8px) saturate(140%);
-    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    background: var(--accent-soft);
     color: var(--accent-strong);
-    box-shadow: var(--neo-light), var(--neo-drop);
-  }
-  .nav-item.nav-active .nav-indicator {
-    transform: translateY(-50%) scaleY(1);
   }
   .nav-item.nav-active svg {
     color: var(--accent-strong);
@@ -316,17 +283,13 @@
     border: 1px solid var(--border);
     backdrop-filter: blur(10px) saturate(150%);
     -webkit-backdrop-filter: blur(10px) saturate(150%);
-    box-shadow: var(--neo-light), var(--neo-drop);
     transition:
       border-color 0.15s ease,
       box-shadow 0.15s ease;
   }
   .search-pill:focus-within {
     border-color: var(--accent-line);
-    box-shadow:
-      var(--neo-light),
-      var(--neo-drop),
-      0 0 0 2px color-mix(in oklab, var(--accent) 18%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 18%, transparent);
   }
 
   /* cmdk command palette surface — treated as an overlay (glass) */
@@ -364,26 +327,27 @@
     }
   }
 
-  /* AI gradient text (for hero moments). NOTE: per "status color is data,
-     not decoration" rule, use sparingly — landing hero + ai-text accents only. */
-  .ai-text {
-    background: linear-gradient(135deg, var(--accent), oklch(70% 0.16 280));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  /* KPI strip — a row of StatTiles in one hairline panel, divided by
+     internal 1px rules instead of per-tile borders. Tiles keep their
+     standalone bordered look outside a strip. */
+  .kpi-strip {
+    display: flex;
+    gap: 4px;
+    align-items: stretch;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
   }
-  .ai-gradient {
-    background:
-      radial-gradient(
-        120% 120% at 0% 0%,
-        color-mix(in oklab, var(--accent) 14%, transparent) 0%,
-        transparent 50%
-      ),
-      radial-gradient(
-        120% 120% at 100% 100%,
-        oklch(60% 0.16 280 / 0.12) 0%,
-        transparent 50%
-      );
+  .kpi-strip .stat-tile {
+    flex: 1 1 0;
+    min-width: 140px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .kpi-strip .stat-tile + .stat-tile {
+    border-left: 1px solid var(--border);
   }
 
   /* Icon button (36mm ghost, 8px radius) */

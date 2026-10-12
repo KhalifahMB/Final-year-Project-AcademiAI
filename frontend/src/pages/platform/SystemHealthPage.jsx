@@ -28,7 +28,7 @@ function StatusIndicator({ status }) {
 export default function SystemHealthPage() {
   const healthQ = useQuery({
     queryKey: ["platform-health"],
-    queryFn: async () => (await platformApi.health()).data,
+    queryFn: () => platformApi.health(),
     staleTime: 15_000,
     refetchInterval: 30_000,
   });

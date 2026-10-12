@@ -1,0 +1,31 @@
+# AcademiAI — public marketing + auth routes are crawlable.
+# Everything behind the app shell and the API is private, so keep crawlers out.
+
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /signup
+Allow: /verify-email
+Allow: /password-reset
+Allow: /request-institution
+
+# Authenticated app surface — no value to crawlers, and never indexable.
+Disallow: /dashboard
+Disallow: /chat
+Disallow: /resources
+Disallow: /courses
+Disallow: /notes
+Disallow: /calendar
+Disallow: /quizzes
+Disallow: /plans
+Disallow: /progress
+Disallow: /profile
+Disallow: /admin
+Disallow: /platform
+Disallow: /settings
+Disallow: /landing-lab
+
+# API + static assets
+Disallow: /api/
+Disallow: /media/
+Disallow: /academiai-resources/

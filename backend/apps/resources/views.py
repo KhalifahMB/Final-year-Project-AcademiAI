@@ -1,8 +1,10 @@
+import json
 import logging
 
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -48,7 +50,7 @@ from .services import (
     register_completed_upload,
     reset_for_retry,
 )
-from .summary_tasks import summarize_resource_task
+from .summary_tasks import iter_summary_stream, summarize_resource_task
 
 logger = logging.getLogger(__name__)
 
@@ -393,16 +395,14 @@ class ResourceViewSet(TenantModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(tenant=self.request.user.tenant, uploaded_by=self.request.user)
-        try:
-            log_action(
-                tenant=self.request.user.tenant,
-                actor=self.request.user,
-                action="resource.create",
-                entity_type="resource",
-                entity_id=str(serializer.instance.id),
-            )
-        except Exception:
-            logger.exception("Failed to audit resource.create")
+        # log_action is best-effort by contract (see apps/audit/services.py).
+        log_action(
+            tenant=self.request.user.tenant,
+            actor=self.request.user,
+            action="resource.create",
+            entity_type="resource",
+            entity_id=str(serializer.instance.id),
+        )
 
     def perform_destroy(self, instance):
         # Capture identity before deletion — Django clears instance.pk
@@ -414,16 +414,13 @@ class ResourceViewSet(TenantModelViewSet):
         # the upload service as a single atomic, race-free transaction.
         action = detach_or_delete(instance, self.request.user)
 
-        try:
-            log_action(
-                tenant=tenant,
-                actor=self.request.user,
-                action=action,
-                entity_type="resource",
-                entity_id=resource_id,
-            )
-        except Exception:
-            logger.exception("Failed to audit %s", action)
+        log_action(
+            tenant=tenant,
+            actor=self.request.user,
+            action=action,
+            entity_type="resource",
+            entity_id=resource_id,
+        )
 
     @action(detail=True, methods=["post"], throttle_classes=[UploadRateThrottle])
     def request_upload_url(self, request, pk=None):
@@ -666,17 +663,14 @@ class ResourceViewSet(TenantModelViewSet):
         if resource.moderation_status == Resource.ModerationStatus.ACTIVE:
             resource.moderation_status = Resource.ModerationStatus.FLAGGED
             resource.save(update_fields=["moderation_status", "updated_at"])
-        try:
-            log_action(
-                tenant=request.user.tenant,
-                actor=request.user,
-                action="resource.report",
-                entity_type="resource",
-                entity_id=str(resource.id),
-                metadata={"reason": reason, "report_id": str(report.id)},
-            )
-        except Exception:
-            logger.exception("Failed to audit resource.report")
+        log_action(
+            tenant=request.user.tenant,
+            actor=request.user,
+            action="resource.report",
+            entity_type="resource",
+            entity_id=str(resource.id),
+            metadata={"reason": reason, "report_id": str(report.id)},
+        )
         return Response(
             ResourceReportSerializer(report, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
@@ -725,17 +719,14 @@ class ResourceViewSet(TenantModelViewSet):
         pending.update(status=new_status, resolved_by=request.user, resolved_at=timezone.now())
 
         action = "resource.moderation.remove" if decision == "remove" else "resource.moderation.dismiss"
-        try:
-            log_action(
-                tenant=request.user.tenant,
-                actor=request.user,
-                action=action,
-                entity_type="resource",
-                entity_id=str(resource.id),
-                metadata={"decision": decision},
-            )
-        except Exception:
-            logger.exception("Failed to audit %s", action)
+        log_action(
+            tenant=request.user.tenant,
+            actor=request.user,
+            action=action,
+            entity_type="resource",
+            entity_id=str(resource.id),
+            metadata={"decision": decision},
+        )
         return Response(
             {
                 "id": str(resource.id),
@@ -794,6 +785,68 @@ class ResourceViewSet(TenantModelViewSet):
         )
         claim_job(task.id, request.user.id)
         return Response({"job_id": task.id, "status": "pending"}, status=status.HTTP_202_ACCEPTED)
+
+    @extend_schema(tags=["Summaries"])
+    @action(
+        detail=True,
+        methods=["get", "post"],
+        url_path="summarize/stream",
+        throttle_classes=[AiRateThrottle],
+    )
+    def summarize_stream(self, request, pk=None):
+        """Stream an AI summary of this material as Server-Sent Events.
+
+        Same visibility/readiness gates as ``summarize``; instead of queueing
+        an async job it streams the overview token-by-token and persists a
+        ResourceSummary when the stream completes.
+        """
+        resource = self.get_object()
+
+        if not resource.has_extractable_text:
+            return Response(
+                {"success": False, "error": {"detail": "This material has no extractable text and cannot be summarized. It may contain images or binary content."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if resource.processing_status != Resource.ProcessingStatus.READY:
+            return Response(
+                {"success": False, "error": {"detail": "Material is still being processed."}},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if resource.id not in _authorized_resource_ids(request.user, None):
+            return Response(
+                {"success": False, "error": {"detail": "You do not have access to this material."}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not ai_service_available():
+            return Response(
+                {
+                    "success": False,
+                    "error": {"detail": "The AI service is currently unavailable. Please try again later."},
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        user = request.user
+
+        def sse_event(event: str, data: dict) -> bytes:
+            return (
+                f"event: {event}\n"
+                f"data: {json.dumps(data, default=str)}\n\n"
+            ).encode("utf-8")
+
+        def stream():
+            for event, payload in iter_summary_stream(
+                str(resource.id), str(user.tenant_id), str(user.id)
+            ):
+                yield sse_event(event, payload)
+
+        response = StreamingHttpResponse(stream(), content_type="text/event-stream")
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
 
     @extend_schema(tags=["Summaries"], responses=ResourceSummarySerializer(many=True))
     @action(detail=True, methods=["get"])

@@ -1,4 +1,10 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import { Loader2 } from 'lucide-react';
 import { createViewer } from 'omni-doc-viewer';
 import api from '@/services/api';
@@ -55,13 +61,12 @@ const ResourcePreview = forwardRef(function ResourcePreview(
   const scrollerRef = useRef(null); // scrollable element (metrics + restore)
   const stageRef = useRef(null); // render target the engine appends into
   const viewRef = useRef(null); // ViewerController
-  const kindRef = useRef(null);
-  kindRef.current = preview?.kind ?? null;
 
   const isPptx = isPptxPreview(preview);
 
   // Viewer state mirror (page/zoom/viewMode) + PPTX notes extracted lazily.
   const [viewerState, setViewerState] = useState(null);
+  const [viewerController, setViewerController] = useState(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesBySlide, setNotesBySlide] = useState(null);
@@ -69,12 +74,20 @@ const ResourcePreview = forwardRef(function ResourcePreview(
 
   // Latest-value refs — the parent passes inline arrows that change identity
   // on every render; the effect and scroll handler must not depend on them.
+  // Synced in effects (which run before the mount effect below) so the refs
+  // are never written during render.
   const onReadyRef = useRef(onReady);
-  onReadyRef.current = onReady;
   const onScrollPctRef = useRef(onScrollPct);
-  onScrollPctRef.current = onScrollPct;
   const onErrorRef = useRef(onError);
-  onErrorRef.current = onError;
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  });
+  useEffect(() => {
+    onScrollPctRef.current = onScrollPct;
+  });
+  useEffect(() => {
+    onErrorRef.current = onError;
+  });
 
   // The engine is only for the binary kinds; text and images stay on the
   // dialog's instant renderers. Kept as a pure function so it's testable.
@@ -86,18 +99,31 @@ const ResourcePreview = forwardRef(function ResourcePreview(
   // Bounded at 24 entries; blobs are dropped from memory when evicted.
   const blobCacheRef = useRef(new Map());
 
+  // Reset the notes panel whenever the document identity changes. Derived
+  // during render (keyed on the same content_path/kind the mount effect keys
+  // on) so the setState stays out of the effect; notesExtractedRef is re-armed
+  // inside the effect itself.
+  const docKey =
+    preview?.content_path && needsEngine(preview?.kind)
+      ? preview.content_path
+      : null;
+  const [lastDocKey, setLastDocKey] = useState(null);
+  if (lastDocKey !== docKey) {
+    setLastDocKey(docKey);
+    setNotesOpen(false);
+    setNotesBySlide(null);
+  }
+
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return undefined;
-    const kind = kindRef.current;
+    const kind = preview?.kind;
     const contentPath = preview?.content_path;
     if (!needsEngine(kind) || !contentPath) return undefined;
     let cancelled = false;
     let unsub = null;
     const blobCache = blobCacheRef.current;
     notesExtractedRef.current = false;
-    setNotesOpen(false);
-    setNotesBySlide(null);
 
     async function mount() {
       if (cancelled) return;
@@ -107,7 +133,8 @@ const ResourcePreview = forwardRef(function ResourcePreview(
         blob = await api
           .get(contentPath, { responseType: 'blob' })
           .then((r) => r.data);
-        if (blobCache.size >= 24) blobCache.delete(blobCache.keys().next().value);
+        if (blobCache.size >= 24)
+          blobCache.delete(blobCache.keys().next().value);
         blobCache.set(contentPath, blob);
       }
       if (cancelled) return;
@@ -137,7 +164,14 @@ const ResourcePreview = forwardRef(function ResourcePreview(
       // the load) always finds the live instance — never a stale closure.
       viewRef.current = view;
       unsub = view.subscribe((s) => {
-        if (!cancelled) setViewerState(s);
+        if (!cancelled) {
+          setViewerState(s);
+          // Surface the live controller to the toolbar once the engine starts
+          // reporting state (the toolbar keys on it so it mounts per document).
+          // Done from the engine callback, not the effect body, so the setState
+          // is event-driven rather than a mount-time cascade.
+          setViewerController(view);
+        }
       });
       await view.load(blob); // blob is fetched through the authenticated client
     }
@@ -168,8 +202,7 @@ const ResourcePreview = forwardRef(function ResourcePreview(
     };
     // Intentionally keyed only on the document identity — callback props are
     // read through refs so parent re-renders never restart the engine.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preview?.content_path]);
+  }, [preview?.content_path, preview?.kind]);
 
   // Lazy PPTX speaker-notes extraction (only when the user toggles them).
   const toggleNotes = async () => {
@@ -202,7 +235,9 @@ const ResourcePreview = forwardRef(function ResourcePreview(
       // instead. Continuous keeps the dialog's scroll-based model.
       if (view && view.getState?.().viewMode === 'paged') {
         const total = view.getPageCount?.() || 1;
-        view.goToPage?.(Math.max(1, Math.min(total, Math.round((percent / 100) * total))));
+        view.goToPage?.(
+          Math.max(1, Math.min(total, Math.round((percent / 100) * total))),
+        );
         return;
       }
       // Continuous scroll-percentage restoration. PDF/office cells stream in
@@ -272,12 +307,9 @@ const ResourcePreview = forwardRef(function ResourcePreview(
       <div
         ref={(el) => {
           scrollerRef.current = el;
-          // The dialog hands us either a callback ref or its own object ref
-          // (`previewScrollRef`) so the existing reading-position hooks keep
-          // targeting the same scroll container we attach the engine to.
+          // The dialog passes a callback ref so the reading-position hooks
+          // keep targeting the same scroll container we attach the engine to.
           if (typeof scrollRef === 'function') scrollRef(el);
-          else if (scrollRef && typeof scrollRef === 'object')
-            scrollRef.current = el;
         }}
         className="h-full w-full overflow-auto"
         onScroll={() => {
@@ -291,15 +323,18 @@ const ResourcePreview = forwardRef(function ResourcePreview(
         <div ref={stageRef} className="min-h-full w-full" />
       </div>
 
-      {!viewerState || viewerState.status === 'loading' || viewerState.status === 'idle' ? (
+      {!viewerState ||
+      viewerState.status === 'loading' ||
+      viewerState.status === 'idle' ? (
         <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden /> Loading preview…
+          <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />{' '}
+          Loading preview…
         </div>
       ) : null}
 
       <PreviewToolbar
-        key={viewRef.current}
-        controller={viewRef.current}
+        key={viewerController}
+        controller={viewerController}
         state={viewerState}
         isPptx={isPptx}
         notesOpen={notesOpen}
@@ -319,7 +354,15 @@ const ResourcePreview = forwardRef(function ResourcePreview(
               className="rounded p-0.5 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--fg-soft)]"
               aria-label="Close notes"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              >
                 <path d="M18 6 6 18M6 6l12 12" />
               </svg>
             </button>

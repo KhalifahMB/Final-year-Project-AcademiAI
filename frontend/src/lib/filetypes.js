@@ -4,6 +4,9 @@
  *
  * Keeps the UI consistent across the resources grid, detail dialog,
  * chat attachment chips, and bookmarks.
+ *
+ * File types and visibility scopes are metadata, not status — chips share
+ * one neutral token treatment (see DESIGN.md → Color System).
  */
 import {
   FileText,
@@ -21,51 +24,51 @@ import {
 
 const EXT_MAP = {
   // Documents
-  pdf:  { icon: FileText,      label: 'PDF',        tint: 'bg-red-500/10 text-red-600 dark:text-red-400' },
-  doc:  { icon: FileText,      label: 'Word',       tint: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-  docx: { icon: FileText,      label: 'Word',       tint: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
-  txt:  { icon: FileType2,     label: 'Text',       tint: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400' },
-  md:   { icon: FileText,      label: 'Markdown',   tint: 'bg-violet-500/10 text-violet-600 dark:text-violet-400' },
-  rtf:  { icon: FileText,      label: 'RTF',        tint: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400' },
+  pdf:  { icon: FileText,      label: 'PDF',        tint: 'bg-muted text-muted-foreground' },
+  doc:  { icon: FileText,      label: 'Word',       tint: 'bg-muted text-muted-foreground' },
+  docx: { icon: FileText,      label: 'Word',       tint: 'bg-muted text-muted-foreground' },
+  txt:  { icon: FileType2,     label: 'Text',       tint: 'bg-muted text-muted-foreground' },
+  md:   { icon: FileText,      label: 'Markdown',   tint: 'bg-muted text-muted-foreground' },
+  rtf:  { icon: FileText,      label: 'RTF',        tint: 'bg-muted text-muted-foreground' },
 
   // Spreadsheets
-  csv:  { icon: FileSpreadsheet, label: 'CSV',      tint: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  xls:  { icon: FileSpreadsheet, label: 'Excel',    tint: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  xlsx: { icon: FileSpreadsheet, label: 'Excel',    tint: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+  csv:  { icon: FileSpreadsheet, label: 'CSV',      tint: 'bg-muted text-muted-foreground' },
+  xls:  { icon: FileSpreadsheet, label: 'Excel',    tint: 'bg-muted text-muted-foreground' },
+  xlsx: { icon: FileSpreadsheet, label: 'Excel',    tint: 'bg-muted text-muted-foreground' },
 
   // Presentations
-  ppt:  { icon: Presentation,  label: 'PowerPoint', tint: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
-  pptx: { icon: Presentation,  label: 'PowerPoint', tint: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
+  ppt:  { icon: Presentation,  label: 'PowerPoint', tint: 'bg-muted text-muted-foreground' },
+  pptx: { icon: Presentation,  label: 'PowerPoint', tint: 'bg-muted text-muted-foreground' },
 
   // Code / data
-  json: { icon: FileJson,      label: 'JSON',       tint: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
-  js:   { icon: FileCode2,     label: 'JS',         tint: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' },
-  jsx:  { icon: FileCode2,     label: 'JSX',        tint: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' },
-  ts:   { icon: FileCode2,     label: 'TS',         tint: 'bg-sky-500/10 text-sky-600 dark:text-sky-400' },
-  tsx:  { icon: FileCode2,     label: 'TSX',        tint: 'bg-sky-500/10 text-sky-600 dark:text-sky-400' },
-  py:   { icon: FileCode2,     label: 'Python',     tint: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' },
-  html: { icon: FileCode2,     label: 'HTML',       tint: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
-  css:  { icon: FileCode2,     label: 'CSS',        tint: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+  json: { icon: FileJson,      label: 'JSON',       tint: 'bg-muted text-muted-foreground' },
+  js:   { icon: FileCode2,     label: 'JS',         tint: 'bg-muted text-muted-foreground' },
+  jsx:  { icon: FileCode2,     label: 'JSX',        tint: 'bg-muted text-muted-foreground' },
+  ts:   { icon: FileCode2,     label: 'TS',         tint: 'bg-muted text-muted-foreground' },
+  tsx:  { icon: FileCode2,     label: 'TSX',        tint: 'bg-muted text-muted-foreground' },
+  py:   { icon: FileCode2,     label: 'Python',     tint: 'bg-muted text-muted-foreground' },
+  html: { icon: FileCode2,     label: 'HTML',       tint: 'bg-muted text-muted-foreground' },
+  css:  { icon: FileCode2,     label: 'CSS',        tint: 'bg-muted text-muted-foreground' },
 
   // Media
-  png:  { icon: FileImage,     label: 'Image',      tint: 'bg-pink-500/10 text-pink-600 dark:text-pink-400' },
-  jpg:  { icon: FileImage,     label: 'Image',      tint: 'bg-pink-500/10 text-pink-600 dark:text-pink-400' },
-  jpeg: { icon: FileImage,     label: 'Image',      tint: 'bg-pink-500/10 text-pink-600 dark:text-pink-400' },
-  gif:  { icon: FileImage,     label: 'Image',      tint: 'bg-pink-500/10 text-pink-600 dark:text-pink-400' },
-  webp: { icon: FileImage,     label: 'Image',      tint: 'bg-pink-500/10 text-pink-600 dark:text-pink-400' },
-  svg:  { icon: FileImage,     label: 'SVG',        tint: 'bg-pink-500/10 text-pink-600 dark:text-pink-400' },
-  mp4:  { icon: Film,          label: 'Video',      tint: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
-  mov:  { icon: Film,          label: 'Video',      tint: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
-  webm: { icon: Film,          label: 'Video',      tint: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
-  mp3:  { icon: Music,         label: 'Audio',      tint: 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400' },
-  wav:  { icon: Music,         label: 'Audio',      tint: 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400' },
+  png:  { icon: FileImage,     label: 'Image',      tint: 'bg-muted text-muted-foreground' },
+  jpg:  { icon: FileImage,     label: 'Image',      tint: 'bg-muted text-muted-foreground' },
+  jpeg: { icon: FileImage,     label: 'Image',      tint: 'bg-muted text-muted-foreground' },
+  gif:  { icon: FileImage,     label: 'Image',      tint: 'bg-muted text-muted-foreground' },
+  webp: { icon: FileImage,     label: 'Image',      tint: 'bg-muted text-muted-foreground' },
+  svg:  { icon: FileImage,     label: 'SVG',        tint: 'bg-muted text-muted-foreground' },
+  mp4:  { icon: Film,          label: 'Video',      tint: 'bg-muted text-muted-foreground' },
+  mov:  { icon: Film,          label: 'Video',      tint: 'bg-muted text-muted-foreground' },
+  webm: { icon: Film,          label: 'Video',      tint: 'bg-muted text-muted-foreground' },
+  mp3:  { icon: Music,         label: 'Audio',      tint: 'bg-muted text-muted-foreground' },
+  wav:  { icon: Music,         label: 'Audio',      tint: 'bg-muted text-muted-foreground' },
 
   // Archives
-  zip:  { icon: Archive,       label: 'Archive',    tint: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400' },
-  rar:  { icon: Archive,       label: 'Archive',    tint: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400' },
-  '7z': { icon: Archive,       label: 'Archive',    tint: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400' },
-  tar:  { icon: Archive,       label: 'Archive',    tint: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400' },
-  gz:   { icon: Archive,       label: 'Archive',    tint: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400' },
+  zip:  { icon: Archive,       label: 'Archive',    tint: 'bg-muted text-muted-foreground' },
+  rar:  { icon: Archive,       label: 'Archive',    tint: 'bg-muted text-muted-foreground' },
+  '7z': { icon: Archive,       label: 'Archive',    tint: 'bg-muted text-muted-foreground' },
+  tar:  { icon: Archive,       label: 'Archive',    tint: 'bg-muted text-muted-foreground' },
+  gz:   { icon: Archive,       label: 'Archive',    tint: 'bg-muted text-muted-foreground' },
 };
 
 const MIME_PREFIX_MAP = [
@@ -124,10 +127,10 @@ export function formatBytes(bytes) {
 }
 
 export const SCOPE_META = {
-  private:     { label: 'Private',     tint: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400',     dot: 'bg-zinc-500' },
-  course:      { label: 'Course',      tint: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400', dot: 'bg-indigo-500' },
-  programme:   { label: 'Programme',   tint: 'bg-violet-500/10 text-violet-600 dark:text-violet-400', dot: 'bg-violet-500' },
-  department:  { label: 'Department',  tint: 'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400', dot: 'bg-fuchsia-500' },
-  faculty:     { label: 'Faculty',     tint: 'bg-pink-500/10 text-pink-600 dark:text-pink-400',       dot: 'bg-pink-500' },
-  institution: { label: 'Institution', tint: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
+  private:     { label: 'Private',     tint: 'bg-muted text-muted-foreground', dot: 'bg-[var(--border-strong)]' },
+  course:      { label: 'Course',      tint: 'bg-muted text-muted-foreground', dot: 'bg-[var(--border-strong)]' },
+  programme:   { label: 'Programme',   tint: 'bg-muted text-muted-foreground', dot: 'bg-[var(--border-strong)]' },
+  department:  { label: 'Department',  tint: 'bg-muted text-muted-foreground', dot: 'bg-[var(--border-strong)]' },
+  faculty:     { label: 'Faculty',     tint: 'bg-muted text-muted-foreground', dot: 'bg-[var(--border-strong)]' },
+  institution: { label: 'Institution', tint: 'bg-muted text-muted-foreground', dot: 'bg-[var(--border-strong)]' },
 };

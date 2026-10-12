@@ -27,7 +27,7 @@ Invalidate/logout according to the chosen token strategy.
 Request a password reset email.
 
 ### POST `/auth/password-reset/confirm/`
-Confirm password reset using a secure reset token/code.
+Confirm password reset using the 6-digit code from the reset email.
 
 ### POST `/auth/password-change/`
 Change password for an authenticated user.

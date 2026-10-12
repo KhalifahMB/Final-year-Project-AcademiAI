@@ -1,9 +1,9 @@
 /* =========================================================
    AcademiAI design tokens (Tailwind v4 @theme)
-   Direction: grounded institutional UI (wireframe spec)
-   — Violet accent #6C5CE7 · paper light / near-black dark
+   Direction: grounded institutional UI — "Cinnabar" palette
+   — Cinnabar accent (scholarly oxblood ink) · warm paper light / warm near-black dark
    — Geist + Geist Mono in-app · Fraunces serif on landing
-   — Hairline borders · grain + 48px grid textures
+   — Hairline borders · grain + 48px grid textures · zero color gradients
    ========================================================= */
 @theme {
   /* Radii — modern, not bubbly (Open Design spec: lg 12, md 8, sm 6) */
@@ -17,10 +17,21 @@
 
   /* Semantic color aliases (shadcn/ui compat) */
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-background: var(--bg);
   --color-foreground: var(--fg);
+
+  /* Raw palette exposed as utilities. Without these, `bg-surface`,
+     `bg-hover`, `border-border-strong`, `text-fg-soft`, `bg-danger` and
+     `text-bg` match no theme key and Tailwind emits no CSS for them. */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-hover: var(--hover);
+  --color-fg-soft: var(--fg-soft);
+  --color-danger: var(--danger);
 
   --color-primary: var(--accent);
   --color-primary-foreground: var(--on-accent);
@@ -58,7 +69,7 @@
 
   /* Popover/dropdown/modal shadow — ONLY place shadows appear */
   --shadow-pop:
-    0 12px 32px rgba(18, 10, 40, 0.12), 0 2px 8px rgba(18, 10, 40, 0.06);
+    0 12px 32px rgba(28, 24, 16, 0.12), 0 2px 8px rgba(28, 24, 16, 0.06);
 
   /* Typography — Geist (app), Fraunces (landing display), Geist Mono (meta) */
   --font-sans:
@@ -83,35 +94,35 @@
 }
 
 /* =========================================================
-   Light mode — warm paper canvas, violet accent
+   Light mode — warm paper canvas, Cinnabar accent
    ========================================================= */
 :root {
   color-scheme: light;
 
-  /* Canvas + surfaces — paper (#FAF9F6 ≈ oklch(0.985 0.003 85)) */
-  --bg: oklch(0.985 0.003 85);
-  --surface: oklch(0.995 0.002 85);
-  --surface-2: oklch(0.965 0.004 85);
-  --hover: oklch(0.945 0.005 85);
+  /* Canvas + surfaces — Atlas paper (oklch(0.973 0.011 84)) */
+  --bg: oklch(0.973 0.011 84);
+  --surface: oklch(0.986 0.009 84);
+  --surface-2: oklch(0.951 0.014 82);
+  --hover: oklch(0.928 0.016 80);
 
-  /* Text */
-  --fg: oklch(0.2 0.018 285);
-  --fg-soft: oklch(0.37 0.02 285);
-  --muted: oklch(0.53 0.015 285);
-  --faint: oklch(0.7 0.01 285);
+  /* Text — warm sepia ink: one neutral family with the paper canvas */
+  --fg: oklch(0.245 0.02 62);
+  --fg-soft: oklch(0.4 0.02 62);
+  --muted: oklch(0.45 0.018 62);
+  --faint: oklch(0.56 0.016 66);
 
   /* Lines — hairline on paper */
-  --border: oklch(0.905 0.006 85);
-  --border-strong: oklch(0.83 0.008 85);
+  --border: oklch(0.855 0.02 78);
+  --border-strong: oklch(0.7 0.03 72);
   --input: var(--surface-2);
-  --ring: oklch(0.577 0.195 282);
+  --ring: oklch(0.415 0.125 27);
 
-  /* Single accent — brand violet #6C5CE7 ≈ oklch(0.577 0.195 282) */
-  --accent: oklch(0.577 0.195 282);
-  --accent-strong: oklch(0.5 0.19 282);
-  --accent-soft: oklch(0.945 0.028 282);
-  --accent-line: oklch(0.86 0.07 282);
-  --on-accent: oklch(0.99 0.002 85);
+  /* Single accent — Cinnabar: scholarly oxblood ink, the colour of seal and rubric */
+  --accent: oklch(0.415 0.125 27);
+  --accent-strong: oklch(0.355 0.12 27);
+  --accent-soft: oklch(0.945 0.028 32);
+  --accent-line: oklch(0.8 0.075 30);
+  --on-accent: oklch(0.985 0.008 84);
 
   /* Status (data, not decoration) */
   --success: oklch(0.5 0.125 150);
@@ -120,8 +131,9 @@
   --warn-soft: oklch(0.955 0.03 85);
   --danger: oklch(0.52 0.19 25);
   --danger-soft: oklch(0.955 0.02 25);
-  --info: oklch(0.52 0.11 245);
-  --info-soft: oklch(0.955 0.02 245);
+  /* Info = slate: information is carried by form (mono badges), not hue */
+  --info: oklch(0.45 0.02 260);
+  --info-soft: oklch(0.955 0.008 260);
 
   /* Aliases used by shadcn/card components */
   --background: var(--bg);
@@ -150,7 +162,7 @@
 
   /* Shadows reserved for popovers/dropdowns/modals ONLY */
   --shadow-pop:
-    0 12px 32px rgba(18, 10, 40, 0.12), 0 2px 8px rgba(18, 10, 40, 0.06);
+    0 12px 32px rgba(28, 24, 16, 0.12), 0 2px 8px rgba(28, 24, 16, 0.06);
 
   /* Layout */
   --topbar-h: 56px;
@@ -159,34 +171,35 @@
 }
 
 /* =========================================================
-   Dark mode — near-black canvases, violet accent
+   Dark mode — warm near-black canvases, Cinnabar accent
    ========================================================= */
 .dark {
   color-scheme: dark;
 
-  /* Canvas + surfaces — near-black blue-violet (#0B0B0E ≈ oklch(.145 .015 282)) */
-  --bg: oklch(0.145 0.015 282);
-  --surface: oklch(0.19 0.018 282);
-  --surface-2: oklch(0.235 0.02 282);
-  --hover: oklch(0.27 0.022 282);
+  /* Canvas + surfaces — warm near-black (accent-anchored, no blue cast) */
+  --bg: oklch(0.165 0.012 62);
+  --surface: oklch(0.198 0.014 62);
+  --surface-2: oklch(0.205 0.014 62);
+  --hover: oklch(0.245 0.016 62);
 
   /* Text */
-  --fg: oklch(0.97 0.008 282);
-  --fg-soft: oklch(0.85 0.01 282);
-  --muted: oklch(0.68 0.012 282);
-  --faint: oklch(0.52 0.015 282);
+  --fg: oklch(0.945 0.012 75);
+  --fg-soft: oklch(0.83 0.014 75);
+  --muted: oklch(0.7 0.016 72);
+  --faint: oklch(0.58 0.014 66);
 
   /* Lines — hairline on near-black */
-  --border: oklch(0.275 0.02 282);
-  --border-strong: oklch(0.35 0.025 282);
-  --input: oklch(0.235 0.02 282);
-  --ring: oklch(0.72 0.17 282);
+  --border: oklch(0.31 0.016 62);
+  --border-strong: oklch(0.42 0.02 62);
+  --input: oklch(0.205 0.014 62);
+  --ring: oklch(0.72 0.12 30);
 
-  --accent: oklch(0.72 0.17 282);
-  --accent-strong: oklch(0.78 0.15 282);
-  --accent-soft: oklch(0.32 0.07 282);
-  --accent-line: oklch(0.42 0.09 282);
-  --on-accent: oklch(0.98 0.005 282);
+  /* Cinnabar lifted for dark canvases; on-accent flips to ink-on-oxblood */
+  --accent: oklch(0.72 0.12 30);
+  --accent-strong: oklch(0.8 0.11 32);
+  --accent-soft: oklch(0.28 0.05 30);
+  --accent-line: oklch(0.44 0.06 30);
+  --on-accent: oklch(0.18 0.02 62);
 
   --success: oklch(0.75 0.13 152);
   --success-soft: oklch(0.3 0.05 152);
@@ -194,8 +207,8 @@
   --warn-soft: oklch(0.32 0.05 85);
   --danger: oklch(0.71 0.17 25);
   --danger-soft: oklch(0.31 0.06 25);
-  --info: oklch(0.73 0.11 245);
-  --info-soft: oklch(0.3 0.05 245);
+  --info: oklch(0.72 0.03 260);
+  --info-soft: oklch(0.3 0.02 260);
 
   --background: var(--bg);
   --foreground: var(--fg);

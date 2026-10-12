@@ -15,6 +15,21 @@ class ResourceSerializer(serializers.ModelSerializer):
         allow_empty=True,
     )
     shared_with_users = serializers.SerializerMethodField()
+    # `public` is accepted as a convenience alias for institution-wide
+    # visibility; the stored value is always the canonical `institution`
+    # scope (there is no separate cross-tenant public tier).
+    visibility_scope = serializers.ChoiceField(
+        choices=[
+            (Resource.Visibility.PRIVATE, "Private"),
+            (Resource.Visibility.COURSE, "Course"),
+            (Resource.Visibility.PROGRAMME, "Programme"),
+            (Resource.Visibility.DEPARTMENT, "Department"),
+            (Resource.Visibility.FACULTY, "Faculty"),
+            (Resource.Visibility.INSTITUTION, "Institution"),
+            ("public", "Public (alias for institution)"),
+        ],
+        required=False,
+    )
 
     def validate(self, attrs):
         """
@@ -34,6 +49,19 @@ class ResourceSerializer(serializers.ModelSerializer):
         user = getattr(request, "user", None)
         if user is None or not getattr(user, "tenant_id", None):
             return attrs
+
+        # Canonicalize the `public` alias and pick a safe default scope for
+        # new uploads. A student's personal upload (no course offering) must
+        # land in `private` so it never leaks to peers by default.
+        if attrs.get("visibility_scope") == "public":
+            attrs["visibility_scope"] = Resource.Visibility.INSTITUTION
+        if (
+            self.instance is None
+            and attrs.get("visibility_scope") is None
+            and getattr(user, "role", None) == "student"
+            and not attrs.get("course_offering")
+        ):
+            attrs["visibility_scope"] = Resource.Visibility.PRIVATE
 
         # Per-user sharing is owner/admin-only (defense in depth on top of
         # IsOwnerOrAdminForWrite on the update/destroy actions).

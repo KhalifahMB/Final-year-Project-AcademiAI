@@ -23,7 +23,7 @@ Example conceptual interface:
 ```text
 send_verification_code(user, code)
 send_welcome_email(user)
-send_password_reset(user, reset_url)
+send_password_reset(user, code, reset_url)
 send_password_changed_notification(user)
 ```
 
@@ -69,15 +69,15 @@ Request reset
   ↓
 Always return generic response
   ↓
-Create short-lived single-use reset token
+Create short-lived single-use 6-digit reset code
   ↓
 Send reset email
   ↓
-User opens reset link
+User opens the email
   ↓
-Submit new password
+Enter code + new password
   ↓
-Invalidate token
+Invalidate code
   ↓
 Optionally revoke existing sessions
   ↓
@@ -111,7 +111,7 @@ Log:
 
 Never log:
 - verification codes
-- password-reset tokens
+- password-reset codes
 - complete private email content
 
 ## Configuration

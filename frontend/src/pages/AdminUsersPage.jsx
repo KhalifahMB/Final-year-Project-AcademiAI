@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/shared/StatusBadge';
+import StatStrip from '@/components/shared/StatStrip';
 import StatTile from '@/components/shared/StatTile';
 import EmptyState from '@/components/shared/EmptyState';
 import Pagination from '@/components/shared/Pagination';
@@ -90,12 +91,12 @@ export default function AdminUsersPage() {
 
       {/* Stats */}
       {!isLoading && users.length > 0 && (
-        <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          <StatTile label="Total users" value={users.length} tone="indigo" />
-          <StatTile label="Students" value={users.filter((u) => u.role === 'student').length} tone="indigo" />
-          <StatTile label="Lecturers" value={users.filter((u) => u.role === 'lecturer').length} tone="sky" />
-          <StatTile label="Admins" value={users.filter((u) => u.role === 'tenant_admin').length} tone="violet" />
-        </div>
+        <StatStrip className="mb-4">
+          <StatTile label="Total users" value={users.length} />
+          <StatTile label="Students" value={users.filter((u) => u.role === 'student').length} />
+          <StatTile label="Lecturers" value={users.filter((u) => u.role === 'lecturer').length} />
+          <StatTile label="Admins" value={users.filter((u) => u.role === 'tenant_admin').length} />
+        </StatStrip>
       )}
 
       {/* Toolbar */}

@@ -17,7 +17,7 @@ JWT authentication
 - Passwords are hashed using Django's password hashing.
 - Email verification is required.
 - Access and refresh tokens must have controlled lifetimes.
-- Password-reset tokens are short-lived and single-use.
+- Password-reset codes are 6-digit, short-lived, single-use and attempt-capped.
 - Sensitive authentication events are logged without secrets.
 
 ## Authorization

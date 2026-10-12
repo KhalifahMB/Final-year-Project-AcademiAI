@@ -11,6 +11,6 @@
   <circle cx="55" cy="51" r="2.5" fill="#1e1b4b"/>
   <circle cx="73" cy="51" r="2.5" fill="#1e1b4b"/>
   <path d="M58 60c4 3 8 3 12 0" stroke="#1e1b4b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-  <path d="M28 112c4-22 18-32 36-32s32 10 36 32a64 64 0 0 1-72 0z" fill="#7c3aed"/>
-  <circle cx="64" cy="88" r="4" fill="#ddd6fe"/>
+  <path d="M28 112c4-22 18-32 36-32s32 10 36 32a64 64 0 0 1-72 0z" fill="#3e7c8f"/>
+  <circle cx="64" cy="88" r="4" fill="#c9e2e8"/>
 </svg>

@@ -80,7 +80,7 @@ function QuickActionCard({ to, icon: Icon, label, description }) {
 export default function PlatformConsolePage() {
   const statsQ = useQuery({
     queryKey: ['platform-stats'],
-    queryFn: async () => (await platformApi.stats()).data,
+    queryFn: () => platformApi.stats(),
     staleTime: 30_000,
   });
 

@@ -55,10 +55,7 @@ export default function LoginPage() {
       footer={
         <>
           New to AcademiAI?{' '}
-          <Link
-            to="/signup"
-            className="landing-text-link font-semibold"
-          >
+          <Link to="/signup" className="landing-text-link font-semibold">
             Create an account
           </Link>
         </>
@@ -71,13 +68,19 @@ export default function LoginPage() {
       )}
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" data-testid="login-form">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-4"
+          data-testid="login-form"
+        >
           <FormField
             control={form.control}
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs font-semibold tracking-tight">Email</FormLabel>
+                <FormLabel className="text-xs font-semibold tracking-tight">
+                  Email
+                </FormLabel>
                 <FormControl>
                   <Input
                     type="email"
@@ -98,7 +101,9 @@ export default function LoginPage() {
             render={({ field }) => (
               <FormItem>
                 <div className="flex items-center justify-between">
-                  <FormLabel className="text-xs font-semibold tracking-tight">Password</FormLabel>
+                  <FormLabel className="text-xs font-semibold tracking-tight">
+                    Password
+                  </FormLabel>
                   <Link
                     to="/password-reset"
                     className="landing-text-link text-xs font-medium"
@@ -121,7 +126,10 @@ export default function LoginPage() {
           />
 
           <label className="flex cursor-pointer items-center gap-2 text-[12px] text-muted-foreground select-none">
-            <Checkbox checked={remember} onCheckedChange={(v) => setRemember(!!v)} />
+            <Checkbox
+              checked={remember}
+              onCheckedChange={(v) => setRemember(!!v)}
+            />
             Keep me signed in
           </label>
 

@@ -1,5 +1,7 @@
 import types
+from contextlib import contextmanager
 from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
 from django.utils import timezone
@@ -95,6 +97,67 @@ def test_agent_turn_persists_recent_history_and_logs_tool_calls():
     assert session.recent_messages[-2]["content"] == "What are my courses?"
     assert session.recent_messages[-1]["role"] == "assistant"
     assert AgentToolExecution.objects.filter(session=session, tool_name="get_user_profile").exists()
+
+
+@pytest.mark.django_db
+def test_agent_history_save_runs_inside_tenant_scope():
+    """The agent stream is a generator, so its body runs AFTER the middleware's
+    finally RESET. persist_session_history() therefore has to re-open its own
+    tenant scope: without it RLS filters the UPDATE to zero rows and Django
+    raises AgentSession.NotUpdated — long after the answer was streamed, so the
+    user sees a complete reply followed by an error.
+
+    This test fails if that save ever runs without an active scope.
+    """
+    from apps.common import db as db_module
+
+    tenant = Tenant.objects.create(name="Scope Uni", slug="scope-uni")
+    user = User.objects.create_user(
+        email="scope@scope-uni.edu",
+        password="StrongPass!2026x",
+        tenant=tenant,
+        role="student",
+        first_name="Scope",
+        last_name="User",
+        is_email_verified=True,
+    )
+    session = AgentSession.objects.create(
+        tenant=tenant, user=user, context_type="dashboard", recent_messages=[],
+    )
+
+    depth = {"value": 0}
+    real_scope = db_module.tenant_scope
+
+    @contextmanager
+    def counting_scope(tenant_id):
+        depth["value"] += 1
+        try:
+            with real_scope(tenant_id):
+                yield
+        finally:
+            depth["value"] -= 1
+
+    original_save = AgentSession.save
+
+    def guarded_save(self, *args, **kwargs):
+        if self.pk == session.pk and depth["value"] == 0:
+            raise AssertionError(
+                "session.save() ran outside tenant_scope — under RLS the UPDATE "
+                "affects zero rows and raises NotUpdated after streaming."
+            )
+        return original_save(self, *args, **kwargs)
+
+    with patch("apps.agent.agent_loop.tenant_scope", counting_scope), \
+            patch.object(AgentSession, "save", guarded_save):
+        list(
+            run_agent_turn(
+                FakeClient(), "gemini-test", user, "What are my courses?",
+                "dashboard", session=session,
+            )
+        )
+
+    session.refresh_from_db()
+    assert session.recent_messages[-1]["role"] == "assistant"
 
 
 @pytest.mark.django_db
@@ -306,16 +369,21 @@ def test_agent_identities_settings_and_sessions_api():
 
 
 @pytest.mark.django_db
-def test_agent_stream_creates_resumable_session_in_dev_mode():
+def test_agent_stream_creates_resumable_session():
     tenant = Tenant.objects.create(name="Stream Uni", slug="stream-uni")
     user = _make_user(tenant, "stream@stream-uni.edu", role="student")
     client = _auth_client(user)
 
-    resp = client.post(
-        "/api/v1/agent/stream/",
-        {"message": "Help me plan", "context_type": "plans", "agent": "student"},
-        format="json",
-    )
+    # Note: the keyless "dev mode" stream was removed — it emitted a fabricated
+    # greeting as a real assistant turn. Session lifecycle is therefore
+    # exercised against a stubbed live client.
+    with patch("apps.agent.views.ai_service_available", return_value=True), \
+         patch("apps.common.ai.gemini._get_client", return_value=FakeClient()):
+        resp = client.post(
+            "/api/v1/agent/stream/",
+            {"message": "Help me plan", "context_type": "plans", "agent": "student"},
+            format="json",
+        )
     assert resp.status_code == 200
     body = b"".join(resp.streaming_content).decode()
 
@@ -326,9 +394,32 @@ def test_agent_stream_creates_resumable_session_in_dev_mode():
 
     # Resuming with an invalid/borrowed session id returns 404.
     from uuid import uuid4
-    resp = client.post(
-        "/api/v1/agent/stream/",
-        {"message": "resume", "session_id": str(uuid4())},
-        format="json",
-    )
+    with patch("apps.agent.views.ai_service_available", return_value=True):
+        resp = client.post(
+            "/api/v1/agent/stream/",
+            {"message": "resume", "session_id": str(uuid4())},
+            format="json",
+        )
     assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_agent_stream_503_when_ai_unavailable():
+    """No key means no fabricated greeting — the request is rejected up front
+    and no empty conversation is left behind."""
+    tenant = Tenant.objects.create(name="NoKey Uni", slug="nokey-uni")
+    user = _make_user(tenant, "nokey@nokey-uni.edu", role="student")
+    client = _auth_client(user)
+
+    with patch("apps.agent.views.ai_service_available", return_value=False):
+        resp = client.post(
+            "/api/v1/agent/stream/",
+            {"message": "Help me plan", "context_type": "plans"},
+            format="json",
+        )
+
+    assert resp.status_code == 503
+    detail = resp.json()["error"]["detail"]
+    assert "unavailable" in detail.lower()
+    assert "GEMINI_API_KEY" not in detail
+    assert not AgentSession.objects.filter(user=user).exists()

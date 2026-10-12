@@ -3,7 +3,7 @@
 ## Toolchain
 
 - **React 19** + **Vite 8** (build) + **Vitest 4** (tests) + **oxlint** (lint)
-- **Tailwind CSS v4** — CSS-first theme via `src/index.css` (oklch tokens); no `tailwind.config.js`
+- **Tailwind CSS v4** — CSS-first theme via `src/index.css` (oklch tokens) processed by the single `@tailwindcss/vite` plugin in `vite.config.js`. A `tailwind.config.js` still exists but is **inert** (the CSS has no `@config` directive): it is kept only as a mapping for the shadcn CLI/editor intellisense, not as a source of app colours. `src/index.css` is the source of truth.
 - **shadcn/ui JavaScript primitives** (Radix UI based): Button, Input, Label, Card, Alert, Badge, Textarea, Separator, Select, Dialog, AlertDialog, DropdownMenu, Checkbox, Tabs, Table, Tooltip, Popover
 - **TanStack Query** for server state + caching
 - **React Hook Form + Zod** for validated forms
@@ -20,7 +20,8 @@
 
 | File | Route | Description |
 |------|-------|-------------|
-| `LandingPage.jsx` | `/` | Public marketing landing — hero, product principles, feature sections, institution directory, CTA |
+| `pages/landing/variants/CinnabarLanding.jsx` | `/` | Public marketing landing — Console structure × Cinnabar/Atlas colour, hero, grounding demo, roles, signals, institution directory, FAQ |
+| `pages/landing/LandingLab.jsx` | `/landing-lab` | Dev-only preview picker (Atlas ⇄ Cinnabar); not linked from the app |
 
 ### Auth
 
@@ -28,8 +29,8 @@
 |------|-------|-------------|
 | `LoginPage.jsx` | `/login` | Email + password login |
 | `SignupPage.jsx` | `/signup` | Student self-registration (programme selector, institution picker) |
-| `VerifyEmailPage.jsx` | `/verify-email/:token` | Email verification callback |
-| `PasswordResetPage.jsx` | `/password-reset/:token` | Password reset form |
+| `VerifyEmailPage.jsx` | `/verify-email` | Enter the 6-digit verification code |
+| `PasswordResetPage.jsx` | `/password-reset` | Request a code, then set a new password |
 | `RequestInstitutionPage.jsx` | `/request-institution` | Public form to request a new university workspace |
 
 ### Dashboard (`pages/dashboard/`)
@@ -107,7 +108,7 @@
 | `Avatar.jsx` | User avatar with initials fallback |
 | `AvatarPicker.jsx` | Avatar selection grid (predefined + upload) |
 | `AiInsightCard.jsx` | Formatted AI insight display card |
-| `BrandMark.jsx` | Logo + wordmark with light/dark variants |
+| `BrandMark.jsx` | Inline theme-aware SVG brand mark ("A + mortarboard", Cinnabar tassel) + wordmark |
 | `ConfirmDialog.jsx` | Accessible confirmation replacing all `window.confirm()` |
 | `EmptyState.jsx` | Empty state with icon, title, description, action |
 | `EntityDialog.jsx` | Generic create/edit dialog (used across admin pages) |
@@ -116,7 +117,8 @@
 | `SearchableSelect.jsx` | Async search dropdown (used for course/user pickers) |
 | `SkeletonRows.jsx` | Loading skeleton placeholder |
 | `StatCard.jsx` | Metric card with label, value, optional trend |
-| `StatTile.jsx` | Compact stat tile for dashboard grids |
+| `StatTile.jsx` | Compact stat tile; semantic tones (neutral/accent/ok/warn/bad/info) |
+| `StatStrip.jsx` | One hairline KPI panel wrapping StatTiles with internal dividers |
 | `StatusBadge.jsx` | Status pill with color coding |
 | `TemplateEditorDialog.jsx` | Plan/quiz template create/edit dialog |
 | `ThemeToggle.jsx` | Light/dark mode toggle |
@@ -140,7 +142,8 @@ Both mount inside `AppShell` and share the single `['notifications']` query from
 
 | Module | Purpose | Exports |
 |--------|---------|---------|
-| `AuthContext.jsx` | Auth session context + provider — cookie-JWT login/logout, session flag, shared cache key | `AuthProvider`, `AuthContext` |
+| `AuthContext.js` | Auth session context object consumed by `useAuth` | `AuthContext` |
+| `AuthProvider.jsx` | Auth session provider — cookie-JWT login/logout, session flag, shared cache key | `AuthProvider` |
 
 > `USER_QUERY_KEY`, `AUTH_QUERY_OPTIONS` and `fetchUser` (the deduped `/auth/me` query) live in `services/authQuery.js`; the context and hook re-import them from there.
 

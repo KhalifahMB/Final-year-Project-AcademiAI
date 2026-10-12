@@ -86,8 +86,8 @@ def policy_statements(table, *, teardown=False):
             f"ALTER TABLE {quoted} FORCE ROW LEVEL SECURITY; "
             f"DROP POLICY IF EXISTS tenant_isolation ON {quoted}; "
             f"CREATE POLICY tenant_isolation ON {quoted} FOR ALL "
-            f"USING (tenant_id::text = current_setting('app.current_tenant_id', true)) "
-            f"WITH CHECK (tenant_id::text = current_setting('app.current_tenant_id', true)); "
+            f"USING (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid) "
+            f"WITH CHECK (tenant_id = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid); "
             "END IF; "
             "END $$;"
         )]

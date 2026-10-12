@@ -22,6 +22,14 @@ Stack: Django + DRF (backend) · React + Vite (frontend) · PostgreSQL + pgvecto
 
 ```powershell
 Copy-Item .env.example .env
+```
+
+Before the first `docker compose up -d`, set `ACADEMIAI_DEV_TEST_ROLE=1` in your
+`.env` on a development machine — that creates the `BYPASSRLS` role the backend
+test suite connects as (see `infrastructure/postgres/init/02-test-role.sh`). Leave
+it at `0` anywhere tenant isolation must actually be enforced.
+
+```powershell
 docker compose up -d
 ```
 
@@ -48,7 +56,10 @@ cd backend
 > (default `academiai`). Otherwise multi-tenant isolation is not enforced —
 > the compose stack creates a separate `postgres` superuser for bootstrap and
 > the non-superuser `academiai` app role (see
-> `infrastructure/postgres/init/01-app-role.sql`). RLS policies are applied
+> `infrastructure/postgres/init/01-app-role.sql`). A third script there,
+> `02-test-role.sh`, creates the `BYPASSRLS` role pytest uses, and only when
+> `ACADEMIAI_DEV_TEST_ROLE=1` — it is a temporary shim while unscoped test
+> fixtures are converted, never a deployment role. RLS policies are applied
 > automatically on every `migrate` (a `post_migrate` receiver), so there is no
 > separate `apply_rls` step.
 
@@ -58,6 +69,28 @@ Celery worker (separate terminal):
 cd backend
 .\.venv\Scripts\python.exe -m celery -A config worker -l INFO -P solo -Q ai,celery,email,ingestion
 ```
+
+Celery **beat** (separate terminal, required — this is the scheduler):
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m celery -A config beat -l INFO
+```
+
+Beat dispatches `CELERY_BEAT_SCHEDULE` (`config/settings.py`); the only
+current entry is `restrict_suspended_tenant_logins`, which enforces the 24 h
+post-suspension login grace period every 30 minutes.
+
+Run **exactly one** beat. Two schedulers sharing one schedule store each
+dispatch every entry, so the task would run twice per cycle — which is also
+why the worker must not be started with `-B`.
+
+Together with `runserver` and the worker, that makes three separate processes
+to leave running: the API, the worker, and the scheduler.
+
+Beat keeps its schedule state in `celerybeat-schedule` in `backend/`, a
+runtime artifact (gitignored). Deleting it is safe: the next beat start
+recreates it and the periodic entries simply restart their timing.
 
 API docs: http://localhost:8000/api/schema/swagger-ui/
 
@@ -78,7 +111,7 @@ App: http://localhost:5173
 cd backend
 .\.venv\Scripts\python.exe manage.py smoke_check --with-db
 .\.venv\Scripts\python.exe manage.py seed_demo                # demo tenant
-.\.venv\Scripts\python.exe -m pytest -q -o addopts="-p no:xdist"
+.\.venv\Scripts\python.exe -m pytest -q
 
 # Frontend
 cd frontend

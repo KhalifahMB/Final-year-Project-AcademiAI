@@ -24,15 +24,15 @@ from django.template.loader import render_to_string
 
 logger = logging.getLogger(__name__)
 
-# Brand palette — derived from the DESIGN.md oklch tokens (single accent economy).
-BRAND_MAIN = "#0230C0"      # --accent oklch(58% 0.18 255)
-BRAND_STRONG = "#001F9A"    # --accent-strong oklch(51% 0.185 255)
-TEXT_PRIMARY = "#1E293B"    # --fg family (slate-800)
-TEXT_MUTED = "#64748B"      # slate-500
-PAGE_BG = "#F5F7FA"         # --bg oklch(99% 0.002 240)
+# Brand palette — Cinnabar tokens from frontend/src/index.css (light theme).
+BRAND_MAIN = "#8A2A24"      # --accent (cinnabar)
+BRAND_STRONG = "#6E1F1A"    # darker cinnabar for pressed/hover states
+TEXT_PRIMARY = "#281E17"    # --fg (warm ink)
+TEXT_MUTED = "#6B5D52"      # muted warm ink
+PAGE_BG = "#F4EEE4"         # --bg family (warm paper)
 CARD_BG = "#FFFFFF"
-BORDER = "#E4E7EC"
-FOOTER = "#94A3B8"
+BORDER = "#E7DFD3"          # warm hairline
+FOOTER = "#9A8C80"
 DANGER = "#B91C1C"
 
 _LOGO_DIR = Path(__file__).resolve().parent.parent.parent / "templates" / "emails" / "brand"
@@ -40,10 +40,25 @@ _LOGO_DIR = Path(__file__).resolve().parent.parent.parent / "templates" / "email
 
 @functools.lru_cache(maxsize=1)
 def _logo_data_uri() -> str:
-    """Base64 data URI of the on-brand email logo (256px PNG)."""
-    path = _LOGO_DIR / "academiai_logo.png"
+    """Base64 data URI of the on-brand email logo (Cinnabar SVG).
+
+    SVG is preferred in capable clients (crisp at any DPI); ``_logo_png_data_uri``
+    provides the raster fallback for Gmail/Outlook, which strip SVG.
+    """
+    path = _LOGO_DIR / "academiai_logo.svg"
     if not path.exists():
         logger.warning("Email logo missing at %s; rendering header without it", path)
+        return ""
+    data = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:image/svg+xml;base64,{data}"
+
+
+@functools.lru_cache(maxsize=1)
+def _logo_png_data_uri() -> str:
+    """Base64 data URI of the raster (PNG) email logo fallback."""
+    path = _LOGO_DIR / "academiai_logo.png"
+    if not path.exists():
+        logger.warning("Email logo PNG missing at %s; rendering header without it", path)
         return ""
     data = base64.b64encode(path.read_bytes()).decode("ascii")
     return f"data:image/png;base64,{data}"
@@ -55,6 +70,7 @@ def _base_context(**extra) -> dict:
         "frontend_url": getattr(settings, "FRONTEND_URL", "http://localhost:5173").rstrip("/"),
         "support_email": getattr(settings, "SUPPORT_EMAIL", "support@academiai.local"),
         "logo_data_uri": _logo_data_uri(),
+        "logo_png_data_uri": _logo_png_data_uri(),
         "brand_main": BRAND_MAIN,
         "brand_strong": BRAND_STRONG,
         "text_primary": TEXT_PRIMARY,

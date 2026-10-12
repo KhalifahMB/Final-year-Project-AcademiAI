@@ -57,10 +57,11 @@ Pre-ship, staging, and post-deploy items specific to the SPA tier.
 
 | # | Item | Notes |
 |---|------|-------|
-| 1 | **`og:image`** | Currently `/pwa-512.png`. Change to an absolute URL before sharing on social media, or it won't render. |
+| 1 | **`og:image`** | `index.html` ships a relative path (`/images/landing/hero-academiai-tutor.png`). Social scrapers need an **absolute** URL — prefix it with the site origin (e.g. via `VITE_SITE_URL`) before public launch, or it won't render. |
 | 2 | **`robots.txt` + `sitemap.xml`** | Not present. Add before public launch. |
 | 3 | **PWA `registerType`** | Set to `autoUpdate` — users get a new SW automatically. Be aware this can cause "flash of old content" on slow connections. Consider prompting with a "reload" toast instead. |
 | 4 | **`/sw.js` cache header** | `no-cache, must-revalidate` — browsers will re-validate. If you want an immediate update window, serve the old SW for a known period then swap. |
+| 5 | **Favicons + PWA icons** | `favicon.svg` (adaptive), `favicon-{16,32,48}.png`, `apple-touch-icon.png`, `pwa-{192,512}.png` — all rasterised from the Cinnabar SVGs in `frontend/public/brand/`. Regenerate the set together whenever the mark changes. |
 
 ---
 
@@ -70,7 +71,7 @@ Pre-ship, staging, and post-deploy items specific to the SPA tier.
 |-------|---------|-------|
 | `NotesPage` | ~132 KB | tiptap editor + extensions. If notes become a core flow, consider lazy-loading the editor only when editing. |
 | `AppShell` | ~150 KB | Shared sidebar + nav. Always in main bundle. Acceptable. |
-| `BrandMark` | ~92 KB | Large SVG/image asset. Consider `loading="lazy"` if it's an `<img>`, or move to a smaller format. |
+| `BrandMark` | ~1 KB | Theme-aware inline SVG (was a ~92 KB baked raster). No longer a bundle concern. |
 | `BarChart` | ~100 KB | Recharts. Always code-split into route chunks if not already. |
 | Total dist | ~8 MB | **9 MB before gzip.** Consider running `npx source-map-explorer` on large chunks to identify what can be deferred. |
 

@@ -1,33 +1,112 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'node:fs';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Canonical/SEO origin. No default is baked in: when VITE_SITE_URL is unset the
+// plugin strips the canonical/og:url block from index.html and emits no
+// sitemap, so nothing ever points at a wrong domain.
+const SITE_URL_START = '<!-- site-url:start -->';
+const SITE_URL_END = '<!-- site-url:end -->';
+const SITEMAP_ROUTES = ['/', '/login', '/signup', '/request-institution'];
+
+function buildSitemap(siteUrl) {
+  const lastmod = new Date().toISOString().slice(0, 10);
+  const urls = SITEMAP_ROUTES.map((route) => {
+    const loc = route === '/' ? `${siteUrl}/` : `${siteUrl}${route}`;
+    const priority = route === '/' ? '1.0' : '0.6';
+    return [
+      '  <url>',
+      `    <loc>${loc}</loc>`,
+      `    <lastmod>${lastmod}</lastmod>`,
+      '    <changefreq>weekly</changefreq>',
+      `    <priority>${priority}</priority>`,
+      '  </url>',
+    ].join('\n');
+  }).join('\n');
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    urls,
+    '</urlset>',
+    '',
+  ].join('\n');
+}
+
+function seoSiteUrl() {
+  let siteUrl = '';
+  let distDir = path.resolve(__dirname, 'dist');
+  let isBuild = false;
+  return {
+    name: 'academiai-seo-site-url',
+    configResolved(config) {
+      siteUrl = (config.env.VITE_SITE_URL || '').replace(/\/+$/, '');
+      isBuild = config.command === 'build';
+      distDir = path.resolve(config.root, config.build.outDir);
+    },
+    transformIndexHtml(html) {
+      if (siteUrl) {
+        return html
+          .replaceAll('__SITE_URL__', siteUrl)
+          .replace(SITE_URL_START, '')
+          .replace(SITE_URL_END, '');
+      }
+      const start = html.indexOf(SITE_URL_START);
+      const end = html.indexOf(SITE_URL_END);
+      const stripped = start !== -1 && end !== -1
+        ? html.slice(0, start) + html.slice(end + SITE_URL_END.length)
+        : html;
+      return stripped.replaceAll('__SITE_URL__', '');
+    },
+    closeBundle() {
+      if (!isBuild || !siteUrl || !fs.existsSync(distDir)) return;
+      fs.writeFileSync(
+        path.join(distDir, 'sitemap.xml'),
+        buildSitemap(siteUrl),
+        'utf8',
+      );
+      const robotsPath = path.join(distDir, 'robots.txt');
+      if (fs.existsSync(robotsPath)) {
+        const robots = fs.readFileSync(robotsPath, 'utf8').replace(/\s+$/, '');
+        fs.writeFileSync(
+          robotsPath,
+          `${robots}\n\nSitemap: ${siteUrl}/sitemap.xml\n`,
+          'utf8',
+        );
+      }
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    seoSiteUrl(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       includeAssets: [
+        'favicon.svg',
+        'favicon-16.png',
         'favicon-32.png',
-        'favicon-192.png',
+        'favicon-48.png',
+        'apple-touch-icon.png',
         'pwa-192.png',
         'pwa-512.png',
-        'icons.svg',
       ],
       manifest: {
         name: 'AcademiAI — AI-powered academic assistance',
         short_name: 'AcademiAI',
         description:
           'Multi-tenant academic AI platform: grounded tutoring from your own course materials, auto-generated quizzes, cohort insight and progress tracking.',
-        theme_color: '#1779e1',
-        background_color: '#ffffff',
+        theme_color: '#8A2A24',
+        background_color: '#F8F3EA',
         display: 'standalone',
         start_url: '/',
         scope: '/',

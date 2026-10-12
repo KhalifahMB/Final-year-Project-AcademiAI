@@ -8,6 +8,7 @@ import StatusBadge from '@/components/shared/StatusBadge';
 import ResourceCard from '@/components/resources/ResourceCard';
 import ResourceDetailDialog from '@/components/resources/ResourceDetailDialog';
 import EmptyState from '@/components/shared/EmptyState';
+import StatStrip from '@/components/shared/StatStrip';
 import StatTile from '@/components/shared/StatTile';
 import { Meter, TimeAgo } from '@/pages/dashboard/DashboardPage.helpers';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -505,15 +506,15 @@ export default function CourseDetailPage() {
   const quizzes = (a.quiz_performance || []).filter((q) => q.attempts > 0);
   return (
   <>
-  {/* KPI row */}
-  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-  <StatTile label="Enrolled" value={k.enrolled} icon={Users} tone="indigo" />
-  <StatTile label="Active" value={k.active_students} icon={Activity} tone="emerald" />
-  <StatTile label="Materials" value={k.materials} icon={FileText} tone="violet" />
-  <StatTile label="Quizzes" value={k.quizzes} icon={BookOpen} tone="sky" />
-  <StatTile label="Avg score" value={k.avg_score_pct ?? '—'} suffix="%" icon={Target} tone={k.avg_score_pct == null ? 'indigo' : PctTone(k.avg_score_pct)} />
-  <StatTile label="Completion" value={k.completion_pct ?? '—'} suffix="%" icon={TrendingUp} tone={k.completion_pct == null || k.completion_pct >= 60 ? 'emerald' : 'amber'} />
-  </div>
+  {/* KPI strip */}
+  <StatStrip>
+  <StatTile label="Enrolled" value={k.enrolled} icon={Users} />
+  <StatTile label="Active" value={k.active_students} icon={Activity} />
+  <StatTile label="Materials" value={k.materials} icon={FileText} />
+  <StatTile label="Quizzes" value={k.quizzes} icon={BookOpen} />
+  <StatTile label="Avg score" value={k.avg_score_pct ?? '—'} suffix="%" icon={Target} tone={k.avg_score_pct == null ? 'neutral' : PctTone(k.avg_score_pct)} />
+  <StatTile label="Completion" value={k.completion_pct ?? '—'} suffix="%" icon={TrendingUp} tone={k.completion_pct == null || k.completion_pct >= 60 ? 'ok' : 'warn'} />
+  </StatStrip>
 
   {/* Engagement + quiz performance */}
   <div className="grid gap-4 lg:grid-cols-2">

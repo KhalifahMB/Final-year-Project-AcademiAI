@@ -37,8 +37,8 @@ BEGIN
     EXECUTE format(
       'CREATE POLICY tenant_isolation ON %I '
       '   FOR ALL '
-      '   USING (tenant_id::text = current_setting(''app.current_tenant_id'', true)) '
-      '   WITH CHECK (tenant_id::text = current_setting(''app.current_tenant_id'', true))',
+      '   USING (tenant_id = NULLIF(current_setting(''app.current_tenant_id'', true), '''')::uuid) '
+      '   WITH CHECK (tenant_id = NULLIF(current_setting(''app.current_tenant_id'', true), '''')::uuid)',
       t
     );
   END LOOP;

@@ -14,6 +14,15 @@ from django.db import transaction
 logger = logging.getLogger(__name__)
 
 
+class MalwareQuarantined(Exception):
+    """Raised when the worker scan rejects an uploaded file (e.g. EICAR).
+
+    Marks a terminal, security-relevant failure so the ingestion pipeline can
+    quarantine the material (status=FAILED, no chunks/embeddings) instead of
+    treating it like a transient storage/AI error.
+    """
+
+
 def _simple_chunk(text: str, max_chars: int = 1200, overlap: int = 150) -> list[str]:
     text = re.sub(r"\s+", " ", text or "").strip()
     if not text:
@@ -207,7 +216,7 @@ def process_resource_ingestion(self, resource_id: str, version_id: str, tenant_i
         try:
             validate_upload_bytes(raw, content_type=content_type, filename=version.storage_key or "")
         except FileValidationError as fv:
-            raise ValueError(str(fv))
+            raise MalwareQuarantined(str(fv))
 
         text = _extract_text(raw, content_type, filename=version.storage_key or "")
         parts = []
@@ -265,12 +274,39 @@ def process_resource_ingestion(self, resource_id: str, version_id: str, tenant_i
                     update_fields=["storage_key", "processing_status", "has_extractable_text", "updated_at"]
                 )
 
+            from apps.audit.services import log_action
+
+            log_action(
+                tenant=resource.tenant,
+                actor=resource.uploaded_by,
+                action="resource.ingestion_completed",
+                entity_type="Resource",
+                entity_id=resource.id,
+                metadata={"chunks": len(parts), "has_extractable_text": has_text},
+            )
+
         logger.info("Ingestion complete resource=%s chunks=%s", resource_id, len(parts))
         return {"status": "completed", "chunks": len(parts)}
     except Exception as exc:
         logger.exception("Ingestion failed resource=%s", resource_id)
+        quarantined = isinstance(exc, MalwareQuarantined)
         with tenant_scope(tenant_id):
+            from apps.audit.services import log_action
+
             resource.processing_status = Resource.ProcessingStatus.FAILED
-            resource.processing_error = str(exc)[:2000]
+            resource.processing_error = (
+                f"Quarantined: {exc}" if quarantined else str(exc)
+            )[:2000]
             resource.save(update_fields=["processing_status", "processing_error", "updated_at"])
+            log_action(
+                tenant=resource.tenant,
+                actor=resource.uploaded_by,
+                action=(
+                    "resource.quarantined" if quarantined
+                    else "resource.ingestion_failed"
+                ),
+                entity_type="Resource",
+                entity_id=resource.id,
+                metadata={"error": str(exc)[:500]},
+            )
         raise self.retry(exc=exc)
