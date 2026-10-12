@@ -2,9 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
-import LedgerLanding from '@/pages/landing/variants/LedgerLanding';
 import AtlasLanding from '@/pages/landing/variants/AtlasLanding';
-import ConsoleLanding from '@/pages/landing/variants/ConsoleLanding';
 import CinnabarLanding from '@/pages/landing/variants/CinnabarLanding';
 import LandingLab from '@/pages/landing/LandingLab';
 
@@ -36,7 +34,7 @@ vi.mock('@/hooks/useAuth', () => ({
   }),
 }));
 
-// happy-dom lacks these; the Console variant observes scroll for its reveal.
+// happy-dom lacks these observers; kept for variants that reveal on scroll.
 if (!globalThis.IntersectionObserver) {
   globalThis.IntersectionObserver = class {
     observe() {}
@@ -70,9 +68,7 @@ function renderIn(Component) {
 }
 
 const VARIANTS = [
-  ['Ledger', LedgerLanding, 'ledger'],
   ['Atlas', AtlasLanding, 'atlas'],
-  ['Console', ConsoleLanding, 'console'],
   ['Cinnabar', CinnabarLanding, 'cinnabar'],
 ];
 
@@ -95,10 +91,10 @@ describe('landing-lab variants render end to end', () => {
     },
   );
 
-  it('lab shows a 4-tab picker and defaults to the Ledger variant', () => {
+  it('lab shows a 2-tab picker and defaults to the Atlas variant', () => {
     const { container, getByRole } = renderIn(LandingLab);
     expect(getByRole('tablist')).toBeTruthy();
-    expect(container.querySelectorAll('[role="tab"]').length).toBe(4);
-    expect(container.querySelector('.ledger')).toBeTruthy();
+    expect(container.querySelectorAll('[role="tab"]').length).toBe(2);
+    expect(container.querySelector('.atlas')).toBeTruthy();
   });
 });

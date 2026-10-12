@@ -463,7 +463,7 @@ def test_row_09_ingestion_chunks_and_embeds():
 
 
 # --------------------------------------------------------------------------- #
-# row 10 — Summarize: async summary queued + persisted
+# row 10 — Summarize: streamed token-by-token via SSE
 # --------------------------------------------------------------------------- #
 class _FakeChunk:
     def __init__(self, text):
@@ -484,15 +484,17 @@ def test_row_10_summarize_streamed_sse(_ai_ok):
         tenant, student, chunk_text="Evaporation and condensation drive the water cycle.",
     )
 
+    # The stream body is lazy: it must be consumed INSIDE the patch context or
+    # the real Gemini stream (no key in tests) would run when it is iterated.
     with patch(
         "apps.common.ai.gemini.generate_summary_stream",
         side_effect=_fake_summary_stream,
     ):
         resp = _auth(student).get(f"/api/v1/resources/{res.id}/summarize/stream/")
+        assert resp.status_code == 200, resp.data
+        assert resp["Content-Type"].startswith("text/event-stream")
+        body = b"".join(resp.streaming_content).decode()
 
-    assert resp.status_code == 200, resp.data
-    assert resp["Content-Type"].startswith("text/event-stream")
-    body = b"".join(resp.streaming_content).decode()
     assert "event: token" in body
     assert "event: done" in body
     assert "evaporation." in body

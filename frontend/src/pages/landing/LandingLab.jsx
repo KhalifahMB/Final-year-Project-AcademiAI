@@ -1,39 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  ArrowLeft,
-  Compass,
-  Gem,
-  MonitorSmartphone,
-  TerminalSquare,
-} from 'lucide-react';
-import LedgerLanding from './variants/LedgerLanding';
+import { ArrowLeft, Compass, Gem } from 'lucide-react';
 import AtlasLanding from './variants/AtlasLanding';
-import ConsoleLanding from './variants/ConsoleLanding';
 import CinnabarLanding from './variants/CinnabarLanding';
 import './landing-lab.css';
 
 const VARIANTS = [
-  {
-    id: 'ledger',
-    name: 'Ledger',
-    icon: MonitorSmartphone,
-    blurb: 'Refined incumbent — warm paper, hairlines, one teal.',
-    Component: LedgerLanding,
-  },
   {
     id: 'atlas',
     name: 'Atlas',
     icon: Compass,
     blurb: 'Warm academic editorial — spacious, serif-led, bento.',
     Component: AtlasLanding,
-  },
-  {
-    id: 'console',
-    name: 'Console',
-    icon: TerminalSquare,
-    blurb: 'Dark technical — streaming, mono, high density.',
-    Component: ConsoleLanding,
   },
   {
     id: 'cinnabar',

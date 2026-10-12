@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '@/services/api';
 import AppShell from '@/components/layout/AppShell';
@@ -17,42 +15,22 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Filter,
   Grid3x3,
   LayoutList,
-  Plus,
   Search,
   SlidersHorizontal,
   Sparkles,
   Upload as UploadIcon,
   X,
 } from 'lucide-react';
-import { resourceSchema } from '@/lib/validations';
-import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { getFileType, SCOPE_META } from '@/lib/filetypes';
 
@@ -91,10 +69,6 @@ export default function ResourcesPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
 
-  // Create dialog
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createError, setCreateError] = useState('');
-
   // Filters
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('q') ?? '');
@@ -132,57 +106,6 @@ export default function ResourcesPage() {
   });
 
   const resources = useMemo(() => data || [], [data]);
-
-  const form = useForm({
-    resolver: zodResolver(resourceSchema),
-    defaultValues: {
-      title: '',
-      description: '',
-      visibility_scope: 'course',
-      course_offering: '',
-    },
-  });
-  const chosenScope = useWatch({
-    control: form.control,
-    name: 'visibility_scope',
-  });
-
-  const offerings = useQuery({
-    queryKey: ['offerings-for-resource'],
-    queryFn: async () => {
-      const { data } = await api.get('/course-offerings/?page_size=200');
-      return data.results || data;
-    },
-    enabled: chosenScope === 'course',
-    staleTime: 60_000,
-  });
-
-  const createMut = useMutation({
-    mutationFn: (payload) => api.post('/resources/', payload),
-    onSuccess: () => {
-      toast.success('Resource created');
-      setCreateOpen(false);
-      form.reset({
-        title: '',
-        description: '',
-        visibility_scope: 'course',
-        course_offering: '',
-      });
-      qc.invalidateQueries({ queryKey: ['resources'] });
-      qc.invalidateQueries({ queryKey: ['dash-resources'] });
-    },
-    onError: (err) => {
-      setCreateError(err.response?.data?.error?.detail || 'Create failed');
-      toast.error('Create failed');
-    },
-  });
-
-  const onSubmit = (values) => {
-    setCreateError('');
-    const payload = { ...values };
-    if (!payload.course_offering) delete payload.course_offering;
-    createMut.mutate(payload);
-  };
 
   const filtered = useMemo(() => {
     let list = [...resources];

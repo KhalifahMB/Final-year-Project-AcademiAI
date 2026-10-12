@@ -53,6 +53,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from apps.accounts.models import User
+        from apps.common.db import tenant_scope
         from apps.knowledge.retrieval import _authorized_resource_ids
         from apps.resources.models import ResourceChunk
         from apps.tenants.models import Tenant
@@ -66,21 +67,24 @@ class Command(BaseCommand):
                 f"User not found: {options['user']} in {tenant.slug}"
             )
 
-        resource_ids = _authorized_resource_ids(user, None)
-        if not resource_ids:
-            raise CommandError("User has no authorised resources to test on.")
+        # Management commands run without the request middleware, so tenant
+        # RLS must be bound explicitly for corpus reads to be visible.
+        with tenant_scope(tenant.id):
+            resource_ids = _authorized_resource_ids(user, None)
+            if not resource_ids:
+                raise CommandError("User has no authorised resources to test on.")
 
-        chunks = list(
-            ResourceChunk.objects.filter(
-                tenant_id=tenant.id,
-                resource_version__resource_id__in=resource_ids,
+            chunks = list(
+                ResourceChunk.objects.filter(
+                    tenant_id=tenant.id,
+                    resource_version__resource_id__in=resource_ids,
+                )
+                .exclude(embedding=None)
+                .order_by("?")[: int(options["n"]) * 4]
+                .values("id", "content")
             )
-            .exclude(embedding=None)
-            .order_by("?")[: int(options["n"]) * 4]
-            .values("id", "content")
-        )
-        if not chunks:
-            raise CommandError("No embedded chunks found for the user's corpus.")
+            if not chunks:
+                raise CommandError("No embedded chunks found for the user's corpus.")
 
         random.seed(2026)
         cases = []

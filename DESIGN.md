@@ -4,9 +4,9 @@
 
 ## Design Direction
 
-**Style:** Grounded institutional — precise, credible, technical. Near-black and warm-paper canvases, hairline borders defining every panel, a single **Iron Gall** accent (deep scholarly teal, `oklch(0.48 0.075 210)`) for action and focus, mono metadata everywhere the machine talks.
+**Style:** Grounded institutional — precise, credible, technical. Near-black and warm-paper canvases, hairline borders defining every panel, a single **Cinnabar** accent (scholarly oxblood, `oklch(0.415 0.125 27)`) for action and focus, mono metadata everywhere the machine talks.
 
-**Posture:** Hard-surface, hairline-primary. Surfaces are opaque flat panels with `1px` hairlines; the shell (topbar) may blur over content because density scrolls beneath it. A single accent economy — Iron Gall teal is reserved for primary actions, links, active nav, and focus rings. Status colors are data, never decoration. Zero color gradients anywhere: interest comes from grain/grid texture, hairlines, and mono metadata. Both light and dark themes are equal first-class citizens, derived entirely from tokens.
+**Posture:** Hard-surface, hairline-primary. Surfaces are opaque flat panels with `1px` hairlines; the shell (topbar) may blur over content because density scrolls beneath it. A single accent economy — Cinnabar is reserved for primary actions, links, active nav, and focus rings. Status colors are data, never decoration. Zero color gradients anywhere: interest comes from grain/grid texture, hairlines, and mono metadata. Both light and dark themes are equal first-class citizens, derived entirely from tokens.
 
 **Product category:** Multi-tenant academic AI platform. The interface must communicate trust, isolation, and institutional seriousness (RLS-guarded RAG). The design borrows from developer tooling (Linear / Vercel) for credibility: dense but legible, technical but calm, premium without decoration.
 
@@ -14,7 +14,7 @@
 - **Hairline surfaces, not glass everything.** Panels are opaque (`--surface`/`--surface-2`) with `1px` hairlines. Translucency + `backdrop-filter` is reserved for the floating shell (topbar) and overlays (modals, command palette) only. Never glass behind long-form text or dense tables.
 - **Dense data stays clean.** Tables, list rows, form fields, and code keep high-contrast opaque backgrounds.
 - **Dual text system.** The landing voice is editorial serif (Fraunces + Inter); the authenticated app is functional (Geist + Geist Mono). The serif is a landing/signpost voice, never an in-app default.
-- **Status colors are data, not decoration.** Success/warn/danger carry meaning only; the single Iron Gall accent carries emphasis. Info is slate — information is carried by form (mono badges), not hue.
+- **Status colors are data, not decoration.** Success/warn/danger carry meaning only; the single Cinnabar accent carries emphasis. Info is slate — information is carried by form (mono badges), not hue.
 
 **Anti-patterns to enforce:**
 - No color gradients anywhere (zero-gradient ban — the only allowed `gradient()` uses are the 48px grid pattern, `mask-image` fades, and the skeleton shimmer)
@@ -35,26 +35,26 @@
 
 ## Color System
 
-All colors use `oklch()` for perceptual uniformity. Light and dark modes defined via CSS custom properties. Brand accent is **Iron Gall** — deep scholarly teal `oklch(0.48 0.075 210)` (≈ `#306e80`), named for manuscript penwork ink. Light text/borders share one warm sepia-ink family (hue 75) with the paper canvas; dark canvases anchor to slate-ink (hue 220).
+All colors use `oklch()` for perceptual uniformity. Light and dark modes defined via CSS custom properties. Brand accent is **Cinnabar** — scholarly oxblood `oklch(0.415 0.125 27)` (≈ `#8A2A24`), named for the red mineral pigment of seal and rubric. Light text/borders share one warm sepia-ink family (hue ~62–84) with the paper canvas; dark canvases anchor to warm near-black (hue 62).
 
 ### Light Mode
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--bg` | `oklch(0.985 0.003 85)` | Page canvas (warm paper `#FAF9F6`) |
-| `--surface` | `oklch(0.995 0.002 85)` | Cards, surfaces |
-| `--surface-2` | `oklch(0.965 0.004 85)` | Secondary surfaces, inputs |
-| `--hover` | `oklch(0.945 0.005 85)` | Hover states |
-| `--fg` | `oklch(0.22 0.015 75)` | Primary text (warm sepia ink) |
-| `--fg-soft` | `oklch(0.38 0.018 75)` | Secondary text |
-| `--muted` | `oklch(0.52 0.014 75)` | Muted text, placeholders |
-| `--faint` | `oklch(0.66 0.01 75)` | Faintest text |
-| `--border` | `oklch(0.905 0.006 85)` | Hairline borders |
-| `--border-strong` | `oklch(0.83 0.008 85)` | Stronger borders |
-| `--accent` | `oklch(0.48 0.075 210)` | Iron Gall — primary accent |
-| `--accent-strong` | `oklch(0.4 0.075 210)` | Accent hover |
-| `--accent-soft` | `oklch(0.955 0.02 210)` | Accent background tint |
-| `--on-accent` | `oklch(0.99 0.002 85)` | Text on accent |
+| `--bg` | `oklch(0.973 0.011 84)` | Page canvas (Atlas paper) |
+| `--surface` | `oklch(0.986 0.009 84)` | Cards, surfaces |
+| `--surface-2` | `oklch(0.951 0.014 82)` | Secondary surfaces, inputs |
+| `--hover` | `oklch(0.928 0.016 80)` | Hover states |
+| `--fg` | `oklch(0.245 0.02 62)` | Primary text (warm sepia ink) |
+| `--fg-soft` | `oklch(0.4 0.02 62)` | Secondary text |
+| `--muted` | `oklch(0.45 0.018 62)` | Muted text, placeholders |
+| `--faint` | `oklch(0.56 0.016 66)` | Faintest text |
+| `--border` | `oklch(0.855 0.02 78)` | Hairline borders |
+| `--border-strong` | `oklch(0.7 0.03 72)` | Stronger borders |
+| `--accent` | `oklch(0.415 0.125 27)` | Cinnabar — primary accent |
+| `--accent-strong` | `oklch(0.355 0.12 27)` | Accent hover |
+| `--accent-soft` | `oklch(0.945 0.028 32)` | Accent background tint |
+| `--on-accent` | `oklch(0.985 0.008 84)` | Text on accent |
 | `--success` | `oklch(0.5 0.125 150)` | Success state |
 | `--warn` | `oklch(0.5 0.115 80)` | Warning state |
 | `--danger` | `oklch(0.52 0.19 25)` | Error/destructive |
@@ -64,17 +64,17 @@ All colors use `oklch()` for perceptual uniformity. Light and dark modes defined
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--bg` | `oklch(0.15 0.012 220)` | Page canvas (near-black slate-ink) |
-| `--surface` | `oklch(0.195 0.014 220)` | Cards, surfaces |
-| `--surface-2` | `oklch(0.24 0.016 220)` | Secondary surfaces |
-| `--hover` | `oklch(0.27 0.022 282)` | Hover states |
-| `--fg` | `oklch(0.97 0.008 282)` | Primary text |
-| `--accent` | `oklch(0.76 0.1 200)` | Iron Gall (lifted for dark bg; `--on-accent` flips to ink) |
-| `--accent-strong` | `oklch(0.82 0.09 200)` | Accent hover |
-| `--accent-soft` | `oklch(0.32 0.045 210)` | Accent background tint |
+| `--bg` | `oklch(0.165 0.012 62)` | Page canvas (warm near-black) |
+| `--surface` | `oklch(0.198 0.014 62)` | Cards, surfaces |
+| `--surface-2` | `oklch(0.205 0.014 62)` | Secondary surfaces |
+| `--hover` | `oklch(0.245 0.016 62)` | Hover states |
+| `--fg` | `oklch(0.945 0.012 75)` | Primary text |
+| `--accent` | `oklch(0.72 0.12 30)` | Cinnabar (lifted for dark bg; `--on-accent` flips to ink) |
+| `--accent-strong` | `oklch(0.8 0.11 32)` | Accent hover |
+| `--accent-soft` | `oklch(0.28 0.05 30)` | Accent background tint |
 
 ### Rules
-- **Single accent economy.** One Iron Gall accent used for primary actions, links, active nav, and focus rings. Never a second hue for emphasis.
+- **Single accent economy.** One Cinnabar accent used for primary actions, links, active nav, and focus rings. Never a second hue for emphasis.
 - **Zero color gradients.** No color-ramp backgrounds or gradient text anywhere. Permitted `gradient()` uses: the 48px blueprint grid, `mask-image` fades, and the skeleton shimmer.
 - **Neutral metadata.** File-type chips and visibility scopes render in one neutral treatment (`surface-2` + `fg-soft`); they are metadata, not status.
 - **All material derived from tokens.** Shell tint, blur, hairline, and depth defined once from `--bg`/`--surface`/`--fg`/`--accent`/`--border` so light and dark both look native.
@@ -376,7 +376,7 @@ a broken one.
 ### Landing plates
 
 `components/shared/landingPlates.jsx` holds the section-scale line art, wired into
-`LandingPage` as a media column beside a section heading. The landing page stays
+the landing as a media column beside a section heading. The landing page stays
 code-drawn: no photography, no rendered product screenshots. (This is a rule about the
 **landing page**, not the repo — marketing imagery lives outside it, below.)
 
@@ -412,7 +412,7 @@ imagery is permitted **outside** the app — OG/social images, press kit, docs.
   them a CSS custom property, so `BrandMark`'s two baked copies are the only option,
   not a compromise. `public/favicon.svg` is the one logo asset that *can* be
   theme-aware, so it is hand-traced rather than generated.
-- **Single accent.** Iron Gall is the only chromatic colour; there is no purple,
+- **Single accent.** Cinnabar is the only chromatic colour; there is no purple,
   violet, indigo or magenta in the shipped palette. Purple in a render is a bad
   render, not a variant. Status hues stay semantic.
 - **Wordless and fact-free,** by the same rule as plates and illustrations: no text,
@@ -425,7 +425,7 @@ imagery is permitted **outside** the app — OG/social images, press kit, docs.
 `.landing-eyebrow` is a `<p>`, so any `.landing-section__heading p`-style
 descendant rule outranks it and silently downgrades the eyebrow to body copy.
 Section paragraph rules must exclude it: `p:not(.landing-eyebrow)`. Ten of the
-eleven landing eyebrows were rendering at 16px muted instead of 11px Iron Gall mono
+eleven landing eyebrows were rendering at 16px muted instead of 11px Cinnabar mono
 before this was fixed.
 
 ## Responsive Behavior

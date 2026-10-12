@@ -2,7 +2,7 @@
    Landing — wireframe "grounded institutional" system.
    Public pages + auth edition, scoped via .landing-page /
    .landing-auth so authenticated surfaces keep their material
-   language (components.css).    Voice: Iron Gall accent · paper light / slate-ink dark ·
+   language (components.css).    Voice: Cinnabar accent · warm paper light / warm near-black dark ·
    Fraunces display serif · Geist body · grain + 48px grid ·
    hairline panels. Values bind to the tokens in tokens.css.
    ========================================================= */
@@ -38,7 +38,7 @@
   }
 
   /* =========================================================
-     Landing scope — wireframe tokens.      All values derive from the app tokens (iron-gall/paper);
+     Landing scope — wireframe tokens.      All values derive from the app tokens (cinnabar/paper);
      --landing-* aliases are kept so sibling pages (auth,
      request-institution) bind to the same language.
      ========================================================= */
@@ -52,7 +52,6 @@
     --landing-panel-2: var(--surface-2);
     --landing-line: var(--border);
     --landing-line-strong: var(--border-strong);
-    --landing-teal: var(--accent);
     --landing-accent: var(--accent);
     --landing-accent-strong: var(--accent-strong);
     --landing-accent-soft: var(--accent-soft);
@@ -528,7 +527,7 @@
   }
   /* :not(.landing-eyebrow) — the eyebrow is a <p> too, and this descendant
      selector outranks .landing-eyebrow, which silently downgraded all ten
-     section eyebrows from 11px Iron Gall mono to 16px muted body text. */
+     section eyebrows from 11px Cinnabar mono to 16px muted body text. */
   .landing-section__heading p:not(.landing-eyebrow),
   .landing-section__heading--split p:not(.landing-eyebrow) {
     color: var(--landing-muted);

@@ -415,9 +415,9 @@ export default function UploadResourcePage() {
    </div>
 
    <div className="space-y-1.5">
-    <Label className="text-xs">Visibility scope</Label>
+    <Label htmlFor="resource-scope" className="text-xs">Visibility scope</Label>
     <Select value={scope} onValueChange={setScope}>
-     <SelectTrigger className="h-9 w-full capitalize text-sm">
+     <SelectTrigger id="resource-scope" className="h-9 w-full capitalize text-sm">
       <SelectValue />
      </SelectTrigger>
      <SelectContent>
@@ -440,7 +440,7 @@ export default function UploadResourcePage() {
    </div>
 
    <div className="space-y-1.5">
-    <Label className="text-xs">Link to <span className="font-normal text-muted-foreground">(optional)</span></Label>
+    <Label htmlFor="resource-link" className="text-xs">Link to <span className="font-normal text-muted-foreground">(optional)</span></Label>
     <Select
      value={objectType}
      onValueChange={(v) => {
@@ -448,7 +448,7 @@ export default function UploadResourcePage() {
       setObjectId('');
      }}
     >
-     <SelectTrigger className="h-9 w-full text-sm">
+     <SelectTrigger id="resource-link" className="h-9 w-full text-sm">
       <SelectValue />
      </SelectTrigger>
      <SelectContent>
@@ -466,11 +466,11 @@ export default function UploadResourcePage() {
 
 {objectEnabled && (
    <div className="space-y-1.5 rounded-lg border bg-muted/20 p-3">
-    <Label className="text-xs">
+    <Label htmlFor="resource-object" className="text-xs">
      {objectType === 'course' ? 'Course offering' : `Select ${objectType}`}
     </Label>
     <Select value={objectId} onValueChange={setObjectId}>
-     <SelectTrigger className="h-9 w-full text-sm">
+     <SelectTrigger id="resource-object" className="h-9 w-full text-sm">
       <SelectValue
        placeholder={
          objects.isLoading

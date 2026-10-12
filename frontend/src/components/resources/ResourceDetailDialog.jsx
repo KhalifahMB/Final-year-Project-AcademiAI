@@ -138,6 +138,32 @@ export default function ResourceDetailDialog({
     dismissResume,
   } = useReadingPosition(open ? resource?.id : null);
 
+  // Reset transient UI state each time the dialog (re)opens or the
+  // resource/summary identity changes. Derived during render (the documented
+  // alternative to writing state in an effect) so the reset lands on the same
+  // commit; side effects like the body scroll lock still live in an effect.
+  const openKey = open && resource?.id
+    ? `${resource.id}:${resource.latest_summary?.id ?? ''}:${
+        resource.latest_summary?.summary ? '1' : '0'
+      }`
+    : null;
+  const [lastOpenKey, setLastOpenKey] = useState(null);
+  if (lastOpenKey !== openKey) {
+    setLastOpenKey(openKey);
+    setExpanded(false);
+    setEditing(false);
+    setSummaryJobId(null);
+    setSummaryLoading(false);
+    setSummaryError('');
+    setEphemeralSummary(null);
+    setWorkerOutdatedWarned(false);
+    const latest = resource?.latest_summary;
+    setActiveSummaryId(latest?.id && latest?.summary ? latest.id : null);
+    // Never auto-pop the summary banner on (re)open — it stays collapsed
+    // behind the "View summary" trigger so opening a resource is unobtrusive.
+    setShowSummary(false);
+  }
+
   // Collapse sidebar when entering focus mode
   useEffect(() => {
     if (!open) return;
@@ -152,25 +178,7 @@ export default function ResourceDetailDialog({
 
   useEffect(() => {
     if (open) {
-      // Reset transient UI state each time the dialog opens.
-
-      setExpanded(false);
-      setEditing(false);
-      setSummaryJobId(null);
-      setSummaryLoading(false);
-      setSummaryError('');
-      setEphemeralSummary(null);
-      setWorkerOutdatedWarned(false);
       warnOnceRef.current = false;
-      const latest = resource?.latest_summary;
-      if (latest?.id && latest?.summary) {
-        setActiveSummaryId(latest.id);
-      } else {
-        setActiveSummaryId(null);
-      }
-      // Never auto-pop the summary banner on open — it stays collapsed behind
-      // the "View summary" trigger so opening a resource is unobtrusive.
-      setShowSummary(false);
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -187,7 +195,7 @@ export default function ResourceDetailDialog({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [open, resource?.id, resource?.latest_summary, saveReadPosition]);
+  }, [open, saveReadPosition]);
 
   // ESC closes dialog / exits expanded
   useEffect(() => {

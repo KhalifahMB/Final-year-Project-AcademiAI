@@ -105,6 +105,9 @@ INSTALLED_APPS = [
     "apps.agent",
     "apps.calendar",
     "apps.notifications",
+
+    # extension
+    'django_extensions'
 ]
 
 MIDDLEWARE = [

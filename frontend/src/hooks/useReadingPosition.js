@@ -11,13 +11,21 @@ export function useReadingPosition(resourceId) {
   const saveTimerRef = useRef(null);
   const restoredRef = useRef(false);
 
+  // Reset transient state when the resource identity changes. Derived during
+  // render (keyed on the previous resource id) so no setState fires from an
+  // effect; the fetch effect below re-initializes the refs on the same commit.
+  const [lastResourceId, setLastResourceId] = useState(resourceId);
+  if (lastResourceId !== resourceId) {
+    setLastResourceId(resourceId);
+    setPercentage(0);
+    setSavedPosition(null);
+    setIsResuming(false);
+  }
+
   useEffect(() => {
     if (!resourceId) return;
     restoredRef.current = false;
     savedIdRef.current = null;
-    setPercentage(0);
-    setSavedPosition(null);
-    setIsResuming(false);
 
     let cancelled = false;
     readingApi

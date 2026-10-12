@@ -1,31 +1,13 @@
 import { useTheme } from '@/hooks/useTheme';
 
 /**
- * Cinnabar — premium theme-aware mark for the Console-structured, oxblood
- * landing variant. A rounded badge holds a geometric "A" over a single
- * oxblood citation rule (the "cited" promise, drawn). Inline SVG so it reads
- * the active theme and stays crisp at any size. Two hard-coded palettes match
- * the standalone exports in `public/brand/`.
+ * Cinnabar — token-driven mark for the Console-structured, oxblood landing
+ * variant. A rounded badge holds a geometric "A" over a single oxblood
+ * citation rule (the "cited" promise, drawn). Inline SVG so it reads the
+ * active theme and stays crisp at any size: badge and ink track the global
+ * surface/foreground tokens, and the single accent detail is the citation
+ * rule — per DESIGN.md ("currentColor plus exactly one var(--accent)").
  */
-const PALETTES = {
-  light: {
-    badge: '#F8F3EA',
-    badgeEdge: '#281E17',
-    edgeOpacity: 0.14,
-    ringOpacity: 0.08,
-    ink: '#281E17',
-    accent: '#8A2A24',
-  },
-  dark: {
-    badge: '#211B15',
-    badgeEdge: '#F1EBE1',
-    edgeOpacity: 0.16,
-    ringOpacity: 0.1,
-    ink: '#F1EBE1',
-    accent: '#E68677',
-  },
-};
-
 export default function CinnabarMark({
   size = 'h-9 w-9',
   variant = 'auto',
@@ -34,8 +16,11 @@ export default function CinnabarMark({
   wordmarkClassName = '',
 }) {
   const { dark } = useTheme();
+  // Edge strokes draw at slightly different opacities on light vs dark so the
+  // hairline reads at the same strength on both grounds.
   const isDark = variant === 'auto' ? dark : variant === 'dark';
-  const p = isDark ? PALETTES.dark : PALETTES.light;
+  const edgeOpacity = isDark ? 0.16 : 0.14;
+  const ringOpacity = isDark ? 0.1 : 0.08;
 
   const mark = (
     <svg
@@ -51,9 +36,9 @@ export default function CinnabarMark({
         width="62"
         height="62"
         rx="16"
-        fill={p.badge}
-        stroke={p.badgeEdge}
-        strokeOpacity={p.edgeOpacity}
+        fill="var(--surface)"
+        stroke="var(--fg)"
+        strokeOpacity={edgeOpacity}
       />
       <rect
         x="5.5"
@@ -62,13 +47,13 @@ export default function CinnabarMark({
         height="53"
         rx="12"
         fill="none"
-        stroke={p.badgeEdge}
-        strokeOpacity={p.ringOpacity}
+        stroke="var(--fg)"
+        strokeOpacity={ringOpacity}
       />
       <path
         d="M19.5 45.5 L32 17.5 L44.5 45.5"
         fill="none"
-        stroke={p.ink}
+        stroke="var(--fg)"
         strokeWidth="5.2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -76,14 +61,14 @@ export default function CinnabarMark({
       <path
         d="M25.4 35.4 H38.6"
         fill="none"
-        stroke={p.ink}
+        stroke="var(--fg)"
         strokeWidth="5.2"
         strokeLinecap="round"
       />
       <path
         d="M22 51 H42"
         fill="none"
-        stroke={p.accent}
+        stroke="var(--accent-strong)"
         strokeWidth="3.4"
         strokeLinecap="round"
       />

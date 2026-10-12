@@ -72,7 +72,7 @@ describe('PasswordResetPage 6-digit code', () => {
     expect(authApi.passwordResetConfirm).toHaveBeenCalledWith({
       email: 'stud@uni.edu',
       token: '041927',
-      password: 'BrandNew!2026pw',
+      new_password: 'BrandNew!2026pw',
     });
     // The success banner and the page title both say "Password updated".
     expect(await screen.findByRole('status')).toHaveTextContent(/password updated/i);

@@ -64,8 +64,8 @@ function StepIndicator({ step }) {
        aria-current={current ? 'step' : undefined}
        className={cn(
         'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold',
-        done && 'border-transparent bg-[var(--landing-teal)] text-white',
-        current && 'border-[var(--landing-teal)] text-[var(--landing-teal)]',
+        done && 'border-transparent bg-[var(--landing-accent)] text-white',
+        current && 'border-[var(--landing-accent)] text-[var(--landing-accent)]',
         !done && !current && 'border-[var(--landing-line)] text-[var(--landing-muted)]',
        )}
       >

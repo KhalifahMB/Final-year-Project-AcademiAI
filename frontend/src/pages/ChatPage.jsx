@@ -96,13 +96,40 @@ export default function ChatPage() {
   const { user } = useAuth();
   const { identity } = useAgent();
 
-  const [sessionId, setSessionId] = useState(null);
-  const [sessionTitle, setSessionTitle] = useState('');
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+  // Resolve the initial conversation once, at first render: a ?session= deep
+  // link wins over the tab-switch snapshot. Done in state initializers (the
+  // documented alternative to a restore effect) so no effect has to write
+  // component state merely to boot the page.
+  const [initBoot] = useState(() => {
+    const deepSid = searchParams.get('session');
+    const snap = loadSnapshot();
+    if (deepSid) {
+      return {
+        deepSid,
+        sessionId: deepSid,
+        sessionTitle: 'Conversation',
+        titleDraft: '',
+        messages: [],
+        input: '',
+      };
+    }
+    return {
+      deepSid: null,
+      sessionId: snap?.sessionId ?? null,
+      sessionTitle: snap?.sessionTitle || 'Conversation',
+      titleDraft: snap?.sessionTitle || '',
+      messages: Array.isArray(snap?.messages) ? snap.messages : [],
+      input: typeof snap?.input === 'string' ? snap.input : '',
+    };
+  });
+
+  const [sessionId, setSessionId] = useState(initBoot.sessionId);
+  const [sessionTitle, setSessionTitle] = useState(initBoot.sessionTitle);
+  const [messages, setMessages] = useState(initBoot.messages);
+  const [input, setInput] = useState(initBoot.input);
   const [loading, setLoading] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
-  const [titleDraft, setTitleDraft] = useState('');
+  const [titleDraft, setTitleDraft] = useState(initBoot.titleDraft);
   const [sessionToDelete, setSessionToDelete] = useState(null);
   const activeStream = useRef(null);
   const fileInputRef = useRef(null);
@@ -156,10 +183,18 @@ export default function ChatPage() {
     return [...srcs].sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
   }, [activeMessageForSources]);
 
-  // Auto-open sources rail when sources arrive
-  useEffect(() => {
-    if (currentSources.length > 0 && !isMobile) setSourcesRailOpen(true);
-  }, [currentSources.length, isMobile]);
+  // Auto-open the sources rail when a new answer brings sources in. Derived
+  // during render (latched on the previous source count) rather than an
+  // effect — streaming already opens it on completion in `send`, and this also
+  // covers a conversation restored from history or a snapshot, without ever
+  // force-closing a rail the user collapsed by hand.
+  const [lastSourcesCount, setLastSourcesCount] = useState(0);
+  if (lastSourcesCount !== currentSources.length) {
+    setLastSourcesCount(currentSources.length);
+    if (currentSources.length > 0 && !isMobile && !sourcesRailOpen) {
+      setSourcesRailOpen(true);
+    }
+  }
 
   const openSession = useCallback(
     async (s) => {
@@ -186,41 +221,52 @@ export default function ChatPage() {
     [isMobile, setSearchParams],
   );
 
-  // Deep-link session via ?session=. Opens the matching conversation once the
-  // sidebar list is available so we get the real title; if the list settled
-  // without the session (paged out, deleted, or list error) we still open the
-  // id directly — getMessages needs only the id, and failures surface in the
-  // chat pane — so a deep link never silently no-ops.
+  // Deep-link session via ?session=. Identity already came from the initBoot
+  // initializers; here we only pull its messages once the sidebar list is
+  // available (so we can upgrade a generic title). The link stays active only
+  // while the URL still points at it — hitting "New chat" clears the param,
+  // so it must not re-open. We fail open: getMessages needs only the id, so a
+  // dead link surfaces in the chat pane instead of silently no-oping.
+  const deepSid = initBoot.deepSid;
   useEffect(() => {
-    if (sessionId) return;
-    const sid = searchParams.get('session');
-    if (!sid) return;
-    const existing = sessions.find((s) => s.id === sid);
-    if (existing) {
-      openSession(existing);
-      return;
-    }
-    if (sessionsQ.isLoading) return;
-    openSession({ id: sid });
-  }, [sessionId, searchParams, sessions, sessionsQ.isLoading, openSession]);
+    if (!deepSid) return;
+    if (searchParams.get('session') !== deepSid) return;
+    const existing = sessions.find((s) => s.id === deepSid);
+    if (sessionsQ.isLoading && !existing) return;
+    let cancelled = false;
+    chatApi
+      .getMessages(deepSid)
+      .then((msgs) => {
+        if (cancelled) return;
+        setMessages(msgs);
+        if (existing?.title) setSessionTitle(existing.title);
+        if (isMobile) setHistoryOpen(false);
+        setSearchParams({ session: deepSid }, { replace: true });
+      })
+      .catch(() => {
+        if (!cancelled) setError('Could not load that conversation.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    deepSid,
+    searchParams,
+    sessions,
+    sessionsQ.isLoading,
+    isMobile,
+    setSearchParams,
+  ]);
 
-  // Restore the in-progress conversation from sessionStorage when the page is
-  // (re)mounted — e.g. after switching sidebar tabs in the same browser tab.
-  // This is what keeps the chat alive across tab switches instead of resetting.
+  // Keep the address bar pointing at the current conversation so a reload or
+  // share deep-links the right session. Router-only side effect (no component
+  // state), so an effect — rather than a state initializer — is the right
+  // home for it.
   useEffect(() => {
-    const snap = loadSnapshot();
-    if (!snap || !snap.sessionId) return;
-    // Only restore if there is no explicit ?session= deep link (which wins).
-    const sid = searchParams.get('session');
-    if (sid) return;
-    setSessionId(snap.sessionId);
-    setSessionTitle(snap.sessionTitle || 'Conversation');
-    setTitleDraft(snap.sessionTitle || '');
-    if (Array.isArray(snap.messages)) setMessages(snap.messages);
-    if (typeof snap.input === 'string') setInput(snap.input);
-    if (snap.sessionId)
-      setSearchParams({ session: snap.sessionId }, { replace: true });
-  }, [searchParams, setSearchParams]);
+    if (sessionId && searchParams.get('session') !== sessionId) {
+      setSearchParams({ session: sessionId }, { replace: true });
+    }
+  }, [sessionId, searchParams, setSearchParams]);
 
   // Persist the active conversation so it survives page unmounts between tabs.
   // Debounced so typing can't serialize the whole message array on every
@@ -704,6 +750,8 @@ export default function ChatPage() {
                     size="sm"
                     className="h-7 gap-1.5 px-2 text-[11px]"
                     onClick={() => setSourcesRailOpen((v) => !v)}
+                    aria-expanded={sourcesRailOpen}
+                    aria-controls="chat-sources"
                   >
                     {sourcesRailOpen ? (
                       <PanelRightClose className="h-3.5 w-3.5" />
@@ -833,7 +881,11 @@ export default function ChatPage() {
 
               {/* Sources rail */}
               {sourcesRailOpen && currentSources.length > 0 && (
-                <aside className="hidden w-80 shrink-0 flex-col overflow-y-auto border-l bg-card/40 p-3.5 md:flex">
+                <aside
+                  id="chat-sources"
+                  aria-label="Retrieved sources"
+                  className="hidden w-80 shrink-0 flex-col overflow-y-auto border-l bg-card/40 p-3.5 md:flex"
+                >
                   <div className="mb-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <Link2 className="h-3.5 w-3.5 text-primary" aria-hidden />

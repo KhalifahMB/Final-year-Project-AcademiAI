@@ -12,7 +12,6 @@ import {
   BookOpen,
   BookOpenCheck,
   Bot,
-  Building2,
   Calendar,
   Check,
   ChevronDown,
@@ -26,7 +25,6 @@ import {
   Megaphone,
   MessagesSquare,
   PenTool,
-  Radio,
   Rss,
   Search,
   ShieldCheck,
@@ -72,7 +70,12 @@ export const CHAT = {
   question: 'Why does this algorithm run in O(n log n)?',
   answer:
     'The divide-and-conquer steps split the input into logarithmic levels, and each level processes all n items once — together that is n log n work.',
-  citation: { index: '[1]', doc: 'Algorithms-lecture-03.pdf', page: 'p.18', score: 'sim 0.94' },
+  citation: {
+    index: '[1]',
+    doc: 'Algorithms-lecture-03.pdf',
+    page: 'p.18',
+    score: 'sim 0.94',
+  },
   meta: ['retrieved 4 chunks', 'reranked', 'verified'],
   placeholder: 'Ask about the Thermodynamics Syllabus 2024…',
   sources: [
@@ -323,16 +326,9 @@ export const ROADMAP = {
     {
       icon: MessagesSquare,
       status: 'Next up',
-      tag: 'Students',
-      title: 'Personal chat',
-      text: 'Private, direct messaging between students who share a department, institution, faculty, or a course they are both enrolled in.',
-    },
-    {
-      icon: Radio,
-      status: 'Next up',
-      tag: 'Lecturers & admins',
-      title: 'Community channels',
-      text: 'Topic channels run by lecturers and admins; students subscribe to what they need. Every course ships with a default community, and the assigned course lecturer is its admin.',
+      tag: 'All roles',
+      title: 'Personal chats',
+      text: 'Private, direct messaging for everyone in the tenant. Chats can be scoped to people who share a department, faculty, institution or a course they\u2019re both enrolled in.',
     },
     {
       icon: PenTool,
@@ -353,16 +349,9 @@ export const ROADMAP = {
     {
       icon: Users,
       status: 'Next up',
-      tag: 'New role',
-      title: 'Department admin',
-      text: 'A department-scoped admin role to own courses, lecturer assignments and resources — enrolment, structure and access for one department at a time.',
-    },
-    {
-      icon: Building2,
-      status: 'Next up',
-      tag: 'New role',
-      title: 'Faculty admin',
-      text: 'A faculty-wide admin role to oversee departments, programmes and reporting, still sealed inside the same isolated, audited workspace.',
+      tag: 'New roles',
+      title: 'Faculty and department admins',
+      text: 'Faculty- and department-scoped admin roles to oversee programmes, courses, lecturer assignments, resources and access — still sealed inside the same isolated, audited workspace.',
     },
   ],
 };

@@ -47,11 +47,14 @@ describe('landing plates', () => {
   });
 });
 
-describe('problem section imagery', () => {
-  it('shows the plate beside the problem copy', async () => {
+describe('problem section copy', () => {
+  it('renders token-driven problem copy on the routed landing', async () => {
     // Imported after the api mock is registered, and mounted directly rather
-    // than through App so the test skips the cold lazy-route graph.
-    const { default: LandingPage } = await import('@/pages/LandingPage');
+    // than through App so the test skips the cold lazy-route graph. The routed
+    // landing at `/` is the Cinnabar variant (see pages.js).
+    const { default: CinnabarLanding } = await import(
+      '@/pages/landing/variants/CinnabarLanding'
+    );
     const qc = new QueryClient({
       defaultOptions: { queries: { retry: false, staleTime: Infinity } },
     });
@@ -59,21 +62,22 @@ describe('problem section imagery', () => {
       <AuthContext.Provider value={{ isAuthenticated: false }}>
         <QueryClientProvider client={qc}>
           <MemoryRouter initialEntries={['/']}>
-            <LandingPage />
+            <CinnabarLanding />
           </MemoryRouter>
         </QueryClientProvider>
       </AuthContext.Provider>,
     );
 
-    const plate = await screen.findByTestId('problem-plate');
-    assertWordless(plate);
-    assertTokenDriven(plate);
-    // The plate reinforces the copy; it must not displace it.
-    expect(
-      screen.getByRole('heading', { name: /materials are fragmented/i }),
-    ).toBeInTheDocument();
+    const heading = await screen.findByRole('heading', {
+      name: /materials are fragmented/i,
+    });
+    // The problem copy is present outright — imagery must reinforce, not hold,
+    // the headline and the claims beneath it.
     expect(
       screen.getByText('Materials live in a dozen drives'),
     ).toBeInTheDocument();
+    // No baked-in hues anywhere the landing renders (tokens only, both themes).
+    assertTokenDriven(document.body);
+    expect(heading).toBeInTheDocument();
   });
 });

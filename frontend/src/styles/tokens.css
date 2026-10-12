@@ -1,7 +1,7 @@
 /* =========================================================
    AcademiAI design tokens (Tailwind v4 @theme)
-   Direction: grounded institutional UI — "Colophon" rebrand
-   — Iron Gall accent (deep scholarly teal ink) · paper light / slate-ink dark
+   Direction: grounded institutional UI — "Cinnabar" palette
+   — Cinnabar accent (scholarly oxblood ink) · warm paper light / warm near-black dark
    — Geist + Geist Mono in-app · Fraunces serif on landing
    — Hairline borders · grain + 48px grid textures · zero color gradients
    ========================================================= */
@@ -94,35 +94,35 @@
 }
 
 /* =========================================================
-   Light mode — warm paper canvas, Iron Gall accent
+   Light mode — warm paper canvas, Cinnabar accent
    ========================================================= */
 :root {
   color-scheme: light;
 
-  /* Canvas + surfaces — paper (#FAF9F6 ≈ oklch(0.985 0.003 85)) */
-  --bg: oklch(0.985 0.003 85);
-  --surface: oklch(0.995 0.002 85);
-  --surface-2: oklch(0.965 0.004 85);
-  --hover: oklch(0.945 0.005 85);
+  /* Canvas + surfaces — Atlas paper (oklch(0.973 0.011 84)) */
+  --bg: oklch(0.973 0.011 84);
+  --surface: oklch(0.986 0.009 84);
+  --surface-2: oklch(0.951 0.014 82);
+  --hover: oklch(0.928 0.016 80);
 
   /* Text — warm sepia ink: one neutral family with the paper canvas */
-  --fg: oklch(0.22 0.015 75);
-  --fg-soft: oklch(0.38 0.018 75);
-  --muted: oklch(0.52 0.014 75);
-  --faint: oklch(0.66 0.01 75);
+  --fg: oklch(0.245 0.02 62);
+  --fg-soft: oklch(0.4 0.02 62);
+  --muted: oklch(0.45 0.018 62);
+  --faint: oklch(0.56 0.016 66);
 
   /* Lines — hairline on paper */
-  --border: oklch(0.905 0.006 85);
-  --border-strong: oklch(0.83 0.008 85);
+  --border: oklch(0.855 0.02 78);
+  --border-strong: oklch(0.7 0.03 72);
   --input: var(--surface-2);
-  --ring: oklch(0.48 0.075 210);
+  --ring: oklch(0.415 0.125 27);
 
-  /* Single accent — Iron Gall: deep teal ink, the color of manuscript penwork */
-  --accent: oklch(0.48 0.075 210);
-  --accent-strong: oklch(0.4 0.075 210);
-  --accent-soft: oklch(0.955 0.02 210);
-  --accent-line: oklch(0.86 0.045 210);
-  --on-accent: oklch(0.99 0.002 85);
+  /* Single accent — Cinnabar: scholarly oxblood ink, the colour of seal and rubric */
+  --accent: oklch(0.415 0.125 27);
+  --accent-strong: oklch(0.355 0.12 27);
+  --accent-soft: oklch(0.945 0.028 32);
+  --accent-line: oklch(0.8 0.075 30);
+  --on-accent: oklch(0.985 0.008 84);
 
   /* Status (data, not decoration) */
   --success: oklch(0.5 0.125 150);
@@ -171,35 +171,35 @@
 }
 
 /* =========================================================
-   Dark mode — near-black canvases, Iron Gall accent
+   Dark mode — warm near-black canvases, Cinnabar accent
    ========================================================= */
 .dark {
   color-scheme: dark;
 
-  /* Canvas + surfaces — near-black slate-ink (accent-anchored, no violet cast) */
-  --bg: oklch(0.15 0.012 220);
-  --surface: oklch(0.195 0.014 220);
-  --surface-2: oklch(0.24 0.016 220);
-  --hover: oklch(0.275 0.018 220);
+  /* Canvas + surfaces — warm near-black (accent-anchored, no blue cast) */
+  --bg: oklch(0.165 0.012 62);
+  --surface: oklch(0.198 0.014 62);
+  --surface-2: oklch(0.205 0.014 62);
+  --hover: oklch(0.245 0.016 62);
 
   /* Text */
-  --fg: oklch(0.97 0.008 220);
-  --fg-soft: oklch(0.85 0.01 220);
-  --muted: oklch(0.68 0.012 220);
-  --faint: oklch(0.52 0.015 220);
+  --fg: oklch(0.945 0.012 75);
+  --fg-soft: oklch(0.83 0.014 75);
+  --muted: oklch(0.7 0.016 72);
+  --faint: oklch(0.58 0.014 66);
 
   /* Lines — hairline on near-black */
-  --border: oklch(0.275 0.02 220);
-  --border-strong: oklch(0.35 0.024 220);
-  --input: oklch(0.24 0.016 220);
-  --ring: oklch(0.76 0.1 200);
+  --border: oklch(0.31 0.016 62);
+  --border-strong: oklch(0.42 0.02 62);
+  --input: oklch(0.205 0.014 62);
+  --ring: oklch(0.72 0.12 30);
 
-  /* Iron Gall lifted for dark canvases; on-accent flips to ink-on-teal */
-  --accent: oklch(0.76 0.1 200);
-  --accent-strong: oklch(0.82 0.09 200);
-  --accent-soft: oklch(0.32 0.045 210);
-  --accent-line: oklch(0.44 0.06 210);
-  --on-accent: oklch(0.17 0.03 220);
+  /* Cinnabar lifted for dark canvases; on-accent flips to ink-on-oxblood */
+  --accent: oklch(0.72 0.12 30);
+  --accent-strong: oklch(0.8 0.11 32);
+  --accent-soft: oklch(0.28 0.05 30);
+  --accent-line: oklch(0.44 0.06 30);
+  --on-accent: oklch(0.18 0.02 62);
 
   --success: oklch(0.75 0.13 152);
   --success-soft: oklch(0.3 0.05 152);

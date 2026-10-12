@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
  *
  * Unifies every auth page (/login, /signup, /verify-email, /password-reset,
  * /request-institution) with the grounded institutional landing system:
- * paper canvas, Fraunces display type, Iron Gall accent, hairline cards,
+ * paper canvas, Fraunces display type, Cinnabar accent, hairline cards,
  * and the same sticky nav + footer. No glass, no indigo glow — one voice.
  */
 export default function AuthLayout({

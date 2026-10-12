@@ -48,12 +48,13 @@ export default function PasswordResetPage() {
     setOk('');
     try {
       await authApi.passwordResetRequest(values);
-      setOk('If that email exists, a reset code was sent.');
+      setOk(' A reset code was sent.');
       confirmForm.setValue('email', values.email);
       setStep('confirm');
     } catch (err) {
       setError(
-        err?.response?.data?.error?.detail || 'Request failed. Please try again.',
+        err?.response?.data?.error?.detail ||
+          'Request failed. Please try again.',
       );
     }
   };
@@ -65,7 +66,7 @@ export default function PasswordResetPage() {
       await authApi.passwordResetConfirm({
         email: values.email,
         token: values.token,
-        password: values.password,
+        new_password: values.password,
       });
       setOk('Password updated. You can now sign in.');
     } catch (err) {
@@ -83,7 +84,13 @@ export default function PasswordResetPage() {
     <AuthLayout
       icon={KeyRound}
       eyebrow="Password recovery"
-      title={success ? 'Password updated' : step === 'request' ? 'Reset your password' : 'Choose a new password'}
+      title={
+        success
+          ? 'Password updated'
+          : step === 'request'
+            ? 'Reset your password'
+            : 'Choose a new password'
+      }
       subtitle={
         success
           ? 'Your password has been changed successfully.'
@@ -94,10 +101,7 @@ export default function PasswordResetPage() {
       footer={
         <>
           Remembered it?{' '}
-          <Link
-            to="/login"
-            className="landing-text-link font-semibold"
-          >
+          <Link to="/login" className="landing-text-link font-semibold">
             Back to sign in
           </Link>
         </>
@@ -109,7 +113,10 @@ export default function PasswordResetPage() {
         </Alert>
       )}
       {ok && (
-        <Alert role="status" className="mb-4 border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)] ">
+        <Alert
+          role="status"
+          className="mb-4 border-[var(--success)]/30 bg-[var(--success-soft)] text-[var(--success)] "
+        >
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription>{ok}</AlertDescription>
         </Alert>
@@ -124,13 +131,18 @@ export default function PasswordResetPage() {
         </Button>
       ) : step === 'request' ? (
         <Form {...requestForm}>
-          <form onSubmit={requestForm.handleSubmit(onRequest)} className="space-y-4">
+          <form
+            onSubmit={requestForm.handleSubmit(onRequest)}
+            className="space-y-4"
+          >
             <FormField
               control={requestForm.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[12px] font-medium">Email</FormLabel>
+                  <FormLabel className="text-[12px] font-medium">
+                    Email
+                  </FormLabel>
                   <FormControl>
                     <Input
                       type="email"
@@ -165,7 +177,10 @@ export default function PasswordResetPage() {
         </Form>
       ) : (
         <Form {...confirmForm}>
-          <form onSubmit={confirmForm.handleSubmit(onConfirm)} className="space-y-3.5">
+          <form
+            onSubmit={confirmForm.handleSubmit(onConfirm)}
+            className="space-y-3.5"
+          >
             {['email', 'token', 'password', 'confirm'].map((name) => (
               <FormField
                 key={name}
@@ -173,7 +188,9 @@ export default function PasswordResetPage() {
                 name={name}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-[12px] font-medium">{CONFIRM_LABELS[name]}</FormLabel>
+                    <FormLabel className="text-[12px] font-medium">
+                      {CONFIRM_LABELS[name]}
+                    </FormLabel>
                     <FormControl>
                       {name === 'password' || name === 'confirm' ? (
                         <PasswordInput
@@ -191,7 +208,9 @@ export default function PasswordResetPage() {
                           placeholder="6-digit code"
                           {...field}
                           onChange={(e) =>
-                            field.onChange(e.target.value.replace(/\D/g, '').slice(0, 6))
+                            field.onChange(
+                              e.target.value.replace(/\D/g, '').slice(0, 6),
+                            )
                           }
                         />
                       ) : (
