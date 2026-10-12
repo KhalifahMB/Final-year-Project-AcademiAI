@@ -27,7 +27,7 @@ Seven objectives were pursued. Their status against measured evidence:
 | O4 | Hybrid retrieval with authorisation applied before ranking | **Achieved** | Dense + lexical + concept, fused by RRF at k = 60 ([Ch. 3 §3.3.2](CHAPTER_3_METHODOLOGY.md#332-the-retrieval-flow--authorisation-before-ranking)) |
 | O5 | Cited, streamed answers with visible tool-call chains | **Achieved, with caveat** | Per-chunk citations working; **agentic tool-call chain partially unverified** — see [§6.4](#64-open-issues) |
 | O6 | Answers connected to plans, calendar, notes, progress, quizzes | **Partially achieved** | Calendar complete (4 views, `.ics`); **plan task creation fails via API (D1)** and **timetable import unreachable (D6)** |
-| O7 | Evaluation against measurable criteria plus a usability instrument | **Partially achieved** | 280 backend tests, 62 frontend tests, lint and build clean; **instrument prepared but not administered (O7 half)** |
+| O7 | Evaluation against measurable criteria plus a usability instrument | **Partially achieved** | 280 backend tests, 62 frontend tests, lint and build clean; answer quality measured by an LLM judge with an ungrounded control ([§5.5.1](CHAPTER_5_RESULTS_AND_DISCUSSION.md#551-measured-answer-quality-llm-judge)); **usability instrument prepared but not administered** |
 
 Of the seven objectives, **four are fully achieved, two are partially achieved, and one is
 half achieved**. The report does not claim otherwise.
@@ -277,8 +277,10 @@ Ordered by expected value.
 22. **Measure refusal accuracy.** Test the system's behaviour on questions the corpus
     genuinely cannot answer. The `low` confidence path exists; whether it triggers
     correctly is unmeasured.
-23. **Add claim-level citation verification** — check that each cited chunk actually
-    supports the claim attached to it, rather than merely being the nearest passage.
+23. **Add claim-level citation verification in the runtime** — check that each cited chunk
+    actually supports the claim attached to it, rather than merely being the nearest
+    passage. The offline evaluation (§5.5.1) already decomposes answers into supported and
+    unsupported claims; the recommendation is to move that check into the live path.
 
 ### 6.6.3 Corpus and language
 
@@ -304,7 +306,12 @@ Ordered by expected value.
     Brusilovsky and Peylo (2003) review, at a content scale the field's earlier
     overreaches suggest is now feasible.
 30. **Complete the usability study** and, once available, report SUS results against the
-    bands in [Table 5.3](CHAPTER_5_RESULTS_AND_DISCUSSION.md#573-analysis-tables--awaiting-data-collection).
+    bands in [Table 5.4](CHAPTER_5_RESULTS_AND_DISCUSSION.md#573-analysis-tables--awaiting-data-collection).
+31. **Replace the answer-quality LLM judge with human raters.** The evaluation in
+    [§5.5.1](CHAPTER_5_RESULTS_AND_DISCUSSION.md#551-measured-answer-quality-llm-judge)
+    shows grounding measurably changes answer behaviour, but its κ is inter-*judge*, not
+    inter-*rater*. A small human-rated subset would yield a human-reliability figure and
+    calibrate the automated judge.
 
 ---
 
@@ -321,7 +328,7 @@ form.
 The isolation requirement is met by the database rather than by application discipline,
 which is the difference between a guarantee and a convention. Where the system does not
 yet work, this report says so: four High-severity defects, three failing tests, two
-unreachable features, an unmeasured retrieval-quality claim and an unadministered
+unreachable features, an unmeasured retrieval-*ranking* claim and an unadministered
 questionnaire.
 
 That second list is the more useful output. A final-year report that claims only success

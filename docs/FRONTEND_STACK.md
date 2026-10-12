@@ -20,7 +20,8 @@
 
 | File | Route | Description |
 |------|-------|-------------|
-| `LandingPage.jsx` | `/` | Public marketing landing — hero, product principles, feature sections, institution directory, CTA |
+| `pages/landing/variants/CinnabarLanding.jsx` | `/` | Public marketing landing — Console structure × Cinnabar/Atlas colour, hero, grounding demo, roles, signals, institution directory, FAQ |
+| `pages/landing/LandingLab.jsx` | `/landing-lab` | Dev-only preview picker (Atlas ⇄ Cinnabar); not linked from the app |
 
 ### Auth
 
@@ -107,7 +108,7 @@
 | `Avatar.jsx` | User avatar with initials fallback |
 | `AvatarPicker.jsx` | Avatar selection grid (predefined + upload) |
 | `AiInsightCard.jsx` | Formatted AI insight display card |
-| `BrandMark.jsx` | Inline theme-aware SVG brand mark ("A + mortarboard", Iron Gall tassel) + wordmark |
+| `BrandMark.jsx` | Inline theme-aware SVG brand mark ("A + mortarboard", Cinnabar tassel) + wordmark |
 | `ConfirmDialog.jsx` | Accessible confirmation replacing all `window.confirm()` |
 | `EmptyState.jsx` | Empty state with icon, title, description, action |
 | `EntityDialog.jsx` | Generic create/edit dialog (used across admin pages) |

@@ -152,7 +152,7 @@ to a chapter of this report.
 | **O4** | Implement hybrid retrieval over that corpus — dense vector, sparse lexical and concept-graph — fused by Reciprocal Rank Fusion, with per-request authorisation filtering applied before ranking. | Ch. 4 §4.10; Ch. 5 §5.4 |
 | **O5** | Deliver a conversational interface with streamed responses and visible, inspectable tool-call chains, in which every substantive claim carries a citation to an openable source. | Ch. 4 §4.11; Ch. 5 §5.3 |
 | **O6** | Connect answers to action: study plans with dated milestones and tasks, a four-view layered calendar with RFC-5545 export and timetable import, notes, bookmarks, progress tracking and self-assessments. | Ch. 4 §4.12; Ch. 5 §5.6 |
-| **O7** | Evaluate the system against measurable quality criteria and prepare a validated instrument for assessing its usability. | Ch. 5 §5.1, §5.2, §5.7; [Appendix](APPENDIX.md) |
+| **O7** | Evaluate the system against measurable quality criteria and prepare a validated instrument for assessing its usability. | Ch. 5 §5.1, §5.2, §5.5.1, §5.7; [Appendix](APPENDIX.md) |
 
 A supporting objective runs alongside these: to deliver role-specific administration so
 that each of the four roles is operated through a purpose-built surface rather than a
@@ -214,7 +214,10 @@ These are constraints of the study that qualify its findings.
 2. **Answer quality depends on an external model.** Generation is delegated to the Gemini
    API. The system controls retrieval, authorisation, citation and refusal behaviour, but
    not the model's language quality, and the system is not resilient to provider outage or
-   to changes in that provider's behaviour.
+   to changes in that provider's behaviour. Answer quality was nevertheless measured with an
+   automated LLM judge ([Ch. 5 §5.5.1](CHAPTER_5_RESULTS_AND_DISCUSSION.md#551-measured-answer-quality-llm-judge)),
+   which shows it depends sharply on whether retrieval grounding is applied — but the scores
+   are conditional on the provider's model version and are not a claim about the model itself.
 3. **No user-study data has been collected.** The usability instrument in the
    [Appendix](APPENDIX.md) is complete and ready to administer, but no responses exist.
    Chapter 5 therefore reports no usability statistics; it reports the instrument, the

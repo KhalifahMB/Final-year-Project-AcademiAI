@@ -5,14 +5,18 @@
 ## 5.1 Introduction
 
 This chapter reports the results of implementing and evaluating AcademiAI. Results are
-presented in three kinds of evidence:
+presented in four kinds of evidence:
 
 1. **Automated test results** — the backend and frontend suites, static analysis and the
    production build, with exact counts from recorded runs.
 2. **Runtime verification** — live HTTP responses and screenshots of the running system,
    including two verifications that the isolation guarantee holds in practice rather than
    merely on paper.
-3. **Evaluative instrument** — a System Usability Scale questionnaire that is complete
+3. **Measured answer quality** — an automated, LLM-judge evaluation that scores generated
+   answers for factual correctness, relevance, groundedness and completeness, and derives
+   a hallucination rate and citation-coverage figure from the same runs
+   ([§5.5.1](#551-measured-answer-quality-llm-judge)).
+4. **Evaluative instrument** — a System Usability Scale questionnaire that is complete
    and ready to administer but for which **no responses have been collected**, and which
    is therefore reported as an instrument, not as data.
 
@@ -587,11 +591,59 @@ answer is one where the corpus did not support the question and the reply came f
 model knowledge. The interface must communicate that distinction, otherwise the system
 implements grounding but does not deliver the benefit of it.
 
-**Retrieval quality was not measured.** The system was verified to *retrieve and cite
+**Retrieval ranking was not measured.** The system was verified to *retrieve and cite
 authorised material*, not to retrieve the *most* relevant material. Assessing ranking
 quality needs a relevance-judged query set over the corpus, which does not exist here.
 This is stated as an open measurement gap in
 [§5.10](#510-limitations-of-the-evidence), not glossed as "the answers looked right".
+
+### 5.5.1 Measured answer quality (LLM-judge)
+
+Retrieval *ranking* remains unmeasured (see [§5.10](#510-limitations-of-the-evidence)), but
+the quality of the grounded answers themselves — factual correctness, relevance,
+groundedness, completeness, hallucination rate, source-attribution coverage and inter-judge
+agreement — was measured over the seeded ATBU corpus with an automated LLM judge, paired
+with an ungrounded control to show the instrument discriminates rather than merely flatters.
+
+A fixed 20-query set was answered twice: once through the product path (hybrid retrieval →
+grounded generation) and once by the same model with retrieval removed and no grounding
+instruction — the *ungrounded control*, which still had access to the reference passages so
+it could be scored for factual correctness. Two independent judge personas scored every
+answer on four 1–5 dimensions and decomposed it into individual factual claims.
+
+**Table 5.1 — Answer quality, grounded vs ungrounded control (n = 20 each).**
+
+| Metric | Grounded | Ungrounded control |
+|---|---|---|
+| Factual correctness (1–5) | 4.93 | 3.35 |
+| Relevance (1–5) | 4.98 | 4.20 |
+| Groundedness / faithfulness (1–5) | 5.00 | 1.10 |
+| Completeness (1–5) | 4.85 | 3.03 |
+| Hallucination rate (answers with ≥ 1 unsupported claim) | 0.0 % | 97.5 % |
+| Source-attribution coverage (cited claims ÷ total claims) | 92.0 % | 0.0 % |
+| Answers correctly formatted with `[Source n]` markers | 90.0 % | — |
+| Answers rated | 20 | 20 |
+| Inter-judge agreement (Cohen's κ, overall) | 1.00 | 0.42 |
+
+The grounded condition scores at or near ceiling on every dimension while the control
+collapses precisely where grounding should matter — groundedness (5.00 → 1.10) and
+hallucination (0 % → 97.5 %) — while remaining comparatively strong on relevance and
+factual correctness. That is the expected signature: without retrieval the model is still
+on-topic and often factually right, but it is no longer *faithful to the corpus*. A lenient
+instrument would not have separated the two conditions so sharply; the separation is what
+makes the grounded numbers credible.
+
+Two caveats are recorded plainly, and expanded in [§5.10](#510-limitations-of-the-evidence).
+The κ statistic is **inter-judge (two LLM personas), not human inter-rater**, agreement. The
+grounded κ sits at the 1.00 ceiling and is therefore uninformative, while the control κ of
+0.42 is the trustworthy value, reflecting genuine disagreement on the harder answers. And
+the runs were pinned to a **lite** model (`gemini-3.1-flash-lite`) because the larger Gemini
+builds were rate-limited during measurement, so the absolute scores are a floor for a larger
+model, not a ceiling.
+
+Full method, rubric, per-dimension κ and reproduction commands are in
+[ANSWER_EVALUATION.md](ANSWER_EVALUATION.md); the raw per-answer artefacts are
+`docs/report/answer_eval_results.json` and `docs/report/answer_eval_control_ungrounded.json`.
 
 ---
 
@@ -660,7 +712,7 @@ inferential claim.
 
 ### 5.7.3 Analysis tables — awaiting data collection
 
-**Table 5.1 — Response summary by stratum.** *Awaiting data collection.*
+**Table 5.2 — Response summary by stratum.** *Awaiting data collection.*
 
 | Stratum | Target n | Responses | Mean SUS | SD | Median | IQR | Adjective band |
 |---|---|---|---|---|---|---|---|
@@ -670,7 +722,7 @@ inferential claim.
 | Platform superusers | 5 | — | — | — | — | — | — |
 | **All respondents** | **60** | — | — | — | — | — | — |
 
-**Table 5.2 — Item-level means.** *Awaiting data collection.*
+**Table 5.3 — Item-level means.** *Awaiting data collection.*
 
 | Item | Domain | All respondents | Students | Lecturers | Admins |
 |---|---|---|---|---|---|
@@ -685,7 +737,7 @@ inferential claim.
 | 9 | Operability | — | — | — | — |
 | 10 | Operability | — | — | — | — |
 
-**Table 5.3 — Interpretation bands** (Bangor et al., 2008). These are fixed reference
+**Table 5.4 — Interpretation bands** (Bangor et al., 2008). These are fixed reference
 values, not measurements, and are given so that whatever data is eventually collected can
 be interpreted consistently.
 
@@ -753,9 +805,11 @@ minute.
 
 1. **No user study.** No usability data exists. [§5.7](#57-user-study-instrument-and-status)
    specifies the instrument and leaves the tables empty.
-2. **No retrieval-quality measurement.** Grounding and authorisation were verified;
-   ranking quality was not. No relevance-judged query set exists for this corpus, so no
-   recall, precision or nDCG figure is reported.
+2. **No retrieval-ranking measurement.** Grounding and authorisation were verified, and the
+   quality of the generated answers has since been measured
+   ([§5.5.1](#551-measured-answer-quality-llm-judge)), but the *ranking* that feeds those
+   answers was not: no relevance-judged query set exists for this corpus, so no recall,
+   precision or nDCG figure is reported.
 3. **No load or performance testing.** All timings are single-user on a developer
    workstation. No concurrency, throughput or scaling claim is supported.
 4. **No security assessment.** No penetration test, and no independent verification of the
@@ -773,6 +827,12 @@ minute.
    that they were subtle.
 8. **Screenshots show one seeded institution.** All imagery is from the ATBU demo tenant.
    Behaviour at other institutions, or with very small corpora, is unverified.
+9. **The answer-quality evaluation is model-judged.** [§5.5.1](#551-measured-answer-quality-llm-judge)
+   scores answers with an LLM judge, not human raters, so its κ is inter-judge agreement
+   rather than inter-rater reliability; it was run on a single lite model over one tenant's
+   corpus, and the grounded scores sit at ceiling. It establishes that grounding measurably
+   changes answer behaviour (groundedness 5.00 vs 1.10, hallucination 0 % vs 97.5 %), not a
+   precise quality level.
 
 ---
 

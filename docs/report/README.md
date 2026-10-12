@@ -27,6 +27,8 @@ outline, plus the evidence it rests on.
 |---|---|
 | [EVIDENCE.md](EVIDENCE.md) | Every measured figure: commands, counts, test output, health checks, seed data |
 | [DEFECTS.md](DEFECTS.md) | 16 verified defects with reproduction steps, causes and fixes |
+| [ANSWER_EVALUATION.md](ANSWER_EVALUATION.md) | Answer-quality evaluation (LLM-as-judge) with a grounded vs ungrounded control: method, results, limitations |
+| [answer_eval_results.json](answer_eval_results.json) · [answer_eval_control_ungrounded.json](answer_eval_control_ungrounded.json) | Raw per-answer artefacts for the two evaluation runs |
 | [screenshots/](screenshots/) | 62 PNG captures of the running application |
 
 ## How to read this report
@@ -54,6 +56,13 @@ value. In particular:
   indexes and the matching query rewrite are in place now (including the follow-up fix that
   makes the RLS tenant predicate usable by the index), and Chapter 4, Chapter 2 and the
   evidence register all report the corrected state.
+- **Retrieval *ranking* is still unmeasured, but answer quality is now measured.** An
+  automated LLM-as-judge evaluation — with an ungrounded control as a sanity check — scored
+  the generated answers for factual correctness, relevance, groundedness and completeness
+  ([Chapter 5 §5.5.1](CHAPTER_5_RESULTS_AND_DISCUSSION.md#551-measured-answer-quality-llm-judge),
+  [Appendix F](APPENDIX.md#appendix-f--answer-quality-evaluation-llm-as-judge),
+  [ANSWER_EVALUATION.md](ANSWER_EVALUATION.md)). The ranking that feeds those answers
+  remains unmeasured, and the agreement statistic is inter-judge, not human.
 
 ## Reproducing the results
 

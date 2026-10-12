@@ -170,7 +170,7 @@ Maps each stated objective to its implementing module, its evidence, and its sta
 | **O4** Hybrid retrieval | FR-040…047, NFR-003, 014, 015 | `apps/knowledge/retrieval.py`, `apps/chat/services/retrieval.py` | Authorisation-first flow verified; ranking quality unmeasured | Achieved |
 | **O5** Cited answers | FR-043…055, NFR-016 | `apps/chat/`, `apps/agent/` | Per-chunk citations verified; agentic chain partially verified | Partially achieved |
 | **O6** Study workflow | FR-060…070, 080…084 | `apps/learning/`, `apps/calendar/`, `apps/assessments/` | 4 calendar views verified; plan-task API and timetable import broken | Partially achieved |
-| **O7** Evaluation | NFR-020…022, 027 | `backend/`, `frontend/`, Playwright capture | 277/280 backend, 62/62 frontend, lint and build clean; instrument unadministered | Partially achieved |
+| **O7** Evaluation | NFR-020…022, 027 | `backend/`, `frontend/`, Playwright capture, `manage.py evaluate_answers` | 277/280 backend, 62/62 frontend, lint and build clean; answer quality judged (groundedness 5.00 vs 1.10 control, hallucination 0 % vs 97.5 %); instrument unadministered | Partially achieved |
 
 ---
 
@@ -281,5 +281,87 @@ Full reproduction steps and causes are in [DEFECTS.md](DEFECTS.md).
 | Index counts (319 total, 1 `hnsw`, 1 `GIN`) | `count(*) FROM pg_indexes` — see [EVIDENCE §3.1](EVIDENCE.md#31-index-inventory) |
 | 62 screenshots | Playwright capture with per-capture pixel-variance, DOM-length and landmark validation |
 | 27 architecture decisions | Headings in `docs/DECISIONS.md` |
+| Answer quality (factual 4.93, groundedness 5.00, coverage 92 %) | `manage.py evaluate_answers` — full command in [Appendix F.4](#f4-reproduction); `docs/report/answer_eval_results.json` |
+| Ungrounded control (groundedness 1.10, hallucination 97.5 %) | `manage.py evaluate_answers --mode ungrounded` — [Appendix F.4](#f4-reproduction); `docs/report/answer_eval_control_ungrounded.json` |
+| Inter-judge κ (1.00 grounded, 0.42 control) | two judge personas in `evaluate_answers.py` — inter-*judge*, not human inter-rater |
 
 Full command output is in [EVIDENCE.md](EVIDENCE.md).
+
+---
+
+## Appendix F — Answer-Quality Evaluation (LLM-as-Judge)
+
+Referenced from
+[Chapter 5 §5.5.1](CHAPTER_5_RESULTS_AND_DISCUSSION.md#551-measured-answer-quality-llm-judge).
+The full narrative is in [ANSWER_EVALUATION.md](ANSWER_EVALUATION.md); this appendix records
+the method, the data and the reproduction commands.
+
+### F.1 Method
+
+| Element | Detail |
+|---|---|
+| Generation path | the product path — `hybrid_retrieve()` (top `k` = 8, tenant-scoped by RLS) → `generate_grounded_answer()` |
+| Control condition | the same model with retrieval removed and no grounding instruction; reference passages still supplied so it can be scored for factual correctness |
+| Corpus | the seeded ATBU tenant — 33 resources, 706 chunks, 587 embedded |
+| Query set | 60-case `rag_testset_large.json`; a fixed seed draws the same 20 questions for both conditions |
+| Model | `gemini-3.1-flash-lite` (the larger Gemini builds were rate-limited during measurement) |
+| Judges | two independent LLM personas — judge A "examiner" (strict), judge B "teaching assistant" (lenient) |
+| Dimensions | factual correctness, relevance, groundedness/faithfulness, completeness — each 1–5 |
+| Derived metrics | hallucination rate (answers with ≥ 1 unsupported claim); source-attribution coverage (cited claims ÷ total claims); Cohen's κ between the two judges |
+
+### F.2 Results
+
+**Table F.1 — Grounded vs ungrounded control (n = 20 each).**
+
+| Metric | Grounded | Ungrounded control |
+|---|---|---|
+| Factual correctness (1–5) | 4.93 | 3.35 |
+| Relevance (1–5) | 4.98 | 4.20 |
+| Groundedness / faithfulness (1–5) | 5.00 | 1.10 |
+| Completeness (1–5) | 4.85 | 3.03 |
+| Hallucination rate | 0.0 % | 97.5 % |
+| Source-attribution coverage | 92.0 % | 0.0 % |
+| Answers with a valid `[Source n]` marker | 90.0 % | 0.0 % |
+| Answers rated | 20 | 20 |
+| Claims extracted and scored | 226 | 221 |
+| Inter-judge κ (overall) | 1.00 | 0.42 |
+
+**Table F.2 — Inter-judge κ by dimension.**
+
+| Dimension | Grounded | Ungrounded control |
+|---|---|---|
+| Factual correctness | 0.00 | 0.45 |
+| Relevance | 1.00 | 0.63 |
+| Groundedness | 1.00 | 1.00 |
+| Completeness | 0.00 | 0.33 |
+
+### F.3 Interpretation and limitations
+
+- The control separates from the grounded condition precisely on the grounding-critical
+  dimensions (groundedness 5.00 → 1.10; hallucination 0 % → 97.5 %) while staying
+  comparatively strong on relevance, which shows the judge discriminates rather than
+  flatters.
+- κ is **inter-judge** (two LLM personas), **not human inter-rater** reliability. The
+  grounded κ at 1.00 is at ceiling and uninformative; the control κ of 0.42 is the
+  trustworthy value.
+- The grounded κ of 0.00 on factual correctness and completeness is a known artefact of κ
+  under extreme prevalence (both judges agree almost perfectly but use adjacent integer
+  scores on a near-ceiling set), not evidence of disagreement.
+- A single lite model over one tenant's corpus: the scores are a floor for a larger model,
+  not a precise quality level, and they do **not** close the retrieval-*ranking* measurement
+  gap ([§5.10](CHAPTER_5_RESULTS_AND_DISCUSSION.md#510-limitations-of-the-evidence), item 2).
+
+### F.4 Reproduction
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe manage.py evaluate_answers --queries rag_testset_large.json `
+  --n 20 --mode grounded --model gemini-3.1-flash-lite --seed 2026 --sleep 0.3 `
+  --out ..\docs\report\answer_eval_results.json
+.\.venv\Scripts\python.exe manage.py evaluate_answers --queries rag_testset_large.json `
+  --n 20 --mode ungrounded --model gemini-3.1-flash-lite --seed 2026 --sleep 0.3 `
+  --out ..\docs\report\answer_eval_control_ungrounded.json
+```
+
+Raw per-answer artefacts: `docs/report/answer_eval_results.json` and
+`docs/report/answer_eval_control_ungrounded.json`.

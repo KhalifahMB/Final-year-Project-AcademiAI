@@ -436,3 +436,47 @@ The four accounts are also what demonstrate role separation visually: the same U
 `/dashboard` renders a different interface for a student than for a tenant administrator,
 and the forbidden-role screenshot (`53-forbidden-wrong-role.png`) is the system's response
 when a role reaches a surface it does not own.
+
+---
+
+## 9. Answer-quality evaluation (LLM-as-judge)
+
+Two runs over the seeded **ATBU** corpus (33 resources, 706 chunks, 587 embedded), drawing
+the same 20 queries from the 60-case `rag_testset_large.json` with `--seed 2026`, served by
+`gemini-3.1-flash-lite` (the larger Gemini builds were rate-limited at measurement time).
+The grounded run uses the product path (hybrid retrieval → grounded generation); the control
+run removes retrieval and the grounding instruction.
+
+Command (from `backend/`):
+
+```powershell
+.\.venv\Scripts\python.exe manage.py evaluate_answers --queries rag_testset_large.json `
+  --n 20 --mode grounded --model gemini-3.1-flash-lite --seed 2026 --sleep 0.3 `
+  --out ..\docs\report\answer_eval_results.json
+.\.venv\Scripts\python.exe manage.py evaluate_answers --queries rag_testset_large.json `
+  --n 20 --mode ungrounded --model gemini-3.1-flash-lite --seed 2026 --sleep 0.3 `
+  --out ..\docs\report\answer_eval_control_ungrounded.json
+```
+
+Observed `metrics` from the two written artefacts:
+
+| Metric | Grounded | Ungrounded control |
+|---|---:|---:|
+| `answers_rated` | 20 | 20 |
+| `factual_correctness` | 4.925 | 3.35 |
+| `relevance` | 4.975 | 4.20 |
+| `groundedness` | 5.00 | 1.10 |
+| `completeness` | 4.85 | 3.025 |
+| `hallucination_rate` | 0.0 | 0.975 |
+| `source_attribution_coverage` | 0.920 | 0.0 |
+| `answers_with_valid_source_marker` | 0.90 | 0.0 |
+| `cohens_kappa_overall` | 1.00 | 0.417 |
+| `claims_scored` | 226 | 221 |
+
+`generation_or_judge_failures` was 0 in both runs. `cohens_kappa_by_dimension` was
+0.00 / 1.00 / 1.00 / 0.00 (grounded) and 0.45 / 0.63 / 1.00 / 0.33 (control) for factual
+correctness, relevance, groundedness and completeness respectively. Agreement is
+**inter-judge** (two LLM personas), **not human inter-rater**; the grounded κ at 1.00 is at
+ceiling and uninformative, while the control κ of 0.42 is the trustworthy value. See
+[Appendix F](APPENDIX.md#appendix-f--answer-quality-evaluation-llm-as-judge) and
+[ANSWER_EVALUATION.md](ANSWER_EVALUATION.md).
